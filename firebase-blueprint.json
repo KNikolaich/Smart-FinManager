@@ -1,0 +1,182 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "createdAt"]
+    },
+    "Account": {
+      "title": "Financial Account",
+      "description": "A bank account, card, or cash wallet",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["card", "cash", "bank", "credit"] },
+        "balance": { "type": "number" },
+        "currency": { "type": "string" },
+        "showOnDashboard": { "type": "boolean" },
+        "showInTotals": { "type": "boolean" }
+      },
+      "required": ["userId", "name", "type", "balance", "currency", "showOnDashboard", "showInTotals"]
+    },
+    "Category": {
+      "title": "Transaction Category",
+      "description": "Categories for income and expenses",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["income", "expense"] },
+        "icon": { "type": "string" },
+        "color": { "type": "string" }
+      },
+      "required": ["userId", "name", "type", "icon", "color"]
+    },
+    "Transaction": {
+      "title": "Financial Transaction",
+      "description": "An income, expense, or transfer record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "accountId": { "type": "string" },
+        "targetAccountId": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["income", "expense", "transfer"] },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "accountId", "amount", "type", "createdAt"]
+    },
+    "Goal": {
+      "title": "Financial Goal",
+      "description": "A savings goal",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "targetAmount": { "type": "number" },
+        "currentAmount": { "type": "number" },
+        "deadline": { "type": "string", "format": "date" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "isCompleted": { "type": "boolean" }
+      },
+      "required": ["userId", "name", "targetAmount", "currentAmount", "isCompleted"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "Monthly or weekly budget for a category",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "amount": { "type": "number" },
+        "period": { "type": "string", "enum": ["monthly", "weekly"] },
+        "spent": { "type": "number" }
+      },
+      "required": ["userId", "categoryId", "amount", "period", "spent"]
+    },
+    "Plan": {
+      "title": "Financial Plan",
+      "description": "A planned expense or savings",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "plannedAmount": { "type": "number" },
+        "accountId": { "type": "string" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "dateOfFinish": { "type": "string", "format": "date" },
+        "month": { "type": "string" }
+      },
+      "required": ["userId", "name", "plannedAmount", "accountId", "priority", "dateOfFinish", "month"]
+    },
+    "AILog": {
+      "title": "AI Interaction Log",
+      "description": "Logs of AI requests and responses",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "request": { "type": "object" },
+        "response": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "request", "response", "createdAt"]
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "A message in the AI chat history",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "assistant"] },
+        "content": { "type": "string" },
+        "type": { "type": "string" },
+        "actionType": { "type": "string" },
+        "actionData": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "role", "content", "createdAt"]
+    },
+    "Currency": {
+      "title": "Currency",
+      "description": "Currency information",
+      "type": "object",
+      "properties": {
+        "curUid": { "type": "string" },
+        "name": { "type": "string" },
+        "iso": { "type": "string" }
+      },
+      "required": ["curUid", "name", "iso"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile data"
+    },
+    "/accounts/{accountId}": {
+      "schema": "Account",
+      "description": "User financial accounts"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "User categories"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "User transactions"
+    },
+    "/goals/{goalId}": {
+      "schema": "Goal",
+      "description": "User savings goals"
+    },
+    "/budgets/{budgetId}": {
+      "schema": "Budget",
+      "description": "User budgets"
+    },
+    "/plans/{planId}": {
+      "schema": "Plan",
+      "description": "User financial plans"
+    },
+    "/ai_logs/{logId}": {
+      "schema": "AILog",
+      "description": "AI communication logs"
+    },
+    "/chat_history/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "User AI chat history"
+    },
+    "/currencies/{currencyId}": {
+      "schema": "Currency",
+      "description": "Currency definitions"
+    }
+  }
+}
