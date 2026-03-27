@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Account, Transaction, Goal, Budget, Category, AccountType } from '../types';
 import { Wallet, TrendingUp, TrendingDown, Target, ChevronRight, CreditCard, Landmark } from 'lucide-react';
+import { CoinStack } from './CustomIcons';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
@@ -24,9 +25,10 @@ interface DashboardProps {
     deadline?: string;
   };
   onCloseGoalManager?: () => void;
+  onRefresh?: () => void;
 }
 
-export default function Dashboard({ accounts, transactions, goals, budgets, categories, userId, showTotalBalance, initialGoalData, onCloseGoalManager }: DashboardProps) {
+export default function Dashboard({ accounts, transactions, goals, budgets, categories, userId, showTotalBalance, initialGoalData, onCloseGoalManager, onRefresh }: DashboardProps) {
   const [showAccountManager, setShowAccountManager] = useState(false);
   const [showGoalManager, setShowGoalManager] = useState(!!initialGoalData);
   const [showTransactionHistory, setShowTransactionHistory] = useState(false);
@@ -141,7 +143,8 @@ export default function Dashboard({ accounts, transactions, goals, budgets, cate
         <div className="flex gap-3 overflow-x-auto pb-4 -mx-1.5 px-1.5 no-scrollbar snap-x snap-mandatory">
           {dashboardAccounts.map(account => {
             const isNegative = account.balance < 0;
-            const Icon = account.type === 'card' ? CreditCard : account.type === 'bank' ? Landmark : Wallet;
+            const Icon = account.type === 'card' ? CreditCard : account.type === 'bank' ? Landmark : account.type === 'cash' ? CoinStack : Wallet;
+            const hasColor = account.color && account.color !== '#000000';
             
             return (
               <div 
@@ -153,11 +156,17 @@ export default function Dashboard({ accounts, transactions, goals, budgets, cate
                     : "shadow-lg shadow-emerald-100/60 border-emerald-50"
                 )}
               >
-                <div className={cn(
-                  "w-8 h-8 rounded-lg flex items-center justify-center mb-2",
-                  isNegative ? "bg-rose-50" : "bg-emerald-50"
-                )}>
-                  <Icon className={cn("w-4 h-4", isNegative ? "text-rose-500" : "text-emerald-500")} />
+                <div 
+                  className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center mb-2",
+                    !hasColor && (isNegative ? "bg-rose-50" : "bg-emerald-50")
+                  )}
+                  style={hasColor ? { backgroundColor: `${account.color}20` } : {}}
+                >
+                  <Icon 
+                    className={cn("w-4 h-4", !hasColor && (isNegative ? "text-rose-500" : "text-emerald-500"))} 
+                    style={hasColor ? { color: account.color } : {}}
+                  />
                 </div>
                 <p className="text-neutral-400 text-[10px] font-bold uppercase tracking-tight mb-0.5 truncate">{account.name}</p>
                 <p className={cn("font-bold text-sm truncate", isNegative ? "text-rose-600" : "text-neutral-900")}>
@@ -177,6 +186,7 @@ export default function Dashboard({ accounts, transactions, goals, budgets, cate
           accounts={accounts} 
           userId={userId} 
           onClose={() => setShowAccountManager(false)} 
+          onRefresh={onRefresh}
         />
       )}
 
@@ -204,7 +214,7 @@ export default function Dashboard({ accounts, transactions, goals, budgets, cate
               >
                 <div className="flex items-center gap-3">
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm" style={{ backgroundColor: (t.type === 'transfer' ? '#3b82f6' : (parentCategory?.color || '#3b82f6')) + '20' }}>
-                    {t.type === 'transfer' ? '🔄' : (parentCategory?.icon || '💰')}
+                    {t.type === 'transfer' ? '🔄' : (category?.icon || parentCategory?.icon || '💰')}
                   </div>
                   <div>
                     <p className="font-semibold text-xs">{t.description || category?.name || 'Без описания'}</p>
@@ -248,6 +258,7 @@ export default function Dashboard({ accounts, transactions, goals, budgets, cate
           accounts={accounts}
           categories={categories}
           onClose={() => setEditingTransaction(null)}
+          onUpdate={onRefresh || (() => {})}
         />
       )}
 
@@ -328,6 +339,7 @@ export default function Dashboard({ accounts, transactions, goals, budgets, cate
           userId={userId} 
           onClose={handleCloseGoalManager} 
           initialData={initialGoalData}
+          onRefresh={onRefresh}
         />
       )}
     </div>

@@ -1,6 +1,5 @@
 import { Account, Category, Transaction, Goal, Budget, Plan, Message } from "../types";
-import { db } from "../firebase";
-import { collection, addDoc, query, where, orderBy, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { api } from "../lib/api";
 import { GoogleGenAI, Type } from "@google/genai";
 
 export interface AIResponse {
@@ -12,26 +11,17 @@ export interface AIResponse {
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 const logAIInteraction = async (userId: string, request: any, response: any) => {
-  if (!userId) return;
+  if (!userId) {
+    console.warn('Attempted to log AI interaction without userId');
+    return;
+  }
   try {
-    await addDoc(collection(db, 'ai_logs'), {
-      userId,
+    console.log('Logging AI interaction for user:', userId);
+    await api.post('/ai-logs', {
       request,
       response,
-      provider: 'gemini',
-      createdAt: new Date().toISOString()
+      provider: 'gemini'
     });
-
-    const q = query(
-      collection(db, 'ai_logs'),
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc')
-    );
-    const snapshot = await getDocs(q);
-    if (snapshot.size > 100) {
-      const toDelete = snapshot.docs.slice(100);
-      await Promise.all(toDelete.map(d => deleteDoc(doc(db, 'ai_logs', d.id))));
-    }
   } catch (error) {
     console.error('Error logging AI interaction:', error);
   }
@@ -53,7 +43,7 @@ export const processUserMessage = async (
   const systemInstruction = `Ты — вежливый, краткий и обходительный финансовый ассистент. Твоя задача — помогать пользователю управлять финансами. Отвечай на русском языке. Если видишь, что необходимо создать цель или операцию, возвращай строго типизированный объект со всеми найдеными свойствами операции или цели. Все извлеченные данные (сумма, счета, категории, названия) ОБЯЗАТЕЛЬНО должны быть помещены в соответствующие поля объекта 'data'. Не пропускай ни одного поля, если данные для него есть. Будь настойчив, если необходима консультация по бюджету и видишь проблемы, не стесняйся о них сообщить. Ответ пользователю должен быть лаконичен и точен. ВАЖНО: Твой ответ должен быть ТОЛЬКО чистым JSON объектом без каких-либо пояснений или рассуждений внутри полей.
 
   REFERENCE DATA (Use these IDs for structured output):
-  Main Accounts (isMain/showOnDashboard): ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name })))}
+  Available Accounts: ${JSON.stringify(accounts.map(a => ({ id: a.id, name: a.name })))}
   All Categories: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name, type: c.type })))}
   
   Current goals: ${JSON.stringify(goals.map(g => ({ id: g.id, name: g.name, target: g.targetAmount, current: g.currentAmount })))}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   LayoutDashboard, 
   ArrowRightLeft, 
@@ -10,10 +10,8 @@ import {
   LogOut,
   User as UserIcon
 } from 'lucide-react';
-import { auth, db, signInWithGoogle, logout, handleFirestoreError } from './firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, query, where, onSnapshot, doc, setDoc, getDoc } from 'firebase/firestore';
-import { Account, Transaction, Goal, Budget, Category, Plan, OperationType } from './types';
+import { api } from './lib/api';
+import { Account, Transaction, Goal, Budget, Category, Plan } from './types';
 import Dashboard from './components/Dashboard';
 import Transactions from './components/Transactions';
 import Analytics from './components/Analytics';
@@ -21,9 +19,10 @@ import Settings from './components/Settings';
 import AIAssistant from './components/AIAssistant';
 import AddTransaction from './components/AddTransaction';
 import AILogs from './components/AILogs';
+import Auth from './components/Auth';
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'analytics' | 'settings' | 'ai'>('dashboard');
   const [showAddTransaction, setShowAddTransaction] = useState(false);
@@ -42,73 +41,59 @@ export default function App() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
 
+  const refreshData = useCallback(async () => {
+    if (!user) return;
+    try {
+      const [accs, trans, gls, bdgs, cats, plns] = await Promise.all([
+        api.get<Account[]>('/accounts'),
+        api.get<Transaction[]>('/transactions'),
+        api.get<Goal[]>('/goals'),
+        api.get<Budget[]>('/budgets'),
+        api.get<Category[]>('/categories'),
+        api.get<Plan[]>('/plans').catch(() => []),
+      ]);
+      setAccounts(accs);
+      setTransactions(trans);
+      setGoals(gls);
+      setBudgets(bdgs);
+      setCategories(cats);
+      setPlans(plns);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  }, [user]);
+
   useEffect(() => {
     localStorage.setItem('showTotalBalance', JSON.stringify(showTotalBalance));
   }, [showTotalBalance]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // Ensure user document exists
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (!userDoc.exists()) {
-          await setDoc(userDocRef, {
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-            createdAt: new Date().toISOString(),
-            role: 'user',
-            settings: {
-              showTotalBalance: true
-            }
-          });
+    const checkAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const userData = await api.get('/auth/me');
+          setUser(userData);
+        } catch (error) {
+          localStorage.removeItem('token');
+          setUser(null);
         }
       }
-      setUser(user);
       setLoading(false);
-    });
-    return () => unsubscribe();
+    };
+    checkAuth();
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (user) {
+      refreshData();
+    }
+  }, [user, refreshData]);
 
-    const userId = user.uid;
-
-    const unsubAccounts = onSnapshot(query(collection(db, 'accounts'), where('userId', '==', userId)), (snapshot) => {
-      setAccounts(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Account[]);
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'accounts'));
-
-    const unsubTransactions = onSnapshot(query(collection(db, 'transactions'), where('userId', '==', userId)), (snapshot) => {
-      setTransactions(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Transaction[]);
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'transactions'));
-
-    const unsubGoals = onSnapshot(query(collection(db, 'goals'), where('userId', '==', userId)), (snapshot) => {
-      setGoals(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Goal[]);
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'goals'));
-
-    const unsubBudgets = onSnapshot(query(collection(db, 'budgets'), where('userId', '==', userId)), (snapshot) => {
-      setBudgets(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Budget[]);
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'budgets'));
-
-    const unsubCategories = onSnapshot(query(collection(db, 'categories'), where('userId', '==', userId)), (snapshot) => {
-      setCategories(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Category[]);
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'categories'));
-
-    const unsubPlans = onSnapshot(query(collection(db, 'plans'), where('userId', '==', userId)), (snapshot) => {
-      setPlans(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Plan[]);
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'plans'));
-
-    return () => {
-      unsubAccounts();
-      unsubTransactions();
-      unsubGoals();
-      unsubBudgets();
-      unsubCategories();
-      unsubPlans();
-    };
-  }, [user]);
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setUser(null);
+  };
 
   if (loading) {
     return (
@@ -119,26 +104,7 @@ export default function App() {
   }
 
   if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-50 p-4">
-        <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-xl shadow-emerald-100 border border-emerald-50 text-center space-y-8">
-          <div className="w-20 h-20 bg-emerald-500 rounded-2xl mx-auto flex items-center justify-center text-white shadow-lg shadow-emerald-200">
-            <Wallet size={40} />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-neutral-900 tracking-tight">AI Finance Manager</h1>
-            <p className="text-neutral-500">Управляйте своими финансами с помощью ИИ</p>
-          </div>
-          <button 
-            onClick={signInWithGoogle}
-            className="w-full bg-neutral-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-neutral-800 transition-all active:scale-95 shadow-lg shadow-neutral-200"
-          >
-            <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
-            Войти через Google
-          </button>
-        </div>
-      </div>
-    );
+    return <Auth onAuth={setUser} />;
   }
 
   const renderContent = () => {
@@ -151,18 +117,19 @@ export default function App() {
             goals={goals} 
             budgets={budgets} 
             categories={categories}
-            userId={user.uid}
+            userId={user.id}
             showTotalBalance={showTotalBalance}
             initialGoalData={initialGoalData}
             onCloseGoalManager={() => setInitialGoalData(undefined)}
+            onRefresh={refreshData}
           />
         );
       case 'transactions':
-        return <Transactions transactions={transactions} categories={categories} accounts={accounts} />;
+        return <Transactions transactions={transactions} categories={categories} accounts={accounts} onRefresh={refreshData} />;
       case 'analytics':
         return <Analytics transactions={transactions} categories={categories} accounts={accounts} />;
       case 'settings':
-        return <Settings user={user} onLogout={logout} onShowLogs={() => setShowAILogs(true)} />;
+        return <Settings user={user} onLogout={handleLogout} onShowLogs={() => setShowAILogs(true)} onRefresh={refreshData} />;
       case 'ai':
         return (
           <AIAssistant 
@@ -172,11 +139,12 @@ export default function App() {
             budgets={budgets} 
             goals={goals} 
             plans={plans}
-            userId={user.uid}
+            userId={user.id}
             onRedirectToCreateGoal={(data) => {
               setInitialGoalData(data);
               setActiveTab('dashboard');
             }}
+            onRefresh={refreshData}
           />
         );
       default:
@@ -210,8 +178,8 @@ export default function App() {
           >
             <Bot size={20} />
           </button>
-          <div className="w-10 h-10 rounded-xl overflow-hidden border-2 border-white shadow-sm">
-            <img src={user.photoURL || ''} alt={user.displayName || ''} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+          <div className="w-10 h-10 rounded-xl overflow-hidden border-2 border-white shadow-sm bg-emerald-100 flex items-center justify-center">
+            <UserIcon className="text-emerald-600 w-6 h-6" />
           </div>
         </div>
       </header>
@@ -287,7 +255,10 @@ export default function App() {
               <AddTransaction 
                 accounts={accounts} 
                 categories={categories} 
-                onComplete={() => setShowAddTransaction(false)} 
+                onComplete={() => {
+                  setShowAddTransaction(false);
+                  refreshData();
+                }} 
               />
             </div>
           </div>
@@ -298,7 +269,7 @@ export default function App() {
       {showAILogs && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden rounded-[32px] shadow-2xl">
-            <AILogs userId={user.uid} onClose={() => setShowAILogs(false)} />
+            <AILogs userId={user.id} onClose={() => setShowAILogs(false)} />
           </div>
         </div>
       )}

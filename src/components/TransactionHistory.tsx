@@ -32,17 +32,28 @@ export default function TransactionHistory({ transactions, categories, accounts,
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [transactions, selectedMonth]);
 
+  const allowedCategoryIds = useMemo(() => {
+    if (filterCategoryId === 'all') return null;
+    
+    const getSubcategoryIds = (parentId: string): string[] => {
+      const children = categories.filter(c => c.parentId === parentId);
+      return [parentId, ...children.flatMap(c => getSubcategoryIds(c.id))];
+    };
+    
+    return new Set(getSubcategoryIds(filterCategoryId));
+  }, [filterCategoryId, categories]);
+
   const filteredTransactions = useMemo(() => {
     return monthTransactions.filter(t => {
       const matchesSearch = t.description.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             categories.find(c => c.id === t.categoryId)?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             accounts.find(a => a.id === t.targetAccountId)?.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = filterType === 'all' || t.type === filterType;
-      const matchesCategory = filterCategoryId === 'all' || t.categoryId === filterCategoryId;
+      const matchesCategory = !allowedCategoryIds || allowedCategoryIds.has(t.categoryId);
       const matchesAccount = filterAccountId === 'all' || t.accountId === filterAccountId || t.targetAccountId === filterAccountId;
       return matchesSearch && matchesType && matchesCategory && matchesAccount;
     });
-  }, [monthTransactions, searchQuery, filterType, filterCategoryId, filterAccountId, categories, accounts]);
+  }, [monthTransactions, searchQuery, filterType, allowedCategoryIds, filterAccountId, categories, accounts]);
 
   const stats = useMemo(() => {
     const income = filteredTransactions
@@ -55,8 +66,8 @@ export default function TransactionHistory({ transactions, categories, accounts,
   }, [filteredTransactions]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4">
-      <div className="w-full max-w-2xl bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl flex flex-col relative max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-0">
+      <div className="w-full h-full max-w-2xl bg-white shadow-2xl flex flex-col relative overflow-hidden animate-in slide-in-from-bottom duration-300">
         <div className="py-4 px-6 border-b border-neutral-100 flex items-center justify-between shrink-0">
           <h2 className="text-xl font-bold">История операций</h2>
           <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
@@ -118,96 +129,98 @@ export default function TransactionHistory({ transactions, categories, accounts,
 
         {/* Transactions Table */}
         <div className="flex-1 overflow-y-auto no-scrollbar relative">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse table-fixed">
             <thead className="sticky top-0 bg-white z-20 shadow-sm">
               <tr className="border-b border-neutral-100">
-                <th className="px-6 py-1.5 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Дата</th>
-                <th className="px-6 py-1.5 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
-                  <div className="flex items-center gap-2">
-                    <span>Категория / Описание</span>
-                    <div className="relative">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowFilter(!showFilter);
-                        }}
-                        className={cn(
-                          "p-1 rounded-md transition-colors",
-                          filterCategoryId !== 'all' ? "bg-emerald-100 text-emerald-600" : "hover:bg-neutral-100 text-neutral-400"
-                        )}
-                      >
-                        <Filter className="w-3 h-3" />
-                      </button>
-                      
-                      {showFilter && (
-                        <div className="absolute left-0 mt-2 w-48 bg-white border border-neutral-100 rounded-xl shadow-xl z-30 py-2">
-                          <button 
-                            onClick={() => { setFilterCategoryId('all'); setShowFilter(false); }}
-                            className="w-full px-4 py-2 text-left text-xs hover:bg-neutral-50 font-bold"
-                          >
-                            Все категории
-                          </button>
-                          {categories.map(cat => (
+                <th className="w-[50px] pl-4 pr-1 py-1.5 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-left">Дата</th>
+                <th className="pl-1 pr-2 py-1.5 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-left">
+                  <div className="flex items-center gap-1">
+                    <span className="truncate">Категория / Описание</span>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      {/* Category Filter */}
+                      <div className="relative">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowFilter(!showFilter);
+                            setShowAccountFilter(false);
+                          }}
+                          className={cn(
+                            "p-1 rounded-md transition-colors",
+                            filterCategoryId !== 'all' ? "bg-emerald-100 text-emerald-600" : "hover:bg-neutral-100 text-neutral-400"
+                          )}
+                        >
+                          <Filter className="w-3 h-3" />
+                        </button>
+                        
+                        {showFilter && (
+                          <div className="absolute left-0 mt-2 w-48 bg-white border border-neutral-100 rounded-xl shadow-xl z-30 py-2">
                             <button 
-                              key={cat.id}
-                              onClick={() => { setFilterCategoryId(cat.id); setShowFilter(false); }}
-                              className={cn(
-                                "w-full px-4 py-2 text-left text-xs hover:bg-neutral-50 flex items-center gap-2",
-                                filterCategoryId === cat.id ? "text-emerald-600 font-bold" : "text-neutral-600"
-                              )}
+                              onClick={() => { setFilterCategoryId('all'); setShowFilter(false); }}
+                              className="w-full px-4 py-2 text-left text-xs hover:bg-neutral-50 font-bold"
                             >
-                              <span>{cat.icon}</span>
-                              <span className="truncate">{cat.name}</span>
+                              Все категории
                             </button>
-                          ))}
-                        </div>
-                      )}
+                            {categories.map(cat => (
+                              <button 
+                                key={cat.id}
+                                onClick={() => { setFilterCategoryId(cat.id); setShowFilter(false); }}
+                                className={cn(
+                                  "w-full px-4 py-2 text-left text-xs hover:bg-neutral-50 flex items-center gap-2",
+                                  filterCategoryId === cat.id ? "text-emerald-600 font-bold" : "text-neutral-600"
+                                )}
+                              >
+                                <span>{cat.icon}</span>
+                                <span className="truncate">{cat.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Account Filter */}
+                      <div className="relative">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowAccountFilter(!showAccountFilter);
+                            setShowFilter(false);
+                          }}
+                          className={cn(
+                            "p-1 rounded-md transition-colors",
+                            filterAccountId !== 'all' ? "bg-emerald-100 text-emerald-600" : "hover:bg-neutral-100 text-neutral-400"
+                          )}
+                        >
+                          <Filter className="w-3 h-3" />
+                        </button>
+                        
+                        {showAccountFilter && (
+                          <div className="absolute left-0 mt-2 w-48 bg-white border border-neutral-100 rounded-xl shadow-xl z-30 py-2">
+                            <button 
+                              onClick={() => { setFilterAccountId('all'); setShowAccountFilter(false); }}
+                              className="w-full px-4 py-2 text-left text-xs hover:bg-neutral-50 font-bold"
+                            >
+                              Все счета
+                            </button>
+                            {accounts.map(acc => (
+                              <button 
+                                key={acc.id}
+                                onClick={() => { setFilterAccountId(acc.id); setShowAccountFilter(false); }}
+                                className={cn(
+                                  "w-full px-4 py-2 text-left text-xs hover:bg-neutral-50 flex items-center gap-2",
+                                  filterAccountId === acc.id ? "text-emerald-600 font-bold" : "text-neutral-600"
+                                )}
+                              >
+                                <span className="truncate">{acc.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </th>
-                <th className="px-6 py-1.5 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
-                  <div className="flex items-center gap-2">
-                    <span>Счет</span>
-                    <div className="relative">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowAccountFilter(!showAccountFilter);
-                        }}
-                        className={cn(
-                          "p-1 rounded-md transition-colors",
-                          filterAccountId !== 'all' ? "bg-emerald-100 text-emerald-600" : "hover:bg-neutral-100 text-neutral-400"
-                        )}
-                      >
-                        <Filter className="w-3 h-3" />
-                      </button>
-                      
-                      {showAccountFilter && (
-                        <div className="absolute left-0 mt-2 w-48 bg-white border border-neutral-100 rounded-xl shadow-xl z-30 py-2">
-                          <button 
-                            onClick={() => { setFilterAccountId('all'); setShowAccountFilter(false); }}
-                            className="w-full px-4 py-2 text-left text-xs hover:bg-neutral-50 font-bold"
-                          >
-                            Все счета
-                          </button>
-                          {accounts.map(acc => (
-                            <button 
-                              key={acc.id}
-                              onClick={() => { setFilterAccountId(acc.id); setShowAccountFilter(false); }}
-                              className={cn(
-                                "w-full px-4 py-2 text-left text-xs hover:bg-neutral-50 flex items-center gap-2",
-                                filterAccountId === acc.id ? "text-emerald-600 font-bold" : "text-neutral-600"
-                              )}
-                            >
-                              <span className="truncate">{acc.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </th>
-                <th className="px-6 py-1.5 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-right">Сумма</th>
+                <th className="w-1/2 px-6 py-1.5 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-center">Сумма</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-50">
@@ -224,24 +237,30 @@ export default function TransactionHistory({ transactions, categories, accounts,
                     onClick={() => onEditTransaction(t)}
                     className="hover:bg-neutral-50 active:bg-neutral-100 transition-colors cursor-pointer"
                   >
-                    <td className="px-6 py-2">
-                      <p className="text-xs font-bold text-neutral-900">{format(new Date(t.createdAt), 'dd.MM')}</p>
+                    <td className="pl-4 pr-1 py-2 align-top">
+                      <p className="text-[11px] font-bold text-neutral-900">{format(new Date(t.createdAt), 'dd.MM')}</p>
                     </td>
-                    <td className="px-6 py-2">
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg">{t.type === 'transfer' ? '🔄' : (parentCategory?.icon || '💰')}</span>
-                        <div>
-                          <p className="text-xs font-bold text-neutral-900 truncate max-w-[120px]">{t.description || category?.name || (t.type === 'transfer' ? 'Перевод' : 'Без описания')}</p>
+                    <td className="pl-1 pr-2 py-2 align-top">
+                      <div className="flex items-start gap-2">
+                        <span className="text-lg shrink-0">{t.type === 'transfer' ? '🔄' : (parentCategory?.icon || '💰')}</span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-neutral-900 truncate">{t.description || category?.name || (t.type === 'transfer' ? 'Перевод' : 'Без описания')}</p>
+                          <p 
+                            className="text-[10px] font-medium truncate"
+                            style={{ color: account?.color && account.color !== '#000000' ? account.color : '#737373' }}
+                          >
+                            {account?.name || 'Счет'}
+                            {targetAccount && ` → ${targetAccount.name}`}
+                          </p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-2">
-                      <p className="text-xs font-bold text-neutral-900">
-                        {account?.name || 'Счет'}
-                        {targetAccount && ` → ${targetAccount.name}`}
-                      </p>
-                    </td>
-                    <td className="px-6 py-2 text-right">
+                    <td className={cn(
+                      "px-6 py-2 align-top",
+                      t.type === 'income' ? "text-left" : 
+                      t.type === 'transfer' ? "text-center" : 
+                      "text-right"
+                    )}>
                       <p className={cn(
                         "text-xs font-bold", 
                         t.type === 'income' ? "text-emerald-600" : 
@@ -250,7 +269,12 @@ export default function TransactionHistory({ transactions, categories, accounts,
                       )}>
                         {t.type === 'income' ? '+' : t.type === 'transfer' ? '' : '-'}{t.amount.toLocaleString()} ₽
                       </p>
-                      <div className="flex items-center justify-end gap-1">
+                      <div className={cn(
+                        "flex items-center gap-1",
+                        t.type === 'income' ? "justify-start" : 
+                        t.type === 'transfer' ? "justify-center" : 
+                        "justify-end"
+                      )}>
                         {t.type === 'income' ? (
                           <ArrowDownLeft className="w-3 h-3 text-emerald-500" />
                         ) : t.type === 'transfer' ? (

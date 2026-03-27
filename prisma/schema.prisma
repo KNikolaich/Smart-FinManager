@@ -1,0 +1,157 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      String   @default("user")
+  createdAt DateTime @default(now())
+  settings  Json?    @default("{\"showTotalBalance\": true}")
+
+  accounts     Account[]
+  categories   Category[]
+  transactions Transaction[]
+  goals        Goal[]
+  budgets      Budget[]
+  plans        Plan[]
+  chatMessages ChatMessage[]
+  aiLogs       AiLog[]
+}
+
+model Account {
+  id              String   @id @default(uuid())
+  userId          String
+  name            String
+  type            String
+  balance         Float    @default(0)
+  currency        String   @default("RUB")
+  currencyId      String?
+  description     String?
+  showOnDashboard Boolean  @default(true)
+  showInTotals    Boolean  @default(true)
+  isArchived      Boolean  @default(false)
+  color           String?
+  createdAt       DateTime @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[] @relation("AccountTransactions")
+  targetTrans  Transaction[] @relation("TargetAccountTransactions")
+  plans        Plan[]
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  type      String
+  icon      String
+  color     String
+  parentId  String?
+  createdAt DateTime @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent       Category?     @relation("CategoryToSubcategory", fields: [parentId], references: [id])
+  children     Category[]    @relation("CategoryToSubcategory")
+  transactions Transaction[]
+  budgets      Budget[]
+}
+
+model Transaction {
+  id              String   @id @default(uuid())
+  userId          String
+  accountId       String
+  targetAccountId String?
+  categoryId      String?
+  subcategoryId   String?
+  amount          Float
+  type            String
+  description     String
+  createdAt       DateTime @default(now())
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account       Account   @relation("AccountTransactions", fields: [accountId], references: [id])
+  targetAccount Account?  @relation("TargetAccountTransactions", fields: [targetAccountId], references: [id])
+  category      Category? @relation(fields: [categoryId], references: [id])
+}
+
+model Goal {
+  id            String    @id @default(uuid())
+  userId        String
+  name          String
+  description   String?
+  targetAmount  Float
+  currentAmount Float     @default(0)
+  deadline      DateTime?
+  completedAt   DateTime?
+  isCompleted   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Budget {
+  id         String @id @default(uuid())
+  userId     String
+  categoryId String
+  amount     Float
+  period     String @default("monthly")
+  spent      Float  @default(0)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+}
+
+model Plan {
+  id            String   @id @default(uuid())
+  userId        String
+  name          String
+  plannedAmount Float
+  accountId     String
+  priority      String   @default("medium")
+  dateOfFinish  DateTime
+  month         String
+  createdAt     DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id])
+}
+
+model Currency {
+  id     String @id @default(uuid())
+  curUid String @unique
+  name   String
+  iso    String
+}
+
+model ChatMessage {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  role       String
+  content    String
+  type       String?
+  actionType String?
+  actionData String?
+  createdAt  DateTime @default(now())
+}
+
+model AiLog {
+  id        String   @id @default(uuid())
+  userId    String
+  request   Json
+  response  Json
+  provider  String   @default("gemini")
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

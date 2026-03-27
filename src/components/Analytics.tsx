@@ -13,17 +13,21 @@ interface AnalyticsProps {
 
 type DateFilterType = 'month' | 'period' | 'all';
 
+const CHEERFUL_COLORS = [
+  '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', 
+  '#FF9F40', '#FFCD56', '#C9CBCF', '#7BC225', '#B0E0E6',
+  '#FF5733', '#33FF57', '#3357FF', '#F333FF', '#33FFF3'
+];
+
 export default function Analytics({ transactions, categories, accounts }: AnalyticsProps) {
   const [activeType, setActiveType] = useState<'expense' | 'income'>('expense');
   const [filterType, setFilterType] = useState<DateFilterType>('month');
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   
-  // For 'period' we'll use last 3 months by default
-  const periodRange = useMemo(() => {
-    const end = new Date();
-    const start = subMonths(end, 3);
-    return { start, end };
-  }, []);
+  const [periodRange, setPeriodRange] = useState({
+    start: subMonths(new Date(), 3),
+    end: new Date()
+  });
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
@@ -38,7 +42,10 @@ export default function Analytics({ transactions, categories, accounts }: Analyt
       }
       
       if (filterType === 'period') {
-        return isWithinInterval(tDate, periodRange);
+        return isWithinInterval(tDate, {
+          start: periodRange.start,
+          end: periodRange.end
+        });
       }
       
       return true;
@@ -50,11 +57,13 @@ export default function Analytics({ transactions, categories, accounts }: Analyt
     
     filteredTransactions
       .filter(t => t.type === activeType)
-      .forEach(t => {
+      .forEach((t) => {
         const cat = categories.find(c => c.id === t.categoryId);
         const name = cat?.name || 'Другое';
         if (!data[name]) {
-          data[name] = { name, value: 0, color: cat?.color || '#cbd5e1' };
+          const fallbackColor = CHEERFUL_COLORS[Object.keys(data).length % CHEERFUL_COLORS.length];
+          const color = (cat?.color && cat.color !== '#000000') ? cat.color : fallbackColor;
+          data[name] = { name, value: 0, color };
         }
         data[name].value += t.amount;
       });
@@ -78,7 +87,7 @@ export default function Analytics({ transactions, categories, accounts }: Analyt
         if (isBefore(new Date(t.createdAt), monthEnd) || isWithinInterval(new Date(t.createdAt), { start: startOfMonth(month), end: monthEnd })) {
           if (accountsInTotal.some(a => a.id === t.accountId)) {
             if (t.type === 'income') balance += t.amount;
-            else balance -= t.amount;
+            else if (t.type === 'expense') balance -= t.amount;
           }
         }
       });
@@ -121,7 +130,7 @@ export default function Analytics({ transactions, categories, accounts }: Analyt
       const key = format(tDate, 'yyyy-MM');
       if (data[key]) {
         if (t.type === 'income') data[key].income += t.amount;
-        else data[key].expense += t.amount;
+        else if (t.type === 'expense') data[key].expense += t.amount;
       }
     });
 
@@ -134,33 +143,9 @@ export default function Analytics({ transactions, categories, accounts }: Analyt
     <div className="p-1.5 sm:p-2 lg:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-2xl font-bold">Аналитика</h2>
-        
-        {/* Type Toggle */}
-        <div className="flex bg-neutral-100 p-1 rounded-2xl self-start">
-          <button
-            onClick={() => setActiveType('expense')}
-            className={cn(
-              "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
-              activeType === 'expense' ? "bg-white text-rose-600 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
-            )}
-          >
-            <TrendingDown className="w-3.5 h-3.5" />
-            Расходы
-          </button>
-          <button
-            onClick={() => setActiveType('income')}
-            className={cn(
-              "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
-              activeType === 'income' ? "bg-white text-emerald-600 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
-            )}
-          >
-            <TrendingUp className="w-3.5 h-3.5" />
-            Доходы
-          </button>
-        </div>
       </div>
 
-      {/* Date Filters */}
+      {/* Date Filters & Type Toggle */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex bg-white border border-neutral-100 p-1 rounded-2xl shadow-sm">
           <button
@@ -213,11 +198,22 @@ export default function Analytics({ transactions, categories, accounts }: Analyt
         )}
 
         {filterType === 'period' && (
-          <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-2xl border border-emerald-100">
-            <Calendar className="w-3.5 h-3.5" />
-            <span className="text-xs font-bold">
-              {format(periodRange.start, 'dd.MM')} - {format(periodRange.end, 'dd.MM.yy')}
-            </span>
+          <div className="flex items-center gap-2 bg-white border border-neutral-100 px-3 py-1.5 rounded-2xl shadow-sm">
+            <div className="flex items-center gap-1">
+              <input 
+                type="date" 
+                value={format(periodRange.start, 'yyyy-MM-dd')}
+                onChange={(e) => setPeriodRange(prev => ({ ...prev, start: new Date(e.target.value) }))}
+                className="text-[10px] font-bold bg-transparent border-none focus:ring-0 p-0 w-24"
+              />
+              <span className="text-neutral-300">—</span>
+              <input 
+                type="date" 
+                value={format(periodRange.end, 'yyyy-MM-dd')}
+                onChange={(e) => setPeriodRange(prev => ({ ...prev, end: new Date(e.target.value) }))}
+                className="text-[10px] font-bold bg-transparent border-none focus:ring-0 p-0 w-24"
+              />
+            </div>
           </div>
         )}
 
@@ -230,6 +226,32 @@ export default function Analytics({ transactions, categories, accounts }: Analyt
             <X className="w-4 h-4" />
           </button>
         )}
+
+        <div className="flex-1" />
+
+        {/* Type Toggle - Relocated here */}
+        <div className="flex bg-neutral-100 p-1 rounded-2xl">
+          <button
+            onClick={() => setActiveType('expense')}
+            className={cn(
+              "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
+              activeType === 'expense' ? "bg-white text-rose-600 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
+            )}
+          >
+            <TrendingDown className="w-3.5 h-3.5" />
+            Расходы
+          </button>
+          <button
+            onClick={() => setActiveType('income')}
+            className={cn(
+              "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
+              activeType === 'income' ? "bg-white text-emerald-600 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
+            )}
+          >
+            <TrendingUp className="w-3.5 h-3.5" />
+            Доходы
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

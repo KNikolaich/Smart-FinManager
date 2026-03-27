@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Bot, Send, User, Sparkles, Loader2, PlusCircle, Target, PieChart, Calendar, Eraser } from 'lucide-react';
 import { processUserMessage, getFinancialAdvice } from '../services/aiService';
-import { db, handleFirestoreError } from '../firebase';
-import { collection, addDoc, updateDoc, doc, increment, writeBatch, query, where, orderBy, onSnapshot, getDocs, deleteDoc } from 'firebase/firestore';
-import { Account, Category, Transaction, Goal, Budget, Plan, Message, OperationType } from '../types';
+import { api } from '../lib/api';
+import { Account, Category, Transaction, Goal, Budget, Plan, Message } from '../types';
 import ReactMarkdown from 'react-markdown';
 
 interface AIAssistantProps {
@@ -15,9 +14,10 @@ interface AIAssistantProps {
   plans: Plan[];
   userId: string;
   onRedirectToCreateGoal?: (data: { name?: string; targetAmount?: number; deadline?: string }) => void;
+  onRefresh?: () => void;
 }
 
-export default function AIAssistant({ accounts, categories, transactions, budgets, goals, plans, userId, onRedirectToCreateGoal }: AIAssistantProps) {
+export default function AIAssistant({ accounts, categories, transactions, budgets, goals, plans, userId, onRedirectToCreateGoal, onRefresh }: AIAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,19 +25,12 @@ export default function AIAssistant({ accounts, categories, transactions, budget
 
   useEffect(() => {
     if (!userId) return;
+    fetchHistory();
+  }, [userId]);
 
-    const q = query(
-      collection(db, 'chat_history'),
-      where('userId', '==', userId),
-      orderBy('createdAt', 'asc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const history = snapshot.docs.map(d => ({
-        id: d.id,
-        ...d.data()
-      })) as Message[];
-      
+  const fetchHistory = async () => {
+    try {
+      const history: Message[] = await api.get('/chat-history');
       if (history.length === 0) {
         setMessages([
           {
@@ -49,12 +42,10 @@ export default function AIAssistant({ accounts, categories, transactions, budget
       } else {
         setMessages(history);
       }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'chat_history');
-    });
-
-    return () => unsubscribe();
-  }, [userId]);
+    } catch (error) {
+      console.error('Error fetching chat history:', error);
+    }
+  };
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -62,13 +53,11 @@ export default function AIAssistant({ accounts, categories, transactions, budget
 
   const saveMessage = async (msg: Omit<Message, 'id'>) => {
     try {
-      await addDoc(collection(db, 'chat_history'), {
-        ...msg,
-        userId,
-        createdAt: new Date().toISOString()
-      });
+      const saved = await api.post<Message>('/chat-history', msg);
+      setMessages(prev => [...prev.filter(m => m.id !== 'welcome'), saved]);
+      return saved;
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'chat_history');
+      console.error('Error saving message:', error);
     }
   };
 
@@ -84,7 +73,6 @@ export default function AIAssistant({ accounts, categories, transactions, budget
     if (!textOverride) setInput('');
     setLoading(true);
 
-    // Optimistically add to UI if needed, but we rely on onSnapshot for persistence
     await saveMessage(userMessage);
 
     try {
@@ -130,115 +118,100 @@ export default function AIAssistant({ accounts, categories, transactions, budget
       if (!data) {
         throw new Error('Не удалось получить данные для выполнения операции.');
       }
-      if (type === 'transaction') {
-        // Try to find accountId by ID or by Name (more robust matching)
-        let accountId = data.accountId;
-        let accountName = data.accountName;
-        
-        let foundAccount = accounts.find(a => {
-          const searchId = String(accountId || '').toLowerCase().trim();
-          const searchName = String(accountName || '').toLowerCase().trim();
+
+      const findAccount = (idOrName?: string, name?: string) => {
+        if (!idOrName && !name) return null;
+        const searchId = String(idOrName || '').toLowerCase().trim();
+        const searchName = String(name || '').toLowerCase().trim();
+
+        return accounts.find(a => {
           const accName = a.name.toLowerCase().trim();
-          const accIdStr = String(a.id).toLowerCase().trim();
-          
-          return (searchId && (accIdStr === searchId || accName === searchId || accName.includes(searchId))) || 
+          const accId = String(a.id).toLowerCase().trim();
+          return (searchId && (accId === searchId || accName === searchId || accName.includes(searchId) || searchId.includes(accName))) ||
                  (searchName && (accName === searchName || accName.includes(searchName) || searchName.includes(accName)));
         });
+      };
 
-        // Fallback: if accountId is missing but there's only one account, use it
+      const findCategory = (idOrName?: string, name?: string) => {
+        if (!idOrName && !name) return null;
+        const searchId = String(idOrName || '').toLowerCase().trim();
+        const searchName = String(name || '').toLowerCase().trim();
+
+        return categories.find(c => {
+          const catName = c.name.toLowerCase().trim();
+          const catId = String(c.id).toLowerCase().trim();
+          return (searchId && (catId === searchId || catName === searchId || catName.includes(searchId) || searchId.includes(catName))) ||
+                 (searchName && (catName === searchName || catName.includes(searchName) || searchName.includes(catName)));
+        });
+      };
+
+      if (type === 'transaction') {
+        let foundAccount = findAccount(data.accountId, data.accountName);
+
         if (!foundAccount && accounts.length === 1) {
           foundAccount = accounts[0];
         }
 
-        accountId = foundAccount?.id;
-
-        // Try to find categoryId by ID or by Name (more robust matching)
-        let categoryId = data.categoryId;
-        let categoryName = data.categoryName; // AI might provide this too
-
-        const foundCategory = categories.find(c => {
-          const searchId = String(categoryId || '').toLowerCase().trim();
-          const searchName = String(categoryName || '').toLowerCase().trim();
-          const catName = c.name.toLowerCase().trim();
-          const catIdStr = String(c.id).toLowerCase().trim();
-
-          return (searchId && (catIdStr === searchId || catName === searchId || catName.includes(searchId))) ||
-                 (searchName && (catName === searchName || catName.includes(searchName) || searchName.includes(catName)));
-        });
-        
-        categoryId = foundCategory?.id || (categories.length > 0 ? categories.find(c => c.type === data.type)?.id || categories[0].id : null);
-
-        if (!accountId) {
+        if (!foundAccount) {
+          if (accounts.length === 0) {
+            throw new Error('У вас еще нет созданных счетов. Пожалуйста, создайте счет в разделе "Главная".');
+          }
           throw new Error('Не удалось определить счет. Пожалуйста, уточните название счета (например, Карта, Наличные).');
         }
-        if (!categoryId) {
+
+        const accountId = foundAccount.id;
+
+        let foundCategory = findCategory(data.categoryId, data.categoryName);
+        
+        if (!foundCategory && categories.length > 0) {
+          // Fallback to first category of the same type if possible
+          foundCategory = categories.find(c => c.type === data.type) || categories[0];
+        }
+
+        if (!foundCategory) {
+          if (categories.length === 0) {
+            throw new Error('У вас еще нет созданных категорий. Пожалуйста, создайте категорию в разделе "Главная".');
+          }
           throw new Error('Не удалось определить категорию. Пожалуйста, укажите категорию операции.');
         }
+
+        const categoryId = foundCategory.id;
 
         const amount = Number(data.amount);
         if (isNaN(amount) || amount <= 0) {
           throw new Error('Не удалось определить корректную сумму операции.');
         }
 
-        const batch = writeBatch(db);
-
         if (data.type === 'transfer') {
-          let targetAccountId = data.targetAccountId;
-          const foundTargetAccount = accounts.find(a => {
-            const searchId = String(targetAccountId).toLowerCase().trim();
-            const accountName = a.name.toLowerCase().trim();
-            const accountIdStr = String(a.id).toLowerCase().trim();
-            
-            return accountIdStr === searchId || 
-                    accountName === searchId || 
-                    accountName.includes(searchId) || 
-                    searchId.includes(accountName);
-          });
-          targetAccountId = foundTargetAccount?.id;
+          let foundTargetAccount = findAccount(data.targetAccountId, data.targetAccountName);
 
-          if (!targetAccountId) {
+          if (!foundTargetAccount) {
             throw new Error('Для перевода необходимо указать корректный целевой счет.');
           }
-          const sourceRef = doc(db, 'accounts', accountId);
-          const targetRef = doc(db, 'accounts', targetAccountId);
-          batch.update(sourceRef, { balance: increment(-amount) });
-          batch.update(targetRef, { balance: increment(amount) });
           
+          const targetAccountId = foundTargetAccount.id;
           const sourceAcc = accounts.find(a => a.id === accountId);
           const targetAcc = accounts.find(a => a.id === targetAccountId);
 
-          const transactionData = {
-            userId,
+          await api.post('/transactions', {
             accountId,
             targetAccountId,
             amount,
             type: 'transfer',
             description: data.description || `Перевод: ${sourceAcc?.name} -> ${targetAcc?.name}`,
             createdAt: new Date().toISOString()
-          };
-
-          const transRef = doc(collection(db, 'transactions'));
-          batch.set(transRef, transactionData);
+          });
         } else {
-          const transactionData = {
-            userId,
+          await api.post('/transactions', {
             accountId,
             categoryId,
             amount,
             type: data.type,
             description: data.description || '',
             createdAt: new Date().toISOString()
-          };
-
-          const transRef = doc(collection(db, 'transactions'));
-          batch.set(transRef, transactionData);
-          
-          const accountRef = doc(db, 'accounts', accountId);
-          batch.update(accountRef, {
-            balance: increment(data.type === 'income' ? amount : -amount)
           });
         }
-        await batch.commit();
+        if (onRefresh) onRefresh();
       } else if (type === 'goal') {
         const name = data.name || data.title;
         const targetAmount = Number(data.targetAmount || data.amount);
@@ -253,7 +226,7 @@ export default function AIAssistant({ accounts, categories, transactions, budget
             targetAmount,
             deadline: data.deadline || null
           });
-          return; // Skip the "Done" message as we are redirecting
+          return;
         }
       } else if (type === 'plan') {
         const name = data.name || data.title;
@@ -263,32 +236,19 @@ export default function AIAssistant({ accounts, categories, transactions, budget
           throw new Error('Не удалось определить название плана или корректную сумму.');
         }
 
-        // Try to find accountId by ID or by Name (more robust matching)
-        let accountId = data.accountId;
-        let foundAccount = accounts.find(a => {
-          const searchId = String(accountId).toLowerCase().trim();
-          const accountName = a.name.toLowerCase().trim();
-          const accountIdStr = String(a.id).toLowerCase().trim();
-          
-          return accountIdStr === searchId || 
-                 accountName === searchId || 
-                 accountName.includes(searchId) || 
-                 searchId.includes(accountName);
-        });
+        let foundAccount = findAccount(data.accountId, data.accountName);
 
-        // Fallback: if accountId is missing but there's only one account, use it
         if (!foundAccount && accounts.length === 1) {
           foundAccount = accounts[0];
         }
 
-        accountId = foundAccount?.id;
-
-        if (!accountId) {
+        if (!foundAccount) {
           throw new Error('Не удалось определить счет для плана. Пожалуйста, укажите счет.');
         }
 
-        await addDoc(collection(db, 'plans'), {
-          userId,
+        const accountId = foundAccount.id;
+
+        await api.post('/plans', {
           name,
           plannedAmount,
           accountId,
@@ -296,36 +256,29 @@ export default function AIAssistant({ accounts, categories, transactions, budget
           dateOfFinish: data.dateOfFinish || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString(),
           month: new Date().toISOString().slice(0, 7)
         });
+        if (onRefresh) onRefresh();
       }
 
-      const msgRef = doc(db, 'chat_history', msgId);
       const msg = messages.find(m => m.id === msgId);
       if (msg) {
         const currentContent = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
-        await updateDoc(msgRef, {
+        await api.put(`/chat-history/${msgId}`, {
           type: 'text',
           content: currentContent + '\n\n✅ **Готово! Операция успешно выполнена.**'
         });
+        fetchHistory();
       }
     } catch (error: any) {
       console.error('Action Error:', error);
       const errorMessage = error.message || 'Произошла ошибка при выполнении операции.';
-      const msgRef = doc(db, 'chat_history', msgId);
       const msg = messages.find(m => m.id === msgId);
       if (msg) {
         const currentContent = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
-        await updateDoc(msgRef, {
+        await api.put(`/chat-history/${msgId}`, {
           type: 'text',
           content: currentContent + `\n\n❌ **Ошибка:** ${errorMessage}`
         });
-      }
-      // Still log to firestore error handler if it was a firestore error
-      if (error.code || error.message?.includes('permissions')) {
-        try {
-          handleFirestoreError(error, OperationType.WRITE, type + 's');
-        } catch (e) {
-          // ignore re-throw
-        }
+        fetchHistory();
       }
     }
   };
@@ -339,13 +292,19 @@ export default function AIAssistant({ accounts, categories, transactions, budget
 
   const clearChat = async () => {
     try {
-      const q = query(collection(db, 'chat_history'), where('userId', '==', userId));
-      const snapshot = await getDocs(q);
-      const batch = writeBatch(db);
-      snapshot.docs.forEach(d => batch.delete(d.ref));
-      await batch.commit();
+      await api.delete('/chat-history');
+      fetchHistory();
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, 'chat_history');
+      console.error('Error clearing chat history:', error);
+    }
+  };
+
+  const deleteMessage = async (id: string) => {
+    try {
+      await api.delete(`/chat-history/${id}`);
+      fetchHistory();
+    } catch (error) {
+      console.error('Error deleting message:', error);
     }
   };
 
@@ -376,16 +335,13 @@ export default function AIAssistant({ accounts, categories, transactions, budget
               {m.type === 'action' && (
                 <div className="flex gap-2">
                   <button 
-                    onClick={() => confirmAction(m.id, m.actionType!, m.actionData)}
+                    onClick={() => confirmAction(m.id, m.actionType!, typeof m.actionData === 'string' ? JSON.parse(m.actionData) : m.actionData)}
                     className="bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all"
                   >
                     Подтвердить
                   </button>
                   <button 
-                    onClick={async () => {
-                      const msgRef = doc(db, 'chat_history', m.id);
-                      await deleteDoc(msgRef);
-                    }}
+                    onClick={() => deleteMessage(m.id)}
                     className="bg-white border border-neutral-200 text-neutral-500 px-4 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all"
                   >
                     Отмена

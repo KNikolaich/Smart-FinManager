@@ -248,20 +248,6 @@ service cloud.firestore {
       allow delete: if isDocOwner();
     }
 
-    match /ai_logs/{logId} {
-      allow read: if isDocOwner() || isAdmin();
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isDocOwner() && uidNotModified();
-      allow delete: if isDocOwner() || isAdmin();
-    }
-
-    match /chat_history/{messageId} {
-      allow read: if isDocOwner() || isAdmin();
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isDocOwner() && uidNotModified();
-      allow delete: if isDocOwner() || isAdmin();
-    }
-
     match /currencies/{currencyId} {
       allow read: if isAuthenticated();
       allow create: if isAdmin() && isValidCurrency(request.resource.data);

@@ -8,9 +8,10 @@ interface TransactionsProps {
   transactions: Transaction[];
   categories: Category[];
   accounts: Account[];
+  onRefresh?: () => void;
 }
 
-export default function Transactions({ transactions, categories, accounts }: TransactionsProps) {
+export default function Transactions({ transactions, categories, accounts, onRefresh }: TransactionsProps) {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
 
@@ -98,14 +99,27 @@ export default function Transactions({ transactions, categories, accounts }: Tra
                   <div key={t.id} className="bg-white p-4 rounded-2xl flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ backgroundColor: (parentCategory?.color || '#3b82f6') + '20' }}>
-                        {t.type === 'transfer' ? '🔄' : (parentCategory?.icon || '💰')}
+                        {t.type === 'transfer' ? '🔄' : (category?.icon || parentCategory?.icon || '💰')}
                       </div>
                       <div>
                         <p className="font-semibold text-sm">{t.description || category?.name || (t.type === 'transfer' ? 'Перевод' : 'Без описания')}</p>
-                        <p className="text-[10px] text-neutral-400 font-medium uppercase tracking-wider">
+                        <p className="text-[10px] text-neutral-400 font-medium uppercase tracking-wider flex items-center gap-1">
+                          <span 
+                            className="w-1.5 h-1.5 rounded-full" 
+                            style={{ backgroundColor: account?.color && account.color !== '#000000' ? account.color : '#d4d4d4' }}
+                          />
                           {account?.name || 'Счет не указан'}
-                          {targetAccount && ` → ${targetAccount.name}`}
-                          {!category && t.type !== 'transfer' && <span className="text-rose-500"> (catId: {t.categoryId})</span>}
+                          {targetAccount && (
+                            <>
+                              <span className="text-neutral-300">→</span>
+                              <span 
+                                className="w-1.5 h-1.5 rounded-full" 
+                                style={{ backgroundColor: targetAccount?.color && targetAccount.color !== '#000000' ? targetAccount.color : '#d4d4d4' }}
+                              />
+                              {targetAccount.name}
+                            </>
+                          )}
+                          {!category && t.type !== 'transfer' && <span className="text-rose-500 ml-1"> (catId: {t.categoryId})</span>}
                         </p>
                       </div>
                     </div>

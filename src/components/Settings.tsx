@@ -1,6 +1,3 @@
-import { User } from 'firebase/auth';
-import { db } from '../firebase';
-import { collection, addDoc, getDocs, query, where, writeBatch, doc, deleteDoc } from 'firebase/firestore';
 import { LogOut, User as UserIcon, Database, Shield, Github, Info, Sparkles, CheckCircle2, Eraser, Trash2, AlertTriangle, Tag, FileDown, FileUp, X, ArrowRightLeft, AlertCircle, Copy } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { generateDemoData } from '../services/demoDataService';
@@ -10,18 +7,22 @@ import { twMerge } from 'tailwind-merge';
 import CategoryManager from './CategoryManager';
 import { CurrencyTable } from './CurrencyTable';
 import * as XLSX from 'xlsx';
+import { api } from '../lib/api';
+
+import { UserProfile } from '../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 interface SettingsProps {
-  user: User;
+  user: UserProfile;
   onLogout: () => void;
   onShowLogs: () => void;
+  onRefresh: () => void;
 }
 
-export default function Settings({ user, onLogout, onShowLogs }: SettingsProps) {
+export default function Settings({ user, onLogout, onShowLogs, onRefresh }: SettingsProps) {
   const [seeding, setSeeding] = useState(false);
   const [success, setSuccess] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -79,7 +80,7 @@ export default function Settings({ user, onLogout, onShowLogs }: SettingsProps) 
       );
       if (result.success) {
         setImportResult({ success: true, count: result.count });
-        // Don't clear logs automatically anymore
+        onRefresh();
       }
     } catch (error: any) {
       if (error.message === 'Import cancelled') {
@@ -103,8 +104,9 @@ export default function Settings({ user, onLogout, onShowLogs }: SettingsProps) 
     setSeeding(true);
     setSuccess(false);
     try {
-      await generateDemoData(user.uid);
+      await generateDemoData(user.id);
       setSuccess(true);
+      onRefresh();
       setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
       console.error('Seed error:', error);
@@ -116,16 +118,8 @@ export default function Settings({ user, onLogout, onShowLogs }: SettingsProps) 
   const clearAllData = async () => {
     setClearing(true);
     try {
-      const batch = writeBatch(db);
-      
-      const collections = ['transactions', 'accounts', 'categories', 'goals', 'budgets', 'plans'];
-      
-      for (const colName of collections) {
-        const snap = await getDocs(query(collection(db, colName), where('userId', '==', user.uid)));
-        snap.docs.forEach(d => batch.delete(d.ref));
-      }
-
-      await batch.commit();
+      await api.delete('/data/clear');
+      onRefresh();
       setShowClearConfirm(false);
     } catch (error) {
       console.error('Clear error:', error);
@@ -137,17 +131,8 @@ export default function Settings({ user, onLogout, onShowLogs }: SettingsProps) 
   const clearTransactionsOnly = async () => {
     setClearing(true);
     try {
-      const batch = writeBatch(db);
-      
-      // Delete transactions
-      const transactionsSnap = await getDocs(query(collection(db, 'transactions'), where('userId', '==', user.uid)));
-      transactionsSnap.docs.forEach(d => batch.delete(d.ref));
-      
-      // Reset account amounts
-      const accountsSnap = await getDocs(query(collection(db, 'accounts'), where('userId', '==', user.uid)));
-      accountsSnap.docs.forEach(d => batch.update(d.ref, { balance: 0 }));
-      
-      await batch.commit();
+      await api.delete('/data/clear-transactions');
+      onRefresh();
       setShowClearTransactionsConfirm(false);
     } catch (error) {
       console.error('Clear transactions error:', error);
@@ -161,20 +146,26 @@ export default function Settings({ user, onLogout, onShowLogs }: SettingsProps) 
     try {
       const workbook = XLSX.utils.book_new();
 
-      const collections = ['transactions', 'accounts', 'categories', 'goals', 'budgets'];
+      const collections = [
+        { name: 'transactions', endpoint: '/transactions' },
+        { name: 'accounts', endpoint: '/accounts' },
+        { name: 'categories', endpoint: '/categories' },
+        { name: 'goals', endpoint: '/goals' },
+        { name: 'budgets', endpoint: '/budgets' }
+      ];
+      
       let hasData = false;
       
-      for (const colName of collections) {
+      for (const col of collections) {
         try {
-          const snap = await getDocs(query(collection(db, colName), where('userId', '==', user.uid)));
-          if (!snap.empty) {
-            const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const data = await api.get<any[]>(col.endpoint);
+          if (data && data.length > 0) {
             const worksheet = XLSX.utils.json_to_sheet(data);
-            XLSX.utils.book_append_sheet(workbook, worksheet, colName);
+            XLSX.utils.book_append_sheet(workbook, worksheet, col.name);
             hasData = true;
           }
         } catch (err) {
-          console.error(`Error exporting ${colName}:`, err);
+          console.error(`Error exporting ${col.name}:`, err);
         }
       }
 
@@ -222,7 +213,7 @@ export default function Settings({ user, onLogout, onShowLogs }: SettingsProps) 
 
       {/* Settings Sections */}
       <div className="space-y-6 relative">
-        {showCategoryManager && <CategoryManager user={user} onClose={() => setShowCategoryManager(false)} />}
+        {showCategoryManager && <CategoryManager user={user} onClose={() => setShowCategoryManager(false)} onRefresh={onRefresh} />}
         {showCurrencyTable && (
           <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm">
             <div className="absolute inset-0" onClick={() => setShowCurrencyTable(false)} />

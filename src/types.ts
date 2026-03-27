@@ -9,6 +9,8 @@ export interface UserSettings {
 export interface UserProfile {
   id: string;
   email: string;
+  displayName?: string;
+  photoURL?: string;
   createdAt: string;
   role?: 'admin' | 'user';
   settings?: UserSettings;
@@ -26,6 +28,7 @@ export interface Account {
   showOnDashboard: boolean;
   showInTotals: boolean;
   isArchived?: boolean;
+  color?: string;
 }
 
 export interface Subcategory {

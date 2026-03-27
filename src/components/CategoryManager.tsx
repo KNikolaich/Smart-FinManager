@@ -1,13 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
-import { db, handleFirestoreError } from '../firebase';
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
-import { Category, OperationType, TransactionType } from '../types';
-import { X, Plus, Trash2, Tag, Check, AlertTriangle, ChevronRight, Search } from 'lucide-react';
-import { User } from 'firebase/auth';
+import { api } from '../lib/api';
+import { Category, TransactionType } from '../types';
+import { X, Plus, Trash2, Tag, Check, AlertTriangle } from 'lucide-react';
+
+function cn(...inputs: any[]) {
+  return inputs.filter(Boolean).join(' ');
+}
 
 interface CategoryManagerProps {
-  user: User;
+  user: { id: string; email: string };
   onClose: () => void;
+  onRefresh?: () => void;
 }
 
 const COMMON_ICONS = [
@@ -22,7 +25,7 @@ const COMMON_ICONS = [
   '❤️', '⭐', '🔥', '✨', '🌈', '☀️', '🌙', '☁️', '🌧️', '❄️'
 ];
 
-export default function CategoryManager({ user, onClose }: CategoryManagerProps) {
+export default function CategoryManager({ user, onClose, onRefresh }: CategoryManagerProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFormModal, setShowFormModal] = useState(false);
@@ -31,19 +34,17 @@ export default function CategoryManager({ user, onClose }: CategoryManagerProps)
 
   useEffect(() => {
     fetchCategories();
-  }, [user.uid]);
+  }, [user.id]);
 
   const fetchCategories = async () => {
     setLoading(true);
     try {
-      const q = query(collection(db, 'categories'), where('userId', '==', user.uid));
-      const querySnapshot = await getDocs(q);
-      const fetchedCategories = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+      const fetchedCategories = await api.get<Category[]>('/categories');
       // Sort alphabetically by name
       fetchedCategories.sort((a, b) => a.name.localeCompare(b.name));
       setCategories(fetchedCategories);
     } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, 'categories');
+      console.error('Error fetching categories:', error);
     } finally {
       setLoading(false);
     }
@@ -67,12 +68,13 @@ export default function CategoryManager({ user, onClose }: CategoryManagerProps)
 
   const handleDeleteCategory = async (id: string) => {
     try {
-      await deleteDoc(doc(db, 'categories', id));
+      await api.delete(`/categories/${id}`);
       setDeleteConfirmId(null);
       setShowFormModal(false);
       fetchCategories();
+      onRefresh?.();
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, 'categories');
+      console.error('Error deleting category:', error);
     }
   };
 
@@ -154,8 +156,9 @@ export default function CategoryManager({ user, onClose }: CategoryManagerProps)
                                   setEditingCategory(child);
                                   setShowFormModal(true);
                                 }}
-                                className="p-2 bg-white rounded-xl shadow-sm hover:bg-neutral-50 transition-colors cursor-pointer text-xs text-neutral-600 truncate"
+                                className="p-2 bg-white rounded-xl shadow-sm hover:bg-neutral-50 transition-colors cursor-pointer text-xs text-neutral-600 truncate flex items-center gap-2"
                               >
+                                <span>{child.icon || parent.icon}</span>
                                 {child.name}
                               </div>
                             ))}
@@ -206,8 +209,9 @@ export default function CategoryManager({ user, onClose }: CategoryManagerProps)
                                   setEditingCategory(child);
                                   setShowFormModal(true);
                                 }}
-                                className="p-2 bg-white rounded-xl shadow-sm hover:bg-neutral-50 transition-colors cursor-pointer text-xs text-neutral-600 truncate"
+                                className="p-2 bg-white rounded-xl shadow-sm hover:bg-neutral-50 transition-colors cursor-pointer text-xs text-neutral-600 truncate flex items-center gap-2"
                               >
+                                <span>{child.icon || parent.icon}</span>
                                 {child.name}
                               </div>
                             ))}
@@ -226,13 +230,14 @@ export default function CategoryManager({ user, onClose }: CategoryManagerProps)
       {/* Category Form Modal (Add/Edit) */}
       {showFormModal && (
         <CategoryForm 
-          userId={user.uid}
+          userId={user.id}
           category={editingCategory}
           categories={categories}
           onClose={() => setShowFormModal(false)}
           onSuccess={() => {
             setShowFormModal(false);
             fetchCategories();
+            onRefresh?.();
           }}
           onDelete={(id) => setDeleteConfirmId(id)}
         />
@@ -279,9 +284,10 @@ interface CategoryFormProps {
 
 function CategoryForm({ userId, category, categories, onClose, onSuccess, onDelete }: CategoryFormProps) {
   const [name, setName] = useState(category?.name || '');
-  const [icon, setIcon] = useState(category?.icon || '💰');
-  const [type, setType] = useState<TransactionType>(category?.type || 'expense');
   const [parentId, setParentId] = useState<string | undefined>(category?.parentId);
+  const [icon, setIcon] = useState(category?.icon || (category?.parentId ? '' : '💰'));
+  const [color, setColor] = useState(category?.color || '#000000');
+  const [type, setType] = useState<TransactionType>(category?.type || 'expense');
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -292,26 +298,25 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
     setSaving(true);
     try {
       if (category) {
-        await updateDoc(doc(db, 'categories', category.id), {
-          name,
-          icon,
-          type,
-          parentId
-        });
-      } else {
-        await addDoc(collection(db, 'categories'), {
-          userId,
+        await api.put(`/categories/${category.id}`, {
           name,
           icon,
           type,
           parentId,
-          color: '#000000',
-          createdAt: new Date().toISOString()
+          color
+        });
+      } else {
+        await api.post('/categories', {
+          name,
+          icon,
+          type,
+          parentId,
+          color
         });
       }
       onSuccess();
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'categories');
+      console.error('Error saving category:', error);
     } finally {
       setSaving(false);
     }
@@ -329,16 +334,25 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6 flex-1 overflow-y-auto no-scrollbar">
           <div className="flex flex-col items-center gap-4">
-            <button
-              type="button"
-              onClick={() => setShowIconPicker(true)}
-              className="w-20 h-20 bg-neutral-50 rounded-3xl flex items-center justify-center text-4xl hover:bg-neutral-100 transition-all hover:border-emerald-500 group relative"
-            >
-              {icon}
-              <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-100 rounded-3xl transition-opacity flex items-center justify-center">
-                <Plus className="text-emerald-600 w-6 h-6" />
-              </div>
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowIconPicker(true)}
+                className="w-20 h-20 bg-neutral-50 rounded-3xl flex items-center justify-center text-4xl hover:bg-neutral-100 transition-all hover:border-emerald-500 group relative"
+                style={{ border: color && color !== '#000000' ? `3px solid ${color}` : 'none' }}
+              >
+                {icon || (parentId ? categories.find(c => c.id === parentId)?.icon : '💰')}
+                <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-100 rounded-3xl transition-opacity flex items-center justify-center">
+                  <Plus className="text-emerald-600 w-6 h-6" />
+                </div>
+              </button>
+              {color && color !== '#000000' && (
+                <div 
+                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white shadow-sm"
+                  style={{ backgroundColor: color }}
+                />
+              )}
+            </div>
             <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
               {category ? `${category.id} (${type})` : `Новая категория (${type})`}
             </p>
@@ -357,48 +371,87 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
               />
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-4">Цвет</label>
+                <div className="flex items-center gap-3 bg-neutral-50 rounded-2xl px-4 py-3.5">
+                  <input
+                    type="color"
+                    value={color === '#000000' ? '#e5e5e5' : color}
+                    onChange={(e) => setColor(e.target.value)}
+                    className="w-8 h-8 rounded-lg cursor-pointer border-none bg-transparent"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setColor('#000000')}
+                    className={cn(
+                      "text-[10px] font-bold px-2 py-1 rounded-lg transition-all",
+                      color === '#000000' ? "bg-neutral-900 text-white" : "bg-neutral-200 text-neutral-500 hover:bg-neutral-300"
+                    )}
+                  >
+                    Сброс
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-4">Тип</label>
+                <div className={cn(
+                  "grid grid-cols-2 gap-1 bg-neutral-50 p-1 rounded-2xl",
+                  parentId && "opacity-50 cursor-not-allowed"
+                )}>
+                  <button
+                    type="button"
+                    onClick={() => !parentId && setType('expense')}
+                    disabled={!!parentId}
+                    className={`py-2 rounded-xl font-bold text-[10px] uppercase transition-all ${
+                      type === 'expense' 
+                        ? 'bg-white text-rose-500 shadow-sm' 
+                        : 'text-neutral-400'
+                    }`}
+                  >
+                    Расход
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => !parentId && setType('income')}
+                    disabled={!!parentId}
+                    className={`py-2 rounded-xl font-bold text-[10px] uppercase transition-all ${
+                      type === 'income' 
+                        ? 'bg-white text-emerald-500 shadow-sm' 
+                        : 'text-neutral-400'
+                    }`}
+                  >
+                    Доход
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-4">Родительская категория</label>
               <select
                 value={parentId || ''}
-                onChange={(e) => setParentId(e.target.value || undefined)}
+                onChange={(e) => {
+                  const newParentId = e.target.value || undefined;
+                  setParentId(newParentId);
+                  if (newParentId) {
+                    const parent = categories.find(c => c.id === newParentId);
+                    if (parent) setType(parent.type as TransactionType);
+                  }
+                }}
                 className="w-full bg-neutral-50 rounded-2xl px-5 py-4 outline-none focus:ring-2 ring-emerald-500/20 font-semibold transition-all"
               >
                 <option value="">Нет (верхний уровень)</option>
                 {categories
-                  .filter(c => c.id !== category?.id)
+                  .filter(c => c.id !== category?.id && !c.parentId)
                   .map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
               </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-4">Тип категории</label>
-              <div className="grid grid-cols-2 gap-2 bg-neutral-50 p-1.5 rounded-2xl">
-                <button
-                  type="button"
-                  onClick={() => setType('expense')}
-                  className={`py-3 rounded-xl font-bold text-sm transition-all ${
-                    type === 'expense' 
-                      ? 'bg-white text-rose-500 shadow-sm' 
-                      : 'text-neutral-400 hover:text-neutral-600'
-                  }`}
-                >
-                  Расход
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setType('income')}
-                  className={`py-3 rounded-xl font-bold text-sm transition-all ${
-                    type === 'income' 
-                      ? 'bg-white text-emerald-500 shadow-sm' 
-                      : 'text-neutral-400 hover:text-neutral-600'
-                  }`}
-                >
-                  Доход
-                </button>
-              </div>
+              {parentId && (
+                <p className="text-[9px] text-neutral-400 italic ml-4 mt-1">Тип наследуется от родительской категории</p>
+              )}
             </div>
           </div>
 

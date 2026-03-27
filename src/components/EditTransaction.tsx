@@ -1,26 +1,24 @@
 import { useState } from 'react';
-import { db } from '../firebase';
-import { updateDoc, doc, deleteDoc, increment, writeBatch } from 'firebase/firestore';
+import { api } from '../lib/api';
 import { Transaction, Account, Category } from '../types';
-import { X, Trash2, Check, CreditCard, Wallet, Landmark, Calendar } from 'lucide-react';
+import { X, Trash2, Check, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
 
 interface EditTransactionProps {
   transaction: Transaction;
   accounts: Account[];
   categories: Category[];
   onClose: () => void;
+  onUpdate: () => void;
 }
 
-export default function EditTransaction({ transaction, accounts, categories, onClose }: EditTransactionProps) {
+export default function EditTransaction({ transaction, accounts, categories, onClose, onUpdate }: EditTransactionProps) {
   const [amount, setAmount] = useState(transaction.amount.toString());
   const [description, setDescription] = useState(transaction.description);
   const [selectedAccountId, setSelectedAccountId] = useState(transaction.accountId);
   const [selectedTargetAccountId, setSelectedTargetAccountId] = useState(transaction.targetAccountId || '');
-  const [selectedCategoryId, setSelectedCategoryId] = useState(transaction.categoryId);
+  const [selectedCategoryId, setSelectedCategoryId] = useState(transaction.categoryId || '');
   
-  // Logic to determine which parent category should be active in the picker
   const initialCategory = categories.find(c => c.id === transaction.categoryId);
   const [activeParentId, setActiveParentId] = useState<string | null>(
     initialCategory?.parentId || transaction.categoryId || null
@@ -29,81 +27,27 @@ export default function EditTransaction({ transaction, accounts, categories, onC
   const [date, setDate] = useState(format(new Date(transaction.createdAt), 'yyyy-MM-dd'));
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleUpdate = async () => {
     if (!amount || isNaN(Number(amount))) return;
     setLoading(true);
+    setError(null);
     try {
-      const oldAmount = transaction.amount;
-      const newAmount = Number(amount);
-      const diff = newAmount - oldAmount;
-
-      const batch = writeBatch(db);
-      const transactionRef = doc(db, 'transactions', transaction.id);
-      
-      const updateData: any = {
-        amount: newAmount,
+      await api.put(`/transactions/${transaction.id}`, {
+        amount: Number(amount),
         description,
         accountId: selectedAccountId,
+        targetAccountId: transaction.type === 'transfer' ? selectedTargetAccountId : null,
+        categoryId: transaction.type !== 'transfer' ? selectedCategoryId : null,
         createdAt: new Date(date).toISOString(),
-      };
-      
-      if (transaction.type !== 'transfer') {
-        updateData.categoryId = selectedCategoryId;
-      } else {
-        updateData.targetAccountId = selectedTargetAccountId;
-      }
-      
-      batch.update(transactionRef, updateData);
-
-      if (transaction.type === 'transfer') {
-        const sourceAccRef = doc(db, 'accounts', transaction.accountId);
-        const oldTargetAccRef = transaction.targetAccountId ? doc(db, 'accounts', transaction.targetAccountId) : null;
-        const newTargetAccRef = doc(db, 'accounts', selectedTargetAccountId);
-        
-        // Reverse old impact and apply new
-        if (selectedAccountId === transaction.accountId) {
-          // Same source account
-          batch.update(sourceAccRef, { balance: increment(-diff) });
-        } else {
-          // Changed source account
-          const newSourceAccRef = doc(db, 'accounts', selectedAccountId);
-          batch.update(sourceAccRef, { balance: increment(oldAmount) });
-          batch.update(newSourceAccRef, { balance: increment(-newAmount) });
-        }
-
-        if (oldTargetAccRef && oldTargetAccRef.id === newTargetAccRef.id) {
-          // Same target account
-          batch.update(newTargetAccRef, { balance: increment(diff) });
-        } else {
-          // Changed target account
-          if (oldTargetAccRef) batch.update(oldTargetAccRef, { balance: increment(-oldAmount) });
-          batch.update(newTargetAccRef, { balance: increment(newAmount) });
-        }
-      } else {
-        // Regular income/expense
-        if (selectedAccountId !== transaction.accountId) {
-          const oldAccRef = doc(db, 'accounts', transaction.accountId);
-          const newAccRef = doc(db, 'accounts', selectedAccountId);
-          
-          batch.update(oldAccRef, {
-            balance: increment(transaction.type === 'expense' ? oldAmount : -oldAmount)
-          });
-          batch.update(newAccRef, {
-            balance: increment(transaction.type === 'expense' ? -newAmount : newAmount)
-          });
-        } else if (diff !== 0) {
-          const accRef = doc(db, 'accounts', transaction.accountId);
-          batch.update(accRef, {
-            balance: increment(transaction.type === 'expense' ? -diff : diff)
-          });
-        }
-      }
-
-      await batch.commit();
+        type: transaction.type
+      });
+      onUpdate();
       onClose();
-    } catch (error) {
-      console.error('Error updating transaction:', error);
+    } catch (err: any) {
+      console.error('Error updating transaction:', err);
+      setError(err.message || 'Ошибка при обновлении операции');
     } finally {
       setLoading(false);
     }
@@ -111,27 +55,14 @@ export default function EditTransaction({ transaction, accounts, categories, onC
 
   const handleDelete = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const batch = writeBatch(db);
-      const transactionRef = doc(db, 'transactions', transaction.id);
-      batch.delete(transactionRef);
-
-      if (transaction.type === 'transfer' && transaction.targetAccountId) {
-        const sourceAccRef = doc(db, 'accounts', transaction.accountId);
-        const targetAccRef = doc(db, 'accounts', transaction.targetAccountId);
-        batch.update(sourceAccRef, { balance: increment(transaction.amount) });
-        batch.update(targetAccRef, { balance: increment(-transaction.amount) });
-      } else {
-        const accRef = doc(db, 'accounts', transaction.accountId);
-        batch.update(accRef, {
-          balance: increment(transaction.type === 'expense' ? transaction.amount : -transaction.amount)
-        });
-      }
-
-      await batch.commit();
+      await api.delete(`/transactions/${transaction.id}`);
+      onUpdate();
       onClose();
-    } catch (error) {
-      console.error('Error deleting transaction:', error);
+    } catch (err: any) {
+      console.error('Error deleting transaction:', err);
+      setError(err.message || 'Ошибка при удалении операции');
     } finally {
       setLoading(false);
     }
@@ -175,6 +106,11 @@ export default function EditTransaction({ transaction, accounts, categories, onC
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
+          {error && (
+            <div className="p-3 bg-rose-50 text-rose-600 text-xs font-bold rounded-xl animate-in fade-in slide-in-from-top-2 duration-200">
+              {error}
+            </div>
+          )}
           {/* Amount Input */}
           <div className="flex items-center justify-center gap-2 py-2">
             <div className="relative">
@@ -278,7 +214,7 @@ export default function EditTransaction({ transaction, accounts, categories, onC
                 {/* Children */}
                 <div className="w-1/2 overflow-y-auto no-scrollbar bg-white">
                   {categories
-                    .filter(c => c.parentId === activeParentId)
+                    .filter(c => c.type === transaction.type && c.parentId === activeParentId)
                     .map(sub => (
                       <button
                         key={sub.id}
@@ -294,7 +230,7 @@ export default function EditTransaction({ transaction, accounts, categories, onC
                         {sub.name}
                       </button>
                     ))}
-                  {categories.filter(c => c.parentId === activeParentId).length === 0 && (
+                  {categories.filter(c => c.type === transaction.type && c.parentId === activeParentId).length === 0 && (
                     <div className="p-4 text-center text-[10px] text-neutral-400 italic">
                       Нет подкатегорий
                     </div>

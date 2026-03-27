@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { db, handleFirestoreError } from '../firebase';
-import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
-import { X, Terminal, Clock, User, Bot, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
-import { OperationType } from '../types';
+import { api } from '../lib/api';
+import { cn } from '../lib/utils';
+import { X, Terminal, Clock, User, Bot, ChevronDown, ChevronRight, AlertCircle, RefreshCw } from 'lucide-react';
 
 interface AILog {
   id: string;
@@ -23,32 +22,24 @@ export default function AILogs({ userId, onClose }: AILogsProps) {
   const [error, setError] = useState<string | null>(null);
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    if (!userId) return;
-
+  const fetchLogs = async () => {
+    setLoading(true);
     setError(null);
-    const q = query(
-      collection(db, 'ai_logs'),
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc'),
-      limit(100)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newLogs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as AILog[];
-      setLogs(newLogs);
-      setLoading(false);
-    }, (err) => {
+    try {
+      const data = await api.get<AILog[]>('/ai-logs');
+      setLogs(data);
+    } catch (err: any) {
       console.error('AI Logs Error:', err);
-      setError('Не удалось загрузить логи. Возможно, требуется создание индекса в Firestore.');
+      setError('Не удалось загрузить логи из базы данных.');
+    } finally {
       setLoading(false);
-      handleFirestoreError(err, OperationType.GET, 'ai_logs');
-    });
+    }
+  };
 
-    return () => unsubscribe();
+  useEffect(() => {
+    if (userId) {
+      fetchLogs();
+    }
   }, [userId]);
 
   const toggleExpand = (id: string) => {
@@ -96,9 +87,19 @@ export default function AILogs({ userId, onClose }: AILogsProps) {
               <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold">Последние 100 операций</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-            <X className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={fetchLogs}
+              disabled={loading}
+              className="p-2 hover:bg-white/10 rounded-full transition-colors disabled:opacity-50"
+              title="Обновить"
+            >
+              <RefreshCw className={cn("w-5 h-5", loading && "animate-spin")} />
+            </button>
+            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-neutral-50 no-scrollbar">
@@ -110,7 +111,7 @@ export default function AILogs({ userId, onClose }: AILogsProps) {
             <div className="text-center py-20 px-6">
               <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
               <p className="text-neutral-900 font-bold mb-2">{error}</p>
-              <p className="text-neutral-500 text-sm">Если вы видите это сообщение впервые, подождите несколько минут, пока Firestore создаст необходимые индексы.</p>
+              <p className="text-neutral-500 text-sm">Проверьте соединение с сервером или попробуйте обновить страницу.</p>
             </div>
           ) : logs.length === 0 ? (
             <div className="text-center py-20">

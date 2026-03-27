@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { db, handleFirestoreError } from '../firebase';
-import { collection, addDoc, updateDoc, doc, increment, writeBatch } from 'firebase/firestore';
-import { Account, Category, TransactionType, OperationType } from '../types';
-import { X, Plus, CreditCard, Wallet as WalletIcon, Landmark, ArrowRightLeft, Tag } from 'lucide-react';
+import { api } from '../lib/api';
+import { Account, Category, TransactionType } from '../types';
+import { X, ArrowRightLeft } from 'lucide-react';
 
 interface AddTransactionProps {
   accounts: Account[];
@@ -31,8 +30,6 @@ export default function AddTransaction({ accounts, categories, onComplete }: Add
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Попытка отправки формы:', { type, amount, selectedAccountId, selectedCategoryId });
-    
     if (!amount || !selectedAccountId) return;
     if (type !== 'transfer' && !selectedCategoryId) return;
     if (type === 'transfer' && selectedAccountId === selectedTargetAccountId) return;
@@ -40,73 +37,25 @@ export default function AddTransaction({ accounts, categories, onComplete }: Add
     setLoading(true);
     try {
       const numAmount = parseFloat(amount);
-      
-      // Дополнительная проверка типа (DO_TYPE)
-      const transactionType = type; // 'income' | 'expense' | 'transfer'
-      if (!['income', 'expense', 'transfer'].includes(transactionType)) {
-        throw new Error(`Некорректный тип транзакции: ${transactionType}`);
-      }
-      
-      console.log('Создание транзакции:', {
-        type: transactionType,
+      const now = new Date();
+      const selectedDate = new Date(date);
+      selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+
+      const transactionData: any = {
+        accountId: selectedAccountId,
         amount: numAmount,
-        categoryId: selectedCategoryId,
-        accountId: selectedAccountId
-      });
+        type,
+        description: description || (type === 'transfer' ? 'Перевод' : ''),
+        createdAt: selectedDate.toISOString()
+      };
 
-      const batch = writeBatch(db);
-      
       if (type === 'transfer') {
-        const sourceRef = doc(db, 'accounts', selectedAccountId);
-        const targetRef = doc(db, 'accounts', selectedTargetAccountId);
-        
-        batch.update(sourceRef, { balance: increment(-numAmount) });
-        batch.update(targetRef, { balance: increment(numAmount) });
-        
-        const sourceAcc = accounts.find(a => a.id === selectedAccountId);
-        const targetAcc = accounts.find(a => a.id === selectedTargetAccountId);
-
-        const now = new Date();
-        const selectedDate = new Date(date);
-        selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
-
-        const transactionData = {
-          userId: sourceAcc?.userId,
-          accountId: selectedAccountId,
-          targetAccountId: selectedTargetAccountId,
-          amount: numAmount,
-          type: 'transfer',
-          description: description || `Перевод: ${sourceAcc?.name} -> ${targetAcc?.name}`,
-          createdAt: selectedDate.toISOString()
-        };
-
-        const transRef = doc(collection(db, 'transactions'));
-        batch.set(transRef, transactionData);
+        transactionData.targetAccountId = selectedTargetAccountId;
       } else {
-        const now = new Date();
-        const selectedDate = new Date(date);
-        selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
-
-        const transactionData = {
-          userId: accounts.find(a => a.id === selectedAccountId)?.userId,
-          accountId: selectedAccountId,
-          categoryId: selectedCategoryId,
-          amount: numAmount,
-          type,
-          description,
-          createdAt: selectedDate.toISOString()
-        };
-
-        const transRef = doc(collection(db, 'transactions'));
-        batch.set(transRef, transactionData);
-        
-        const accountRef = doc(db, 'accounts', selectedAccountId);
-        batch.update(accountRef, {
-          balance: increment(type === 'income' ? numAmount : -numAmount)
-        });
+        transactionData.categoryId = selectedCategoryId;
       }
 
-      await batch.commit();
+      await api.post('/transactions', transactionData);
       onComplete();
     } catch (error) {
       console.error('Error adding transaction:', error);
@@ -256,7 +205,7 @@ export default function AddTransaction({ accounts, categories, onComplete }: Add
                 {/* Children */}
                 <div className="w-1/2 overflow-y-auto no-scrollbar bg-white">
                   {categories
-                    .filter(c => c.parentId === activeParentId)
+                    .filter(c => c.type === type && c.parentId === activeParentId)
                     .map(sub => (
                       <button
                         key={sub.id}
@@ -275,7 +224,7 @@ export default function AddTransaction({ accounts, categories, onComplete }: Add
                         {sub.name}
                       </button>
                     ))}
-                  {activeParentId && categories.filter(c => c.parentId === activeParentId).length === 0 && (
+                  {activeParentId && categories.filter(c => c.type === type && c.parentId === activeParentId).length === 0 && (
                     <div className="p-4 text-center text-[9px] text-neutral-400 italic">
                       Нет подкатегорий
                     </div>

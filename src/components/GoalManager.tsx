@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { db } from '../firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { api } from '../lib/api';
 import { Goal } from '../types';
 import { X, Plus, Trash2, Check, Calendar, Edit2, Target, TrendingUp, Save } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -11,6 +10,7 @@ interface GoalManagerProps {
   goals: Goal[];
   userId: string;
   onClose: () => void;
+  onRefresh?: () => void;
   initialData?: {
     name?: string;
     targetAmount?: number;
@@ -18,7 +18,7 @@ interface GoalManagerProps {
   };
 }
 
-export default function GoalManager({ goals, userId, onClose, initialData }: GoalManagerProps) {
+export default function GoalManager({ goals, userId, onClose, onRefresh, initialData }: GoalManagerProps) {
   const [isAdding, setIsAdding] = useState(!!initialData);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -68,7 +68,6 @@ export default function GoalManager({ goals, userId, onClose, initialData }: Goa
     setLoading(true);
     try {
       const data = {
-        userId,
         name,
         description,
         targetAmount: parseFloat(targetAmount),
@@ -77,11 +76,12 @@ export default function GoalManager({ goals, userId, onClose, initialData }: Goa
       };
 
       if (id) {
-        await updateDoc(doc(db, 'goals', id), data);
+        await api.put(`/goals/${id}`, data);
       } else {
-        await addDoc(collection(db, 'goals'), { ...data, isCompleted: false });
+        await api.post('/goals', { ...data, isCompleted: false });
       }
       resetForm();
+      onRefresh?.();
     } catch (error) {
       console.error('Error saving goal:', error);
     } finally {
@@ -93,10 +93,11 @@ export default function GoalManager({ goals, userId, onClose, initialData }: Goa
     setLoading(true);
     try {
       const completed = !goal.isCompleted;
-      await updateDoc(doc(db, 'goals', goal.id), {
+      await api.put(`/goals/${goal.id}`, {
         isCompleted: completed,
         completedAt: completed ? new Date().toISOString() : null
       });
+      onRefresh?.();
     } catch (error) {
       console.error('Error updating goal:', error);
     } finally {
@@ -107,7 +108,8 @@ export default function GoalManager({ goals, userId, onClose, initialData }: Goa
   const handleDelete = async (id: string) => {
     setLoading(true);
     try {
-      await deleteDoc(doc(db, 'goals', id));
+      await api.delete(`/goals/${id}`);
+      onRefresh?.();
     } catch (error) {
       console.error('Error deleting goal:', error);
     } finally {
