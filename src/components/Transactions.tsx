@@ -41,10 +41,10 @@ export default function Transactions({ transactions, categories, accounts }: Tra
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Операции</h2>
         <div className="flex gap-2">
-          <button className="p-2 bg-white border border-neutral-100 rounded-xl shadow-sm">
+          <button className="p-2 bg-white rounded-xl shadow-sm">
             <Calendar className="w-5 h-5 text-neutral-500" />
           </button>
-          <button className="p-2 bg-white border border-neutral-100 rounded-xl shadow-sm">
+          <button className="p-2 bg-white rounded-xl shadow-sm">
             <Filter className="w-5 h-5 text-neutral-500" />
           </button>
         </div>
@@ -59,7 +59,7 @@ export default function Transactions({ transactions, categories, accounts }: Tra
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Поиск по описанию или категории..."
-            className="w-full bg-white border border-neutral-100 rounded-2xl pl-12 pr-4 py-3 outline-none focus:border-emerald-500 transition-all shadow-sm"
+            className="w-full bg-white rounded-2xl pl-12 pr-4 py-3 outline-none focus:ring-2 ring-emerald-500/20 transition-all shadow-sm"
           />
         </div>
         
@@ -89,14 +89,16 @@ export default function Transactions({ transactions, categories, accounts }: Tra
             <div className="space-y-3">
               {items.map(t => {
                 const category = categories.find(c => c.id === t.categoryId);
+                // Ищем родительскую категорию, если текущая - подкатегория
+                const parentCategory = category?.parentId ? categories.find(c => c.id === category.parentId) : category;
                 const account = accounts.find(a => a.id === t.accountId);
                 const targetAccount = t.targetAccountId ? accounts.find(a => a.id === t.targetAccountId) : null;
                 
                 return (
-                  <div key={t.id} className="bg-white p-4 rounded-2xl border border-neutral-100 flex items-center justify-between shadow-sm">
+                  <div key={t.id} className="bg-white p-4 rounded-2xl flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ backgroundColor: (category?.color || '#3b82f6') + '20' }}>
-                        {t.type === 'transfer' ? '🔄' : (category?.icon || '💰')}
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ backgroundColor: (parentCategory?.color || '#3b82f6') + '20' }}>
+                        {t.type === 'transfer' ? '🔄' : (parentCategory?.icon || '💰')}
                       </div>
                       <div>
                         <p className="font-semibold text-sm">{t.description || category?.name || (t.type === 'transfer' ? 'Перевод' : 'Без описания')}</p>

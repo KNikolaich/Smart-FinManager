@@ -185,9 +185,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex flex-col relative">
+    <div className="h-screen bg-neutral-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="px-6 py-4 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-neutral-100">
+      <header className="px-6 py-4 flex items-center justify-between bg-white border-b border-neutral-100 shrink-0 z-40">
         <div 
           className="flex items-center gap-3 cursor-pointer group"
           onClick={() => setShowTotalBalance(!showTotalBalance)}
@@ -211,18 +211,18 @@ export default function App() {
             <Bot size={20} />
           </button>
           <div className="w-10 h-10 rounded-xl overflow-hidden border-2 border-white shadow-sm">
-            <img src={user.photoURL || ''} alt={user.displayName || ''} className="w-full h-full object-cover" />
+            <img src={user.photoURL || ''} alt={user.displayName || ''} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 pb-32 overflow-x-hidden">
+      <main className="flex-1 overflow-y-auto no-scrollbar">
         {renderContent()}
       </main>
 
       {/* Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-xl border-t border-neutral-100 px-6 py-4 pb-safe z-40 flex items-center justify-between shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)]">
+      <nav className="bg-white border-t border-neutral-100 px-6 py-3 pb-safe shrink-0 z-40 flex items-center justify-between shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.05)]">
         <div className="max-w-7xl mx-auto w-full flex items-center justify-between relative">
           <button 
             onClick={() => setActiveTab('dashboard')}
@@ -240,7 +240,7 @@ export default function App() {
           </button>
           
           {/* Add Button */}
-          <div className="relative -top-8">
+          <div className="relative -top-6">
             <button 
               onClick={() => setShowAddTransaction(true)}
               className="w-14 h-14 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-200 active:scale-90 transition-all"
@@ -273,17 +273,17 @@ export default function App() {
             className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm" 
             onClick={() => setShowAddTransaction(false)}
           />
-          <div className="relative w-full max-w-lg bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300">
-            <div className="p-4 border-b border-neutral-100 flex items-center justify-between">
-              <h3 className="font-bold">Новая операция</h3>
+          <div className="relative w-full max-w-lg bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 max-h-[90vh] flex flex-col">
+            <div className="px-6 py-3 flex items-center justify-between shrink-0">
+              <h3 className="text-base font-bold text-neutral-800">Новая операция</h3>
               <button 
                 onClick={() => setShowAddTransaction(false)}
-                className="p-2 hover:bg-neutral-100 rounded-full transition-colors"
+                className="p-1.5 hover:bg-neutral-100 rounded-full transition-colors"
               >
-                <X size={20} className="text-neutral-400" />
+                <X size={18} className="text-neutral-400" />
               </button>
             </div>
-            <div className="max-h-[80vh] overflow-y-auto">
+            <div className="flex-1 overflow-y-auto no-scrollbar">
               <AddTransaction 
                 accounts={accounts} 
                 categories={categories} 
@@ -296,7 +296,11 @@ export default function App() {
 
       {/* AI Logs Modal */}
       {showAILogs && (
-        <AILogs userId={user.uid} onClose={() => setShowAILogs(false)} />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden rounded-[32px] shadow-2xl">
+            <AILogs userId={user.uid} onClose={() => setShowAILogs(false)} />
+          </div>
+        </div>
       )}
     </div>
   );

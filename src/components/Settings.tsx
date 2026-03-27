@@ -224,16 +224,16 @@ export default function Settings({ user, onLogout, onShowLogs }: SettingsProps) 
       <div className="space-y-6 relative">
         {showCategoryManager && <CategoryManager user={user} onClose={() => setShowCategoryManager(false)} />}
         {showCurrencyTable && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm" onClick={() => setShowCurrencyTable(false)} />
-            <div className="relative w-full max-w-4xl bg-white rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in duration-200">
-              <div className="p-4 border-b border-neutral-100 flex items-center justify-between">
+          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm">
+            <div className="absolute inset-0" onClick={() => setShowCurrencyTable(false)} />
+            <div className="relative w-full max-w-lg bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 max-h-[90vh] flex flex-col">
+              <div className="p-4 border-b border-neutral-100 flex items-center justify-between shrink-0">
                 <h3 className="font-bold">Справочник валют</h3>
                 <button onClick={() => setShowCurrencyTable(false)} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
                   <X className="w-5 h-5 text-neutral-400" />
                 </button>
               </div>
-              <div className="max-h-[80vh] overflow-y-auto p-4">
+              <div className="flex-1 overflow-y-auto no-scrollbar">
                 <CurrencyTable />
               </div>
             </div>
@@ -241,10 +241,10 @@ export default function Settings({ user, onLogout, onShowLogs }: SettingsProps) 
         )}
         
         {showLogModal && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-neutral-900/60 backdrop-blur-md" onClick={() => setShowLogModal(false)} />
-            <div className="relative w-full max-w-2xl bg-white rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in duration-200 flex flex-col max-h-[80vh]">
-              <div className="p-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+          <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm">
+            <div className="absolute inset-0" onClick={() => setShowLogModal(false)} />
+            <div className="relative w-full max-w-2xl bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[90vh]">
+              <div className="p-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50 shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-neutral-900 rounded-xl flex items-center justify-center text-white">
                     <Database size={20} />
@@ -267,7 +267,7 @@ export default function Settings({ user, onLogout, onShowLogs }: SettingsProps) 
                   </button>
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto p-6 font-mono text-xs space-y-1.5 bg-neutral-900 text-neutral-300 selection:bg-emerald-500/30">
+              <div className="flex-1 overflow-y-auto p-6 font-mono text-xs space-y-1.5 bg-neutral-900 text-neutral-300 selection:bg-emerald-500/30 no-scrollbar">
                 {importLogs.map((log, idx) => (
                   <div key={idx} className="flex gap-3 py-0.5 border-b border-white/5 last:border-0">
                     <span className="text-neutral-600 shrink-0">[{new Date().toLocaleTimeString()}]</span>
@@ -289,64 +289,68 @@ export default function Settings({ user, onLogout, onShowLogs }: SettingsProps) 
 
         {/* Clear Data Confirmation Overlay */}
         {showClearConfirm && (
-          <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur-sm rounded-3xl flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-200 border border-rose-100">
-            <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mb-4">
-              <AlertTriangle className="w-8 h-8 text-rose-600" />
-            </div>
-            <h3 className="text-xl font-bold text-neutral-900 mb-2">Очистить абсолютно всё?</h3>
-            <p className="text-neutral-500 mb-8 text-sm">Все ваши счета, операции, категории и цели будут удалены навсегда. Это действие необратимо.</p>
-            <div className="flex flex-col w-full gap-3">
-              <button
-                onClick={clearAllData}
-                disabled={clearing}
-                className="w-full bg-rose-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {clearing ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <Trash2 className="w-5 h-5" />
-                )}
-                Да, удалить все данные
-              </button>
-              <button
-                onClick={() => setShowClearConfirm(false)}
-                disabled={clearing}
-                className="w-full bg-neutral-100 text-neutral-600 font-bold py-4 rounded-2xl hover:bg-neutral-200 transition-all active:scale-95"
-              >
-                Отмена
-              </button>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-full max-w-md bg-white rounded-[32px] p-8 text-center shadow-2xl animate-in zoom-in duration-200 border border-rose-100">
+              <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-8 h-8 text-rose-600" />
+              </div>
+              <h3 className="text-xl font-bold text-neutral-900 mb-2">Очистить абсолютно всё?</h3>
+              <p className="text-neutral-500 mb-8 text-sm">Все ваши счета, операции, категории и цели будут удалены навсегда. Это действие необратимо.</p>
+              <div className="flex flex-col w-full gap-3">
+                <button
+                  onClick={clearAllData}
+                  disabled={clearing}
+                  className="w-full bg-rose-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {clearing ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Trash2 className="w-5 h-5" />
+                  )}
+                  Да, удалить все данные
+                </button>
+                <button
+                  onClick={() => setShowClearConfirm(false)}
+                  disabled={clearing}
+                  className="w-full bg-neutral-100 text-neutral-600 font-bold py-4 rounded-2xl hover:bg-neutral-200 transition-all active:scale-95"
+                >
+                  Отмена
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {/* Clear Transactions Only Confirmation Overlay */}
         {showClearTransactionsConfirm && (
-          <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur-sm rounded-3xl flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-200 border border-blue-100">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-              <AlertTriangle className="w-8 h-8 text-blue-600" />
-            </div>
-            <h3 className="text-xl font-bold text-neutral-900 mb-2">Удалить только операции?</h3>
-            <p className="text-neutral-500 mb-8 text-sm">Все записи о доходах и расходах будут удалены. Счета, категории и цели останутся.</p>
-            <div className="flex flex-col w-full gap-3">
-              <button
-                onClick={clearTransactionsOnly}
-                disabled={clearing}
-                className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {clearing ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <Trash2 className="w-5 h-5" />
-                )}
-                Да, удалить операции
-              </button>
-              <button
-                onClick={() => setShowClearTransactionsConfirm(false)}
-                disabled={clearing}
-                className="w-full bg-neutral-100 text-neutral-600 font-bold py-4 rounded-2xl hover:bg-neutral-200 transition-all active:scale-95"
-              >
-                Отмена
-              </button>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-full max-w-md bg-white rounded-[32px] p-8 text-center shadow-2xl animate-in zoom-in duration-200 border border-blue-100">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-8 h-8 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-bold text-neutral-900 mb-2">Удалить только операции?</h3>
+              <p className="text-neutral-500 mb-8 text-sm">Все записи о доходах и расходах будут удалены. Счета, категории и цели останутся.</p>
+              <div className="flex flex-col w-full gap-3">
+                <button
+                  onClick={clearTransactionsOnly}
+                  disabled={clearing}
+                  className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {clearing ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Trash2 className="w-5 h-5" />
+                  )}
+                  Да, удалить операции
+                </button>
+                <button
+                  onClick={() => setShowClearTransactionsConfirm(false)}
+                  disabled={clearing}
+                  className="w-full bg-neutral-100 text-neutral-600 font-bold py-4 rounded-2xl hover:bg-neutral-200 transition-all active:scale-95"
+                >
+                  Отмена
+                </button>
+              </div>
             </div>
           </div>
         )}

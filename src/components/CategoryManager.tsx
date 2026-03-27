@@ -77,10 +77,10 @@ export default function CategoryManager({ user, onClose }: CategoryManagerProps)
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center sm:p-4 bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-4xl bg-white sm:rounded-3xl shadow-2xl flex flex-col sm:h-[90vh] h-full overflow-hidden">
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-4xl bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
         {/* Header */}
-        <div className="p-4 sm:p-6 border-b border-neutral-100 flex items-center justify-between bg-white sticky top-0 z-10">
+        <div className="p-4 sm:p-6 flex items-center justify-between bg-white sticky top-0 z-10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-100 flex-shrink-0">
               <Tag size={20} />
@@ -122,13 +122,13 @@ export default function CategoryManager({ user, onClose }: CategoryManagerProps)
                     <div className="w-2 h-2 rounded-full bg-rose-500" />
                     Расходы
                   </h3>
-                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest bg-white px-2 py-1 rounded-lg border border-neutral-100">
+                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest bg-white px-2 py-1 rounded-lg">
                     {groupedExpenseCategories.length} категорий
                   </span>
                 </div>
                 <div className="space-y-4">
                   {groupedExpenseCategories.length === 0 ? (
-                    <div className="text-center py-8 text-neutral-400 text-sm italic bg-white rounded-2xl border border-neutral-100">Нет категорий расходов</div>
+                    <div className="text-center py-8 text-neutral-400 text-sm italic bg-white rounded-2xl">Нет категорий расходов</div>
                   ) : (
                     groupedExpenseCategories.map(parent => (
                       <div key={parent.id} className="space-y-2">
@@ -138,7 +138,7 @@ export default function CategoryManager({ user, onClose }: CategoryManagerProps)
                             setEditingCategory(parent);
                             setShowFormModal(true);
                           }}
-                          className="flex items-center gap-3 p-3 bg-white rounded-2xl border border-neutral-100 shadow-sm hover:bg-neutral-50 transition-colors cursor-pointer"
+                          className="flex items-center gap-3 p-3 bg-white rounded-2xl shadow-sm hover:bg-neutral-50 transition-colors cursor-pointer"
                         >
                           <span className="text-xl">{parent.icon}</span>
                           <span className="font-semibold text-neutral-700">{parent.name}</span>
@@ -154,7 +154,7 @@ export default function CategoryManager({ user, onClose }: CategoryManagerProps)
                                   setEditingCategory(child);
                                   setShowFormModal(true);
                                 }}
-                                className="p-2 bg-white rounded-xl border border-neutral-100 shadow-sm hover:bg-neutral-50 transition-colors cursor-pointer text-xs text-neutral-600 truncate"
+                                className="p-2 bg-white rounded-xl shadow-sm hover:bg-neutral-50 transition-colors cursor-pointer text-xs text-neutral-600 truncate"
                               >
                                 {child.name}
                               </div>
@@ -174,13 +174,13 @@ export default function CategoryManager({ user, onClose }: CategoryManagerProps)
                     <div className="w-2 h-2 rounded-full bg-emerald-500" />
                     Доходы
                   </h3>
-                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest bg-white px-2 py-1 rounded-lg border border-neutral-100">
+                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest bg-white px-2 py-1 rounded-lg">
                     {groupedIncomeCategories.length} категорий
                   </span>
                 </div>
                 <div className="space-y-4">
                   {groupedIncomeCategories.length === 0 ? (
-                    <div className="text-center py-8 text-neutral-400 text-sm italic bg-white rounded-2xl border border-neutral-100">Нет категорий доходов</div>
+                    <div className="text-center py-8 text-neutral-400 text-sm italic bg-white rounded-2xl">Нет категорий доходов</div>
                   ) : (
                     groupedIncomeCategories.map(parent => (
                       <div key={parent.id} className="space-y-2">
@@ -190,7 +190,7 @@ export default function CategoryManager({ user, onClose }: CategoryManagerProps)
                             setEditingCategory(parent);
                             setShowFormModal(true);
                           }}
-                          className="flex items-center gap-3 p-3 bg-white rounded-2xl border border-neutral-100 shadow-sm hover:bg-neutral-50 transition-colors cursor-pointer"
+                          className="flex items-center gap-3 p-3 bg-white rounded-2xl shadow-sm hover:bg-neutral-50 transition-colors cursor-pointer"
                         >
                           <span className="text-xl">{parent.icon}</span>
                           <span className="font-semibold text-neutral-700">{parent.name}</span>
@@ -206,7 +206,7 @@ export default function CategoryManager({ user, onClose }: CategoryManagerProps)
                                   setEditingCategory(child);
                                   setShowFormModal(true);
                                 }}
-                                className="p-2 bg-white rounded-xl border border-neutral-100 shadow-sm hover:bg-neutral-50 transition-colors cursor-pointer text-xs text-neutral-600 truncate"
+                                className="p-2 bg-white rounded-xl shadow-sm hover:bg-neutral-50 transition-colors cursor-pointer text-xs text-neutral-600 truncate"
                               >
                                 {child.name}
                               </div>
@@ -318,9 +318,9 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-white sm:rounded-[32px] rounded-none shadow-2xl overflow-hidden h-full sm:h-auto flex flex-col animate-in fade-in zoom-in duration-200">
-        <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
+    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
+      <div className="relative w-full max-w-md bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in slide-in-from-bottom duration-300">
+        <div className="p-6 flex items-center justify-between">
           <h3 className="text-xl font-bold">{category ? 'Редактировать' : 'Новая категория'}</h3>
           <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
             <X className="w-6 h-6 text-neutral-400" />
@@ -332,7 +332,7 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
             <button
               type="button"
               onClick={() => setShowIconPicker(true)}
-              className="w-20 h-20 bg-neutral-50 rounded-3xl flex items-center justify-center text-4xl hover:bg-neutral-100 transition-all border-2 border-dashed border-neutral-200 hover:border-emerald-500 group relative"
+              className="w-20 h-20 bg-neutral-50 rounded-3xl flex items-center justify-center text-4xl hover:bg-neutral-100 transition-all hover:border-emerald-500 group relative"
             >
               {icon}
               <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-100 rounded-3xl transition-opacity flex items-center justify-center">
@@ -431,7 +431,7 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
 
         {showIconPicker && (
           <div className="absolute inset-0 bg-white z-20 flex flex-col animate-in slide-in-from-bottom duration-300">
-            <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
+            <div className="p-6 flex items-center justify-between">
               <h3 className="font-bold">Выберите иконку</h3>
               <button onClick={() => setShowIconPicker(false)} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
                 <X className="w-6 h-6 text-neutral-400" />

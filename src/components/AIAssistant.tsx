@@ -180,48 +180,47 @@ export default function AIAssistant({ accounts, categories, transactions, budget
           throw new Error('Не удалось определить корректную сумму операции.');
         }
 
-          if (data.type === 'transfer') {
-            let targetAccountId = data.targetAccountId;
-            const foundTargetAccount = accounts.find(a => {
-              const searchId = String(targetAccountId).toLowerCase().trim();
-              const accountName = a.name.toLowerCase().trim();
-              const accountIdStr = String(a.id).toLowerCase().trim();
-              
-              return accountIdStr === searchId || 
-                     accountName === searchId || 
-                     accountName.includes(searchId) || 
-                     searchId.includes(accountName);
-            });
-            targetAccountId = foundTargetAccount?.id;
+        const batch = writeBatch(db);
 
-            if (!targetAccountId) {
-              throw new Error('Для перевода необходимо указать корректный целевой счет.');
-            }
-            const batch = writeBatch(db);
-            const sourceRef = doc(db, 'accounts', accountId);
-            const targetRef = doc(db, 'accounts', targetAccountId);
-            batch.update(sourceRef, { balance: increment(-amount) });
-            batch.update(targetRef, { balance: increment(amount) });
+        if (data.type === 'transfer') {
+          let targetAccountId = data.targetAccountId;
+          const foundTargetAccount = accounts.find(a => {
+            const searchId = String(targetAccountId).toLowerCase().trim();
+            const accountName = a.name.toLowerCase().trim();
+            const accountIdStr = String(a.id).toLowerCase().trim();
             
-            const sourceAcc = accounts.find(a => a.id === accountId);
-            const targetAcc = accounts.find(a => a.id === targetAccountId);
+            return accountIdStr === searchId || 
+                    accountName === searchId || 
+                    accountName.includes(searchId) || 
+                    searchId.includes(accountName);
+          });
+          targetAccountId = foundTargetAccount?.id;
 
-            const transactionData = {
-              userId,
-              accountId,
-              targetAccountId,
-              amount,
-              type: 'transfer',
-              description: data.description || `Перевод: ${sourceAcc?.name} -> ${targetAcc?.name}`,
-              createdAt: new Date().toISOString()
-            };
+          if (!targetAccountId) {
+            throw new Error('Для перевода необходимо указать корректный целевой счет.');
+          }
+          const sourceRef = doc(db, 'accounts', accountId);
+          const targetRef = doc(db, 'accounts', targetAccountId);
+          batch.update(sourceRef, { balance: increment(-amount) });
+          batch.update(targetRef, { balance: increment(amount) });
+          
+          const sourceAcc = accounts.find(a => a.id === accountId);
+          const targetAcc = accounts.find(a => a.id === targetAccountId);
 
-            const transRef = doc(collection(db, 'transactions'));
-            batch.set(transRef, transactionData);
+          const transactionData = {
+            userId,
+            accountId,
+            targetAccountId,
+            amount,
+            type: 'transfer',
+            description: data.description || `Перевод: ${sourceAcc?.name} -> ${targetAcc?.name}`,
+            createdAt: new Date().toISOString()
+          };
 
-            await batch.commit();
-          } else {
-          await addDoc(collection(db, 'transactions'), {
+          const transRef = doc(collection(db, 'transactions'));
+          batch.set(transRef, transactionData);
+        } else {
+          const transactionData = {
             userId,
             accountId,
             categoryId,
@@ -229,12 +228,17 @@ export default function AIAssistant({ accounts, categories, transactions, budget
             type: data.type,
             description: data.description || '',
             createdAt: new Date().toISOString()
-          });
+          };
+
+          const transRef = doc(collection(db, 'transactions'));
+          batch.set(transRef, transactionData);
+          
           const accountRef = doc(db, 'accounts', accountId);
-          await updateDoc(accountRef, {
+          batch.update(accountRef, {
             balance: increment(data.type === 'income' ? amount : -amount)
           });
         }
+        await batch.commit();
       } else if (type === 'goal') {
         const name = data.name || data.title;
         const targetAmount = Number(data.targetAmount || data.amount);

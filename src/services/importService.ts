@@ -88,6 +88,8 @@ const importFromJSON = async (
     const assets = data.ASSETS || data.Assets || data.assets || [];
     if (assets.length > 0) {
       if (onLog) onLog('Импорт счетов из JSON...');
+      let accBatch = writeBatch(db);
+      let accBatchSize = 0;
       for (const asset of assets) {
         try {
           const uid = asset.uid || asset.UID || asset.ID;
@@ -118,7 +120,7 @@ const importFromJSON = async (
           const accountId = uid.toString();
           const accountRef = doc(db, 'accounts', accountId);
 
-          await setDoc(accountRef, {
+          accBatch.set(accountRef, {
             userId,
             name: name || 'Unnamed Account',
             type,
@@ -131,10 +133,17 @@ const importFromJSON = async (
           });
 
           accountMap[uid] = accountId;
+          accBatchSize++;
+          if (accBatchSize >= 400) {
+            await accBatch.commit();
+            accBatch = writeBatch(db);
+            accBatchSize = 0;
+          }
         } catch (err) {
           if (onLog) onLog(`❌ Ошибка импорта счета: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
+      if (accBatchSize > 0) await accBatch.commit();
       if (onLog) onLog(`Импортировано счетов: ${Object.keys(accountMap).length}`);
     }
 
@@ -143,6 +152,8 @@ const importFromJSON = async (
     const categories = data.ZCATEGORY || data.zcategory || data.categories || [];
     if (categories.length > 0) {
       if (onLog) onLog('Импорт категорий из JSON...');
+      let catBatch = writeBatch(db);
+      let catBatchSize = 0;
       for (const cat of categories) {
         try {
           const uid = cat.uid || cat.UID || cat.ID;
@@ -155,7 +166,7 @@ const importFromJSON = async (
           
           const type: TransactionType = typeVal === 0 ? 'income' : 'expense';
 
-          await setDoc(categoryRef, {
+          catBatch.set(categoryRef, {
             userId,
             name: name || 'Unnamed Category',
             type,
@@ -166,10 +177,17 @@ const importFromJSON = async (
 
           // Сохраняем категорию в карту для последующего использования при импорте транзакций.
           categoryMap[uid] = { id: categoryId, type };
+          catBatchSize++;
+          if (catBatchSize >= 400) {
+            await catBatch.commit();
+            catBatch = writeBatch(db);
+            catBatchSize = 0;
+          }
         } catch (err) {
           if (onLog) onLog(`❌ Ошибка импорта категории: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
+      if (catBatchSize > 0) await catBatch.commit();
       if (onLog) onLog(`Импортировано категорий: ${Object.keys(categoryMap).length}`);
     }
 
@@ -181,57 +199,42 @@ const importFromJSON = async (
       let batchSize = 0;
       let minDate: Date | null = null;
       let maxDate: Date | null = null;
+      const accountBalanceChanges: Record<string, number> = {};
 
       for (let i = 0; i < transactions.length; i++) {
         if (signal?.aborted) throw new Error('Import cancelled');
         try {
           const trans = transactions[i];
           const zmoney = trans.IN_ZMONEY || trans.zmoney || trans.amount || 0;
-          const currencyUid = trans.currencyUid || trans.CurrencyUid;
           const assetUid = trans.assetUid || trans.AssetUid;
           const ctgUid = trans.ctgUid || trans.CtgUid;
-          console.log('ctgUid:', ctgUid);
           const doType = trans.DO_TYPE !== undefined ? trans.DO_TYPE : trans.type;
-          console.log('doType:', doType);
           const toAssetUid = trans.toAssetUid || trans.ToAssetUid;
           const uid = trans.uid || trans.UID || i.toString();
           const dateVal = trans.ZDATE || trans.date || trans.createdAt;
-          console.log('WDATE:', trans.WDATE);
+          
           if (doType == '4') continue;
 
-          // 1. Пытаемся найти категорию, если ctgUid существует.
           const category = ctgUid ? categoryMap[ctgUid] : null;
           const categoryId = category ? category.id : null;
           
-          // 2. Определение типа транзакции:
           let type: TransactionType;
           if (category) {
             type = category.type;
           } else {
-            // Если категории нет, проверяем DO_TYPE на признаки перевода (3 или 4).
             if (doType === '3' || doType === '4') {
               type = 'transfer';
             } else {
               type = doType === '1' ? 'expense' : 'income';
             }
           }
-          console.log('type:', type);
+          
           const accountId = accountMap[assetUid];
           const targetAccountId = toAssetUid ? accountMap[toAssetUid] : null;
 
           if (!accountId) {
             if (onLog) onLog(`⚠️ Пропущена операция ${uid}: счет не найден (${assetUid})`);
             continue;
-          }
-
-          if (type !== 'transfer' && categoryId) {
-            try {
-              const catRef = doc(db, 'categories', categoryId);
-              await updateDoc(catRef, { type });
-              console.log('categories', categoryId);
-            } catch (err) {
-              console.warn(`Could not update category ${categoryId} type:`, err);
-            }
           }
 
           const transId = uid.toString();
@@ -247,14 +250,11 @@ const importFromJSON = async (
           if (dateVal) {
             const numDate = parseFloat(dateVal);
             if (numDate > 1000000000) {
-              // Standard timestamp (ms)
               transactionDate = new Date(numDate);
             } else if (numDate > 0) {
-              // MMBAK timestamp: seconds since Jan 1, 2001
               transactionDate = new Date(2001, 0, 1);
               transactionDate.setSeconds(transactionDate.getSeconds() + numDate);
             } else {
-              // Fallback for string dates
               transactionDate = new Date(dateVal);
             }
           }
@@ -272,20 +272,16 @@ const importFromJSON = async (
             createdAt: transactionDate.toISOString()
           });
 
-          const accRef = doc(db, 'accounts', accountId);
-          batch.update(accRef, {
-            balance: increment(type === 'income' ? amount : -amount)
-          });
+          // Track balance changes
+          const change = type === 'income' ? amount : -amount;
+          accountBalanceChanges[accountId] = (accountBalanceChanges[accountId] || 0) + change;
 
           if (type === 'transfer' && targetAccountId) {
-            const targetAccRef = doc(db, 'accounts', targetAccountId);
-            batch.update(targetAccRef, {
-              balance: increment(amount)
-            });
+            accountBalanceChanges[targetAccountId] = (accountBalanceChanges[targetAccountId] || 0) + amount;
           }
 
           batchSize++;
-          if (batchSize >= 400) {
+          if (batchSize >= 450) {
             await batch.commit();
             batch = writeBatch(db);
             batchSize = 0;
@@ -299,6 +295,23 @@ const importFromJSON = async (
         }
       }
       if (batchSize > 0) await batch.commit();
+
+      // Apply aggregated balance changes
+      if (onLog) onLog('Обновление балансов счетов...');
+      let balanceBatch = writeBatch(db);
+      let balanceBatchSize = 0;
+      for (const [accId, change] of Object.entries(accountBalanceChanges)) {
+        if (change === 0) continue;
+        const accRef = doc(db, 'accounts', accId);
+        balanceBatch.update(accRef, { balance: increment(change) });
+        balanceBatchSize++;
+        if (balanceBatchSize >= 450) {
+          await balanceBatch.commit();
+          balanceBatch = writeBatch(db);
+          balanceBatchSize = 0;
+        }
+      }
+      if (balanceBatchSize > 0) await balanceBatch.commit();
 
       if (onLog && minDate && maxDate) {
         onLog(`✅ Импорт завершен. Период операций: ${minDate.toLocaleDateString()} - ${maxDate.toLocaleDateString()}`);
@@ -349,38 +362,49 @@ const importFromExcel = async (
         const accountCache: Record<string, string> = {};
         const categoryCache: Record<string, string> = {};
 
+        // Pre-fetch all accounts and categories to minimize lookups
+        if (onLog) onLog('Загрузка существующих данных...');
+        const [existingAccounts, existingCategories] = await Promise.all([
+          getDocs(query(collection(db, 'accounts'), where('userId', '==', userId))),
+          getDocs(query(collection(db, 'categories'), where('userId', '==', userId)))
+        ]);
+
+        existingAccounts.docs.forEach(d => accountCache[d.data().name] = d.id);
+        existingCategories.docs.forEach(d => {
+          const data = d.data();
+          categoryCache[`${data.name}_${data.type}`] = d.id;
+        });
+
+        let batch = writeBatch(db);
+        let batchSize = 0;
+
         const getOrCreateAccount = async (name: string) => {
           let id = accountCache[name];
           if (!id) {
             const accountsRef = collection(db, 'accounts');
-            const q = query(accountsRef, where('userId', '==', userId), where('name', '==', name));
-            const snapshot = await getDocs(q);
-            
-            if (snapshot.empty) {
-              let type: AccountType = 'card';
-              const lowerName = name.toLowerCase();
-              if (lowerName.includes('cach') || lowerName.includes('нал') || lowerName.includes('лавэ') || lowerName.includes('копилк')) {
-                type = 'cash';
-              } else if (lowerName.includes('кк') || lowerName.includes('кред') || lowerName.includes('kk')) {
-                type = 'credit';
-              } else if (lowerName.includes('вклад') || lowerName.includes('счет')) {
-                type = 'bank';
-              }
-
-              const newAccount = await addDoc(accountsRef, {
-                userId,
-                name: name,
-                type,
-                balance: 0,
-                currency: 'RUB',
-                showOnDashboard: true,
-                showInTotals: true
-              });
-              id = newAccount.id;
-            } else {
-              id = snapshot.docs[0].id;
+            let type: AccountType = 'card';
+            const lowerName = name.toLowerCase();
+            if (lowerName.includes('cach') || lowerName.includes('нал') || lowerName.includes('лавэ') || lowerName.includes('копилк')) {
+              type = 'cash';
+            } else if (lowerName.includes('кк') || lowerName.includes('кред') || lowerName.includes('kk')) {
+              type = 'credit';
+            } else if (lowerName.includes('вклад') || lowerName.includes('счет')) {
+              type = 'bank';
             }
+
+            const newAccRef = doc(accountsRef);
+            batch.set(newAccRef, {
+              userId,
+              name: name,
+              type,
+              balance: 0,
+              currency: 'RUB',
+              showOnDashboard: true,
+              showInTotals: true
+            });
+            id = newAccRef.id;
             accountCache[name] = id;
+            batchSize++;
           }
           return id;
         };
@@ -390,25 +414,22 @@ const importFromExcel = async (
           let id = categoryCache[key];
           if (!id) {
             const categoriesRef = collection(db, 'categories');
-            const q = query(categoriesRef, where('userId', '==', userId), where('name', '==', name), where('type', '==', type));
-            const snapshot = await getDocs(q);
-            
-            if (snapshot.empty) {
-              const newCategory = await addDoc(categoriesRef, {
-                userId,
-                name: name,
-                type,
-                icon: type === 'income' ? 'TrendingUp' : 'ShoppingBag',
-                color: type === 'income' ? '#10b981' : '#ef4444'
-              });
-              id = newCategory.id;
-            } else {
-              id = snapshot.docs[0].id;
-            }
+            const newCatRef = doc(categoriesRef);
+            batch.set(newCatRef, {
+              userId,
+              name: name,
+              type,
+              icon: type === 'income' ? 'TrendingUp' : 'ShoppingBag',
+              color: type === 'income' ? '#10b981' : '#ef4444'
+            });
+            id = newCatRef.id;
             categoryCache[key] = id;
+            batchSize++;
           }
           return id;
         };
+
+        const accountBalanceChanges: Record<string, number> = {};
 
         for (let i = 0; i < dataRows.length; i++) {
           if (signal?.aborted) {
@@ -451,7 +472,8 @@ const importFromExcel = async (
               const sourceId = await getOrCreateAccount(accountName);
               const destId = await getOrCreateAccount(categoryOrTargetAccount);
               
-              await addDoc(collection(db, 'transactions'), {
+              const transRef = doc(collection(db, 'transactions'));
+              batch.set(transRef, {
                 userId,
                 accountId: sourceId,
                 targetAccountId: destId,
@@ -461,8 +483,8 @@ const importFromExcel = async (
                 createdAt: transactionDate.toISOString()
               });
 
-              await updateDoc(doc(db, 'accounts', sourceId), { balance: increment(-amount) });
-              await updateDoc(doc(db, 'accounts', destId), { balance: increment(amount) });
+              accountBalanceChanges[sourceId] = (accountBalanceChanges[sourceId] || 0) - amount;
+              accountBalanceChanges[destId] = (accountBalanceChanges[destId] || 0) + amount;
             } else {
               const type: TransactionType = (typeStr?.toLowerCase().includes('доход') || typeStr?.toLowerCase().includes('income')) 
                 ? 'income' 
@@ -471,7 +493,8 @@ const importFromExcel = async (
               const accountId = await getOrCreateAccount(accountName);
               const categoryId = categoryOrTargetAccount ? await getOrCreateCategory(categoryOrTargetAccount, type) : null;
 
-              await addDoc(collection(db, 'transactions'), {
+              const transRef = doc(collection(db, 'transactions'));
+              batch.set(transRef, {
                 userId,
                 accountId,
                 categoryId,
@@ -481,18 +504,43 @@ const importFromExcel = async (
                 createdAt: transactionDate.toISOString()
               });
 
-              await updateDoc(doc(db, 'accounts', accountId), {
-                balance: increment(type === 'income' ? amount : -amount)
-              });
+              const change = type === 'income' ? amount : -amount;
+              accountBalanceChanges[accountId] = (accountBalanceChanges[accountId] || 0) + change;
+            }
+
+            batchSize++;
+            if (batchSize >= 450) {
+              await batch.commit();
+              batch = writeBatch(db);
+              batchSize = 0;
             }
 
             importedCount++;
             if (onProgress) onProgress(Math.round(((i + 1) / totalRows) * 100));
-            if (onLog && (i + 1) % 10 === 0) onLog(`Обработано ${i + 1} из ${totalRows} строк...`);
+            if (onLog && (i + 1) % 50 === 0) onLog(`Обработано ${i + 1} из ${totalRows} строк...`);
           } catch (err: any) {
             errors.push(`Row error: ${err.message}`);
           }
         }
+
+        if (batchSize > 0) await batch.commit();
+
+        // Apply aggregated balance changes
+        if (onLog) onLog('Обновление балансов счетов...');
+        let balanceBatch = writeBatch(db);
+        let balanceBatchSize = 0;
+        for (const [accId, change] of Object.entries(accountBalanceChanges)) {
+          if (change === 0) continue;
+          const accRef = doc(db, 'accounts', accId);
+          balanceBatch.update(accRef, { balance: increment(change) });
+          balanceBatchSize++;
+          if (balanceBatchSize >= 450) {
+            await balanceBatch.commit();
+            balanceBatch = writeBatch(db);
+            balanceBatchSize = 0;
+          }
+        }
+        if (balanceBatchSize > 0) await balanceBatch.commit();
 
         if (onLog && minDate && maxDate) {
           onLog(`✅ Импорт завершен. Период операций: ${minDate.toLocaleDateString()} - ${maxDate.toLocaleDateString()}`);
@@ -674,7 +722,6 @@ const importFromMMBAK = async (
 
     // 3. Import INOUTCOME -> Transactions
     if (onLog) onLog('Импорт операций...');
-    // Check for date and description fields
     const columnsRes = dbSql.exec("PRAGMA table_info(INOUTCOME)");
     const columns = columnsRes[0].values.map(v => v[1] as string);
     const dateField = columns.includes('ZDATE') ? 'ZDATE' : columns.includes('date') ? 'date' : 'uid';
@@ -689,6 +736,7 @@ const importFromMMBAK = async (
       let batchSize = 0;
       let minDate: Date | null = null;
       let maxDate: Date | null = null;
+      const accountBalanceChanges: Record<string, number> = {};
 
       for (let i = 0; i < transactions.length; i++) {
         if (signal?.aborted) throw new Error('Import cancelled');
@@ -699,16 +747,13 @@ const importFromMMBAK = async (
           
           if (doType == "4") continue;
 
-          // 1. Пытаемся найти категорию, если ctgUid существует.
           const category = ctgUid ? categoryMap[ctgUid] : null;
           const categoryId = category ? category.id : null;
           
-          // 2. Определение типа транзакции:
           let type: TransactionType;
           if (category) {
             type = category.type;
           } else {
-            // Если категории нет, проверяем DO_TYPE на признаки перевода (3 или 4).
             if (doType == '3' || doType == '4') {
               type = 'transfer';
             } else {
@@ -723,12 +768,6 @@ const importFromMMBAK = async (
             continue;
           }
 
-          // If it's income/expense, ensure category type matches
-          if (type !== 'transfer' && categoryId) {
-            const catRef = doc(db, 'categories', categoryId);
-            await updateDoc(catRef, { type });
-          }
-
           const transId = uid.toString();
           const transRef = doc(db, 'transactions', transId);
           const amount = Math.abs(zmoney);
@@ -737,14 +776,11 @@ const importFromMMBAK = async (
           if (dateVal) {
             const numDate = parseFloat(dateVal);
             if (numDate > 1000000000) {
-              // Standard timestamp (ms)
               transactionDate = new Date(numDate);
             } else if (numDate > 0) {
-              // MMBAK timestamp: seconds since Jan 1, 2001
               transactionDate = new Date(2001, 0, 1);
               transactionDate.setSeconds(transactionDate.getSeconds() + numDate);
             } else {
-              // Fallback for string dates
               transactionDate = new Date(dateVal);
             }
           }
@@ -763,21 +799,16 @@ const importFromMMBAK = async (
             createdAt: transactionDate.toISOString()
           });
 
-          // Update account balances
-          const accRef = doc(db, 'accounts', accountId);
-          batch.update(accRef, {
-            balance: increment(type === 'income' ? amount : -amount)
-          });
+          // Track balance changes
+          const change = type === 'income' ? amount : -amount;
+          accountBalanceChanges[accountId] = (accountBalanceChanges[accountId] || 0) + change;
 
           if (type === 'transfer' && targetAccountId) {
-            const targetAccRef = doc(db, 'accounts', targetAccountId);
-            batch.update(targetAccRef, {
-              balance: increment(amount)
-            });
+            accountBalanceChanges[targetAccountId] = (accountBalanceChanges[targetAccountId] || 0) + amount;
           }
 
           batchSize++;
-          if (batchSize >= 400) {
+          if (batchSize >= 450) {
             await batch.commit();
             batch = writeBatch(db);
             batchSize = 0;
@@ -791,6 +822,23 @@ const importFromMMBAK = async (
         }
       }
       if (batchSize > 0) await batch.commit();
+
+      // Apply aggregated balance changes
+      if (onLog) onLog('Обновление балансов счетов...');
+      let balanceBatch = writeBatch(db);
+      let balanceBatchSize = 0;
+      for (const [accId, change] of Object.entries(accountBalanceChanges)) {
+        if (change === 0) continue;
+        const accRef = doc(db, 'accounts', accId);
+        balanceBatch.update(accRef, { balance: increment(change) });
+        balanceBatchSize++;
+        if (balanceBatchSize >= 450) {
+          await balanceBatch.commit();
+          balanceBatch = writeBatch(db);
+          balanceBatchSize = 0;
+        }
+      }
+      if (balanceBatchSize > 0) await balanceBatch.commit();
 
       if (onLog && minDate && maxDate) {
         onLog(`✅ Импорт завершен. Период операций: ${minDate.toLocaleDateString()} - ${maxDate.toLocaleDateString()}`);

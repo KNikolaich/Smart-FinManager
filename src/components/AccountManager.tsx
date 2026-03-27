@@ -136,16 +136,16 @@ export default function AccountManager({ accounts, userId, onClose }: AccountMan
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="p-6 border-b border-neutral-100 flex items-center justify-between shrink-0">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="bg-white w-full max-w-2xl rounded-t-[32px] sm:rounded-[32px] overflow-hidden flex flex-col max-h-[90vh] shadow-2xl animate-in slide-in-from-bottom duration-300">
+        <div className="p-6 flex items-center justify-between shrink-0">
           <h2 className="text-xl font-bold">Управление счетами</h2>
           <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
-            <X className="w-6 h-6" />
+            <X className="w-6 h-6 text-neutral-400" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
           <div className="flex justify-between items-center mb-6">
             <p className="text-neutral-500 text-sm">Всего счетов: {accounts.length}</p>
             {!isAdding && !editingId && (
@@ -160,15 +160,15 @@ export default function AccountManager({ accounts, userId, onClose }: AccountMan
           </div>
 
           {isAdding && (
-            <form onSubmit={handleAdd} className="bg-neutral-50 p-6 rounded-2xl mb-6 space-y-4">
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border rounded-lg p-2 text-sm" placeholder="Название счета" required />
-              <select value={type} onChange={(e) => setType(e.target.value as AccountType)} className="w-full border rounded-lg p-2 text-sm">
+            <form onSubmit={handleAdd} className="bg-neutral-100/50 p-6 rounded-2xl mb-6 space-y-4">
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-white rounded-xl p-3 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all" placeholder="Название счета" required />
+              <select value={type} onChange={(e) => setType(e.target.value as AccountType)} className="w-full bg-white rounded-xl p-3 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all appearance-none">
                 <option value="card">Карта</option>
                 <option value="credit">Кредит</option>
                 <option value="cash">Наличные</option>
                 <option value="bank">Банк</option>
               </select>
-              <input type="number" value={balance} onChange={(e) => setBalance(e.target.value)} className="w-full border rounded-lg p-2 text-sm" placeholder="Начальный баланс" required />
+              <input type="number" value={balance} onChange={(e) => setBalance(e.target.value)} className="w-full bg-white rounded-xl p-3 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all" placeholder="Начальный баланс" required />
               <div className="flex items-center gap-6 text-sm">
                 <label className="flex items-center gap-2"><input type="checkbox" checked={showOnDashboard} onChange={(e) => setShowOnDashboard(e.target.checked)} /> На главном</label>
                 <label className="flex items-center gap-2"><input type="checkbox" checked={showInTotals} onChange={(e) => setShowInTotals(e.target.checked)} /> В суммах</label>
@@ -186,7 +186,7 @@ export default function AccountManager({ accounts, userId, onClose }: AccountMan
           <div className="space-y-6">
             {(['card', 'credit', 'cash', 'bank'] as AccountType[]).map(type => (
               <div key={type} className="space-y-2">
-                <div className="flex items-center gap-2 text-neutral-500 pb-2 border-b border-neutral-100">
+                <div className="flex items-center gap-2 text-neutral-500 pb-2">
                   {getIcon(type)}
                   <span className="text-xs font-bold uppercase tracking-wider">{getTypeName(type)}</span>
                 </div>
@@ -200,8 +200,8 @@ export default function AccountManager({ accounts, userId, onClose }: AccountMan
                           <span className="bg-neutral-100 px-1.5 py-0.5 rounded">TYPE: {acc.type}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                          <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="border rounded-lg p-2 text-sm" placeholder="Название" />
-                          <input type="number" value={balance} onChange={(e) => setBalance(e.target.value)} className="border rounded-lg p-2 text-sm" placeholder="Баланс" />
+                          <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="bg-neutral-50 rounded-xl p-3 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all" placeholder="Название" />
+                          <input type="number" value={balance} onChange={(e) => setBalance(e.target.value)} className="bg-neutral-50 rounded-xl p-3 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all" placeholder="Баланс" />
                         </div>
                         <div className="flex items-center gap-6 text-sm">
                           <label className="flex items-center gap-2"><input type="checkbox" checked={showOnDashboard} onChange={(e) => setShowOnDashboard(e.target.checked)} /> На главном</label>
@@ -210,7 +210,7 @@ export default function AccountManager({ accounts, userId, onClose }: AccountMan
                         </div>
                         <div className="flex justify-end gap-2">
                           {confirmDeleteId === acc.id ? (
-                            <div className="flex items-center gap-2 bg-rose-50 p-2 rounded-lg border border-rose-100">
+                            <div className="flex items-center gap-2 bg-rose-50 p-2 rounded-lg">
                               <span className="text-[10px] text-rose-600 font-bold uppercase">Удалить?</span>
                               <button onClick={(e) => { e.stopPropagation(); handleDelete(acc.id); }} className="p-1 bg-rose-500 text-white rounded hover:bg-rose-600"><Check className="w-3 h-3" /></button>
                               <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }} className="p-1 bg-neutral-200 text-neutral-600 rounded hover:bg-neutral-300"><X className="w-3 h-3" /></button>

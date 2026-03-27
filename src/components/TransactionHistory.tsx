@@ -55,9 +55,9 @@ export default function TransactionHistory({ transactions, categories, accounts,
   }, [filteredTransactions]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full h-full sm:max-w-2xl bg-white shadow-2xl flex flex-col relative">
-        <div className="py-3 px-6 border-b border-neutral-100 flex items-center justify-between shrink-0">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4">
+      <div className="w-full max-w-2xl bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl flex flex-col relative max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
+        <div className="py-4 px-6 border-b border-neutral-100 flex items-center justify-between shrink-0">
           <h2 className="text-xl font-bold">История операций</h2>
           <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
             <X className="w-6 h-6 text-neutral-400" />
@@ -213,6 +213,8 @@ export default function TransactionHistory({ transactions, categories, accounts,
             <tbody className="divide-y divide-neutral-50">
               {filteredTransactions.map(t => {
                 const category = categories.find(c => c.id === t.categoryId);
+                // Ищем родительскую категорию, если текущая - подкатегория
+                const parentCategory = category?.parentId ? categories.find(c => c.id === category.parentId) : category;
                 const account = accounts.find(a => a.id === t.accountId);
                 const targetAccount = t.targetAccountId ? accounts.find(a => a.id === t.targetAccountId) : null;
                 
@@ -227,7 +229,7 @@ export default function TransactionHistory({ transactions, categories, accounts,
                     </td>
                     <td className="px-6 py-2">
                       <div className="flex items-center gap-3">
-                        <span className="text-lg">{t.type === 'transfer' ? '🔄' : (category?.icon || '💰')}</span>
+                        <span className="text-lg">{t.type === 'transfer' ? '🔄' : (parentCategory?.icon || '💰')}</span>
                         <div>
                           <p className="text-xs font-bold text-neutral-900 truncate max-w-[120px]">{t.description || category?.name || (t.type === 'transfer' ? 'Перевод' : 'Без описания')}</p>
                         </div>

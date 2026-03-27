@@ -10,8 +10,15 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const googleProvider = new GoogleAuthProvider();
 
 export const handleFirestoreError = (error: unknown, operationType: OperationType, path: string | null) => {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const isQuotaError = errorMessage.toLowerCase().includes('quota') || 
+                      errorMessage.toLowerCase().includes('resource-exhausted') ||
+                      errorMessage.toLowerCase().includes('limit exceeded');
+
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: isQuotaError 
+      ? "Превышена дневная квота бесплатного тарифа Firestore. Пожалуйста, попробуйте завтра или проверьте настройки проекта."
+      : errorMessage,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
@@ -28,7 +35,16 @@ export const handleFirestoreError = (error: unknown, operationType: OperationTyp
     operationType,
     path
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
+
+  if (isQuotaError) {
+    console.error('Firestore Quota Exceeded:', JSON.stringify(errInfo));
+    // We don't want to throw a generic error that might crash the whole app if it's just a background sync
+    // But we do want to notify the user. 
+    alert("Внимание: Дневной лимит операций в базе данных исчерпан. Новые данные не смогут быть сохранены до завтра.");
+  } else {
+    console.error('Firestore Error: ', JSON.stringify(errInfo));
+  }
+  
   throw new Error(JSON.stringify(errInfo));
 };
 

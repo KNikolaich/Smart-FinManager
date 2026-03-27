@@ -116,12 +116,12 @@ export default function GoalManager({ goals, userId, onClose, initialData }: Goa
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
-      <div className="bg-white w-full max-w-2xl rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[95vh]">
-        <div className="p-4 sm:p-6 border-b border-neutral-100 flex items-center justify-between shrink-0">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="bg-white w-full max-w-2xl rounded-t-[32px] sm:rounded-[32px] overflow-hidden flex flex-col max-h-[90vh] shadow-2xl animate-in slide-in-from-bottom duration-300">
+        <div className="p-4 sm:p-6 flex items-center justify-between shrink-0">
           <h2 className="text-lg sm:text-xl font-bold">Управление целями</h2>
           <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
-            <X className="w-5 h-5 sm:w-6 h-6" />
+            <X className="w-5 h-5 sm:w-6 h-6 text-neutral-400" />
           </button>
         </div>
 
@@ -155,24 +155,24 @@ export default function GoalManager({ goals, userId, onClose, initialData }: Goa
           </div>
 
           {isAdding && (
-            <div className="bg-neutral-50 p-4 sm:p-6 rounded-2xl sm:rounded-3xl mb-6 border border-neutral-100 space-y-3">
+            <div className="bg-neutral-50 p-4 sm:p-6 rounded-2xl sm:rounded-3xl mb-6 space-y-3">
               <div className="space-y-3">
                 <input 
                   type="text" 
                   value={name} 
                   onChange={(e) => setName(e.target.value)} 
-                  className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-all" 
+                  className="w-full bg-white rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all" 
                   placeholder="Название цели" 
                 />
                 <textarea 
                   value={description} 
                   onChange={(e) => setDescription(e.target.value)} 
-                  className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-all min-h-[80px]" 
+                  className="w-full bg-white rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all min-h-[80px]" 
                   placeholder="Описание (Markdown)" 
                 />
                 <div className="grid grid-cols-2 gap-3">
-                  <input type="number" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)} className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-all" placeholder="Сумма цели" />
-                  <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-all" />
+                  <input type="number" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)} className="w-full bg-white rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all" placeholder="Сумма цели" />
+                  <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="w-full bg-white rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all" />
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-1">
@@ -188,7 +188,7 @@ export default function GoalManager({ goals, userId, onClose, initialData }: Goa
               const progress = Math.min(100, (goal.currentAmount / goal.targetAmount) * 100);
               
               return (
-                <div key={goal.id} className={`p-3 sm:p-5 rounded-2xl sm:rounded-3xl border transition-all ${goal.isCompleted ? 'bg-neutral-50 border-neutral-100 opacity-75' : 'bg-white border-neutral-100 shadow-sm hover:shadow-md'}`}>
+                <div key={goal.id} className={`p-3 sm:p-5 rounded-2xl sm:rounded-3xl transition-all ${goal.isCompleted ? 'bg-neutral-50 opacity-75' : 'bg-white shadow-sm hover:shadow-md'}`}>
                   {isEditing ? (
                     <div className="space-y-3">
                       <div className="flex justify-between items-center gap-2">
@@ -196,14 +196,14 @@ export default function GoalManager({ goals, userId, onClose, initialData }: Goa
                           type="text" 
                           value={name} 
                           onChange={(e) => setName(e.target.value)} 
-                          className="flex-1 bg-neutral-50 border border-neutral-200 rounded-lg px-2 py-1 text-sm font-bold outline-none focus:border-emerald-500" 
+                          className="flex-1 bg-neutral-50 rounded-lg px-2 py-1 text-sm font-bold outline-none focus:ring-2 ring-emerald-500/20" 
                           placeholder="Название"
                         />
                         <input 
                           type="date" 
                           value={deadline} 
                           onChange={(e) => setDeadline(e.target.value)} 
-                          className="w-32 bg-neutral-50 border border-neutral-200 rounded-lg px-2 py-1 text-[10px] outline-none focus:border-emerald-500"
+                          className="w-32 bg-neutral-50 rounded-lg px-2 py-1 text-[10px] outline-none focus:ring-2 ring-emerald-500/20"
                         />
                       </div>
 
@@ -214,7 +214,7 @@ export default function GoalManager({ goals, userId, onClose, initialData }: Goa
                             type="number" 
                             value={currentAmount} 
                             onChange={(e) => setCurrentAmount(e.target.value)} 
-                            className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-2 py-1 text-xs font-bold text-emerald-600 outline-none focus:border-emerald-500"
+                            className="w-full bg-neutral-50 rounded-lg px-2 py-1 text-xs font-bold text-emerald-600 outline-none focus:ring-2 ring-emerald-500/20"
                           />
                         </div>
                         <div className="space-y-1 text-right">
@@ -223,7 +223,7 @@ export default function GoalManager({ goals, userId, onClose, initialData }: Goa
                             type="number" 
                             value={targetAmount} 
                             onChange={(e) => setTargetAmount(e.target.value)} 
-                            className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-2 py-1 text-xs font-bold text-right outline-none focus:border-emerald-500"
+                            className="w-full bg-neutral-50 rounded-lg px-2 py-1 text-xs font-bold text-right outline-none focus:ring-2 ring-emerald-500/20"
                           />
                         </div>
                       </div>
@@ -231,7 +231,7 @@ export default function GoalManager({ goals, userId, onClose, initialData }: Goa
                       <textarea 
                         value={description} 
                         onChange={(e) => setDescription(e.target.value)} 
-                        className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-emerald-500 min-h-[60px]" 
+                        className="w-full bg-neutral-50 rounded-lg px-2 py-1 text-xs outline-none focus:ring-2 ring-emerald-500/20 min-h-[60px]" 
                         placeholder="Описание (Markdown)"
                       />
 
@@ -291,7 +291,7 @@ export default function GoalManager({ goals, userId, onClose, initialData }: Goa
                       </div>
 
                       {goal.description && (
-                        <div className="mb-3 sm:mb-4 p-3 sm:p-4 bg-neutral-50 rounded-xl sm:rounded-2xl border border-neutral-100">
+                        <div className="mb-3 sm:mb-4 p-3 sm:p-4 bg-neutral-50 rounded-xl sm:rounded-2xl">
                           <div className="prose prose-sm max-w-none text-neutral-600 text-[10px] sm:text-xs leading-relaxed">
                             <ReactMarkdown>{goal.description}</ReactMarkdown>
                           </div>

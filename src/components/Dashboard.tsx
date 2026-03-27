@@ -194,6 +194,8 @@ export default function Dashboard({ accounts, transactions, goals, budgets, cate
         <div className="space-y-1">
           {recentTransactions.map(t => {
             const category = categories.find(c => c.id === t.categoryId);
+            // Ищем родительскую категорию, если текущая - подкатегория
+            const parentCategory = category?.parentId ? categories.find(c => c.id === category.parentId) : category;
             return (
               <div 
                 key={t.id} 
@@ -201,8 +203,8 @@ export default function Dashboard({ accounts, transactions, goals, budgets, cate
                 className="bg-white p-2 rounded-2xl border border-neutral-100 flex items-center justify-between hover:bg-neutral-50 active:bg-neutral-100 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm" style={{ backgroundColor: category?.color + '20' }}>
-                    {category?.icon || '💰'}
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm" style={{ backgroundColor: (t.type === 'transfer' ? '#3b82f6' : (parentCategory?.color || '#3b82f6')) + '20' }}>
+                    {t.type === 'transfer' ? '🔄' : (parentCategory?.icon || '💰')}
                   </div>
                   <div>
                     <p className="font-semibold text-xs">{t.description || category?.name || 'Без описания'}</p>
