@@ -93,6 +93,46 @@ export interface Plan {
   month: string; // e.g., "2026-04"
 }
 
+export interface PlanCell {
+  value: string;
+  color?: string;
+  isBold?: boolean;
+  comment?: string;
+}
+
+export interface PlanSubject {
+  id: string;
+  name: string;
+  color?: string; // Background color
+  textColor?: string;
+  isArchived?: boolean;
+}
+
+export interface PlanRow {
+  id: string;
+  label: string;
+  type: 'month' | 'min' | 'year';
+  cells: { [subjectId: string]: PlanCell };
+}
+
+export interface PlanConfig {
+  targetAmount: number;
+  totalColumnColor: string;
+  headerColor: string;
+  firstColumnColor: string;
+  minRowColor: string;
+}
+
+export interface PlanData {
+  id: string;
+  userId: string;
+  subjects: PlanSubject[];
+  rows: PlanRow[];
+  config: PlanConfig;
+  comment: string;
+  updatedAt: string;
+}
+
 export interface Currency {
   id: string;
   curUid: string;

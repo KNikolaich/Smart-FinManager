@@ -1,30 +1,32 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
   LayoutDashboard, 
-  ArrowRightLeft, 
+  CalendarRange, 
   BarChart2, 
   Settings as SettingsIcon, 
   Bot, 
   Plus,
   X,
   LogOut,
-  User as UserIcon
+  User as UserIcon,
+  Wallet
 } from 'lucide-react';
 import { api } from './lib/api';
 import { Account, Transaction, Goal, Budget, Category, Plan } from './types';
 import Dashboard from './components/Dashboard';
-import Transactions from './components/Transactions';
+import PlanPage from './components/PlanPage';
 import Analytics from './components/Analytics';
 import Settings from './components/Settings';
 import AIAssistant from './components/AIAssistant';
 import AddTransaction from './components/AddTransaction';
 import AILogs from './components/AILogs';
 import Auth from './components/Auth';
+import { cn } from './lib/utils';
 
 export default function App() {
   const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'analytics' | 'settings' | 'ai'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'plan' | 'analytics' | 'settings' | 'ai'>('dashboard');
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [showAILogs, setShowAILogs] = useState(false);
   const [showTotalBalance, setShowTotalBalance] = useState(() => {
@@ -122,10 +124,11 @@ export default function App() {
             initialGoalData={initialGoalData}
             onCloseGoalManager={() => setInitialGoalData(undefined)}
             onRefresh={refreshData}
+            onNavigateToAnalytics={() => setActiveTab('analytics')}
           />
         );
-      case 'transactions':
-        return <Transactions transactions={transactions} categories={categories} accounts={accounts} onRefresh={refreshData} />;
+      case 'plan':
+        return <PlanPage accounts={accounts} categories={categories} onRefresh={refreshData} />;
       case 'analytics':
         return <Analytics transactions={transactions} categories={categories} accounts={accounts} />;
       case 'settings':
@@ -155,7 +158,7 @@ export default function App() {
   return (
     <div className="h-screen bg-neutral-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="px-6 py-4 flex items-center justify-between bg-white border-b border-neutral-100 shrink-0 z-40">
+      <header className="px-6 py-4 flex items-center justify-between bg-white border-b border-neutral-100 shrink-0 z-40 landscape:hidden">
         <div 
           className="flex items-center gap-3 cursor-pointer group"
           onClick={() => setShowTotalBalance(!showTotalBalance)}
@@ -185,51 +188,54 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto no-scrollbar">
-        {renderContent()}
+      <main className="flex-1 overflow-hidden relative">
+        <div className="h-full w-full max-w-7xl mx-auto overflow-hidden landscape:max-w-none">
+          {renderContent()}
+        </div>
       </main>
 
       {/* Navigation Bar */}
-      <nav className="bg-white border-t border-neutral-100 px-6 py-3 pb-safe shrink-0 z-40 flex items-center justify-between shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.05)]">
+      <nav className="bg-white border-t border-neutral-100 px-6 py-3 pb-safe shrink-0 z-40 flex items-center justify-between shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.05)] landscape:py-1 landscape:px-4">
         <div className="max-w-7xl mx-auto w-full flex items-center justify-between relative">
           <button 
             onClick={() => setActiveTab('dashboard')}
-            className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'dashboard' ? "text-emerald-600" : "text-neutral-400")}
+            className={cn("flex flex-col items-center gap-1 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'dashboard' ? "text-emerald-600 landscape:bg-emerald-50" : "text-neutral-400")}
           >
-            <LayoutDashboard size={22} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
-            <span className="text-[10px] font-bold uppercase tracking-tighter">Главная</span>
+            <LayoutDashboard size={22} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} className="landscape:hidden" />
+            <span className="text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">Главная</span>
           </button>
           <button 
-            onClick={() => setActiveTab('transactions')}
-            className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'transactions' ? "text-emerald-600" : "text-neutral-400")}
+            onClick={() => setActiveTab('plan')}
+            className={cn("flex flex-col items-center gap-1 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'plan' ? "text-emerald-600 landscape:bg-emerald-50" : "text-neutral-400")}
           >
-            <ArrowRightLeft size={22} strokeWidth={activeTab === 'transactions' ? 2.5 : 2} />
-            <span className="text-[10px] font-bold uppercase tracking-tighter">Операции</span>
+            <CalendarRange size={22} strokeWidth={activeTab === 'plan' ? 2.5 : 2} className="landscape:hidden" />
+            <span className="text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">План</span>
           </button>
           
           {/* Add Button */}
-          <div className="relative -top-6">
+          <div className="relative -top-6 landscape:top-0">
             <button 
               onClick={() => setShowAddTransaction(true)}
-              className="w-14 h-14 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-200 active:scale-90 transition-all"
+              className="w-14 h-14 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-200 active:scale-90 transition-all landscape:w-auto landscape:h-auto landscape:px-6 landscape:py-1 landscape:rounded-lg landscape:shadow-none"
             >
-              <Plus size={32} />
+              <Plus size={32} className="landscape:hidden" />
+              <span className="hidden landscape:block text-[11px] font-bold uppercase tracking-tighter">Пуск</span>
             </button>
           </div>
 
           <button 
             onClick={() => setActiveTab('analytics')}
-            className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'analytics' ? "text-emerald-600" : "text-neutral-400")}
+            className={cn("flex flex-col items-center gap-1 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'analytics' ? "text-emerald-600 landscape:bg-emerald-50" : "text-neutral-400")}
           >
-            <BarChart2 size={22} strokeWidth={activeTab === 'analytics' ? 2.5 : 2} />
-            <span className="text-[10px] font-bold uppercase tracking-tighter">Анализ</span>
+            <BarChart2 size={22} strokeWidth={activeTab === 'analytics' ? 2.5 : 2} className="landscape:hidden" />
+            <span className="text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">Анализ</span>
           </button>
           <button 
             onClick={() => setActiveTab('settings')}
-            className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'settings' ? "text-emerald-600" : "text-neutral-400")}
+            className={cn("flex flex-col items-center gap-1 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'settings' ? "text-emerald-600 landscape:bg-emerald-50" : "text-neutral-400")}
           >
-            <SettingsIcon size={22} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
-            <span className="text-[10px] font-bold uppercase tracking-tighter">Настройки</span>
+            <SettingsIcon size={22} strokeWidth={activeTab === 'settings' ? 2.5 : 2} className="landscape:hidden" />
+            <span className="text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">Настройки</span>
           </button>
         </div>
       </nav>
@@ -275,27 +281,4 @@ export default function App() {
       )}
     </div>
   );
-}
-
-function Wallet({ size }: { size: number }) {
-  return (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round"
-    >
-      <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
-      <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
-      <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
-    </svg>
-  );
-}
-
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
 }

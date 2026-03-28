@@ -2,14 +2,16 @@ import { useMemo, useState, useEffect } from 'react';
 import { Account, Transaction, Goal, Budget, Category, AccountType } from '../types';
 import { Wallet, TrendingUp, TrendingDown, Target, ChevronRight, CreditCard, Landmark } from 'lucide-react';
 import { CoinStack } from './CustomIcons';
-import { format } from 'date-fns';
+import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import AccountManager from './AccountManager';
 import GoalManager from './GoalManager';
 import TransactionHistory from './TransactionHistory';
 import EditTransaction from './EditTransaction';
+import { cn } from '../lib/utils';
 
 interface DashboardProps {
   accounts: Account[];
@@ -26,9 +28,22 @@ interface DashboardProps {
   };
   onCloseGoalManager?: () => void;
   onRefresh?: () => void;
+  onNavigateToAnalytics?: () => void;
 }
 
-export default function Dashboard({ accounts, transactions, goals, budgets, categories, userId, showTotalBalance, initialGoalData, onCloseGoalManager, onRefresh }: DashboardProps) {
+export default function Dashboard({ 
+  accounts, 
+  transactions, 
+  goals, 
+  budgets, 
+  categories, 
+  userId, 
+  showTotalBalance, 
+  initialGoalData, 
+  onCloseGoalManager, 
+  onRefresh,
+  onNavigateToAnalytics
+}: DashboardProps) {
   const [showAccountManager, setShowAccountManager] = useState(false);
   const [showGoalManager, setShowGoalManager] = useState(!!initialGoalData);
   const [showTransactionHistory, setShowTransactionHistory] = useState(false);
@@ -88,6 +103,31 @@ export default function Dashboard({ accounts, transactions, goals, budgets, cate
       });
   }, [goals]);
 
+  const threeMonthTrend = useMemo(() => {
+    const end = new Date();
+    const start = subMonths(end, 2); // Last 3 months including current
+    
+    const months = eachMonthOfInterval({ start, end });
+    const data: { [key: string]: { name: string, income: number, expense: number, rawDate: Date } } = {};
+
+    months.forEach(month => {
+      const m = format(month, 'MMM', { locale: ru });
+      const key = format(month, 'yyyy-MM');
+      data[key] = { name: m, income: 0, expense: 0, rawDate: new Date(month) };
+    });
+
+    transactions.forEach(t => {
+      const tDate = new Date(t.createdAt);
+      const key = format(tDate, 'yyyy-MM');
+      if (data[key]) {
+        if (t.type === 'income') data[key].income += t.amount;
+        else if (t.type === 'expense') data[key].expense += t.amount;
+      }
+    });
+
+    return Object.values(data).sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime());
+  }, [transactions]);
+
   return (
     <div className="p-1.5 sm:p-2 space-y-6">
       {/* Total Balance Card */}
@@ -100,30 +140,58 @@ export default function Dashboard({ accounts, transactions, goals, budgets, cate
             transition={{ duration: 0.3, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
-            <div className="bg-emerald-500 rounded-3xl p-6 text-white shadow-xl shadow-emerald-100">
-              <p className="text-emerald-100 text-sm font-medium mb-1">Общий баланс</p>
-              <h2 className="text-4xl font-bold mb-6">{totalBalance.toLocaleString()} ₽</h2>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white/10 rounded-2xl p-3 flex items-center gap-3">
-                  <div className="bg-white/20 p-2 rounded-xl">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-emerald-100">Доход</p>
-                    <p className="font-semibold">+{monthlyStats.income.toLocaleString()} ₽</p>
+            <div 
+              onClick={onNavigateToAnalytics}
+              className="bg-emerald-500 rounded-3xl p-6 text-white shadow-xl shadow-emerald-100 cursor-pointer group relative overflow-hidden"
+            >
+              <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
+                {/* Left Side: Balance and Stats */}
+                <div>
+                  <p className="text-emerald-100 text-sm font-medium mb-1">Общий баланс</p>
+                  <h2 className="text-4xl font-bold mb-6">{totalBalance.toLocaleString()} ₽</h2>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white/10 rounded-2xl p-3 flex items-center gap-3">
+                      <div className="bg-white/20 p-2 rounded-xl">
+                        <TrendingUp className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-emerald-100">Доход</p>
+                        <p className="font-semibold">+{monthlyStats.income.toLocaleString()} ₽</p>
+                      </div>
+                    </div>
+                    <div className="bg-white/10 rounded-2xl p-3 flex items-center gap-3">
+                      <div className="bg-white/20 p-2 rounded-xl">
+                        <TrendingDown className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-emerald-100">Расход</p>
+                        <p className="font-semibold">-{monthlyStats.expense.toLocaleString()} ₽</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="bg-white/10 rounded-2xl p-3 flex items-center gap-3">
-                  <div className="bg-white/20 p-2 rounded-xl">
-                    <TrendingDown className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-emerald-100">Расход</p>
-                    <p className="font-semibold">-{monthlyStats.expense.toLocaleString()} ₽</p>
-                  </div>
+
+                {/* Right Side: Dynamics Chart (Hidden on mobile) */}
+                <div className="hidden sm:block h-[140px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={threeMonthTrend}>
+                      <XAxis 
+                        dataKey="name" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.6)', fontWeight: 600 }} 
+                      />
+                      <YAxis hide />
+                      <Bar dataKey="income" fill="rgba(255,255,255,0.9)" radius={[4, 4, 0, 0]} barSize={12} />
+                      <Bar dataKey="expense" fill="rgba(255,255,255,0.4)" radius={[4, 4, 0, 0]} barSize={12} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
+              
+              {/* Hover effect overlay */}
+              <div className="absolute inset-0 bg-white/0 group-hover:bg-white/5 transition-colors pointer-events-none" />
             </div>
           </motion.div>
         )}
@@ -344,8 +412,4 @@ export default function Dashboard({ accounts, transactions, goals, budgets, cate
       )}
     </div>
   );
-}
-
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
 }
