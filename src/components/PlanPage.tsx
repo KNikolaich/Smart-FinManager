@@ -322,7 +322,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
 
       <div className="bg-white p-0 border-none shadow-none overflow-hidden flex-1 flex flex-col">
         {activeTab === 'now' || activeTab === 'past' ? (
-          <div className="w-full flex-1 overflow-y-auto overflow-x-auto">
+          <div className="w-full flex-1 overflow-y-auto overflow-x-auto no-scrollbar">
             <table className="w-full border-collapse">
               <thead className="sticky top-0 z-20">
                 <tr>
@@ -637,12 +637,12 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                   id="comment-editor"
                   value={planData.comment}
                   onChange={(e) => savePlanData({ ...planData, comment: e.target.value })}
-                  className="w-full h-full p-6 bg-neutral-50 border border-neutral-100 rounded-[32px] focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm resize-none shadow-inner"
+                  className="w-full h-full p-6 bg-neutral-50 border border-neutral-100 rounded-[32px] focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm resize-none shadow-inner no-scrollbar"
                   placeholder="Введите текст в формате Markdown..."
                   autoFocus
                 />
               ) : (
-                <div className="w-full h-full p-8 bg-white border border-neutral-100 rounded-[32px] overflow-auto prose prose-sm max-w-none shadow-sm">
+                <div className="w-full h-full p-8 bg-white border border-neutral-100 rounded-[32px] overflow-auto prose prose-sm max-w-none shadow-sm no-scrollbar">
                   <ReactMarkdown>{planData.comment}</ReactMarkdown>
                 </div>
               )}

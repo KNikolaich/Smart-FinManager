@@ -584,6 +584,104 @@ app.delete("/api/data/clear-transactions", authenticateToken, async (req: any, r
   }
 });
 
+// --- IMPORT ROUTES ---
+
+app.post("/api/import/batch", authenticateToken, async (req: any, res) => {
+  try {
+    const { accounts, categories, transactions } = req.body;
+    const userId = req.user.userId;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const createdAccounts: Record<string, string> = {};
+      const createdCategories: Record<string, string> = {};
+
+      // 1. Import Accounts
+      if (accounts && accounts.length > 0) {
+        for (const acc of accounts) {
+          const { id, ...data } = acc;
+          const created = await tx.account.create({
+            data: { ...data, userId }
+          });
+          if (id) createdAccounts[id] = created.id;
+        }
+      }
+
+      // 2. Import Categories
+      if (categories && categories.length > 0) {
+        // Sort categories to handle parentId (parents first)
+        // For simplicity, we assume parents are sent before children or we handle it in multiple passes
+        // In this app, categories are usually flat or have one level
+        for (const cat of categories) {
+          const { id, parentId, ...data } = cat;
+          const created = await tx.category.create({
+            data: { 
+              ...data, 
+              userId,
+              parentId: parentId && createdCategories[parentId] ? createdCategories[parentId] : null
+            }
+          });
+          if (id) createdCategories[id] = created.id;
+        }
+      }
+
+      // 3. Import Transactions
+      if (transactions && transactions.length > 0) {
+        for (const trans of transactions) {
+          const { accountId, targetAccountId, categoryId, subcategoryId, amount, createdAt, ...data } = trans;
+          
+          // Map IDs if they were provided in the import
+          const mappedAccountId = createdAccounts[accountId] || accountId;
+          const mappedTargetAccountId = targetAccountId ? (createdAccounts[targetAccountId] || targetAccountId) : null;
+          const mappedCategoryId = categoryId ? (createdCategories[categoryId] || categoryId) : null;
+          const mappedSubcategoryId = subcategoryId ? (createdCategories[subcategoryId] || subcategoryId) : null;
+
+          await tx.transaction.create({
+            data: {
+              ...data,
+              userId,
+              accountId: mappedAccountId,
+              targetAccountId: mappedTargetAccountId,
+              categoryId: mappedCategoryId,
+              subcategoryId: mappedSubcategoryId,
+              amount: Number(amount),
+              createdAt: createdAt ? new Date(createdAt) : new Date()
+            }
+          });
+
+          // Update balances
+          if (data.type === 'expense') {
+            await tx.account.update({
+              where: { id: mappedAccountId },
+              data: { balance: { decrement: Number(amount) } }
+            });
+          } else if (data.type === 'income') {
+            await tx.account.update({
+              where: { id: mappedAccountId },
+              data: { balance: { increment: Number(amount) } }
+            });
+          } else if (data.type === 'transfer' && mappedTargetAccountId) {
+            await tx.account.update({
+              where: { id: mappedAccountId },
+              data: { balance: { decrement: Number(amount) } }
+            });
+            await tx.account.update({
+              where: { id: mappedTargetAccountId },
+              data: { balance: { increment: Number(amount) } }
+            });
+          }
+        }
+      }
+
+      return { success: true };
+    });
+
+    res.json(result);
+  } catch (error: any) {
+    console.error("Batch Import Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // --- VITE MIDDLEWARE ---
 
 // Chat History

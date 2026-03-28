@@ -189,7 +189,7 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
-        <div className="h-full w-full max-w-7xl mx-auto overflow-hidden landscape:max-w-none">
+        <div className="h-full w-full max-w-7xl mx-auto overflow-y-auto no-scrollbar landscape:max-w-none">
           {renderContent()}
         </div>
       </main>

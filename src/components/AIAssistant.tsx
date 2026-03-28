@@ -311,7 +311,7 @@ export default function AIAssistant({ accounts, categories, transactions, budget
   return (
     <div className="flex flex-col h-full bg-neutral-50">
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-6 space-y-4 sm:space-y-6">
+      <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-6 space-y-4 sm:space-y-6 no-scrollbar">
         {messages.map((m) => (
           <div key={m.id} className={cn("flex gap-2 sm:gap-3", m.role === 'user' ? "flex-row-reverse" : "flex-row")}>
             <div className={cn(
