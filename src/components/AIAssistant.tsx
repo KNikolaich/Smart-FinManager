@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { Bot, Send, User, Sparkles, Loader2, PlusCircle, Target, PieChart, Calendar, Eraser } from 'lucide-react';
 import { processUserMessage, getFinancialAdvice } from '../services/aiService';
 import { api } from '../lib/api';
@@ -17,11 +17,19 @@ interface AIAssistantProps {
   onRefresh?: () => void;
 }
 
-export default function AIAssistant({ accounts, categories, transactions, budgets, goals, plans, userId, onRedirectToCreateGoal, onRefresh }: AIAssistantProps) {
+export interface AIAssistantHandle {
+  handleVoiceInput: () => void;
+}
+
+export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssistant({ accounts, categories, transactions, budgets, goals, plans, userId, onRedirectToCreateGoal, onRefresh }, ref) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    handleVoiceInput
+  }));
 
   useEffect(() => {
     if (!userId) return;
@@ -113,6 +121,40 @@ export default function AIAssistant({ accounts, categories, transactions, budget
     }
   };
 
+  const handleVoiceInput = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Ваш браузер не поддерживает голосовой ввод.');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'ru-RU';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      setLoading(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(transcript);
+      handleSend(transcript);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error', event.error);
+      setLoading(false);
+    };
+
+    recognition.onend = () => {
+      setLoading(false);
+    };
+
+    recognition.start();
+  };
+
   const confirmAction = async (msgId: string, type: string, data: any) => {
     try {
       if (!data) {
@@ -124,7 +166,8 @@ export default function AIAssistant({ accounts, categories, transactions, budget
         const searchId = String(idOrName || '').toLowerCase().trim();
         const searchName = String(name || '').toLowerCase().trim();
 
-        return accounts.find(a => {
+        const filteredAccounts = accounts.filter(a => a.showOnDashboard && !a.isArchived);
+        return filteredAccounts.find(a => {
           const accName = a.name.toLowerCase().trim();
           const accId = String(a.id).toLowerCase().trim();
           return (searchId && (accId === searchId || accName === searchId || accName.includes(searchId) || searchId.includes(accName))) ||
@@ -416,6 +459,7 @@ export default function AIAssistant({ accounts, categories, transactions, budget
     </div>
   );
 }
+);
 
 function cn(...inputs: any[]) {
   return inputs.filter(Boolean).join(' ');

@@ -106,8 +106,7 @@ export default function AccountManager({ accounts, userId, onClose, onRefresh }:
     setLoading(true);
     try {
       await api.delete(`/accounts/${id}`);
-      setConfirmDeleteId(null);
-      onRefresh?.();
+      resetForm();
     } catch (error) {
       console.error('Error deleting account:', error);
     } finally {

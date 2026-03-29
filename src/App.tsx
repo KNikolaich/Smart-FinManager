@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   LayoutDashboard, 
   CalendarRange, 
@@ -6,6 +6,7 @@ import {
   Settings as SettingsIcon, 
   Bot, 
   Plus,
+  Mic,
   X,
   LogOut,
   User as UserIcon,
@@ -28,7 +29,38 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'plan' | 'analytics' | 'settings' | 'ai'>('dashboard');
   const [showAddTransaction, setShowAddTransaction] = useState(false);
+  const [addMode, setAddMode] = useState<'text' | 'voice'>(() => (localStorage.getItem('addMode') as 'text' | 'voice') || 'text');
   const [showAILogs, setShowAILogs] = useState(false);
+  const aiAssistantRef = useRef<any>(null);
+  
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem('addMode', addMode);
+  }, [addMode]);
+
+  const handleMouseDown = () => {
+    longPressTimer.current = setTimeout(() => {
+      setAddMode(prev => prev === 'text' ? 'voice' : 'text');
+    }, 2000);
+  };
+
+  const handleMouseUp = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+  };
+
+  const handleButtonClick = () => {
+    if (addMode === 'text') {
+      setShowAddTransaction(true);
+    } else {
+      if (aiAssistantRef.current) {
+        aiAssistantRef.current.handleVoiceInput();
+        setActiveTab('ai');
+      }
+    }
+  };
   const [showTotalBalance, setShowTotalBalance] = useState(() => {
     const saved = localStorage.getItem('showTotalBalance');
     return saved !== null ? JSON.parse(saved) : true;
@@ -147,6 +179,7 @@ export default function App() {
       case 'ai':
         return (
           <AIAssistant 
+            ref={aiAssistantRef}
             accounts={accounts} 
             categories={categories} 
             transactions={transactions} 
@@ -226,11 +259,18 @@ export default function App() {
           {/* Add Button */}
           <div className="relative">
             <button 
-              onClick={() => setShowAddTransaction(true)}
-              className="w-14 h-14 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-200 active:scale-90 transition-all landscape:w-auto landscape:h-auto landscape:px-6 landscape:py-1 landscape:rounded-lg landscape:shadow-none"
+              onMouseDown={handleMouseDown}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onTouchStart={handleMouseDown}
+              onTouchEnd={handleMouseUp}
+              onClick={handleButtonClick}
+              className="w-14 h-14 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-xl shadow-emerald-200 active:scale-90 transition-all landscape:w-auto landscape:h-auto landscape:px-6 landscape:py-1 landscape:rounded-lg landscape:shadow-none"
             >
-              <Plus size={32} />
-              <span className="hidden landscape:block text-[11px] font-bold uppercase tracking-tighter">Пуск</span>
+              {addMode === 'text' ? <Plus size={32} /> : <Mic size={32} />}
+              <span className="hidden landscape:block text-[11px] font-bold uppercase tracking-tighter">
+                {addMode === 'text' ? 'Пуск' : 'Голос'}
+              </span>
             </button>
           </div>
 

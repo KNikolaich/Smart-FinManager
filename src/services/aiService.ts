@@ -38,12 +38,12 @@ export const processUserMessage = async (
   budgets: Budget[],
   plans: Plan[]
 ): Promise<AIResponse> => {
-  const mainAccounts = accounts.filter(a => a.showOnDashboard);
+  const mainAccounts = accounts.filter(a => a.showOnDashboard && !a.isArchived);
   
   const systemInstruction = `Ты — вежливый, краткий и обходительный финансовый ассистент. Твоя задача — помогать пользователю управлять финансами. Отвечай на русском языке. Если видишь, что необходимо создать цель или операцию, возвращай строго типизированный объект со всеми найдеными свойствами операции или цели. Все извлеченные данные (сумма, счета, категории, названия) ОБЯЗАТЕЛЬНО должны быть помещены в соответствующие поля объекта 'data'. Не пропускай ни одного поля, если данные для него есть. Будь настойчив, если необходима консультация по бюджету и видишь проблемы, не стесняйся о них сообщить. Ответ пользователю должен быть лаконичен и точен. ВАЖНО: Твой ответ должен быть ТОЛЬКО чистым JSON объектом без каких-либо пояснений или рассуждений внутри полей.
 
   REFERENCE DATA (Use these IDs for structured output):
-  Available Accounts: ${JSON.stringify(accounts.map(a => ({ id: a.id, name: a.name })))}
+  Available Accounts: ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name })))}
   All Categories: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name, type: c.type })))}
   
   Current goals: ${JSON.stringify(goals.map(g => ({ id: g.id, name: g.name, target: g.targetAmount, current: g.currentAmount })))}
