@@ -28,6 +28,7 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
   const [clearing, setClearing] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showClearTransactionsConfirm, setShowClearTransactionsConfirm] = useState(false);
+  const [showSeedConfirm, setShowSeedConfirm] = useState(false);
   const [password, setPassword] = useState('');
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showCurrencyTable, setShowCurrencyTable] = useState(false);
@@ -98,13 +99,26 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
     }
   };
 
+  const verifyPassword = async () => {
+    try {
+      await api.post('/auth/verify-password', { password });
+      return true;
+    } catch (error) {
+      alert('Неверный пароль');
+      return false;
+    }
+  };
+
   const seedInitialData = async () => {
+    if (!(await verifyPassword())) return;
     setSeeding(true);
     setSuccess(false);
     try {
       await generateDemoData(user.id);
       setSuccess(true);
       onRefresh();
+      setShowSeedConfirm(false);
+      setPassword('');
       setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
       console.error('Seed error:', error);
@@ -114,10 +128,7 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
   };
 
   const clearAllData = async () => {
-    if (password !== '1234') {
-      alert('Неверный пароль');
-      return;
-    }
+    if (!(await verifyPassword())) return;
     setClearing(true);
     try {
       await api.delete('/data/clear');
@@ -132,10 +143,7 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
   };
 
   const clearTransactionsOnly = async () => {
-    if (password !== '1234') {
-      alert('Неверный пароль');
-      return;
-    }
+    if (!(await verifyPassword())) return;
     setClearing(true);
     try {
       await api.delete('/data/clear-transactions');
@@ -286,6 +294,47 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
           </div>
         )}
 
+        {/* Seed Data Confirmation Overlay */}
+        {showSeedConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-full max-w-md bg-white rounded-[32px] p-8 text-center shadow-2xl animate-in zoom-in duration-200 border border-amber-100">
+              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Sparkles className="w-8 h-8 text-amber-600" />
+              </div>
+              <h3 className="text-xl font-bold text-neutral-900 mb-2">Создать демо-данные?</h3>
+              <p className="text-neutral-500 mb-8 text-sm">Будут добавлены 3 карты и операции за 3 месяца.</p>
+              <input
+                type="password"
+                placeholder="Введите пароль"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-neutral-100 p-4 rounded-2xl mb-4 text-center"
+              />
+              <div className="flex flex-col w-full gap-3">
+                <button
+                  onClick={seedInitialData}
+                  disabled={seeding}
+                  className="w-full bg-amber-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-amber-100 hover:bg-amber-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {seeding ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Sparkles className="w-5 h-5" />
+                  )}
+                  Создать
+                </button>
+                <button
+                  onClick={() => { setShowSeedConfirm(false); setPassword(''); }}
+                  disabled={seeding}
+                  className="w-full bg-neutral-100 text-neutral-600 font-bold py-4 rounded-2xl hover:bg-neutral-200 transition-all active:scale-95"
+                >
+                  Отмена
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Clear Data Confirmation Overlay */}
         {showClearConfirm && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
@@ -374,7 +423,7 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
           <div className="bg-white rounded-3xl border border-neutral-100 overflow-hidden shadow-sm">
             <div className="flex items-center border-b border-neutral-50">
               <button 
-                onClick={seedInitialData}
+                onClick={() => setShowSeedConfirm(true)}
                 disabled={seeding || success}
                 className="flex-1 px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors"
               >

@@ -86,6 +86,19 @@ app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
   }
 });
 
+app.post("/api/auth/verify-password", authenticateToken, async (req: any, res) => {
+  try {
+    const { password } = req.body;
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ error: "Invalid password" });
+    }
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // --- DATA ROUTES ---
 
 // Accounts
