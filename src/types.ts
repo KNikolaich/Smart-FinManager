@@ -138,6 +138,7 @@ export interface Currency {
   curUid: string;
   name: string;
   iso: string;
+  rate: number;
 }
 
 export interface Message {

@@ -248,14 +248,21 @@ export default function AIAssistant({ accounts, categories, transactions, budget
 
         const accountId = foundAccount.id;
 
-        await api.post('/plans', {
+        const newPlan: Plan = {
+          id: Math.random().toString(36).substring(2, 9),
+          userId: userId,
           name,
           plannedAmount,
           accountId,
-          priority: data.priority || 'medium',
+          priority: (data.priority as any) || 'medium',
           dateOfFinish: data.dateOfFinish || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString(),
           month: new Date().toISOString().slice(0, 7)
-        });
+        };
+
+        const savedPlans = localStorage.getItem('ai_temporary_plans');
+        const currentPlans = savedPlans ? JSON.parse(savedPlans) : [];
+        localStorage.setItem('ai_temporary_plans', JSON.stringify([...currentPlans, newPlan]));
+        
         if (onRefresh) onRefresh();
       }
 

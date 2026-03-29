@@ -23,13 +23,16 @@ model User {
   transactions Transaction[]
   goals        Goal[]
   budgets      Budget[]
-  plans        Plan[]
+  planGrid     PlanGrid?
   chatMessages ChatMessage[]
   aiLogs       AiLog[]
+
+  @@map("users")
 }
 
 model Account {
   id              String   @id @default(uuid())
+  uid             String?
   userId          String
   name            String
   type            String
@@ -46,7 +49,8 @@ model Account {
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[] @relation("AccountTransactions")
   targetTrans  Transaction[] @relation("TargetAccountTransactions")
-  plans        Plan[]
+
+  @@map("accounts")
 }
 
 model Category {
@@ -64,6 +68,8 @@ model Category {
   children     Category[]    @relation("CategoryToSubcategory")
   transactions Transaction[]
   budgets      Budget[]
+
+  @@map("categories")
 }
 
 model Transaction {
@@ -82,6 +88,8 @@ model Transaction {
   account       Account   @relation("AccountTransactions", fields: [accountId], references: [id])
   targetAccount Account?  @relation("TargetAccountTransactions", fields: [targetAccountId], references: [id])
   category      Category? @relation(fields: [categoryId], references: [id])
+
+  @@map("transactions")
 }
 
 model Goal {
@@ -97,6 +105,8 @@ model Goal {
   createdAt     DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("goals")
 }
 
 model Budget {
@@ -109,21 +119,19 @@ model Budget {
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id])
+
+  @@map("budgets")
 }
 
-model Plan {
-  id            String   @id @default(uuid())
-  userId        String
-  name          String
-  plannedAmount Float
-  accountId     String
-  priority      String   @default("medium")
-  dateOfFinish  DateTime
-  month         String
-  createdAt     DateTime @default(now())
+model PlanGrid {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  data      Json
+  updatedAt DateTime @updatedAt
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  account Account @relation(fields: [accountId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("plan_grids")
 }
 
 model Currency {
@@ -131,6 +139,9 @@ model Currency {
   curUid String @unique
   name   String
   iso    String
+  rate   Float  @default(1.0)
+
+  @@map("currencies")
 }
 
 model ChatMessage {
@@ -143,6 +154,8 @@ model ChatMessage {
   actionType String?
   actionData String?
   createdAt  DateTime @default(now())
+
+  @@map("chat_messages")
 }
 
 model AiLog {
@@ -154,4 +167,6 @@ model AiLog {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("ai_logs")
 }

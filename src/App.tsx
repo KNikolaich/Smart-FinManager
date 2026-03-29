@@ -41,25 +41,32 @@ export default function App() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plans, setPlans] = useState<Plan[]>(() => {
+    const saved = localStorage.getItem('ai_temporary_plans');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const refreshData = useCallback(async () => {
     if (!user) return;
     try {
-      const [accs, trans, gls, bdgs, cats, plns] = await Promise.all([
+      const [accs, trans, gls, bdgs, cats] = await Promise.all([
         api.get<Account[]>('/accounts'),
         api.get<Transaction[]>('/transactions'),
         api.get<Goal[]>('/goals'),
         api.get<Budget[]>('/budgets'),
         api.get<Category[]>('/categories'),
-        api.get<Plan[]>('/plans').catch(() => []),
       ]);
       setAccounts(accs);
       setTransactions(trans);
       setGoals(gls);
       setBudgets(bdgs);
       setCategories(cats);
-      setPlans(plns);
+      
+      // Load plans from localStorage
+      const savedPlans = localStorage.getItem('ai_temporary_plans');
+      if (savedPlans) {
+        setPlans(JSON.parse(savedPlans));
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -68,6 +75,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('showTotalBalance', JSON.stringify(showTotalBalance));
   }, [showTotalBalance]);
+
+  useEffect(() => {
+    localStorage.setItem('ai_temporary_plans', JSON.stringify(plans));
+  }, [plans]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -158,7 +169,7 @@ export default function App() {
   return (
     <div className="h-screen bg-neutral-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="px-6 py-4 flex items-center justify-between bg-white border-b border-neutral-100 shrink-0 z-40 landscape:hidden">
+      <header className="px-6 py-4 flex items-center justify-between bg-white border-b border-neutral-100 shrink-0 z-40 [@media(max-width:767px)_and_(orientation:landscape)]:hidden">
         <div 
           className="flex items-center gap-3 cursor-pointer group"
           onClick={() => setShowTotalBalance(!showTotalBalance)}
@@ -195,30 +206,30 @@ export default function App() {
       </main>
 
       {/* Navigation Bar */}
-      <nav className="bg-white border-t border-neutral-100 px-6 py-3 pb-safe shrink-0 z-40 flex items-center justify-between shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.05)] landscape:py-1 landscape:px-4">
-        <div className="max-w-7xl mx-auto w-full flex items-center justify-between relative">
+      <nav className="bg-white border-t border-neutral-100 px-6 py-3 pb-safe shrink-0 z-40 flex items-center justify-center shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.05)] landscape:py-1 landscape:px-4">
+        <div className="max-w-7xl mx-auto w-full flex items-center justify-around relative">
           <button 
             onClick={() => setActiveTab('dashboard')}
             className={cn("flex flex-col items-center gap-1 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'dashboard' ? "text-emerald-600 landscape:bg-emerald-50" : "text-neutral-400")}
           >
-            <LayoutDashboard size={22} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} className="landscape:hidden" />
-            <span className="text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">Главная</span>
+            <LayoutDashboard size={22} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
+            <span className="hidden landscape:block text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">Главная</span>
           </button>
           <button 
             onClick={() => setActiveTab('plan')}
             className={cn("flex flex-col items-center gap-1 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'plan' ? "text-emerald-600 landscape:bg-emerald-50" : "text-neutral-400")}
           >
-            <CalendarRange size={22} strokeWidth={activeTab === 'plan' ? 2.5 : 2} className="landscape:hidden" />
-            <span className="text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">План</span>
+            <CalendarRange size={22} strokeWidth={activeTab === 'plan' ? 2.5 : 2} />
+            <span className="hidden landscape:block text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">План</span>
           </button>
           
           {/* Add Button */}
-          <div className="relative -top-6 landscape:top-0">
+          <div className="relative">
             <button 
               onClick={() => setShowAddTransaction(true)}
               className="w-14 h-14 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-200 active:scale-90 transition-all landscape:w-auto landscape:h-auto landscape:px-6 landscape:py-1 landscape:rounded-lg landscape:shadow-none"
             >
-              <Plus size={32} className="landscape:hidden" />
+              <Plus size={32} />
               <span className="hidden landscape:block text-[11px] font-bold uppercase tracking-tighter">Пуск</span>
             </button>
           </div>
@@ -227,15 +238,15 @@ export default function App() {
             onClick={() => setActiveTab('analytics')}
             className={cn("flex flex-col items-center gap-1 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'analytics' ? "text-emerald-600 landscape:bg-emerald-50" : "text-neutral-400")}
           >
-            <BarChart2 size={22} strokeWidth={activeTab === 'analytics' ? 2.5 : 2} className="landscape:hidden" />
-            <span className="text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">Анализ</span>
+            <BarChart2 size={22} strokeWidth={activeTab === 'analytics' ? 2.5 : 2} />
+            <span className="hidden landscape:block text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">Анализ</span>
           </button>
           <button 
             onClick={() => setActiveTab('settings')}
             className={cn("flex flex-col items-center gap-1 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'settings' ? "text-emerald-600 landscape:bg-emerald-50" : "text-neutral-400")}
           >
-            <SettingsIcon size={22} strokeWidth={activeTab === 'settings' ? 2.5 : 2} className="landscape:hidden" />
-            <span className="text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">Настройки</span>
+            <SettingsIcon size={22} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
+            <span className="hidden landscape:block text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">Настройки</span>
           </button>
         </div>
       </nav>

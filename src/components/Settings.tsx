@@ -38,15 +38,10 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
   const [importResult, setImportResult] = useState<{ success: boolean; count: number } | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const mmbakInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
-  };
-
-  const handleMMBAKClick = () => {
-    mmbakInputRef.current?.click();
   };
 
   const handleJSONClick = () => {
@@ -60,7 +55,7 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, isJson: boolean = false) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -94,9 +89,11 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
       setImporting(false);
       setImportProgress(0);
       abortControllerRef.current = null;
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      if (mmbakInputRef.current) mmbakInputRef.current.value = '';
-      if (jsonInputRef.current) jsonInputRef.current.value = '';
+      if (isJson) {
+        if (jsonInputRef.current) jsonInputRef.current.value = '';
+      } else {
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -413,7 +410,7 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
               <input
                 type="file"
                 ref={fileInputRef}
-                onChange={(e) => handleFileChange(e)}
+                onChange={(e) => handleFileChange(e, false)}
                 accept=".csv,.xlsx,.xls"
                 className="hidden"
               />
@@ -481,83 +478,6 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
             </div>
 
             <div 
-              onClick={handleMMBAKClick}
-              className={cn(
-                "w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50 cursor-pointer",
-                importing && "pointer-events-none opacity-80"
-              )}
-            >
-              <input
-                type="file"
-                ref={mmbakInputRef}
-                onChange={(e) => handleFileChange(e)}
-                accept=".mmbak"
-                className="hidden"
-              />
-              <div className={cn(
-                "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
-                importResult?.success ? "bg-emerald-100" : "bg-indigo-100"
-              )}>
-                {importing ? (
-                  <div className="w-5 h-5 border-2 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin" />
-                ) : importResult?.success ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                ) : (
-                  <Database className="w-5 h-5 text-indigo-600" />
-                )}
-              </div>
-              <div className="text-left flex-1">
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold text-sm">
-                    {importing ? 'Импорт...' : importResult?.success ? `Импортировано: ${importResult.count}` : 'Импорт из Money Manager'}
-                  </p>
-                  {importLogs.length > 0 && !importing && (
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowLogModal(true);
-                      }}
-                      className="p-1.5 hover:bg-indigo-100 rounded-lg text-indigo-500 transition-all active:scale-90"
-                      title="Показать логи"
-                    >
-                      <AlertCircle size={18} />
-                    </button>
-                  )}
-                </div>
-                <p className="text-xs text-neutral-400">Загрузить .mmbak файл базы данных</p>
-                {importing && (
-                  <div className="mt-2 space-y-2">
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 bg-neutral-100 rounded-full h-1.5 overflow-hidden">
-                        <div 
-                          className="bg-indigo-500 h-full transition-all duration-300" 
-                          style={{ width: `${importProgress}%` }}
-                        />
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleStopImport();
-                        }}
-                        className="px-2 py-1 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-lg hover:bg-rose-100 transition-colors pointer-events-auto"
-                      >
-                        СТОП
-                      </button>
-                    </div>
-                    <div className="bg-neutral-50 rounded-lg p-2 max-h-32 overflow-y-auto text-[10px] font-mono text-neutral-500 space-y-1">
-                      {importLogs.map((log, idx) => (
-                        <div key={idx} className="flex gap-2">
-                          <span className="text-neutral-300">[{new Date().toLocaleTimeString()}]</span>
-                          <span>{log}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div 
               onClick={handleJSONClick}
               className={cn(
                 "w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors cursor-pointer",
@@ -567,7 +487,7 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
               <input
                 type="file"
                 ref={jsonInputRef}
-                onChange={(e) => handleFileChange(e)}
+                onChange={(e) => handleFileChange(e, true)}
                 accept=".json"
                 className="hidden"
               />

@@ -23,6 +23,18 @@ export const currencyService = {
     return () => clearInterval(interval);
   },
 
+  async updateCurrency(currency: Currency): Promise<void> {
+    await api.put(`/currencies/${currency.id}`, currency);
+  },
+
+  async deleteCurrency(id: string): Promise<void> {
+    await api.delete(`/currencies/${id}`);
+  },
+
+  async addCurrency(currency: Omit<Currency, 'id'>): Promise<void> {
+    await api.post('/currencies', currency);
+  },
+
   async seedDefaultCurrencies() {
     try {
       await api.post('/currencies/seed', {});

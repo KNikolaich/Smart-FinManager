@@ -22,13 +22,17 @@ const authenticateToken = (req: any, res: any, next: any) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
-  if (!token) return res.status(401).json({ error: "Unauthorized" });
+  if (!token) {
+    console.log("No token provided");
+    return res.status(401).json({ error: "Unauthorized" });
+  }
 
   jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
     if (err) {
       console.error("JWT Verification Error:", err.message);
       return res.status(403).json({ error: "Forbidden" });
     }
+    console.log("User authenticated:", user.userId);
     req.user = user;
     next();
   });
@@ -463,54 +467,29 @@ app.delete("/api/budgets/:id", authenticateToken, async (req: any, res) => {
   }
 });
 
-// Plans
-app.get("/api/plans", authenticateToken, async (req: any, res) => {
+// PlanGrid (Complex Grid)
+app.get("/api/plan-grid", authenticateToken, async (req: any, res) => {
+  console.log("Fetching plan grid for user:", req.user.userId);
   try {
-    const plans = await prisma.plan.findMany({ where: { userId: req.user.userId } });
-    res.json(plans);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post("/api/plans", authenticateToken, async (req: any, res) => {
-  try {
-    const { plannedAmount, dateOfFinish, ...rest } = req.body;
-    const plan = await prisma.plan.create({
-      data: { 
-        ...rest, 
-        plannedAmount: Number(plannedAmount),
-        dateOfFinish: new Date(dateOfFinish),
-        userId: req.user.userId 
-      },
+    const planGrid = await prisma.planGrid.findUnique({
+      where: { userId: req.user.userId }
     });
-    res.json(plan);
+    console.log("Plan grid found:", !!planGrid);
+    res.json(planGrid ? planGrid.data : null);
   } catch (error: any) {
+    console.error("Error fetching plan grid:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
-app.put("/api/plans/:id", authenticateToken, async (req: any, res) => {
+app.post("/api/plan-grid", authenticateToken, async (req: any, res) => {
   try {
-    const { plannedAmount, dateOfFinish, ...rest } = req.body;
-    const updateData: any = { ...rest };
-    if (plannedAmount !== undefined) updateData.plannedAmount = Number(plannedAmount);
-    if (dateOfFinish !== undefined) updateData.dateOfFinish = new Date(dateOfFinish);
-
-    const plan = await prisma.plan.update({
-      where: { id: req.params.id, userId: req.user.userId },
-      data: updateData,
+    const planGrid = await prisma.planGrid.upsert({
+      where: { userId: req.user.userId },
+      update: { data: req.body },
+      create: { userId: req.user.userId, data: req.body }
     });
-    res.json(plan);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.delete("/api/plans/:id", authenticateToken, async (req: any, res) => {
-  try {
-    await prisma.plan.delete({ where: { id: req.params.id, userId: req.user.userId } });
-    res.json({ success: true });
+    res.json(planGrid.data);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -526,22 +505,55 @@ app.get("/api/currencies", authenticateToken, async (req: any, res) => {
   }
 });
 
+app.post("/api/currencies", authenticateToken, async (req: any, res) => {
+  try {
+    const currency = await prisma.currency.create({ data: req.body });
+    res.json(currency);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put("/api/currencies/:id", authenticateToken, async (req: any, res) => {
+  try {
+    const currency = await prisma.currency.update({
+      where: { id: req.params.id },
+      data: req.body
+    });
+    res.json(currency);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/api/currencies/:id", authenticateToken, async (req: any, res) => {
+  try {
+    await prisma.currency.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post("/api/currencies/seed", authenticateToken, async (req: any, res) => {
   try {
+    const count = await prisma.currency.count();
+    if (count > 0) {
+      return res.json({ success: true });
+    }
+
     const defaults = [
-      { curUid: 'RUB', name: 'RUB - Russia (руб)', iso: 'RUB' },
-      { curUid: 'USD', name: 'USD - USA (US$)', iso: 'USD' },
-      { curUid: 'EUR', name: 'EUR - European Union (€)', iso: 'EUR' },
-      { curUid: 'GBP', name: 'GBP - United Kingdom (£)', iso: 'GBP' },
-      { curUid: 'JPY', name: 'JPY - Japan (¥)', iso: 'JPY' },
-      { curUid: 'CNY', name: 'CNY - China (¥)', iso: 'CNY' },
+      { curUid: 'RUB', name: 'RUB - Russia (руб)', iso: 'RUB', rate: 1.0 },
+      { curUid: 'USD', name: 'USD - USA (US$)', iso: 'USD', rate: 1.0 },
+      { curUid: 'EUR', name: 'EUR - European Union (€)', iso: 'EUR', rate: 1.0 },
+      { curUid: 'GBP', name: 'GBP - United Kingdom (£)', iso: 'GBP', rate: 1.0 },
+      { curUid: 'JPY', name: 'JPY - Japan (¥)', iso: 'JPY', rate: 1.0 },
+      { curUid: 'CNY', name: 'CNY - China (¥)', iso: 'CNY', rate: 1.0 },
     ];
 
     for (const cur of defaults) {
-      await prisma.currency.upsert({
-        where: { curUid: cur.curUid },
-        update: {},
-        create: cur,
+      await prisma.currency.create({
+        data: cur
       });
     }
     res.json({ success: true });
@@ -560,7 +572,7 @@ app.delete("/api/data/clear", authenticateToken, async (req: any, res) => {
       prisma.category.deleteMany({ where: { userId } }),
       prisma.goal.deleteMany({ where: { userId } }),
       prisma.budget.deleteMany({ where: { userId } }),
-      prisma.plan.deleteMany({ where: { userId } }),
+      prisma.planGrid.deleteMany({ where: { userId } }),
     ]);
     res.json({ success: true });
   } catch (error: any) {
@@ -588,94 +600,208 @@ app.delete("/api/data/clear-transactions", authenticateToken, async (req: any, r
 
 app.post("/api/import/batch", authenticateToken, async (req: any, res) => {
   try {
-    const { accounts, categories, transactions } = req.body;
+    console.log("Batch import request body keys:", Object.keys(req.body));
+    const { accounts, categories, transactions, goals } = req.body;
     const userId = req.user.userId;
 
-    const result = await prisma.$transaction(async (tx) => {
-      const createdAccounts: Record<string, string> = {};
-      const createdCategories: Record<string, string> = {};
+    const createdAccounts: Record<string, string> = {};
+    const createdCategories: Record<string, string> = {};
+    const createdGoals: Record<string, string> = {};
 
-      // 1. Import Accounts
-      if (accounts && accounts.length > 0) {
-        for (const acc of accounts) {
-          const { id, ...data } = acc;
-          const created = await tx.account.create({
-            data: { ...data, userId }
-          });
-          if (id) createdAccounts[id] = created.id;
-        }
+    // Fetch existing accounts for validation
+    const existingAccounts = await prisma.account.findMany({ where: { userId }, select: { id: true } });
+    const validAccountIds = new Set(existingAccounts.map(a => a.id));
+
+    // 1. Import Accounts
+    if (accounts && accounts.length > 0) {
+      for (const acc of accounts) {
+        const { id, uid, currencyUid, ...data } = acc;
+        
+        // Handle currency
+        let currencyCode = 'RUB';
+        if (currencyUid === 'RUB_RUB') currencyCode = 'RUB';
+        else if (currencyUid === 'RUB_USD') currencyCode = 'USD';
+        else if (acc.currency) currencyCode = acc.currency;
+
+        // Ensure currency exists
+        await prisma.currency.upsert({
+          where: { curUid: currencyCode },
+          update: {},
+          create: { curUid: currencyCode, name: currencyCode === 'RUB' ? 'Рубль' : 'Доллар', iso: currencyCode }
+        });
+
+        // Ensure account exists or update it
+        const created = await prisma.account.upsert({
+          where: { id: id },
+          update: { ...data, uid: String(uid || id), userId, currency: currencyCode },
+          create: { ...data, id: id, uid: String(uid || id), userId, currency: currencyCode }
+        });
+        console.log("Upserted account:", JSON.stringify(created));
+        if (id) createdAccounts[String(id)] = created.id;
+        validAccountIds.add(created.id);
       }
+    }
 
-      // 2. Import Categories
-      if (categories && categories.length > 0) {
-        // Sort categories to handle parentId (parents first)
-        // For simplicity, we assume parents are sent before children or we handle it in multiple passes
-        // In this app, categories are usually flat or have one level
-        for (const cat of categories) {
-          const { id, parentId, ...data } = cat;
-          const created = await tx.category.create({
-            data: { 
-              ...data, 
-              userId,
-              parentId: parentId && createdCategories[parentId] ? createdCategories[parentId] : null
-            }
-          });
-          if (id) createdCategories[id] = created.id;
-        }
-      }
+    // 2. Import Categories
+    if (categories && categories.length > 0) {
+      const iconMap: Record<string, string> = {
+        'железяки': '🛠️', 'кухня': '🛠️', 'мебель и уют': '🛠️', 'мелочной товар': '🛠️', 'ремонт': '🛠️', 'техника': '🛠️', 'туалетные принадлежности': '🛠️',
+        'друг и другое на работе': '🎁',
+        'Другая': '✏️',
+        'Аксесуары, линзы': '🏥', 'зубы': '🏥', 'йога': '🏥', 'лекарства': '🏥', 'медицина': '🏥', 'прием врача': '🏥', 'суставы и глаза': '🏥',
+        'аксессуары': '✨', 'косметика': '✨', 'макияж': '✨', 'услуги': '✨',
+        'Кино': '🎭', 'Книга': '🎭', 'Музыка': '🎭', 'приложение': '🎭', 'театр': '🎭', 'цирк': '🎭', 'экскурсии': '🎭',
+        'мода': '👕', 'обувь': '👕', 'Одежда': '👕', 'Прачечная': '👕', 'Украшения и девайсы': '👕',
+        'госпоборы': '💰', 'интернет и сервисы': '💰', 'кв плата': '💰', 'проценты': '💰', 'связь и и-нет и сервисы': '💰', 'страховки': '💰',
+        'в школе': '🛒', 'животным': '🛒', 'кофе/напитки': '🛒', 'обеды/ужины': '🛒', 'поход в магазин': '🛒', 'Рестораны/ кафе/напитки': '🛒',
+        'братство': '🎮', 'кино, театр, цирк': '🎮', 'Отдых и аксесуары': '🎮', 'Подарки и праздник': '🎮', 'Пробухано': '🎮',
+        'Игры': '🎓', 'музыка': '🎓', 'образование': '🎓', 'Спорт': '🎓', 'финансы': '🎓', 'хобби': '🎓',
+        'авто / бензин': '✈️', 'Автобус, жд': '✈️', 'Вело': '✈️', 'запчасти и ремонт': '✈️', 'Метро': '✈️', 'мойка и др, обслуживающие': '✈️', 'страховка или штрафы': '✈️', 'Tакси': '✈️',
+        'дачные ништяки': '🛠️', 'материалы для ремонтов': '🛠️', 'материалы и работы': '🛠️', 'растения и садоводство': '🛠️', 'техника и инструменты': '🛠️',
+        'академия': '📚', 'обучение': '📚', 'поборы': '📚', 'учебники': '📚', 'Школьные принадлежности': '📚',
+        'халтура': '🔨',
+        'Бонус': '💳',
+        'Др.': '💡',
+        'Зарплата': '💰',
+        'Карманные деньги': '🍿',
+        'Такси': '🚕',
+        'Халтура': '💻'
+      };
 
-      // 3. Import Transactions
-      if (transactions && transactions.length > 0) {
-        for (const trans of transactions) {
-          const { accountId, targetAccountId, categoryId, subcategoryId, amount, createdAt, ...data } = trans;
-          
-          // Map IDs if they were provided in the import
-          const mappedAccountId = createdAccounts[accountId] || accountId;
-          const mappedTargetAccountId = targetAccountId ? (createdAccounts[targetAccountId] || targetAccountId) : null;
-          const mappedCategoryId = categoryId ? (createdCategories[categoryId] || categoryId) : null;
-          const mappedSubcategoryId = subcategoryId ? (createdCategories[subcategoryId] || subcategoryId) : null;
-
-          await tx.transaction.create({
-            data: {
-              ...data,
-              userId,
-              accountId: mappedAccountId,
-              targetAccountId: mappedTargetAccountId,
-              categoryId: mappedCategoryId,
-              subcategoryId: mappedSubcategoryId,
-              amount: Number(amount),
-              createdAt: createdAt ? new Date(createdAt) : new Date()
-            }
-          });
-
-          // Update balances
-          if (data.type === 'expense') {
-            await tx.account.update({
-              where: { id: mappedAccountId },
-              data: { balance: { decrement: Number(amount) } }
-            });
-          } else if (data.type === 'income') {
-            await tx.account.update({
-              where: { id: mappedAccountId },
-              data: { balance: { increment: Number(amount) } }
-            });
-          } else if (data.type === 'transfer' && mappedTargetAccountId) {
-            await tx.account.update({
-              where: { id: mappedAccountId },
-              data: { balance: { decrement: Number(amount) } }
-            });
-            await tx.account.update({
-              where: { id: mappedTargetAccountId },
-              data: { balance: { increment: Number(amount) } }
-            });
+      for (const cat of categories) {
+        const { id, parentId, ...data } = cat;
+        
+        // Apply icon if not already set
+        if (!data.icon) {
+          const icon = iconMap[data.name];
+          if (icon) {
+            data.icon = icon;
           }
         }
+
+        const created = await prisma.category.upsert({
+          where: { id: id },
+          update: { 
+            ...data, 
+            userId,
+            parentId: parentId && createdCategories[parentId] ? createdCategories[parentId] : null
+          },
+          create: { 
+            ...data, 
+            id: id,
+            userId,
+            parentId: parentId && createdCategories[parentId] ? createdCategories[parentId] : null
+          }
+        });
+        if (id) createdCategories[id] = created.id;
       }
+    }
 
-      return { success: true };
-    });
+    // 3. Import Goals
+    if (goals && goals.length > 0) {
+      console.log("Importing goals:", JSON.stringify(goals));
+      for (const goal of goals) {
+        const { id, deadline, ...data } = goal;
+        console.log("Upserting goal:", id, JSON.stringify(data));
+        const created = await prisma.goal.upsert({
+          where: { id: id },
+          update: { 
+            ...data,
+            deadline: deadline ? new Date(deadline) : null,
+            userId
+          },
+          create: { 
+            ...data,
+            id: id,
+            deadline: deadline ? new Date(deadline) : null,
+            userId
+          }
+        });
+        console.log("Upserted goal:", created.id);
+        if (id) createdGoals[id] = created.id;
+      }
+    }
 
-    res.json(result);
+    // 4. Import Transactions
+    if (transactions && transactions.length > 0) {
+      for (const trans of transactions) {
+        const { accountId, targetAccountId, categoryId, subcategoryId, amount, createdAt, ...data } = trans;
+        
+        // Map IDs if they were provided in the import
+        let mappedAccountId = createdAccounts[accountId] || accountId;
+        let mappedTargetAccountId = targetAccountId ? (createdAccounts[targetAccountId] || targetAccountId) : null;
+        const mappedCategoryId = categoryId ? (createdCategories[categoryId] || categoryId) : null;
+        const mappedSubcategoryId = subcategoryId ? (createdCategories[subcategoryId] || subcategoryId) : null;
+
+        // Validate account IDs, try to find by name if not found
+        if (!validAccountIds.has(mappedAccountId)) {
+          const accountFromImport = accounts.find((a: any) => a.id === accountId);
+          if (accountFromImport) {
+            const existingAccount = await prisma.account.findFirst({ where: { userId, name: accountFromImport.name } });
+            if (existingAccount) {
+              mappedAccountId = existingAccount.id;
+              validAccountIds.add(mappedAccountId); // Add to valid set
+            }
+          }
+        }
+        if (mappedTargetAccountId && !validAccountIds.has(mappedTargetAccountId)) {
+          const accountFromImport = accounts.find((a: any) => a.id === targetAccountId);
+          if (accountFromImport) {
+            const existingAccount = await prisma.account.findFirst({ where: { userId, name: accountFromImport.name } });
+            if (existingAccount) {
+              mappedTargetAccountId = existingAccount.id;
+              validAccountIds.add(mappedTargetAccountId); // Add to valid set
+            }
+          }
+        }
+
+        if (!validAccountIds.has(mappedAccountId)) {
+          console.error(`Account ID ${mappedAccountId} not found. Skipping transaction.`);
+          continue;
+        }
+        if (mappedTargetAccountId && !validAccountIds.has(mappedTargetAccountId)) {
+          console.error(`Target Account ID ${mappedTargetAccountId} not found. Skipping transaction.`);
+          continue;
+        }
+
+        await prisma.transaction.create({
+          data: {
+            ...data,
+            userId,
+            accountId: mappedAccountId,
+            targetAccountId: mappedTargetAccountId,
+            categoryId: mappedCategoryId,
+            subcategoryId: mappedSubcategoryId,
+            amount: Number(amount),
+            createdAt: createdAt ? new Date(createdAt) : new Date()
+          }
+        });
+
+        // Update balances
+        if (data.type === 'expense') {
+          await prisma.account.update({
+            where: { id: mappedAccountId },
+            data: { balance: { decrement: Number(amount) } }
+          });
+        } else if (data.type === 'income') {
+          await prisma.account.update({
+            where: { id: mappedAccountId },
+            data: { balance: { increment: Number(amount) } }
+          });
+        } else if (data.type === 'transfer' && mappedTargetAccountId) {
+          await prisma.account.update({
+            where: { id: mappedAccountId },
+            data: { balance: { decrement: Number(amount) } }
+          });
+          await prisma.account.update({
+            where: { id: mappedTargetAccountId },
+            data: { balance: { increment: Number(amount) } }
+          });
+        }
+      }
+    }
+
+    res.json({ success: true });
   } catch (error: any) {
     console.error("Batch Import Error:", error);
     res.status(500).json({ error: error.message });

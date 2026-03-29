@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { api } from '../lib/api';
 import { 
   PlanData, 
   PlanRow, 
@@ -81,59 +82,79 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
   const [newSubjectName, setNewSubjectName] = useState('');
   const [isEditingComment, setIsEditingComment] = useState(false);
 
-  // Load data from localStorage
+  // Load data from API
   useEffect(() => {
-    const saved = localStorage.getItem('planData');
-    if (saved) {
-      setPlanData(JSON.parse(saved));
-    } else {
-      // Initialize with default data
-      const initialRows: PlanRow[] = [];
-      const currentYear = new Date().getFullYear();
-      
-      // Generate rows for current year
-      for (let i = 0; i < 12; i++) {
-        initialRows.push({
-          id: `${currentYear}-${i}`,
-          label: SHORT_MONTHS[i],
-          type: 'month',
-          cells: {}
-        });
-        if (i === 3 || i === 7 || i === 11) {
-          initialRows.push({
-            id: `${currentYear}-min-${i}`,
-            label: 'MIN',
-            type: 'min',
-            cells: {}
-          });
-        }
-      }
-      
-      // Add next year row
-      initialRows.push({
-        id: `${currentYear + 1}`,
-        label: `${currentYear + 1}`,
-        type: 'year',
-        cells: {}
-      });
+    const loadData = async () => {
+      try {
+        const data = await api.get<PlanData | null>('/plan-grid');
+        if (data) {
+          setPlanData(data);
+        } else {
+          // Check localStorage for migration
+          const saved = localStorage.getItem('planData');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            setPlanData(parsed);
+            // Save to server immediately
+            await api.post('/plan-grid', parsed);
+          } else {
+            // Initialize with default data
+            const initialRows: PlanRow[] = [];
+            const currentYear = new Date().getFullYear();
+            
+            // Generate rows for current year
+            for (let i = 0; i < 12; i++) {
+              initialRows.push({
+                id: `${currentYear}-${i}`,
+                label: SHORT_MONTHS[i],
+                type: 'month',
+                cells: {}
+              });
+              if (i === 3 || i === 7 || i === 11) {
+                initialRows.push({
+                  id: `${currentYear}-min-${i}`,
+                  label: 'MIN',
+                  type: 'min',
+                  cells: {}
+                });
+              }
+            }
+            
+            // Add next year row
+            initialRows.push({
+              id: `${currentYear + 1}`,
+              label: `${currentYear + 1}`,
+              type: 'year',
+              cells: {}
+            });
 
-      const initialData: PlanData = {
-        id: 'default',
-        userId: 'user',
-        subjects: DEFAULT_SUBJECTS,
-        rows: initialRows,
-        config: INITIAL_CONFIG,
-        comment: '# Заметки по планированию\n\nЗдесь можно писать важные комментарии.',
-        updatedAt: new Date().toISOString()
-      };
-      setPlanData(initialData);
-      localStorage.setItem('planData', JSON.stringify(initialData));
-    }
+            const initialData: PlanData = {
+              id: 'default',
+              userId: 'user',
+              subjects: DEFAULT_SUBJECTS,
+              rows: initialRows,
+              config: INITIAL_CONFIG,
+              comment: '# Заметки по планированию\n\nЗдесь можно писать важные комментарии.',
+              updatedAt: new Date().toISOString()
+            };
+            setPlanData(initialData);
+            await api.post('/plan-grid', initialData);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading plan grid:', error);
+      }
+    };
+    loadData();
   }, []);
 
-  const savePlanData = (newData: PlanData) => {
+  const savePlanData = async (newData: PlanData) => {
     setPlanData(newData);
-    localStorage.setItem('planData', JSON.stringify(newData));
+    try {
+      await api.post('/plan-grid', newData);
+    } catch (error) {
+      console.error('Error saving plan grid:', error);
+    }
   };
 
   const parseValue = (val: string): number => {
