@@ -1,5 +1,5 @@
-import { LogOut, User as UserIcon, Database, Shield, Github, Info, Sparkles, CheckCircle2, Eraser, Trash2, AlertTriangle, Tag, FileDown, FileUp, X, ArrowRightLeft, AlertCircle, Copy } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { LogOut, User as UserIcon, Database, Shield, Github, Info, Sparkles, CheckCircle2, Eraser, Trash2, AlertTriangle, Tag, FileDown, FileUp, X, ArrowRightLeft, AlertCircle, Copy, Palette } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 import { generateDemoData } from '../services/demoDataService';
 import { importFinancialData } from '../services/importService';
 import { clsx, type ClassValue } from 'clsx';
@@ -28,6 +28,7 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
   const [clearing, setClearing] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showClearTransactionsConfirm, setShowClearTransactionsConfirm] = useState(false);
+  const [password, setPassword] = useState('');
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showCurrencyTable, setShowCurrencyTable] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -113,11 +114,16 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
   };
 
   const clearAllData = async () => {
+    if (password !== '1234') {
+      alert('Неверный пароль');
+      return;
+    }
     setClearing(true);
     try {
       await api.delete('/data/clear');
       onRefresh();
       setShowClearConfirm(false);
+      setPassword('');
     } catch (error) {
       console.error('Clear error:', error);
     } finally {
@@ -126,11 +132,16 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
   };
 
   const clearTransactionsOnly = async () => {
+    if (password !== '1234') {
+      alert('Неверный пароль');
+      return;
+    }
     setClearing(true);
     try {
       await api.delete('/data/clear-transactions');
       onRefresh();
       setShowClearTransactionsConfirm(false);
+      setPassword('');
     } catch (error) {
       console.error('Clear transactions error:', error);
     } finally {
@@ -195,11 +206,11 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
 
       {/* Profile Card */}
       <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm flex items-center gap-4">
-        <div className="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center overflow-hidden">
+        <div className="w-16 h-16 bg-theme-primary-light rounded-2xl flex items-center justify-center overflow-hidden">
           {user.photoURL ? (
             <img src={user.photoURL} alt={user.displayName || ''} className="w-full h-full object-cover" />
           ) : (
-            <UserIcon className="w-8 h-8 text-emerald-600" />
+            <UserIcon className="w-8 h-8 text-theme-primary" />
           )}
         </div>
         <div>
@@ -284,6 +295,13 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-2">Очистить абсолютно всё?</h3>
               <p className="text-neutral-500 mb-8 text-sm">Все ваши счета, операции, категории и цели будут удалены навсегда. Это действие необратимо.</p>
+              <input
+                type="password"
+                placeholder="Введите пароль"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-neutral-100 p-4 rounded-2xl mb-4 text-center"
+              />
               <div className="flex flex-col w-full gap-3">
                 <button
                   onClick={clearAllData}
@@ -298,7 +316,7 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
                   Да, удалить все данные
                 </button>
                 <button
-                  onClick={() => setShowClearConfirm(false)}
+                  onClick={() => { setShowClearConfirm(false); setPassword(''); }}
                   disabled={clearing}
                   className="w-full bg-neutral-100 text-neutral-600 font-bold py-4 rounded-2xl hover:bg-neutral-200 transition-all active:scale-95"
                 >
@@ -318,6 +336,13 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-2">Удалить только операции?</h3>
               <p className="text-neutral-500 mb-8 text-sm">Все записи о доходах и расходах будут удалены. Счета, категории и цели останутся.</p>
+              <input
+                type="password"
+                placeholder="Введите пароль"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-neutral-100 p-4 rounded-2xl mb-4 text-center"
+              />
               <div className="flex flex-col w-full gap-3">
                 <button
                   onClick={clearTransactionsOnly}
@@ -332,7 +357,7 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
                   Да, удалить операции
                 </button>
                 <button
-                  onClick={() => setShowClearTransactionsConfirm(false)}
+                  onClick={() => { setShowClearTransactionsConfirm(false); setPassword(''); }}
                   disabled={clearing}
                   className="w-full bg-neutral-100 text-neutral-600 font-bold py-4 rounded-2xl hover:bg-neutral-200 transition-all active:scale-95"
                 >
@@ -416,14 +441,14 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
               />
               <div className={cn(
                 "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
-                importResult?.success ? "bg-emerald-100" : "bg-orange-100"
+                importResult?.success ? "bg-theme-primary-light" : "bg-theme-primary-light"
               )}>
                 {importing ? (
-                  <div className="w-5 h-5 border-2 border-orange-600/30 border-t-orange-600 rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-theme-primary/30 border-t-theme-primary rounded-full animate-spin" />
                 ) : importResult?.success ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  <CheckCircle2 className="w-5 h-5 text-theme-primary" />
                 ) : (
-                  <FileUp className="w-5 h-5 text-orange-600" />
+                  <FileUp className="w-5 h-5 text-theme-primary" />
                 )}
               </div>
               <div className="text-left flex-1">
@@ -493,14 +518,14 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
               />
               <div className={cn(
                 "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
-                importResult?.success ? "bg-emerald-100" : "bg-yellow-100"
+                importResult?.success ? "bg-theme-primary-light" : "bg-theme-primary-light"
               )}>
                 {importing ? (
-                  <div className="w-5 h-5 border-2 border-yellow-600/30 border-t-yellow-600 rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-theme-primary/30 border-t-theme-primary rounded-full animate-spin" />
                 ) : importResult?.success ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  <CheckCircle2 className="w-5 h-5 text-theme-primary" />
                 ) : (
-                  <FileUp className="w-5 h-5 text-yellow-600" />
+                  <FileUp className="w-5 h-5 text-theme-primary" />
                 )}
               </div>
               <div className="text-left flex-1">
@@ -558,20 +583,61 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
 
         {/* App Settings Section */}
         <section className="space-y-3">
-          <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-widest px-4">Приложение</h4>
+          <h4 className="text-xs font-bold text-theme-primary uppercase tracking-widest px-4">Приложение</h4>
           <div className="bg-white rounded-3xl border border-neutral-100 overflow-hidden shadow-sm">
             <button 
               onClick={() => setShowCategoryManager(true)}
               className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
             >
-              <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-                <Tag className="w-5 h-5 text-emerald-600" />
+              <div className="w-10 h-10 bg-theme-primary-light rounded-xl flex items-center justify-center">
+                <Tag className="w-5 h-5 text-theme-primary" />
               </div>
               <div className="text-left">
                 <p className="font-semibold text-sm">Категории</p>
                 <p className="text-xs text-neutral-400">Управление категориями операций</p>
               </div>
             </button>
+
+            <div className="px-6 py-4 border-b border-neutral-50">
+              <div className="flex items-center gap-4 mb-3">
+                <div className="w-10 h-10 bg-pink-100 rounded-xl flex items-center justify-center">
+                  <Palette className="w-5 h-5 text-pink-600" />
+                </div>
+                <p className="font-semibold text-sm">Тема оформления</p>
+              </div>
+              <div className="grid grid-cols-7 gap-2">
+                {[
+                  { id: 'theme-light-green', color: 'bg-emerald-500' },
+                  { id: 'theme-light-blue', color: 'bg-blue-500' },
+                  { id: 'theme-light-orange', color: 'bg-orange-500' },
+                  { id: 'theme-light-brown', color: 'bg-yellow-700' },
+                  { id: 'theme-light-gray', color: 'bg-neutral-500' },
+                  { id: 'theme-light-purple', color: 'bg-purple-500' },
+                ].map((theme) => (
+                  <button
+                    key={theme.id}
+                    onClick={() => {
+                      const themes = [
+                        'theme-light-green', 'theme-light-blue', 'theme-light-orange', 
+                        'theme-light-brown', 'theme-light-gray', 'theme-light-purple'
+                      ];
+                      document.body.classList.remove(...themes);
+                      document.body.classList.add(theme.id);
+                      localStorage.setItem('theme', theme.id);
+                    }}
+                    className={cn(
+                      "w-8 h-8 rounded-full border-2 border-white shadow-sm transition-transform active:scale-90",
+                      theme.id === 'theme-light-green' ? 'bg-emerald-500' :
+                      theme.id === 'theme-light-blue' ? 'bg-blue-500' :
+                      theme.id === 'theme-light-orange' ? 'bg-orange-500' :
+                      theme.id === 'theme-light-brown' ? 'bg-yellow-700' :
+                      theme.id === 'theme-light-gray' ? 'bg-neutral-500' :
+                      'bg-purple-500'
+                    )}
+                  />
+                ))}
+              </div>
+            </div>
 
             <button 
               onClick={() => setShowCurrencyTable(true)}

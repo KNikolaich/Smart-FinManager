@@ -136,7 +136,7 @@ export default function GoalManager({ goals, userId, onClose, onRefresh, initial
                 <div 
                   onClick={() => setShowCompleted(!showCompleted)}
                   className={`w-4 h-4 rounded border transition-all flex items-center justify-center ${
-                    showCompleted ? "bg-emerald-500 border-emerald-500" : "border-neutral-300 group-hover:border-emerald-400"
+                    showCompleted ? "bg-theme-primary border-theme-primary" : "border-neutral-300 group-hover:border-theme-primary"
                   }`}
                 >
                   {showCompleted && <Check className="w-3 h-3 text-white" />}
@@ -148,7 +148,7 @@ export default function GoalManager({ goals, userId, onClose, onRefresh, initial
             {!isAdding && (
               <button 
                 onClick={() => { resetForm(); setIsAdding(true); }}
-                className="flex items-center gap-1.5 bg-emerald-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold shadow-sm hover:bg-emerald-600 transition-all active:scale-95 shrink-0"
+                className="flex items-center gap-1.5 bg-theme-primary text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold shadow-sm hover:bg-theme-primary-dark transition-all active:scale-95 shrink-0"
               >
                 <Plus className="w-3.5 h-3.5 sm:w-4 h-4" />
                 Добавить
@@ -163,23 +163,23 @@ export default function GoalManager({ goals, userId, onClose, onRefresh, initial
                   type="text" 
                   value={name} 
                   onChange={(e) => setName(e.target.value)} 
-                  className="w-full bg-white rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all" 
+                  className="w-full bg-white rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 ring-theme-primary-light transition-all" 
                   placeholder="Название цели" 
                 />
                 <textarea 
                   value={description} 
                   onChange={(e) => setDescription(e.target.value)} 
-                  className="w-full bg-white rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all min-h-[80px]" 
+                  className="w-full bg-white rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 ring-theme-primary-light transition-all min-h-[80px]" 
                   placeholder="Описание (Markdown)" 
                 />
                 <div className="grid grid-cols-2 gap-3">
-                  <input type="number" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)} className="w-full bg-white rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all" placeholder="Сумма цели" />
-                  <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="w-full bg-white rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all" />
+                  <input type="number" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)} className="w-full bg-white rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 ring-theme-primary-light transition-all" placeholder="Сумма цели" />
+                  <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="w-full bg-white rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 ring-theme-primary-light transition-all" />
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-1">
                 <button onClick={resetForm} className="px-4 py-2 bg-neutral-200 text-neutral-600 rounded-xl text-xs font-bold">Отмена</button>
-                <button onClick={() => handleSave()} disabled={loading} className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm">Создать</button>
+                <button onClick={() => handleSave()} disabled={loading} className="px-4 py-2 bg-theme-primary text-white rounded-xl text-xs font-bold shadow-sm">Создать</button>
               </div>
             </div>
           )}
@@ -241,7 +241,7 @@ export default function GoalManager({ goals, userId, onClose, onRefresh, initial
                         <button onClick={() => setEditingGoalId(null)} className="p-2 bg-neutral-100 text-neutral-500 rounded-lg hover:bg-neutral-200 transition-all">
                           <X className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleSave(goal.id)} disabled={loading} className="p-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-all">
+                        <button onClick={() => handleSave(goal.id)} disabled={loading} className="p-2 bg-theme-primary text-white rounded-lg hover:bg-theme-primary-dark transition-all">
                           <Save className="w-4 h-4" />
                         </button>
                       </div>
@@ -265,7 +265,7 @@ export default function GoalManager({ goals, userId, onClose, onRefresh, initial
                           </div>
                         </div>
                         <div className="flex gap-1.5 sm:gap-2 shrink-0">
-                          <button onClick={() => handleToggleComplete(goal)} className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-all ${goal.isCompleted ? 'bg-emerald-500 text-white' : 'bg-neutral-100 text-neutral-400 hover:bg-emerald-50 hover:text-emerald-600'}`}>
+                          <button onClick={() => handleToggleComplete(goal)} className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-all ${goal.isCompleted ? 'bg-theme-primary text-white' : 'bg-neutral-100 text-neutral-400 hover:bg-theme-primary-light hover:text-theme-primary-dark'}`}>
                             <Check className="w-3.5 h-3.5 sm:w-4 h-4" />
                           </button>
                           <button onClick={() => startEditing(goal)} className="p-1.5 sm:p-2 bg-neutral-100 text-neutral-400 hover:bg-blue-50 hover:text-blue-600 rounded-lg sm:rounded-xl transition-all">
@@ -307,7 +307,7 @@ export default function GoalManager({ goals, userId, onClose, onRefresh, initial
                         </div>
                         <div className="h-1.5 sm:h-2 w-full bg-neutral-100 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-emerald-500 transition-all duration-500"
+                            className="h-full bg-theme-primary transition-all duration-500"
                             style={{ width: `${progress}%` }}
                           />
                         </div>

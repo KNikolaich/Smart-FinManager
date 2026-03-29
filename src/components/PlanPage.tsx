@@ -84,9 +84,11 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
 
   // Load data from API
   useEffect(() => {
-    const loadData = async () => {
+    const loadData = async (retries = 3) => {
+      console.log('Loading plan grid...');
       try {
         const data = await api.get<PlanData | null>('/plan-grid');
+        console.log('Plan grid data loaded:', !!data);
         if (data) {
           setPlanData(data);
         } else {
@@ -143,6 +145,16 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
         }
       } catch (error) {
         console.error('Error loading plan grid:', error);
+        if (retries > 0) {
+          console.log(`Retrying... (${retries} retries left)`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          await loadData(retries - 1);
+        } else {
+          // Alert user if it's a network error
+          if (error instanceof TypeError && error.message === 'Failed to fetch') {
+            console.error('Network error - check if server is running');
+          }
+        }
       }
     };
     loadData();

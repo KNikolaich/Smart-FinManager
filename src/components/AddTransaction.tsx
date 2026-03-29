@@ -87,7 +87,7 @@ export default function AddTransaction({ accounts, categories, onComplete }: Add
               onClick={() => handleTypeChange('expense')}
               className={cn(
                 "py-1.5 rounded-lg font-bold text-[10px] transition-all",
-                type === 'expense' ? "bg-white text-rose-500 shadow-sm" : "text-neutral-500"
+                type === 'expense' ? "bg-white text-theme-primary shadow-sm" : "text-neutral-500"
               )}
             >
               Расход
@@ -97,7 +97,7 @@ export default function AddTransaction({ accounts, categories, onComplete }: Add
               onClick={() => handleTypeChange('income')}
               className={cn(
                 "py-1.5 rounded-lg font-bold text-[10px] transition-all",
-                type === 'income' ? "bg-white text-emerald-600 shadow-sm" : "text-neutral-500"
+                type === 'income' ? "bg-white text-theme-primary shadow-sm" : "text-neutral-500"
               )}
             >
               Доход
@@ -107,7 +107,7 @@ export default function AddTransaction({ accounts, categories, onComplete }: Add
               onClick={() => handleTypeChange('transfer')}
               className={cn(
                 "py-1.5 rounded-lg font-bold text-[10px] transition-all",
-                type === 'transfer' ? "bg-white text-blue-600 shadow-sm" : "text-neutral-500"
+                type === 'transfer' ? "bg-white text-theme-primary shadow-sm" : "text-neutral-500"
               )}
             >
               Перевод
@@ -137,7 +137,7 @@ export default function AddTransaction({ accounts, categories, onComplete }: Add
             <select
               value={selectedAccountId}
               onChange={(e) => setSelectedAccountId(e.target.value)}
-              className="w-full bg-neutral-50 border-none rounded-xl px-3 py-1.5 text-xs font-semibold outline-none focus:ring-2 ring-emerald-500/20 transition-all appearance-none"
+              className="w-full bg-neutral-50 border-none rounded-xl px-3 py-1.5 text-xs font-semibold outline-none focus:ring-2 ring-theme-primary/20 transition-all appearance-none"
             >
               {activeAccounts.map(acc => (
                 <option key={acc.id} value={acc.id}>
@@ -153,7 +153,7 @@ export default function AddTransaction({ accounts, categories, onComplete }: Add
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full bg-neutral-50 border-none rounded-xl px-3 py-1.5 text-xs font-semibold outline-none focus:ring-2 ring-emerald-500/20 transition-all"
+              className="w-full bg-neutral-50 border-none rounded-xl px-3 py-1.5 text-xs font-semibold outline-none focus:ring-2 ring-theme-primary/20 transition-all"
             />
           </div>
         </div>
@@ -164,7 +164,7 @@ export default function AddTransaction({ accounts, categories, onComplete }: Add
             <select
               value={selectedTargetAccountId}
               onChange={(e) => setSelectedTargetAccountId(e.target.value)}
-              className="w-full bg-neutral-50 border-none rounded-xl px-3 py-1.5 text-xs font-semibold outline-none focus:ring-2 ring-blue-500/20 transition-all appearance-none"
+              className="w-full bg-neutral-50 border-none rounded-xl px-3 py-1.5 text-xs font-semibold outline-none focus:ring-2 ring-theme-primary/20 transition-all appearance-none"
             >
               {activeAccounts.filter(a => a.id !== selectedAccountId).map(acc => (
                 <option key={acc.id} value={acc.id}>
@@ -176,7 +176,7 @@ export default function AddTransaction({ accounts, categories, onComplete }: Add
         )}
 
         {/* Main Content: Categories (Scrollable) */}
-        <div className="flex-1 overflow-hidden flex flex-col min-h-0 py-2">
+        <div className="flex-1 overflow-y-auto flex flex-col min-h-0 py-2">
           {type !== 'transfer' && (
             <div className="flex-1 flex flex-col min-h-0">
               <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider ml-1 mb-1">Категория</label>
@@ -194,7 +194,7 @@ export default function AddTransaction({ accounts, categories, onComplete }: Add
                       className={cn(
                         "w-full text-left px-2 py-2 text-[11px] font-bold transition-all",
                         activeParentId === cat.id
-                          ? "bg-white text-emerald-600 shadow-sm"
+                          ? "bg-white text-theme-primary shadow-sm"
                           : "text-neutral-600 hover:bg-neutral-100/50"
                       )}
                     >
@@ -217,7 +217,7 @@ export default function AddTransaction({ accounts, categories, onComplete }: Add
                         className={cn(
                           "w-full text-left px-2 py-2 text-[11px] font-medium transition-all",
                           selectedCategoryId === sub.id
-                            ? "bg-emerald-50 text-emerald-700 font-bold"
+                            ? "bg-theme-primary-light text-theme-primary-dark font-bold"
                             : "text-neutral-600 hover:bg-neutral-100/50"
                         )}
                       >
@@ -249,7 +249,7 @@ export default function AddTransaction({ accounts, categories, onComplete }: Add
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={getPlaceholder()}
-              className="w-full bg-neutral-50 border-none rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 ring-emerald-500/20 transition-all"
+              className="w-full bg-neutral-50 border-none rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 ring-theme-primary/20 transition-all"
             />
           </div>
 
@@ -267,7 +267,7 @@ export default function AddTransaction({ accounts, categories, onComplete }: Add
               disabled={loading || !amount || (type !== 'transfer' && !selectedCategoryId)}
               className={cn(
                 "flex-[2] text-white font-bold py-3 rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:shadow-none text-xs",
-                type === 'expense' ? "bg-rose-500 shadow-rose-100" : type === 'income' ? "bg-emerald-500 shadow-emerald-100" : "bg-blue-500 shadow-blue-100"
+                type === 'expense' ? "bg-theme-primary shadow-theme-primary-light" : type === 'income' ? "bg-theme-primary shadow-theme-primary-light" : "bg-theme-primary shadow-theme-primary-light"
               )}
             >
               {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Готово'}

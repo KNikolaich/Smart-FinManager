@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Account, Transaction, Goal, Budget, Category, AccountType } from '../types';
+import { Account, Transaction, Goal, Budget, Category, AccountType, Currency } from '../types';
 import { Wallet, TrendingUp, TrendingDown, Target, ChevronRight, CreditCard, Landmark } from 'lucide-react';
 import { CoinStack } from './CustomIcons';
 import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
@@ -19,6 +19,7 @@ interface DashboardProps {
   goals: Goal[];
   budgets: Budget[];
   categories: Category[];
+  currencies: Currency[];
   userId: string;
   showTotalBalance: boolean;
   initialGoalData?: {
@@ -37,6 +38,7 @@ export default function Dashboard({
   goals, 
   budgets, 
   categories, 
+  currencies,
   userId, 
   showTotalBalance, 
   initialGoalData, 
@@ -142,12 +144,12 @@ export default function Dashboard({
           >
             <div 
               onClick={onNavigateToAnalytics}
-              className="bg-emerald-500 rounded-3xl p-6 text-white shadow-xl shadow-emerald-100 cursor-pointer group relative overflow-hidden"
+              className="bg-theme-primary rounded-3xl p-6 text-white shadow-xl shadow-theme-primary-light cursor-pointer group relative overflow-hidden"
             >
               <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
                 {/* Left Side: Balance and Stats */}
                 <div>
-                  <p className="text-emerald-100 text-sm font-medium mb-1">Общий баланс</p>
+                  <p className="text-theme-primary-light text-sm font-medium mb-1">Общий баланс</p>
                   <h2 className="text-4xl font-bold mb-6">{totalBalance.toLocaleString()} ₽</h2>
                   
                   <div className="grid grid-cols-2 gap-4">
@@ -156,7 +158,7 @@ export default function Dashboard({
                         <TrendingUp className="w-4 h-4" />
                       </div>
                       <div>
-                        <p className="text-xs text-emerald-100">Доход</p>
+                        <p className="text-xs text-theme-primary-light">Доход</p>
                         <p className="font-semibold">+{monthlyStats.income.toLocaleString()} ₽</p>
                       </div>
                     </div>
@@ -165,7 +167,7 @@ export default function Dashboard({
                         <TrendingDown className="w-4 h-4" />
                       </div>
                       <div>
-                        <p className="text-xs text-emerald-100">Расход</p>
+                        <p className="text-xs text-theme-primary-light">Расход</p>
                         <p className="font-semibold">-{monthlyStats.expense.toLocaleString()} ₽</p>
                       </div>
                     </div>
@@ -203,7 +205,7 @@ export default function Dashboard({
           <h3 className="font-bold text-lg">Счета</h3>
           <button 
             onClick={() => setShowAccountManager(true)}
-            className="text-emerald-600 text-sm font-medium hover:bg-emerald-50 px-2 py-1 rounded-lg transition-colors"
+            className="text-theme-primary-dark text-sm font-medium hover:bg-theme-primary-light px-2 py-1 rounded-lg transition-colors"
           >
             Все
           </button>
@@ -218,27 +220,30 @@ export default function Dashboard({
               <div 
                 key={account.id} 
                 className={cn(
-                  "min-w-[90px] flex-shrink-0 bg-white p-3 rounded-2xl border transition-all duration-300 snap-start",
+                  "min-w-[90px] flex-shrink-0 bg-white p-3 rounded-2xl border transition-all duration-300 snap-start relative",
                   isNegative 
                     ? "shadow-lg shadow-rose-100/60 border-rose-50" 
-                    : "shadow-lg shadow-emerald-100/60 border-emerald-50"
+                    : "shadow-lg shadow-theme-primary-light border-emerald-50"
                 )}
               >
+                <div className="absolute top-3 right-3 text-xs font-bold text-neutral-400">
+                  {currencies.find(c => c.iso === account.currency)?.symbol || account.currency}
+                </div>
                 <div 
                   className={cn(
                     "w-8 h-8 rounded-lg flex items-center justify-center mb-2",
-                    !hasColor && (isNegative ? "bg-rose-50" : "bg-emerald-50")
+                    !hasColor && (isNegative ? "bg-rose-50" : "bg-theme-primary-light")
                   )}
                   style={hasColor ? { backgroundColor: `${account.color}20` } : {}}
                 >
                   <Icon 
-                    className={cn("w-4 h-4", !hasColor && (isNegative ? "text-rose-500" : "text-emerald-500"))} 
+                    className={cn("w-4 h-4", !hasColor && (isNegative ? "text-rose-500" : "text-theme-primary"))} 
                     style={hasColor ? { color: account.color } : {}}
                   />
                 </div>
                 <p className="text-neutral-400 text-[10px] font-bold uppercase tracking-tight mb-0.5 truncate">{account.name}</p>
                 <p className={cn("font-bold text-sm truncate", isNegative ? "text-rose-600" : "text-neutral-900")}>
-                  {account.balance.toLocaleString()} {account.currency}
+                  {account.balance.toLocaleString()}
                 </p>
               </div>
             );
@@ -264,7 +269,7 @@ export default function Dashboard({
           <h3 className="font-bold text-lg">Последние операции</h3>
           <button 
             onClick={() => setShowTransactionHistory(true)}
-            className="text-emerald-600 text-sm font-medium hover:bg-emerald-50 px-2 py-1 rounded-lg transition-colors"
+            className="text-theme-primary-dark text-sm font-medium hover:bg-theme-primary-light px-2 py-1 rounded-lg transition-colors"
           >
             Все
           </button>
@@ -334,14 +339,14 @@ export default function Dashboard({
       <section>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-lg">Цели</h3>
-          <button onClick={() => setShowGoalManager(true)} className="text-emerald-600 text-sm font-medium hover:bg-emerald-50 px-2 py-1 rounded-lg transition-colors">Все</button>
+          <button onClick={() => setShowGoalManager(true)} className="text-theme-primary-dark text-sm font-medium hover:bg-theme-primary-light px-2 py-1 rounded-lg transition-colors">Все</button>
         </div>
         <div className="space-y-3">
           {activeGoals.map(goal => {
             const progress = Math.min(100, (goal.currentAmount / goal.targetAmount) * 100);
             
             // Calculate color based on deadline proximity
-            let progressColor = 'bg-emerald-500';
+            let progressColor = 'bg-theme-primary';
             if (goal.deadline) {
               const deadlineDate = new Date(goal.deadline);
               const now = new Date();
@@ -368,7 +373,7 @@ export default function Dashboard({
                   <div className="flex items-end justify-between mb-3">
                     <div className="space-y-0.5">
                       <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-tight">Накоплено</p>
-                      <p className="font-bold text-sm text-emerald-600">{goal.currentAmount.toLocaleString()} ₽</p>
+                      <p className="font-bold text-sm text-theme-primary">{goal.currentAmount.toLocaleString()} ₽</p>
                     </div>
                     <div className="text-right space-y-0.5">
                       <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-tight">Цель</p>
@@ -386,7 +391,7 @@ export default function Dashboard({
                 {/* Thin progress bar at the bottom */}
                 <div className="h-1 w-full bg-neutral-100">
                   <div 
-                    className={cn("h-full transition-all duration-500", progressColor)}
+                    className={cn("h-full transition-all duration-500", progress === 100 ? 'bg-theme-primary' : progressColor)}
                     style={{ width: `${progress}%` }}
                   />
                 </div>

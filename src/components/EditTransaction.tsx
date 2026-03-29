@@ -135,7 +135,7 @@ export default function EditTransaction({ transaction, accounts, categories, onC
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="На что потратили?"
-                className="w-full bg-neutral-50 border-none rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all"
+                className="w-full bg-neutral-50 border-none rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all"
               />
             </div>
 
@@ -148,7 +148,7 @@ export default function EditTransaction({ transaction, accounts, categories, onC
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full bg-neutral-50 border-none rounded-xl pl-10 pr-4 py-2 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all"
+                  className="w-full bg-neutral-50 border-none rounded-xl pl-10 pr-4 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all"
                 />
               </div>
             </div>
@@ -160,7 +160,7 @@ export default function EditTransaction({ transaction, accounts, categories, onC
             <select
               value={selectedAccountId}
               onChange={(e) => setSelectedAccountId(e.target.value)}
-              className="w-full bg-neutral-50 border-none rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all appearance-none font-semibold"
+              className="w-full bg-neutral-50 border-none rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all appearance-none font-semibold"
             >
               {accounts.filter(a => !a.isArchived || a.id === transaction.accountId).map(acc => (
                 <option key={acc.id} value={acc.id}>
@@ -179,7 +179,7 @@ export default function EditTransaction({ transaction, accounts, categories, onC
               <select
                 value={selectedTargetAccountId}
                 onChange={(e) => setSelectedTargetAccountId(e.target.value)}
-                className="w-full bg-neutral-50 border-none rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 ring-blue-500/20 transition-all appearance-none font-semibold"
+                className="w-full bg-neutral-50 border-none rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all appearance-none font-semibold"
               >
                 {accounts.filter(a => a.id !== selectedAccountId).map(acc => (
                   <option key={acc.id} value={acc.id}>
@@ -203,7 +203,7 @@ export default function EditTransaction({ transaction, accounts, categories, onC
                       className={cn(
                         "w-full text-left px-3 py-2 text-xs font-bold transition-all",
                         activeParentId === cat.id
-                          ? "bg-white text-emerald-600 shadow-sm"
+                          ? "bg-white text-theme-primary shadow-sm"
                           : "text-neutral-600 hover:bg-neutral-100/50"
                       )}
                     >
@@ -223,7 +223,7 @@ export default function EditTransaction({ transaction, accounts, categories, onC
                         className={cn(
                           "w-full text-left px-3 py-2 text-xs font-medium transition-all",
                           selectedCategoryId === sub.id
-                            ? "bg-emerald-50 text-emerald-700 font-bold"
+                            ? "bg-theme-primary-light text-theme-primary-dark font-bold"
                             : "text-neutral-600 hover:bg-neutral-100/50"
                         )}
                       >
@@ -253,7 +253,7 @@ export default function EditTransaction({ transaction, accounts, categories, onC
           <button
             onClick={handleUpdate}
             disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 text-white font-bold py-3 rounded-xl shadow-md shadow-emerald-100 hover:bg-emerald-600 transition-all active:scale-95 disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-2 bg-theme-primary text-white font-bold py-3 rounded-xl shadow-md shadow-theme-primary-light hover:bg-theme-primary-dark transition-all active:scale-95 disabled:opacity-50"
           >
             {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Check className="w-5 h-5" />}
             Сохранить

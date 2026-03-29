@@ -15,7 +15,7 @@ export const CurrencyTable: React.FC = () => {
     currencyService.seedDefaultCurrencies();
 
     const unsubscribe = currencyService.subscribeToCurrencies((data) => {
-      setCurrencies(data.sort((a, b) => a.curUid.localeCompare(b.curUid)));
+      setCurrencies(data.sort((a, b) => (a.currency || '').localeCompare(b.currency || '')));
       setLoading(false);
     });
 
@@ -56,12 +56,11 @@ export const CurrencyTable: React.FC = () => {
   return (
     <div className="p-4 border rounded-lg bg-white shadow-sm max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-800">Currency Table</h2>
         <div className="flex gap-2">
           <button 
             onClick={handleUpdateRates}
             disabled={updatingRates}
-            className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-xl hover:bg-blue-600 transition-all font-bold text-sm disabled:opacity-50"
+            className="flex items-center gap-2 bg-theme-primary text-white px-4 py-2 rounded-xl hover:bg-theme-primary-dark transition-all font-bold text-sm disabled:opacity-50"
           >
             {updatingRates ? 'Обновление...' : 'Обновить курсы'}
           </button>
@@ -70,7 +69,7 @@ export const CurrencyTable: React.FC = () => {
               setEditingCurrency(null);
               setShowFormModal(true);
             }}
-            className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-xl hover:bg-emerald-600 transition-all font-bold text-sm"
+            className="flex items-center gap-2 bg-theme-primary text-white px-4 py-2 rounded-xl hover:bg-theme-primary-dark transition-all font-bold text-sm"
           >
             <Plus size={18} />
             Добавить
@@ -84,13 +83,7 @@ export const CurrencyTable: React.FC = () => {
               <th className="px-4 py-2 text-left font-medium text-gray-600 border-r">
                 <div className="flex items-center gap-1">
                   <span className="text-[10px] text-blue-500">A-Z</span>
-                  <span>CUR_UID</span>
-                </div>
-              </th>
-              <th className="px-4 py-2 text-left font-medium text-gray-600 border-r">
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px] text-blue-500">A-Z</span>
-                  <span>NAME</span>
+                  <span>Наименование</span>
                 </div>
               </th>
               <th className="px-4 py-2 text-left font-medium text-gray-600 border-r">
@@ -102,32 +95,21 @@ export const CurrencyTable: React.FC = () => {
               <th className="px-4 py-2 text-left font-medium text-gray-600 border-r">
                 <div className="flex items-center gap-1">
                   <span className="text-[10px] text-blue-500">#</span>
-                  <span>RATE</span>
+                  <span>Курс</span>
                 </div>
               </th>
               <th className="px-4 py-2 text-center font-medium text-gray-600">
-                Действия
+                Символ
               </th>
             </tr>
           </thead>
           <tbody>
             {currencies.map((cur) => (
               <tr key={cur.id} className="border-b last:border-b-0 hover:bg-blue-50/50 transition-colors cursor-pointer" onClick={() => { setEditingCurrency(cur); setShowFormModal(true); }}>
-                <td className="px-4 py-2 border-r text-gray-700">{cur.curUid}</td>
                 <td className="px-4 py-2 border-r text-gray-700">{cur.name}</td>
                 <td className="px-4 py-2 border-r text-gray-700">{cur.iso}</td>
-                <td className="px-4 py-2 border-r text-gray-700">{cur.rate?.toFixed(4) || '1.0000'}</td>
-                <td className="px-4 py-2 text-center">
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteConfirmId(cur.id);
-                    }}
-                    className="p-1 text-rose-500 hover:bg-rose-50 rounded"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </td>
+                <td className="px-4 py-2 border-r text-gray-700">{cur.rate?.toFixed(2) || '1.00'}</td>
+                <td className="px-4 py-2 text-center text-gray-700">{cur.symbol || '-'}</td>
               </tr>
             ))}
           </tbody>
@@ -183,27 +165,41 @@ interface CurrencyFormProps {
 }
 
 function CurrencyForm({ currency, onClose, onSuccess }: CurrencyFormProps) {
-  const [curUid, setCurUid] = useState(currency?.curUid || '');
+  const [currencyVal, setCurrencyVal] = useState(currency?.currency || '');
   const [name, setName] = useState(currency?.name || '');
   const [iso, setIso] = useState(currency?.iso || '');
-  const [rate, setRate] = useState(currency?.rate?.toString() || '1.0');
+  const [rate, setRate] = useState(currency?.rate?.toFixed(2) || '1.00');
+  const [symbol, setSymbol] = useState(currency?.symbol || '');
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!curUid.trim() || !name.trim() || !iso.trim() || !rate.trim()) return;
+    if (!currencyVal.trim() || !name.trim() || !iso.trim() || !rate.trim()) return;
     
     setSaving(true);
     try {
       const rateNum = parseFloat(rate);
       if (currency) {
-        await currencyService.updateCurrency({ ...currency, curUid, name, iso, rate: rateNum });
+        await currencyService.updateCurrency({ ...currency, currency: currencyVal, name, iso, rate: rateNum, symbol });
       } else {
-        await currencyService.addCurrency({ curUid, name, iso, rate: rateNum });
+        await currencyService.addCurrency({ currency: currencyVal, name, iso, rate: rateNum, symbol });
       }
       onSuccess();
     } catch (error) {
       console.error('Error saving currency:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!currency) return;
+    setSaving(true);
+    try {
+      await currencyService.deleteCurrency(currency.id);
+      onSuccess();
+    } catch (error) {
+      console.error('Error deleting currency:', error);
     } finally {
       setSaving(false);
     }
@@ -221,11 +217,11 @@ function CurrencyForm({ currency, onClose, onSuccess }: CurrencyFormProps) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-neutral-500 uppercase">CUR_UID</label>
+            <label className="text-xs font-bold text-neutral-500 uppercase">CURRENCY</label>
             <input
               type="text"
-              value={curUid}
-              onChange={(e) => setCurUid(e.target.value)}
+              value={currencyVal}
+              onChange={(e) => setCurrencyVal(e.target.value)}
               className="w-full p-3 bg-neutral-50 border border-neutral-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
               required
             />
@@ -254,20 +250,41 @@ function CurrencyForm({ currency, onClose, onSuccess }: CurrencyFormProps) {
             <label className="text-xs font-bold text-neutral-500 uppercase">RATE</label>
             <input
               type="number"
-              step="0.0001"
+              step="0.01"
               value={rate}
               onChange={(e) => setRate(e.target.value)}
               className="w-full p-3 bg-neutral-50 border border-neutral-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
               required
             />
           </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full bg-emerald-500 text-white py-3 rounded-2xl font-bold hover:bg-emerald-600 transition-all disabled:opacity-50"
-          >
-            {saving ? 'Сохранение...' : 'Сохранить'}
-          </button>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-neutral-500 uppercase">SYMBOL</label>
+            <input
+              type="text"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value)}
+              className="w-full p-3 bg-neutral-50 border border-neutral-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          <div className="flex gap-3 pt-2">
+            {currency && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={saving}
+                className="bg-rose-50 text-rose-600 py-3 px-6 rounded-2xl font-bold hover:bg-rose-100 transition-all disabled:opacity-50"
+              >
+                <Trash2 size={20} />
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 bg-theme-primary text-white py-3 rounded-2xl font-bold hover:bg-theme-primary-dark transition-all disabled:opacity-50"
+            >
+              {saving ? 'Сохранение...' : 'Сохранить'}
+            </button>
+          </div>
         </form>
       </div>
     </div>

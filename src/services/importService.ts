@@ -9,6 +9,8 @@ export interface ImportResult {
   errors: string[];
 }
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const importFinancialData = async (
   file: File, 
   onProgress?: (progress: number) => void,
@@ -68,9 +70,9 @@ const importFromJSON = async (
 
         let currencyCode = 'RUB';
         if (currencyUid) {
-          const foundCurrency = currencies.find(c => c.curUid === currencyUid);
+          const foundCurrency = currencies.find(c => c.currency === currencyUid);
           if (foundCurrency) {
-            currencyCode = foundCurrency.curUid;
+            currencyCode = foundCurrency.currency;
           } else if (currencyUid.includes('_')) {
             currencyCode = currencyUid.split('_')[1];
           } else {
@@ -188,6 +190,7 @@ const importFromJSON = async (
         categories: [],
         transactions: chunk
       });
+      await delay(500); // Add delay to avoid rate limits
       importedCount += chunk.length;
       if (onProgress) onProgress(50 + Math.round(((i + chunk.length) / transactionsToImport.length) * 50));
       if (onLog) onLog(`Импортировано ${importedCount} операций...`);
@@ -240,11 +243,18 @@ const importFromExcel = async (
         });
 
         if (importData.transactions && importData.transactions.length > 0) {
-          await api.post('/import/batch', {
-            accounts: [],
-            categories: [],
-            transactions: importData.transactions
-          });
+          const chunkSize = 100;
+          for (let i = 0; i < importData.transactions.length; i += chunkSize) {
+            if (signal?.aborted) throw new Error('Import cancelled');
+            const chunk = importData.transactions.slice(i, i + chunkSize);
+            await api.post('/import/batch', {
+              accounts: [],
+              categories: [],
+              transactions: chunk
+            });
+            await delay(500); // Add delay to avoid rate limits
+            if (onLog) onLog(`Импортировано ${i + chunk.length} операций...`);
+          }
         }
 
         // Остальные данные (goals, budgets) можно импортировать аналогично, если нужно

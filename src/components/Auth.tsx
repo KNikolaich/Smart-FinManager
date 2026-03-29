@@ -25,7 +25,14 @@ export default function Auth({ onAuth }: AuthProps) {
       localStorage.setItem('token', data.token);
       onAuth(data.user);
     } catch (err: any) {
-      setError(err.message || 'Ошибка авторизации');
+      let errorMessage = 'Ошибка авторизации';
+      try {
+        const errorData = JSON.parse(err.message);
+        errorMessage = errorData.error || errorMessage;
+      } catch {
+        errorMessage = err.message || errorMessage;
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -35,7 +42,7 @@ export default function Auth({ onAuth }: AuthProps) {
     <div className="min-h-screen flex items-center justify-center bg-neutral-50 p-4">
       <div className="w-full max-w-md bg-white rounded-[32px] shadow-2xl overflow-hidden p-8">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/20">
+          <div className="w-16 h-16 bg-theme-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-theme-primary-light">
             {isLogin ? <LogIn className="text-white w-8 h-8" /> : <UserPlus className="text-white w-8 h-8" />}
           </div>
           <h1 className="text-2xl font-bold text-neutral-900">
@@ -63,7 +70,7 @@ export default function Auth({ onAuth }: AuthProps) {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-neutral-50 border-none rounded-2xl pl-12 pr-4 py-3.5 outline-none focus:ring-2 ring-emerald-500/20 transition-all"
+                className="w-full bg-neutral-50 border-none rounded-2xl pl-12 pr-4 py-3.5 outline-none focus:ring-2 ring-theme-primary-light transition-all"
                 placeholder="your@email.com"
               />
             </div>
@@ -78,7 +85,7 @@ export default function Auth({ onAuth }: AuthProps) {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-neutral-50 border-none rounded-2xl pl-12 pr-4 py-3.5 outline-none focus:ring-2 ring-emerald-500/20 transition-all"
+                className="w-full bg-neutral-50 border-none rounded-2xl pl-12 pr-4 py-3.5 outline-none focus:ring-2 ring-theme-primary-light transition-all"
                 placeholder="••••••••"
               />
             </div>
@@ -87,7 +94,7 @@ export default function Auth({ onAuth }: AuthProps) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50 mt-4"
+            className="w-full bg-theme-primary hover:bg-theme-primary-dark text-white font-bold py-4 rounded-2xl shadow-lg shadow-theme-primary-light transition-all disabled:opacity-50 mt-4"
           >
             {loading ? 'Загрузка...' : isLogin ? 'Войти' : 'Зарегистрироваться'}
           </button>
@@ -96,7 +103,7 @@ export default function Auth({ onAuth }: AuthProps) {
         <div className="mt-8 text-center">
           <button
             onClick={() => setIsLogin(!isLogin)}
-            className="text-neutral-500 text-sm hover:text-emerald-600 transition-colors"
+            className="text-neutral-500 text-sm hover:text-theme-primary-dark transition-colors"
           >
             {isLogin ? 'Нет аккаунта? Зарегистрируйтесь' : 'Уже есть аккаунт? Войдите'}
           </button>

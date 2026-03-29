@@ -135,11 +135,12 @@ model PlanGrid {
 }
 
 model Currency {
-  id     String @id @default(uuid())
-  curUid String @unique
-  name   String
-  iso    String
-  rate   Float  @default(1.0)
+  id       String @id @default(uuid())
+  currency String @unique
+  name     String
+  iso      String
+  rate     Float  @default(1.0)
+  symbol   String?
 
   @@map("currencies")
 }

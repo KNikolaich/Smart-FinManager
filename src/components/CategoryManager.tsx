@@ -41,7 +41,7 @@ export default function CategoryManager({ user, onClose, onRefresh }: CategoryMa
     try {
       const fetchedCategories = await api.get<Category[]>('/categories');
       // Sort alphabetically by name
-      fetchedCategories.sort((a, b) => a.name.localeCompare(b.name));
+      fetchedCategories.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       setCategories(fetchedCategories);
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -84,7 +84,7 @@ export default function CategoryManager({ user, onClose, onRefresh }: CategoryMa
         {/* Header */}
         <div className="p-4 sm:p-6 flex items-center justify-between bg-white sticky top-0 z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-100 flex-shrink-0">
+            <div className="w-10 h-10 bg-theme-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-theme-primary-light flex-shrink-0">
               <Tag size={20} />
             </div>
             <div>
@@ -97,7 +97,7 @@ export default function CategoryManager({ user, onClose, onRefresh }: CategoryMa
                 setEditingCategory(null);
                 setShowFormModal(true);
               }}
-              className="flex items-center gap-2 bg-emerald-500 text-white p-2 sm:px-4 sm:py-2 rounded-xl hover:bg-emerald-600 transition-all font-bold text-sm shadow-lg shadow-emerald-100"
+              className="flex items-center gap-2 bg-theme-primary text-white p-2 sm:px-4 sm:py-2 rounded-xl hover:bg-theme-primary-dark transition-all font-bold text-sm shadow-lg shadow-theme-primary-light"
             >
               <Plus size={18} />
               <span className="hidden sm:inline">Добавить</span>
@@ -112,7 +112,7 @@ export default function CategoryManager({ user, onClose, onRefresh }: CategoryMa
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-neutral-50/50 no-scrollbar">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-4">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500" />
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-theme-primary" />
               <p className="text-neutral-400 font-medium">Загрузка категорий...</p>
             </div>
           ) : (
@@ -338,12 +338,12 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
               <button
                 type="button"
                 onClick={() => setShowIconPicker(true)}
-                className="w-20 h-20 bg-neutral-50 rounded-3xl flex items-center justify-center text-4xl hover:bg-neutral-100 transition-all hover:border-emerald-500 group relative"
+                className="w-20 h-20 bg-neutral-50 rounded-3xl flex items-center justify-center text-4xl hover:bg-neutral-100 transition-all hover:border-theme-primary group relative"
                 style={{ border: color && color !== '#000000' ? `3px solid ${color}` : 'none' }}
               >
                 {icon || (parentId ? categories.find(c => c.id === parentId)?.icon : '💰')}
-                <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-100 rounded-3xl transition-opacity flex items-center justify-center">
-                  <Plus className="text-emerald-600 w-6 h-6" />
+                <div className="absolute inset-0 bg-theme-primary/10 opacity-0 group-hover:opacity-100 rounded-3xl transition-opacity flex items-center justify-center">
+                  <Plus className="text-theme-primary-dark w-6 h-6" />
                 </div>
               </button>
               {color && color !== '#000000' && (
@@ -366,7 +366,7 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Например: Продукты"
-                className="w-full bg-neutral-50 rounded-2xl px-5 py-4 outline-none focus:ring-2 ring-emerald-500/20 font-semibold transition-all"
+                className="w-full bg-neutral-50 rounded-2xl px-5 py-4 outline-none focus:ring-2 ring-theme-primary/20 font-semibold transition-all"
                 autoFocus
               />
             </div>
@@ -418,7 +418,7 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
                     disabled={!!parentId}
                     className={`py-2 rounded-xl font-bold text-[10px] uppercase transition-all ${
                       type === 'income' 
-                        ? 'bg-white text-emerald-500 shadow-sm' 
+                        ? 'bg-white text-theme-primary shadow-sm' 
                         : 'text-neutral-400'
                     }`}
                   >
@@ -440,11 +440,11 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
                     if (parent) setType(parent.type as TransactionType);
                   }
                 }}
-                className="w-full bg-neutral-50 rounded-2xl px-5 py-4 outline-none focus:ring-2 ring-emerald-500/20 font-semibold transition-all"
+                className="w-full bg-neutral-50 rounded-2xl px-5 py-4 outline-none focus:ring-2 ring-theme-primary/20 font-semibold transition-all"
               >
                 <option value="">Нет (верхний уровень)</option>
                 {categories
-                  .filter(c => c.id !== category?.id && !c.parentId)
+                  .filter(c => c.id !== category?.id && !c.parentId && c.type === type)
                   .map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
@@ -468,7 +468,7 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
             <button
               type="submit"
               disabled={saving || !name.trim()}
-              className="flex-1 bg-emerald-500 text-white py-4 rounded-2xl font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100 disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
+              className="flex-1 bg-theme-primary text-white py-4 rounded-2xl font-bold hover:bg-theme-primary-dark transition-all shadow-lg shadow-theme-primary-light disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
             >
               {saving ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -503,7 +503,7 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
                   />
                   <button
                     onClick={() => setShowIconPicker(false)}
-                    className="bg-emerald-500 text-white px-6 rounded-2xl font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100"
+                    className="bg-theme-primary text-white px-6 rounded-2xl font-bold hover:bg-theme-primary-dark transition-all shadow-lg shadow-theme-primary-light"
                   >
                     Готово
                   </button>
@@ -520,7 +520,7 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
                     setShowIconPicker(false);
                   }}
                   className={`aspect-square flex items-center justify-center text-3xl rounded-2xl transition-all hover:scale-110 ${
-                    icon === emoji ? 'bg-emerald-50 ring-2 ring-emerald-500' : 'bg-neutral-50 hover:bg-neutral-100'
+                    icon === emoji ? 'bg-theme-primary-light ring-2 ring-theme-primary' : 'bg-neutral-50 hover:bg-neutral-100'
                   }`}
                 >
                   {emoji}

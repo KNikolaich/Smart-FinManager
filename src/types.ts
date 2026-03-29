@@ -135,10 +135,11 @@ export interface PlanData {
 
 export interface Currency {
   id: string;
-  curUid: string;
+  currency: string;
   name: string;
   iso: string;
   rate: number;
+  symbol?: string;
 }
 
 export interface Message {

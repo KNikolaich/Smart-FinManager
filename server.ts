@@ -41,8 +41,12 @@ const authenticateToken = (req: any, res: any, next: any) => {
 // --- AUTH ROUTES ---
 
 app.post("/api/auth/register", async (req, res) => {
+  console.log("Registration attempt:", req.body.email);
   try {
     const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
       data: { email, password: hashedPassword },
@@ -50,6 +54,7 @@ app.post("/api/auth/register", async (req, res) => {
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET);
     res.json({ token, user: { id: user.id, email: user.email } });
   } catch (error: any) {
+    console.error("Registration error:", error);
     if (error.code === 'P2002') {
       return res.status(400).json({ error: "Email already exists" });
     }
@@ -516,12 +521,15 @@ app.post("/api/currencies", authenticateToken, async (req: any, res) => {
 
 app.put("/api/currencies/:id", authenticateToken, async (req: any, res) => {
   try {
-    const currency = await prisma.currency.update({
+    const { id, ...data } = req.body;
+    const currency = await prisma.currency.upsert({
       where: { id: req.params.id },
-      data: req.body
+      update: data,
+      create: { ...data, id: req.params.id }
     });
     res.json(currency);
   } catch (error: any) {
+    console.error("Update Currency Error:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -543,17 +551,19 @@ app.post("/api/currencies/seed", authenticateToken, async (req: any, res) => {
     }
 
     const defaults = [
-      { curUid: 'RUB', name: 'RUB - Russia (руб)', iso: 'RUB', rate: 1.0 },
-      { curUid: 'USD', name: 'USD - USA (US$)', iso: 'USD', rate: 1.0 },
-      { curUid: 'EUR', name: 'EUR - European Union (€)', iso: 'EUR', rate: 1.0 },
-      { curUid: 'GBP', name: 'GBP - United Kingdom (£)', iso: 'GBP', rate: 1.0 },
-      { curUid: 'JPY', name: 'JPY - Japan (¥)', iso: 'JPY', rate: 1.0 },
-      { curUid: 'CNY', name: 'CNY - China (¥)', iso: 'CNY', rate: 1.0 },
+      { currency: 'рубль', name: 'RUB - Russia (руб)', iso: 'RUB', rate: 1.0, symbol: '₽' },
+      { currency: 'доллар', name: 'USD - USA (US$)', iso: 'USD', rate: 1.0, symbol: '$' },
+      { currency: 'евро', name: 'EUR - European Union (€)', iso: 'EUR', rate: 1.0, symbol: '€' },
+      { currency: 'фунт', name: 'GBP - United Kingdom (£)', iso: 'GBP', rate: 1.0, symbol: '£' },
+      { currency: 'иена', name: 'JPY - Japan (¥)', iso: 'JPY', rate: 1.0, symbol: '¥' },
+      { currency: 'юань', name: 'CNY - China (¥)', iso: 'CNY', rate: 1.0, symbol: '¥' },
     ];
 
     for (const cur of defaults) {
-      await prisma.currency.create({
-        data: cur
+      await prisma.currency.upsert({
+        where: { currency: cur.currency },
+        update: {},
+        create: cur
       });
     }
     res.json({ success: true });
@@ -625,9 +635,9 @@ app.post("/api/import/batch", authenticateToken, async (req: any, res) => {
 
         // Ensure currency exists
         await prisma.currency.upsert({
-          where: { curUid: currencyCode },
+          where: { currency: currencyCode },
           update: {},
-          create: { curUid: currencyCode, name: currencyCode === 'RUB' ? 'Рубль' : 'Доллар', iso: currencyCode }
+          create: { currency: currencyCode, name: currencyCode === 'RUB' ? 'Рубль' : 'Доллар', iso: currencyCode }
         });
 
         // Ensure account exists or update it

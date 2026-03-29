@@ -16,7 +16,7 @@ export const currencyService = {
     const interval = setInterval(async () => {
       const currencies = await this.getCurrencies();
       callback(currencies);
-    }, 5000);
+    }, 30000); // Increased to 30 seconds
 
     this.getCurrencies().then(callback);
 

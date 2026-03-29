@@ -162,7 +162,7 @@ export default function AccountManager({ accounts, userId, onClose, onRefresh }:
             {!isAdding && !editingId && (
               <button 
                 onClick={() => setIsAdding(true)}
-                className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-emerald-600 transition-all active:scale-95"
+                className="flex items-center gap-2 bg-theme-primary text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-theme-primary-dark transition-all active:scale-95"
               >
                 <Plus className="w-4 h-4" />
                 Добавить
@@ -176,7 +176,7 @@ export default function AccountManager({ accounts, userId, onClose, onRefresh }:
                 <select 
                   value={type} 
                   onChange={(e) => setType(e.target.value as AccountType)} 
-                  className="bg-white rounded-xl p-3 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all appearance-none"
+                  className="bg-white rounded-xl p-3 text-sm outline-none focus:ring-2 ring-theme-primary-light transition-all appearance-none"
                 >
                   <option value="card">Карта</option>
                   <option value="credit">Кредит</option>
@@ -187,7 +187,7 @@ export default function AccountManager({ accounts, userId, onClose, onRefresh }:
                   type="text" 
                   value={name} 
                   onChange={(e) => setName(e.target.value)} 
-                  className="bg-white rounded-xl p-3 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all" 
+                  className="bg-white rounded-xl p-3 text-sm outline-none focus:ring-2 ring-theme-primary-light transition-all" 
                   placeholder="Название счета" 
                   required 
                 />
@@ -197,7 +197,7 @@ export default function AccountManager({ accounts, userId, onClose, onRefresh }:
                   type="number" 
                   value={balance} 
                   onChange={(e) => setBalance(e.target.value)} 
-                  className="bg-white rounded-xl p-3 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all" 
+                  className="bg-white rounded-xl p-3 text-sm outline-none focus:ring-2 ring-theme-primary-light transition-all" 
                   placeholder="Начальный баланс" 
                   required 
                 />
@@ -226,7 +226,7 @@ export default function AccountManager({ accounts, userId, onClose, onRefresh }:
               </div>
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={resetForm} className="px-4 py-2 bg-neutral-200 text-neutral-600 rounded-lg text-sm">Отмена</button>
-                <button type="submit" disabled={loading} className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-bold">
+                <button type="submit" disabled={loading} className="px-4 py-2 bg-theme-primary text-white rounded-lg text-sm font-bold">
                   {loading ? '...' : 'Сохранить'}
                 </button>
               </div>
@@ -271,7 +271,7 @@ export default function AccountManager({ accounts, userId, onClose, onRefresh }:
                                 <select 
                                   value={type} 
                                   onChange={(e) => setType(e.target.value as AccountType)} 
-                                  className="bg-white border border-neutral-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase tracking-wider outline-none focus:ring-2 ring-emerald-500/20 transition-all appearance-none min-w-[90px]"
+                                  className="bg-white border border-neutral-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase tracking-wider outline-none focus:ring-2 ring-theme-primary-light transition-all appearance-none min-w-[90px]"
                                 >
                                   <option value="card">Карта</option>
                                   <option value="credit">Кредит</option>
@@ -282,7 +282,7 @@ export default function AccountManager({ accounts, userId, onClose, onRefresh }:
                                   type="text" 
                                   value={name} 
                                   onChange={(e) => setName(e.target.value)} 
-                                  className="flex-1 bg-white border border-neutral-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 ring-emerald-500/20 transition-all" 
+                                  className="flex-1 bg-white border border-neutral-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 ring-theme-primary-light transition-all" 
                                   placeholder="Название" 
                                 />
                               </div>
@@ -299,7 +299,7 @@ export default function AccountManager({ accounts, userId, onClose, onRefresh }:
                                     disabled={!isBalanceEditable}
                                     className={cn(
                                       "w-full text-left font-bold text-sm outline-none transition-all",
-                                      isBalanceEditable ? "text-emerald-600" : "text-neutral-400 bg-transparent"
+                                      isBalanceEditable ? "text-theme-primary-dark" : "text-neutral-400 bg-transparent"
                                     )}
                                   />
                                   <div className="flex items-center gap-1">
@@ -309,7 +309,7 @@ export default function AccountManager({ accounts, userId, onClose, onRefresh }:
                                       onClick={(e) => { e.stopPropagation(); setIsBalanceEditable(!isBalanceEditable); }}
                                       className={cn(
                                         "p-1 rounded-lg transition-colors",
-                                        isBalanceEditable ? "text-emerald-500 bg-emerald-50" : "text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100"
+                                        isBalanceEditable ? "text-theme-primary-dark bg-theme-primary-light" : "text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100"
                                       )}
                                     >
                                       <Pencil className="w-3 h-3" />
@@ -329,9 +329,9 @@ export default function AccountManager({ accounts, userId, onClose, onRefresh }:
                           </div>
 
                           <div className="flex items-center gap-4 text-xs font-medium text-neutral-600 px-1">
-                            <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={showOnDashboard} onChange={(e) => setShowOnDashboard(e.target.checked)} className="rounded text-emerald-500" /> На главном</label>
-                            <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={showInTotals} onChange={(e) => setShowInTotals(e.target.checked)} className="rounded text-emerald-500" /> В суммах</label>
-                            <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={isArchived} onChange={(e) => setIsArchived(e.target.checked)} className="rounded text-emerald-500" /> Архив</label>
+                            <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={showOnDashboard} onChange={(e) => setShowOnDashboard(e.target.checked)} className="rounded text-theme-primary" /> На главном</label>
+                            <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={showInTotals} onChange={(e) => setShowInTotals(e.target.checked)} className="rounded text-theme-primary" /> В суммах</label>
+                            <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={isArchived} onChange={(e) => setIsArchived(e.target.checked)} className="rounded text-theme-primary" /> Архив</label>
                           </div>
 
                           <div className="flex justify-end gap-2 pt-2">
@@ -343,7 +343,7 @@ export default function AccountManager({ accounts, userId, onClose, onRefresh }:
                               </div>
                             ) : (
                               <>
-                                <button onClick={(e) => { e.stopPropagation(); handleUpdate(acc.id); }} className="p-3 bg-emerald-500 text-white rounded-2xl hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100 active:scale-95"><Check className="w-5 h-5" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); handleUpdate(acc.id); }} className="p-3 bg-theme-primary text-white rounded-2xl hover:bg-theme-primary-dark transition-all shadow-lg shadow-theme-primary-light active:scale-95"><Check className="w-5 h-5" /></button>
                                 <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(acc.id); }} className="p-3 bg-rose-500 text-white rounded-2xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-100 active:scale-95"><Trash2 className="w-5 h-5" /></button>
                                 <button onClick={(e) => { e.stopPropagation(); resetForm(); }} className="p-3 bg-neutral-200 text-neutral-600 rounded-2xl hover:bg-neutral-300 transition-all active:scale-95"><X className="w-5 h-5" /></button>
                               </>
