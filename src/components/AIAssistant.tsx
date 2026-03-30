@@ -366,14 +366,14 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
           <div key={m.id} className={cn("flex gap-2 sm:gap-3", m.role === 'user' ? "flex-row-reverse" : "flex-row")}>
             <div className={cn(
               "w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0",
-              m.role === 'assistant' ? "bg-emerald-500 text-white" : "bg-neutral-200 text-neutral-600"
+              m.role === 'assistant' ? "bg-theme-primary text-white" : "bg-neutral-200 text-neutral-600"
             )}>
               {m.role === 'assistant' ? <Bot className="w-4 h-4 sm:w-5 sm:h-5" /> : <User className="w-4 h-4 sm:w-5 sm:h-5" />}
             </div>
             <div className="space-y-2 sm:space-y-3 max-w-[82%] sm:max-w-[85%]">
               <div className={cn(
                 "p-2.5 sm:p-4 rounded-xl sm:rounded-2xl text-xs sm:text-sm shadow-sm",
-                m.role === 'assistant' ? "bg-white text-neutral-800 rounded-tl-none" : "bg-emerald-600 text-white rounded-tr-none"
+                m.role === 'assistant' ? "bg-white text-neutral-800 rounded-tl-none" : "bg-theme-primary text-white rounded-tr-none"
               )}>
                 <div className="prose prose-sm max-w-none prose-p:leading-relaxed text-[12px] sm:text-sm">
                   <ReactMarkdown>
@@ -386,7 +386,7 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
                 <div className="flex gap-2">
                   <button 
                     onClick={() => confirmAction(m.id, m.actionType!, typeof m.actionData === 'string' ? JSON.parse(m.actionData) : m.actionData)}
-                    className="bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all"
+                    className="bg-theme-primary text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all"
                   >
                     Подтвердить
                   </button>
@@ -403,7 +403,7 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
         ))}
         {loading && (
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-theme-primary text-white flex items-center justify-center">
               <Bot className="w-5 h-5" />
             </div>
             <div className="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
@@ -449,7 +449,7 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
             <button
               onClick={() => handleSend()}
               disabled={!input.trim() || loading}
-              className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-500 text-white rounded-lg sm:rounded-xl flex items-center justify-center disabled:opacity-50 transition-all active:scale-95"
+              className="w-10 h-10 sm:w-12 sm:h-12 bg-theme-primary text-white rounded-lg sm:rounded-xl flex items-center justify-center disabled:opacity-50 transition-all active:scale-95"
             >
               <Send className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>

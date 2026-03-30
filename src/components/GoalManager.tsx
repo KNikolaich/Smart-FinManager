@@ -118,9 +118,9 @@ export default function GoalManager({ goals, userId, onClose, onRefresh, initial
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-1 sm:p-4">
       <div className="bg-white w-full max-w-2xl rounded-t-[32px] sm:rounded-[32px] overflow-hidden flex flex-col max-h-[90vh] shadow-2xl animate-in slide-in-from-bottom duration-300">
-        <div className="p-4 sm:p-6 flex items-center justify-between shrink-0">
+        <div className="p-4 sm:p-2 flex items-center justify-between shrink-0">
           <h2 className="text-lg sm:text-xl font-bold">Управление целями</h2>
           <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
             <X className="w-5 h-5 sm:w-6 h-6 text-neutral-400" />

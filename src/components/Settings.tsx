@@ -231,7 +231,7 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
       <div className="space-y-6 relative">
         {showCategoryManager && <CategoryManager user={user} onClose={() => setShowCategoryManager(false)} onRefresh={onRefresh} />}
         {showCurrencyTable && (
-          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-6 sm:p-4 bg-black/40 backdrop-blur-sm">
             <div className="absolute inset-0" onClick={() => setShowCurrencyTable(false)} />
             <div className="relative w-full max-w-lg bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 max-h-[90vh] flex flex-col">
               <div className="p-4 border-b border-neutral-100 flex items-center justify-between shrink-0">
@@ -248,7 +248,7 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
         )}
         
         {showLogModal && (
-          <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-6 sm:p-4 bg-black/40 backdrop-blur-sm">
             <div className="absolute inset-0" onClick={() => setShowLogModal(false)} />
             <div className="relative w-full max-w-2xl bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[90vh]">
               <div className="p-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50 shrink-0">
@@ -296,7 +296,7 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
 
         {/* Seed Data Confirmation Overlay */}
         {showSeedConfirm && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="w-full max-w-md bg-white rounded-[32px] p-8 text-center shadow-2xl animate-in zoom-in duration-200 border border-amber-100">
               <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Sparkles className="w-8 h-8 text-amber-600" />
@@ -337,7 +337,7 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
 
         {/* Clear Data Confirmation Overlay */}
         {showClearConfirm && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="w-full max-w-md bg-white rounded-[32px] p-8 text-center shadow-2xl animate-in zoom-in duration-200 border border-rose-100">
               <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertTriangle className="w-8 h-8 text-rose-600" />
@@ -378,7 +378,7 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
 
         {/* Clear Transactions Only Confirmation Overlay */}
         {showClearTransactionsConfirm && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="w-full max-w-md bg-white rounded-[32px] p-8 text-center shadow-2xl animate-in zoom-in duration-200 border border-blue-100">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertTriangle className="w-8 h-8 text-blue-600" />

@@ -79,7 +79,7 @@ export default function AILogs({ userId, onClose }: AILogsProps) {
       <div className="bg-white w-full max-w-4xl rounded-3xl overflow-hidden flex flex-col max-h-[90vh] shadow-2xl">
         <div className="p-4 sm:p-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-900 text-white">
           <div className="flex items-center gap-3">
-            <div className="bg-emerald-500 p-2 rounded-xl">
+            <div className="bg-theme-primary p-2 rounded-xl">
               <Terminal className="w-5 h-5" />
             </div>
             <div>

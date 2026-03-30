@@ -66,9 +66,9 @@ export default function TransactionHistory({ transactions, categories, accounts,
   }, [filteredTransactions]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-0">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-1 sm:p-0">
       <div className="w-full h-full max-w-2xl bg-white shadow-2xl flex flex-col relative overflow-hidden animate-in slide-in-from-bottom duration-300">
-        <div className="py-4 px-6 border-b border-neutral-100 flex items-center justify-between shrink-0">
+        <div className="py-4 px-4 border-b border-neutral-100 flex items-center justify-between shrink-0">
           <h2 className="text-xl font-bold">История операций</h2>
           <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
             <X className="w-6 h-6 text-neutral-400" />

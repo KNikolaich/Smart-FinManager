@@ -69,7 +69,7 @@ export default function EditTransaction({ transaction, accounts, categories, onC
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-1 sm:p-4 bg-black/40 backdrop-blur-sm">
       <div className="w-full max-w-lg bg-white rounded-t-[32px] sm:rounded-[32px] overflow-hidden shadow-2xl flex flex-col relative max-h-[90vh] animate-in slide-in-from-bottom duration-300">
         {/* Delete Confirmation Overlay */}
         {showDeleteConfirm && (

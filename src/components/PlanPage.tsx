@@ -686,7 +686,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
 
       {/* Cell Edit Modal */}
       {editingCell && cellEditValue && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6 sm:p-4">
           <div className="bg-white rounded-[32px] p-6 w-full max-w-md shadow-2xl space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold">Редактирование ячейки</h3>
@@ -778,7 +778,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
 
       {/* Subject (Column) Edit Modal */}
       {editingSubject && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6 sm:p-4">
           <div className="bg-white rounded-[32px] p-6 w-full max-w-md shadow-2xl space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold">Настройка графы</h3>
@@ -859,7 +859,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
 
       {/* Delete Confirmation Modal */}
       {subjectToDelete && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6 sm:p-4">
           <div className="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-2xl space-y-6 text-center">
             <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto">
               <Trash2 size={32} />

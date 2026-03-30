@@ -82,7 +82,7 @@ export default function CategoryManager({ user, onClose, onRefresh }: CategoryMa
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm">
       <div className="w-full max-w-4xl bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
         {/* Header */}
-        <div className="p-4 sm:p-6 flex items-center justify-between bg-white sticky top-0 z-10">
+        <div className="p-2 sm:p-2 flex items-center justify-between bg-white sticky top-0 z-10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-theme-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-theme-primary-light flex-shrink-0">
               <Tag size={20} />
@@ -109,7 +109,7 @@ export default function CategoryManager({ user, onClose, onRefresh }: CategoryMa
         </div>
         
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-neutral-50/50 no-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-1 bg-neutral-50/50 no-scrollbar">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-4">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-theme-primary" />
@@ -245,7 +245,7 @@ export default function CategoryManager({ user, onClose, onRefresh }: CategoryMa
 
       {/* Delete Confirmation */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-6 sm:p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white p-6 rounded-3xl shadow-xl max-w-sm w-full text-center animate-in zoom-in duration-200">
             <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 mx-auto mb-4">
               <AlertTriangle size={32} />
@@ -323,7 +323,7 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-6 sm:p-4 bg-black/50 backdrop-blur-sm">
       <div className="relative w-full max-w-md bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in slide-in-from-bottom duration-300">
         <div className="p-6 flex items-center justify-between">
           <h3 className="text-xl font-bold">{category ? 'Редактировать' : 'Новая категория'}</h3>
