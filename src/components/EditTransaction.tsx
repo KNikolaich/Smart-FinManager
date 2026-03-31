@@ -3,6 +3,8 @@ import { api } from '../lib/api';
 import { Transaction, Account, Category } from '../types';
 import { X, Trash2, Check, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
+import { cn } from '../lib/utils';
+import AccountSelect from './AccountSelect';
 
 interface EditTransactionProps {
   transaction: Transaction;
@@ -69,11 +71,11 @@ export default function EditTransaction({ transaction, accounts, categories, onC
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-1 sm:p-4 bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-1 sm:p-1 bg-black/40 backdrop-blur-sm">
       <div className="w-full max-w-lg bg-white rounded-t-[32px] sm:rounded-[32px] overflow-hidden shadow-2xl flex flex-col relative max-h-[90vh] animate-in slide-in-from-bottom duration-300">
         {/* Delete Confirmation Overlay */}
         {showDeleteConfirm && (
-          <div className="absolute inset-0 z-[70] bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-200">
+          <div className="absolute inset-0 z-[70] bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center p-2 text-center animate-in fade-in zoom-in duration-200">
             <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mb-4">
               <Trash2 className="w-8 h-8 text-rose-600" />
             </div>
@@ -83,14 +85,14 @@ export default function EditTransaction({ transaction, accounts, categories, onC
               <button
                 onClick={handleDelete}
                 disabled={loading}
-                className="w-full bg-rose-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all active:scale-95 disabled:opacity-50"
+                className="w-full bg-rose-600 text-white font-bold py-1 rounded-2xl shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all active:scale-95 disabled:opacity-50"
               >
                 {loading ? "Удаление..." : "Да, удалить"}
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={loading}
-                className="w-full bg-neutral-100 text-neutral-600 font-bold py-4 rounded-2xl hover:bg-neutral-200 transition-all active:scale-95"
+                className="w-full bg-neutral-100 text-neutral-600 font-bold py-1 rounded-2xl hover:bg-neutral-200 transition-all active:scale-95"
               >
                 Отмена
               </button>
@@ -98,21 +100,21 @@ export default function EditTransaction({ transaction, accounts, categories, onC
           </div>
         )}
 
-        <div className="px-6 py-3 flex items-center justify-between shrink-0">
+        <div className="px-2 py-3 flex items-center justify-between shrink-0">
           <h2 className="text-base font-bold text-neutral-800">Операция</h2>
           <button onClick={onClose} className="p-1.5 hover:bg-neutral-100 rounded-full transition-colors">
             <X className="w-5 h-5 text-neutral-400" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
+        <div className="flex-1 overflow-y-auto p-1 space-y-1 no-scrollbar">
           {error && (
             <div className="p-3 bg-rose-50 text-rose-600 text-xs font-bold rounded-xl animate-in fade-in slide-in-from-top-2 duration-200">
               {error}
             </div>
           )}
           {/* Amount Input */}
-          <div className="flex items-center justify-center gap-2 py-2">
+          <div className="flex items-center justify-center gap-2 py-0">
             <div className="relative">
               <input
                 type="number"
@@ -155,20 +157,12 @@ export default function EditTransaction({ transaction, accounts, categories, onC
           </div>
 
           {/* Account Selection - Dropdown */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-1">Счет</label>
-            <select
-              value={selectedAccountId}
-              onChange={(e) => setSelectedAccountId(e.target.value)}
-              className="w-full bg-neutral-50 border-none rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all appearance-none font-semibold"
-            >
-              {accounts.filter(a => !a.isArchived || a.id === transaction.accountId).map(acc => (
-                <option key={acc.id} value={acc.id}>
-                  {acc.name} ({acc.balance.toLocaleString()} {acc.currency})
-                </option>
-              ))}
-            </select>
-          </div>
+          <AccountSelect 
+            accounts={accounts.filter(a => !a.isArchived || a.id === transaction.accountId)} 
+            selectedAccountId={selectedAccountId} 
+            onChange={setSelectedAccountId} 
+            label="Счет" 
+          />
 
           {/* Category or Target Account Selection */}
           <div className="space-y-1">
@@ -176,17 +170,12 @@ export default function EditTransaction({ transaction, accounts, categories, onC
               {transaction.type === 'transfer' ? 'Счет получатель' : 'Категория'}
             </label>
             {transaction.type === 'transfer' ? (
-              <select
-                value={selectedTargetAccountId}
-                onChange={(e) => setSelectedTargetAccountId(e.target.value)}
-                className="w-full bg-neutral-50 border-none rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all appearance-none font-semibold"
-              >
-                {accounts.filter(a => a.id !== selectedAccountId).map(acc => (
-                  <option key={acc.id} value={acc.id}>
-                    {acc.name} ({acc.balance.toLocaleString()} {acc.currency})
-                  </option>
-                ))}
-              </select>
+              <AccountSelect 
+                accounts={accounts.filter(a => a.id !== selectedAccountId)} 
+                selectedAccountId={selectedTargetAccountId} 
+                onChange={setSelectedTargetAccountId} 
+                label="" 
+              />
             ) : (
               /* Compact Category Table */
               <div className="h-48 rounded-xl flex overflow-hidden bg-neutral-50/50">
@@ -262,8 +251,4 @@ export default function EditTransaction({ transaction, accounts, categories, onC
       </div>
     </div>
   );
-}
-
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
 }

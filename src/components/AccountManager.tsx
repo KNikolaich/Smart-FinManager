@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import { api } from '../lib/api';
 import { Account, AccountType, Currency } from '../types';
-import { X, Plus, Trash2, Check, CreditCard, Wallet as WalletIcon, Landmark, Pencil, ChevronDown } from 'lucide-react';
+import { X, Plus, Trash2, Check, Pencil, ChevronDown } from 'lucide-react';
 import { CoinStack } from './CustomIcons';
 import { cn } from '../lib/utils';
 import { currencyService } from '../services/currencyService';
+import { getAccountIcon, getAccountTypeColor } from '../lib/accountUtils';
 
 interface AccountManagerProps {
   accounts: Account[];
@@ -132,15 +133,6 @@ export default function AccountManager({ accounts, userId, onClose, onRefresh }:
     setIsBalanceEditable(false);
   };
 
-  const getIcon = (type: AccountType) => {
-    switch (type) {
-      case 'card': return <CreditCard className="w-4 h-4" />;
-      case 'credit': return <WalletIcon className="w-4 h-4" />;
-      case 'bank': return <Landmark className="w-4 h-4" />;
-      case 'cash': return <CoinStack className="w-4 h-4" />;
-    }
-  };
-
   const getTypeName = (type: AccountType) => {
     switch (type) {
       case 'card': return 'Карта';
@@ -246,7 +238,7 @@ export default function AccountManager({ accounts, userId, onClose, onRefresh }:
             {(['card', 'credit', 'cash', 'bank'] as AccountType[]).map(groupType => (
               <div key={groupType} className="space-y-1">
                 <div className="flex items-center gap-2 text-neutral-400 px-2 py-1">
-                  {getIcon(groupType)}
+                  {getAccountIcon(groupType, "w-4 h-4")}
                   <span className="text-[10px] font-bold uppercase tracking-widest">{getTypeName(groupType)}</span>
                 </div>
                 
@@ -263,7 +255,7 @@ export default function AccountManager({ accounts, userId, onClose, onRefresh }:
                             style={{ backgroundColor: acc.color && acc.color !== '#000000' ? `${acc.color}20` : '#f5f5f5' }}
                           >
                             <div style={{ color: acc.color && acc.color !== '#000000' ? acc.color : 'inherit' }}>
-                              {getIcon(acc.type)}
+                              {getAccountIcon(acc.type, "w-4 h-4")}
                             </div>
                           </div>
                           <span className="font-bold text-xs text-neutral-900 truncate max-w-[120px]">{acc.name}</span>
