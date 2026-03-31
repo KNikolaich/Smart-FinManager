@@ -100,7 +100,7 @@ export default function EditTransaction({ transaction, accounts, categories, onC
           </div>
         )}
 
-        <div className="px-2 py-3 flex items-center justify-between shrink-0">
+        <div className="px-6 py-3 flex items-center justify-between shrink-0">
           <h2 className="text-base font-bold text-neutral-800">Операция</h2>
           <button onClick={onClose} className="p-1.5 hover:bg-neutral-100 rounded-full transition-colors">
             <X className="w-5 h-5 text-neutral-400" />
@@ -128,7 +128,7 @@ export default function EditTransaction({ transaction, accounts, categories, onC
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-0">
             {/* Description */}
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-1">Описание</label>
@@ -190,12 +190,13 @@ export default function EditTransaction({ transaction, accounts, categories, onC
                         setSelectedCategoryId(cat.id);
                       }}
                       className={cn(
-                        "w-full text-left px-3 py-2 text-xs font-bold transition-all",
+                        "w-full text-left px-3 py-2 text-xs font-bold transition-all flex items-center gap-2",
                         activeParentId === cat.id
                           ? "bg-white text-theme-primary shadow-sm"
                           : "text-neutral-600 hover:bg-neutral-100/50"
                       )}
                     >
+                      <span className="text-sm">{cat.icon}</span>
                       {cat.name}
                     </button>
                   ))}

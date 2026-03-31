@@ -59,7 +59,7 @@ export default function AccountSelect({ accounts, selectedAccountId, onChange, l
 
   return (
     <div className="space-y-1" ref={containerRef}>
-      <label className="text-[8px] font-bold text-neutral-400 uppercase tracking-widest ml-1">{label}</label>
+      <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-1">{label}</label>
       <div className="relative">
         <button
           type="button"
@@ -69,7 +69,7 @@ export default function AccountSelect({ accounts, selectedAccountId, onChange, l
           {selectedAccount ? (
             <div className="flex items-center gap-2">
               <div style={{ color: selectedAccount.color }}>{getAccountIcon(selectedAccount.type, "w-4 h-4")}</div>
-              {selectedAccount.name} ({selectedAccount.balance.toLocaleString()} {selectedAccount.currency})
+              {selectedAccount.name}
             </div>
           ) : (
             <span className="text-neutral-400">Выберите счет</span>
