@@ -63,7 +63,19 @@ export default function Dashboard({
     if (onCloseGoalManager) onCloseGoalManager();
   };
 
-  const totalBalance = useMemo(() => accounts.filter(a => a.showInTotals && !a.isArchived).reduce((sum, acc) => sum + acc.balance, 0), [accounts]);
+  const totalBalance = useMemo(() => {
+    return accounts
+      .filter(a => a.showInTotals && !a.isArchived)
+      .reduce((sum, acc) => {
+        if (acc.currency === '₽') {
+          return sum + acc.balance;
+        }
+        
+        const currency = currencies.find(c => c.symbol === acc.currency);
+        const rate = currency ? currency.rate : 1;
+        return sum + (acc.balance * rate);
+      }, 0);
+  }, [accounts, currencies]);
   
   const dashboardAccounts = useMemo(() => {
     const order: Record<AccountType, number> = { card: 0, credit: 1, cash: 2, bank: 3 };
@@ -150,7 +162,7 @@ export default function Dashboard({
                 {/* Left Side: Balance and Stats */}
                 <div>
                   <p className="text-theme-primary-light text-sm font-medium mb-1">Общий баланс</p>
-                  <h2 className="text-4xl font-bold mb-6">{totalBalance.toLocaleString()} ₽</h2>
+                  <h2 className="text-4xl font-bold mb-6">{totalBalance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2})} ₽</h2>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white/10 rounded-2xl p-3 flex items-center gap-3">
