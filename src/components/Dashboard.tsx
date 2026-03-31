@@ -283,7 +283,7 @@ export default function Dashboard({
             onClick={() => setShowTransactionHistory(true)}
             className="text-theme-primary-dark text-sm font-medium hover:bg-theme-primary-light px-2 py-1 rounded-lg transition-colors"
           >
-            Все
+            История
           </button>
         </div>
         <div className="space-y-1">
@@ -353,7 +353,7 @@ export default function Dashboard({
           <h3 className="font-bold text-lg">Цели</h3>
           <button onClick={() => setShowGoalManager(true)} className="text-theme-primary-dark text-sm font-medium hover:bg-theme-primary-light px-2 py-1 rounded-lg transition-colors">Все</button>
         </div>
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-3">
           {activeGoals.map(goal => {
             const progress = Math.min(100, (goal.currentAmount / goal.targetAmount) * 100);
             
