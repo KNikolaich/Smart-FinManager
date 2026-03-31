@@ -49,6 +49,7 @@ export default function Dashboard({
   const [showAccountManager, setShowAccountManager] = useState(false);
   const [showGoalManager, setShowGoalManager] = useState(!!initialGoalData);
   const [showTransactionHistory, setShowTransactionHistory] = useState(false);
+  const [filterAccountId, setFilterAccountId] = useState<string | 'all'>('all');
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   // Sync showGoalManager with initialGoalData
@@ -231,8 +232,12 @@ export default function Dashboard({
             return (
               <div 
                 key={account.id} 
+                onClick={() => {
+                  setFilterAccountId(account.id);
+                  setShowTransactionHistory(true);
+                }}
                 className={cn(
-                  "min-w-[90px] flex-shrink-0 bg-white p-3 rounded-2xl border transition-all duration-300 snap-start relative",
+                  "min-w-[90px] flex-shrink-0 bg-white p-3 rounded-2xl border transition-all duration-300 snap-start relative cursor-pointer",
                   isNegative 
                     ? "shadow-lg shadow-rose-100/60 border-rose-50" 
                     : "shadow-lg shadow-theme-primary-light border-emerald-50"
@@ -286,39 +291,58 @@ export default function Dashboard({
             История
           </button>
         </div>
-        <div className="space-y-1">
-          {recentTransactions.map(t => {
-            const category = categories.find(c => c.id === t.categoryId);
-            // Ищем родительскую категорию, если текущая - подкатегория
-            const parentCategory = category?.parentId ? categories.find(c => c.id === category.parentId) : category;
-            return (
-              <div 
-                key={t.id} 
-                onClick={() => setEditingTransaction(t)}
-                className="bg-white p-2 rounded-2xl border border-neutral-100 flex items-center justify-between hover:bg-neutral-50 active:bg-neutral-100 transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm" style={{ backgroundColor: (t.type === 'transfer' ? '#3b82f6' : (parentCategory?.color || '#3b82f6')) + '20' }}>
-                    {t.type === 'transfer' ? '🔄' : (category?.icon || parentCategory?.icon || '💰')}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-xs">{t.description || category?.name || 'Без описания'}</p>
-                    <p className="text-[10px] text-neutral-400">{format(new Date(t.createdAt), 'd MMMM', { locale: ru })}</p>
-                  </div>
-                </div>
-                <p className={cn(
-                  "font-bold text-sm", 
-                  t.type === 'income' ? "text-emerald-600" : 
-                  t.type === 'transfer' ? "text-blue-600" : 
-                  "text-neutral-900"
-                )}>
-                  {t.type === 'income' ? '+' : t.type === 'transfer' ? '' : '-'}{t.amount.toLocaleString()} ₽
-                </p>
-              </div>
-            );
-          })}
+        <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
+          <table className="w-full text-left border-collapse table-fixed">
+            <tbody className="divide-y divide-neutral-50">
+              {recentTransactions.map(t => {
+                const category = categories.find(c => c.id === t.categoryId);
+                const parentCategory = category?.parentId ? categories.find(c => c.id === category.parentId) : category;
+                const account = accounts.find(a => a.id === t.accountId);
+                const targetAccount = t.targetAccountId ? accounts.find(a => a.id === t.targetAccountId) : null;
+                
+                return (
+                  <tr 
+                    key={t.id} 
+                    onClick={() => setEditingTransaction(t)}
+                    className="hover:bg-neutral-50 active:bg-neutral-100 transition-colors cursor-pointer"
+                  >
+                    <td className="pl-4 pr-1 py-2 align-top w-[60px]">
+                      <p className="text-[11px] font-bold text-neutral-900">{format(new Date(t.createdAt), 'dd.MM')}</p>
+                    </td>
+                    <td className="pl-1 pr-2 py-2 align-top">
+                      <div className="flex items-start gap-2">
+                        <span className="text-lg shrink-0">{t.type === 'transfer' ? '🔄' : (parentCategory?.icon || '💰')}</span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-neutral-900 truncate">{t.description || category?.name || (t.type === 'transfer' ? 'Перевод' : 'Без описания')}</p>
+                          <p 
+                            className="text-[10px] font-medium truncate"
+                            style={{ color: account?.color && account.color !== '#000000' ? account.color : '#737373' }}
+                          >
+                            {account?.name || 'Счет'}
+                            {targetAccount && ` → ${targetAccount.name}`}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className={cn(
+                      "px-4 py-2 align-top text-right w-[100px]"
+                    )}>
+                      <p className={cn(
+                        "text-xs font-bold", 
+                        t.type === 'income' ? "text-emerald-600" : 
+                        t.type === 'transfer' ? "text-blue-600" : 
+                        "text-neutral-900"
+                      )}>
+                        {t.type === 'income' ? '+' : t.type === 'transfer' ? '' : '-'}{t.amount.toLocaleString()} ₽
+                      </p>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
           {recentTransactions.length === 0 && (
-            <div className="text-center py-8 bg-white rounded-2xl border border-dashed border-neutral-200">
+            <div className="text-center py-8">
               <p className="text-neutral-400 text-sm">Операций пока нет</p>
             </div>
           )}
@@ -330,10 +354,14 @@ export default function Dashboard({
           transactions={transactions}
           categories={categories}
           accounts={accounts}
-          onClose={() => setShowTransactionHistory(false)}
+          onClose={() => {
+            setShowTransactionHistory(false);
+            setFilterAccountId('all');
+          }}
           onEditTransaction={(t) => {
             setEditingTransaction(t);
           }}
+          initialAccountId={filterAccountId !== 'all' ? filterAccountId : undefined}
         />
       )}
 
