@@ -59,10 +59,12 @@ export default function Analytics({ transactions, categories, accounts }: Analyt
       .filter(t => t.type === activeType)
       .forEach((t) => {
         const cat = categories.find(c => c.id === t.categoryId);
-        const name = cat?.name || 'Другое';
+        const parentCat = cat?.parentId ? categories.find(c => c.id === cat.parentId) : cat;
+        const name = parentCat?.name || 'Другое';
+        
         if (!data[name]) {
           const fallbackColor = CHEERFUL_COLORS[Object.keys(data).length % CHEERFUL_COLORS.length];
-          const color = (cat?.color && cat.color !== '#000000') ? cat.color : fallbackColor;
+          const color = (parentCat?.color && parentCat.color !== '#000000') ? parentCat.color : fallbackColor;
           data[name] = { name, value: 0, color };
         }
         data[name].value += t.amount;
@@ -253,49 +255,51 @@ export default function Analytics({ transactions, categories, accounts }: Analyt
             </div>
           </div>
           
-          <div className="h-64 w-full relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={chartData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                  animationBegin={0}
-                  animationDuration={800}
-                >
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '12px' }}
-                  itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
-                  formatter={(value: number, name: string, props: any) => [
-                    `${value.toLocaleString()} ₽`, 
-                    props.payload.name // Show category name instead of "Сумма"
-                  ]}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            {chartData.length === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center text-neutral-300 text-sm font-medium">
-                Нет данных
-              </div>
-            )}
-          </div>
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <div className="h-64 w-full sm:w-1/2 relative">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                    animationBegin={0}
+                    animationDuration={800}
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '12px' }}
+                    itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                    formatter={(value: number, name: string, props: any) => [
+                      `${value.toLocaleString()} ₽`, 
+                      props.payload.name
+                    ]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              {chartData.length === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center text-neutral-300 text-sm font-medium">
+                  Нет данных
+                </div>
+              )}
+            </div>
 
-          <div className="grid grid-cols-2 gap-x-8 gap-y-3 mt-6">
-            {chartData.map((item, i) => (
-              <div key={i} className="flex items-center gap-2 group cursor-default">
-                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                <span className="text-xs text-neutral-500 truncate flex-1">{item.name}</span>
-                <span className="text-xs font-bold text-neutral-900">{item.value.toLocaleString()} ₽</span>
-              </div>
-            ))}
+            <div className="flex flex-col gap-3 w-full sm:w-1/2">
+              {chartData.map((item, i) => (
+                <div key={i} className="flex items-center gap-3 group cursor-pointer hover:bg-neutral-50 p-2 rounded-xl transition-colors">
+                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                  <span className="text-sm text-neutral-600 truncate flex-1">{item.name}</span>
+                  <span className="text-sm font-bold text-neutral-900">{item.value.toLocaleString()} ₽</span>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 

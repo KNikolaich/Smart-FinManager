@@ -162,7 +162,7 @@ export default function TransactionHistory({ transactions, categories, accounts,
                             >
                               Все категории
                             </button>
-                            {categories.map(cat => (
+                            {categories.filter(cat => !cat.parentId).map(cat => (
                               <button 
                                 key={cat.id}
                                 onClick={() => { setFilterCategoryId(cat.id); setShowFilter(false); }}
@@ -243,7 +243,7 @@ export default function TransactionHistory({ transactions, categories, accounts,
                     </td>
                     <td className="pl-1 pr-2 py-2 align-top">
                       <div className="flex items-start gap-2">
-                        <span className="text-lg shrink-0">{t.type === 'transfer' ? '🔄' : (parentCategory?.icon || '💰')}</span>
+                        <span className="text-lg shrink-0">{t.type === 'transfer' ? '🔄' : (category?.icon || parentCategory?.icon || '💰')}</span>
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-neutral-900 truncate">{t.description || category?.name || (t.type === 'transfer' ? 'Перевод' : 'Без описания')}</p>
                           <p 

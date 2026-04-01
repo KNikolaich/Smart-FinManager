@@ -40,16 +40,19 @@ export const processUserMessage = async (
 ): Promise<AIResponse> => {
   const mainAccounts = accounts.filter(a => a.showOnDashboard && !a.isArchived);
   
-  const systemInstruction = `Ты — вежливый, краткий и обходительный финансовый ассистент. Твоя задача — помогать пользователю управлять финансами. Отвечай на русском языке. Если видишь, что необходимо создать цель или операцию, возвращай строго типизированный объект со всеми найдеными свойствами операции или цели. Все извлеченные данные (сумма, счета, категории, названия) ОБЯЗАТЕЛЬНО должны быть помещены в соответствующие поля объекта 'data'. Не пропускай ни одного поля, если данные для него есть. Будь настойчив, если необходима консультация по бюджету и видишь проблемы, не стесняйся о них сообщить. Ответ пользователю должен быть лаконичен и точен. ВАЖНО: Твой ответ должен быть ТОЛЬКО чистым JSON объектом без каких-либо пояснений или рассуждений внутри полей.
+  const systemInstruction = `Ты — финансовый ассистент. Твоя цель — извлекать данные из сообщений пользователя для создания операций, целей или анализа бюджета.
 
-  REFERENCE DATA (Use these IDs for structured output):
-  Available Accounts: ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name })))}
-  All Categories: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name, type: c.type })))}
-  
-  Current goals: ${JSON.stringify(goals.map(g => ({ id: g.id, name: g.name, target: g.targetAmount, current: g.currentAmount })))}
-  Current plans: ${JSON.stringify(plans.map(p => ({ id: p.id, name: p.name, amount: p.plannedAmount })))}
-  
-  Determine the user's intent and extract relevant data.
+  ВАЖНО:
+  1. Если пользователь хочет "создать операцию", "создать цель" или "проанализировать бюджет", верни строго JSON.
+  2. НЕ учитывай историю чата. Анализируй ТОЛЬКО текущее сообщение.
+  3. В объекте 'data' ОБЯЗАТЕЛЬНО используй ID счетов и категорий из REFERENCE DATA (Accounts/Categories).
+  4. Если это анализ бюджета, верни intent: "advice".
+  5. Ответ — ТОЛЬКО чистый JSON.
+  6. Все извлеченные данные (сумма, ID счета, ID категории) ОБЯЗАТЕЛЬНО помещай в объект 'data'.
+
+  REFERENCE DATA:
+  Accounts: ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name })))}
+  Categories: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name, type: c.type })))}
   IMPORTANT: 
   - If the user mentions an account or category by name, you MUST find its corresponding "id" from the REFERENCE DATA above and use that "id" in the data object.
   - EVERY value you mention in your "message" (amount, account name, category name, goal name) MUST be present in the "data" object.
@@ -76,35 +79,19 @@ export const processUserMessage = async (
       - targetAccountId: string (required for transfers)
       - categoryId: string (required)
       - description: string (optional)
-  - goal:
-      - name: string (required)
-      - targetAmount: number (required)
-      - deadline: ISO string (optional)
-  - plan:
-      - name: string (required)
-      - plannedAmount: number (required)
-      - accountId: string (required)
-      - accountName: string (required)
-      - priority: "low", "medium", "high"
-      - dateOfFinish: ISO string
   
   Return a JSON object with:
   - intent: string (one of: transaction, goal, plan, advice, unknown)
   - data: object containing the extracted fields.
   - message: string (a concise, polite, and helpful response in Russian confirming what you understood)
-  
-  CRITICAL: The JSON output must be clean. DO NOT include any internal reasoning, chain of thought, or explanations inside the JSON fields. All extracted values MUST be in the 'data' object fields, NOT in the 'message' or 'intent' fields.`;
+  `;
 
   const contents = [
-    ...history.map(m => ({ 
-      role: (m.role === 'user' ? 'user' : 'model') as 'user' | 'model', 
-      parts: [{ text: m.content }]
-    })),
-    { role: "user", parts: [{ text: `User message: "${text}"\nCurrent date: ${new Date().toISOString()}` }] }
+    { role: "user", parts: [{ text: `User message: "${text}"\nCurrent date: ${new Date().toISOString()}\n\nREFERENCE DATA:\nAccounts: ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name })))} \nCategories: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name, type: c.type })))}` }] }
   ];
 
   const response = await ai.models.generateContent({
-    model: "gemini-3.1-pro-preview",
+    model: "gemini-3-flash-preview",
     contents,
     config: {
       systemInstruction,
@@ -157,7 +144,7 @@ export const getFinancialAdvice = async (
   - Несоответствие планов и целей`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3.1-pro-preview",
+    model: "gemini-3-flash-preview",
     contents: [{ role: "user", parts: [{ text: userPrompt }] }],
     config: {
       systemInstruction
