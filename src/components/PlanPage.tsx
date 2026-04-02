@@ -37,7 +37,7 @@ interface PlanPageProps {
   onRefresh?: () => void;
 }
 
-type TabType = 'now' | 'past' | 'config' | 'comment';
+type TabType = 'now' | 'past' | 'config' | 'comment' | 'cashback';
 
 const MONTHS = [
   'январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 
@@ -58,17 +58,13 @@ const INITIAL_CONFIG: PlanConfig = {
 };
 
 const DEFAULT_SUBJECTS: PlanSubject[] = [
-  { id: '1', name: 'кв пл 18-20 (до 10 числа)', color: '#f3f3f3', textColor: '#000000', isArchived: false },
-  { id: '2', name: 'заплати себе 10 15 - 30 30', color: '#f3f3f3', textColor: '#000000', isArchived: false },
-  { id: '3', name: 'Т КК (до 15 числа)', color: '#ffff00', textColor: '#000000', isArchived: false },
-  { id: '4', name: 'Т AI (до 12 числа)', color: '#f3f3f3', textColor: '#000000', isArchived: false },
-  { id: '5', name: 'Т Кред (до 20 числа)', color: '#f3f3f3', textColor: '#000000', isArchived: false },
-  { id: '6', name: 'Аа КК (11 марта всё)', color: '#f3f3f3', textColor: '#000000', isArchived: false },
-  { id: '7', name: 'СЕВ отдать до 26', color: '#ff9900', textColor: '#000000', isArchived: false },
-  { id: '8', name: 'На учебу и еду/школе', color: '#f3f3f3', textColor: '#000000', isArchived: false },
-  { id: '9', name: 'Продукты, ремонты, etc', color: '#f3f3f3', textColor: '#000000', isArchived: false },
-  { id: '10', name: 'Автомобиль', color: '#f3f3f3', textColor: '#000000', isArchived: false },
-  { id: '11', name: 'Стоматология и Йога etc', color: '#f3f3f3', textColor: '#000000', isArchived: false }
+  { id: '1', name: 'кв пл', color: '#f3f3f3', textColor: '#000000', isArchived: false },
+  { id: '2', name: 'заплати себе', color: '#f3f3f3', textColor: '#000000', isArchived: false },
+  { id: '3', name: 'Т КК', color: '#ffff00', textColor: '#000000', isArchived: false },
+  { id: '4', name: 'Аа КК', color: '#f3f3f3', textColor: '#000000', isArchived: false },
+  { id: '5', name: 'Продукты, etc', color: '#f3f3f3', textColor: '#000000', isArchived: false },
+  { id: '6', name: 'Автомобиль', color: '#f3f3f3', textColor: '#000000', isArchived: false },
+  { id: '7', name: 'Стоматология и Йога etc', color: '#f3f3f3', textColor: '#000000', isArchived: true }
 ];
 
 export default function PlanPage({ accounts, categories, onRefresh }: PlanPageProps) {
@@ -306,11 +302,11 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
   return (
     <div className="p-0 sm:p-0 space-y-0 max-w-[100vw] overflow-hidden h-full flex flex-col">
       {/* Custom Minimalist Tabs */}
-      <div className="flex items-end space-x-1 border-b border-neutral-200 px-4 pt-1.5 shrink-0">
+      <div className="flex items-end space-x-1 border-b border-neutral-200 px-1 pt-1.5 shrink-0">
         <button
           onClick={() => setActiveTab('now')}
           className={cn(
-            "px-4 py-1 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            "px-2 py-1 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
             activeTab === 'now' 
               ? "bg-emerald-500 text-white border-emerald-500 translate-y-[1px]" 
               : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
@@ -318,21 +314,33 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
         >
           Сейчас
         </button>
+        
         <button
-          onClick={() => setActiveTab('past')}
+          onClick={() => setActiveTab('cashback')}
           className={cn(
-            "px-4 py-1 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
-            activeTab === 'past' 
-              ? "bg-amber-500 text-white border-amber-500 translate-y-[1px]" 
+            "px-2 py-1 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            activeTab === 'cashback' 
+              ? "bg-purple-500 text-white border-purple-500 translate-y-[1px]" 
               : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
           )}
         >
-          Прошлое
+          Кэшбек
+        </button>
+        <button
+          onClick={() => setActiveTab('comment')}
+          className={cn(
+            "px-2 py-1 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            activeTab === 'comment' 
+              ? "bg-purple-500 text-white border-purple-500 translate-y-[1px]" 
+              : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
+          )}
+        >
+          Комментарий
         </button>
         <button
           onClick={() => setActiveTab('config')}
           className={cn(
-            "px-4 py-1 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            "px-2 py-1 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
             activeTab === 'config' 
               ? "bg-blue-500 text-white border-blue-500 translate-y-[1px]" 
               : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
@@ -341,15 +349,15 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
           Конфиг
         </button>
         <button
-          onClick={() => setActiveTab('comment')}
+          onClick={() => setActiveTab('past')}
           className={cn(
-            "px-4 py-1 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
-            activeTab === 'comment' 
-              ? "bg-purple-500 text-white border-purple-500 translate-y-[1px]" 
+            "px-2 py-1 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            activeTab === 'past' 
+              ? "bg-amber-500 text-white border-amber-500 translate-y-[1px]" 
               : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
           )}
         >
-          Комментарий
+          Прошлое
         </button>
       </div>
 
