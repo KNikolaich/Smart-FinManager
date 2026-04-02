@@ -224,7 +224,7 @@ export default function Dashboard({
             Все
           </button>
         </div>
-        <div className="flex gap-3 overflow-x-auto pb-4 -mx-1.5 px-1.5 no-scrollbar snap-x snap-mandatory">
+        <div className="flex gap-1 overflow-x-auto pb-4 -mx-1.5 px-1.5 no-scrollbar snap-x snap-mandatory">
           {dashboardAccounts.map(account => {
             const isNegative = account.balance < 0;
             const Icon = account.type === 'card' ? CreditCard : account.type === 'bank' ? Landmark : account.type === 'cash' ? CoinStack : Wallet;

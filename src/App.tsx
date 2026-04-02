@@ -45,18 +45,22 @@ export default function App() {
   }, [addMode]);
 
   const handleMouseDown = () => {
+    console.log('handleMouseDown called');
     longPressTimer.current = setTimeout(() => {
+      console.log('Long press triggered');
       setAddMode(prev => prev === 'text' ? 'voice' : 'text');
     }, 2000);
   };
 
   const handleMouseUp = () => {
+    console.log('handleMouseUp called');
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
     }
   };
 
   const handleButtonClick = () => {
+    console.log('handleButtonClick called, addMode:', addMode);
     if (addMode === 'text') {
       setShowAddTransaction(true);
     } else {
@@ -296,7 +300,7 @@ export default function App() {
               onTouchStart={handleMouseDown}
               onTouchEnd={handleMouseUp}
               onClick={handleButtonClick}
-              className="absolute bottom-[5%] left-1/2 -translate-x-1/2 h-[110%] aspect-square bg-theme-primary text-white rounded-full flex items-center justify-center shadow-xl shadow-theme-primary-light active:scale-90 transition-all border-4 border-white"
+              className="absolute bottom-[5%] left-1/2 -translate-x-1/2 h-[110%] aspect-square bg-theme-primary text-white rounded-full flex items-center justify-center shadow-xl shadow-theme-primary-light transition-all border-4 border-white z-50"
             >
               {addMode === 'text' ? <Plus size={24} /> : <Mic size={24} />}
             </button>
@@ -334,6 +338,17 @@ export default function App() {
           }}
           initialAccountId={transactionHistoryFilter.accountId}
           initialCategoryId={transactionHistoryFilter.categoryId}
+        />
+      )}
+
+      {/* Add Transaction Modal */}
+      {showAddTransaction && (
+        <AddTransaction 
+          onComplete={() => setShowAddTransaction(false)}
+          onAdd={refreshData}
+          accounts={accounts}
+          categories={categories}
+          userId={user.id}
         />
       )}
 
