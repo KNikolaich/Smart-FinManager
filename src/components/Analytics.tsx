@@ -9,6 +9,7 @@ interface AnalyticsProps {
   transactions: Transaction[];
   categories: Category[];
   accounts: Account[];
+  onNavigateToHistory?: (categoryName: string) => void;
 }
 
 type DateFilterType = 'month' | 'period' | 'all';
@@ -19,7 +20,7 @@ const CHEERFUL_COLORS = [
   '#FF5733', '#33FF57', '#3357FF', '#F333FF', '#33FFF3'
 ];
 
-export default function Analytics({ transactions, categories, accounts }: AnalyticsProps) {
+export default function Analytics({ transactions, categories, accounts, onNavigateToHistory }: AnalyticsProps) {
   const [activeType, setActiveType] = useState<'expense' | 'income'>('expense');
   const [filterType, setFilterType] = useState<DateFilterType>('month');
   const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -293,7 +294,13 @@ export default function Analytics({ transactions, categories, accounts }: Analyt
 
             <div className="flex flex-col gap-3 w-full sm:w-1/2">
               {chartData.map((item, i) => (
-                <div key={i} className="flex items-center gap-3 group cursor-pointer hover:bg-neutral-50 p-2 rounded-xl transition-colors">
+                <div 
+                  key={i} 
+                  onClick={() => {
+                    if (onNavigateToHistory) onNavigateToHistory(item.name);
+                  }}
+                  className="flex items-center gap-3 group cursor-pointer hover:bg-neutral-50 p-2 rounded-xl transition-colors"
+                >
                   <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
                   <span className="text-sm text-neutral-600 truncate flex-1">{item.name}</span>
                   <span className="text-sm font-bold text-neutral-900">{item.value.toLocaleString()} ₽</span>

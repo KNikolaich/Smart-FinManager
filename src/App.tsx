@@ -20,6 +20,8 @@ import Analytics from './components/Analytics';
 import Settings from './components/Settings';
 import AIAssistant from './components/AIAssistant';
 import AddTransaction from './components/AddTransaction';
+import TransactionHistory from './components/TransactionHistory';
+import EditTransaction from './components/EditTransaction';
 import AILogs from './components/AILogs';
 import Auth from './components/Auth';
 import { cn } from './lib/utils';
@@ -29,6 +31,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'plan' | 'analytics' | 'settings' | 'ai'>('dashboard');
   const [showAddTransaction, setShowAddTransaction] = useState(false);
+  const [showTransactionHistory, setShowTransactionHistory] = useState(false);
+  const [transactionHistoryFilter, setTransactionHistoryFilter] = useState<{ categoryId?: string, accountId?: string }>({});
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [addMode, setAddMode] = useState<'text' | 'voice'>(() => (localStorage.getItem('addMode') as 'text' | 'voice') || 'text');
   const [showAILogs, setShowAILogs] = useState(false);
   const aiAssistantRef = useRef<any>(null);
@@ -173,16 +178,33 @@ export default function App() {
             currencies={currencies}
             userId={user.id}
             showTotalBalance={showTotalBalance}
+            showGoals={showTotalBalance}
             initialGoalData={initialGoalData}
             onCloseGoalManager={() => setInitialGoalData(undefined)}
             onRefresh={refreshData}
             onNavigateToAnalytics={() => setActiveTab('analytics')}
+            onOpenTransactionHistory={(accountId) => {
+              setTransactionHistoryFilter({ accountId });
+              setShowTransactionHistory(true);
+            }}
+            onEditTransaction={setEditingTransaction}
           />
         );
       case 'plan':
         return <PlanPage accounts={accounts} categories={categories} onRefresh={refreshData} />;
       case 'analytics':
-        return <Analytics transactions={transactions} categories={categories} accounts={accounts} />;
+        return (
+          <Analytics 
+            transactions={transactions} 
+            categories={categories} 
+            accounts={accounts} 
+            onNavigateToHistory={(categoryName) => {
+              const category = categories.find(c => c.name === categoryName);
+              setTransactionHistoryFilter({ categoryId: category?.id });
+              setShowTransactionHistory(true);
+            }}
+          />
+        );
       case 'settings':
         return <Settings user={user} onLogout={handleLogout} onShowLogs={() => setShowAILogs(true)} onRefresh={refreshData} />;
       case 'ai':
@@ -248,25 +270,25 @@ export default function App() {
       </main>
 
       {/* Navigation Bar */}
-      <nav className="bg-white border-t border-neutral-100 px-6 py-3 pb-safe shrink-0 z-40 flex items-center justify-center shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.05)] landscape:py-1 landscape:px-4">
-        <div className="max-w-7xl mx-auto w-full flex items-center justify-around relative">
-          <button 
+      <nav className="bg-white border-t border-neutral-100 px-6 pb-safe shrink-0 z-40 flex items-center justify-center shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.05)] rounded-t-[20px] landscape:px-4 landscape:rounded-none">
+        <div className="max-w-7xl mx-auto w-full flex items-center justify-around relative h-11">
+           <button 
             onClick={() => setActiveTab('dashboard')}
-            className={cn("flex flex-col items-center gap-1 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'dashboard' ? "text-theme-primary-dark landscape:bg-theme-primary-light" : "text-neutral-400")}
+            className={cn("flex flex-col items-center justify-center h-full gap-0.5 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'dashboard' ? "text-theme-primary-dark landscape:bg-theme-primary-light" : "text-neutral-400")}
           >
-            <LayoutDashboard size={22} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
+            <LayoutDashboard size={20} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
             <span className="hidden landscape:block text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">Главная</span>
           </button>
           <button 
             onClick={() => setActiveTab('plan')}
-            className={cn("flex flex-col items-center gap-1 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'plan' ? "text-theme-primary-dark landscape:bg-theme-primary-light" : "text-neutral-400")}
+            className={cn("flex flex-col items-center justify-center h-full gap-0.5 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'plan' ? "text-theme-primary-dark landscape:bg-theme-primary-light" : "text-neutral-400")}
           >
-            <CalendarRange size={22} strokeWidth={activeTab === 'plan' ? 2.5 : 2} />
+            <CalendarRange size={20} strokeWidth={activeTab === 'plan' ? 2.5 : 2} />
             <span className="hidden landscape:block text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">План</span>
           </button>
           
           {/* Add Button */}
-          <div className="relative">
+          <div className="relative w-14 h-full">
             <button 
               onMouseDown={handleMouseDown}
               onMouseUp={handleMouseUp}
@@ -274,61 +296,56 @@ export default function App() {
               onTouchStart={handleMouseDown}
               onTouchEnd={handleMouseUp}
               onClick={handleButtonClick}
-              className="w-14 h-14 bg-theme-primary text-white rounded-full flex items-center justify-center shadow-xl shadow-theme-primary-light active:scale-90 transition-all landscape:w-auto landscape:h-auto landscape:px-6 landscape:py-1 landscape:rounded-lg landscape:shadow-none"
+              className="absolute bottom-[5%] left-1/2 -translate-x-1/2 h-[110%] aspect-square bg-theme-primary text-white rounded-full flex items-center justify-center shadow-xl shadow-theme-primary-light active:scale-90 transition-all border-4 border-white"
             >
-              {addMode === 'text' ? <Plus size={32} /> : <Mic size={32} />}
-              <span className="hidden landscape:block text-[11px] font-bold uppercase tracking-tighter">
-                {addMode === 'text' ? 'Пуск' : 'Голос'}
-              </span>
+              {addMode === 'text' ? <Plus size={24} /> : <Mic size={24} />}
             </button>
           </div>
 
           <button 
             onClick={() => setActiveTab('analytics')}
-            className={cn("flex flex-col items-center gap-1 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'analytics' ? "text-theme-primary-dark landscape:bg-theme-primary-light" : "text-neutral-400")}
+            className={cn("flex flex-col items-center justify-center h-full gap-0.5 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'analytics' ? "text-theme-primary-dark landscape:bg-theme-primary-light" : "text-neutral-400")}
           >
-            <BarChart2 size={22} strokeWidth={activeTab === 'analytics' ? 2.5 : 2} />
+            <BarChart2 size={20} strokeWidth={activeTab === 'analytics' ? 2.5 : 2} />
             <span className="hidden landscape:block text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">Анализ</span>
           </button>
           <button 
             onClick={() => setActiveTab('settings')}
-            className={cn("flex flex-col items-center gap-1 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'settings' ? "text-theme-primary-dark landscape:bg-theme-primary-light" : "text-neutral-400")}
+            className={cn("flex flex-col items-center justify-center h-full gap-0.5 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'settings' ? "text-theme-primary-dark landscape:bg-theme-primary-light" : "text-neutral-400")}
           >
-            <SettingsIcon size={22} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
+            <SettingsIcon size={20} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
             <span className="hidden landscape:block text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">Настройки</span>
           </button>
         </div>
       </nav>
 
-      {/* Add Transaction Modal */}
-      {showAddTransaction && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div 
-            className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm" 
-            onClick={() => setShowAddTransaction(false)}
-          />
-          <div className="relative w-full max-w-lg bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 max-h-[90vh] flex flex-col">
-            <div className="px-6 py-3 flex items-center justify-between shrink-0">
-              <h3 className="text-base font-bold text-neutral-800">Новая операция</h3>
-              <button 
-                onClick={() => setShowAddTransaction(false)}
-                className="p-1.5 hover:bg-neutral-100 rounded-full transition-colors"
-              >
-                <X size={18} className="text-neutral-400" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto no-scrollbar">
-              <AddTransaction 
-                accounts={accounts} 
-                categories={categories} 
-                onComplete={() => {
-                  setShowAddTransaction(false);
-                  refreshData();
-                }} 
-              />
-            </div>
-          </div>
-        </div>
+      {/* Transaction History Modal */}
+      {showTransactionHistory && (
+        <TransactionHistory 
+          transactions={transactions}
+          categories={categories}
+          accounts={accounts}
+          onClose={() => {
+            setShowTransactionHistory(false);
+            setTransactionHistoryFilter({});
+          }}
+          onEditTransaction={(t) => {
+            setEditingTransaction(t);
+          }}
+          initialAccountId={transactionHistoryFilter.accountId}
+          initialCategoryId={transactionHistoryFilter.categoryId}
+        />
+      )}
+
+      {/* Edit Transaction Modal */}
+      {editingTransaction && (
+        <EditTransaction 
+          transaction={editingTransaction}
+          accounts={accounts}
+          categories={categories}
+          onClose={() => setEditingTransaction(null)}
+          onUpdate={refreshData}
+        />
       )}
 
       {/* AI Logs Modal */}

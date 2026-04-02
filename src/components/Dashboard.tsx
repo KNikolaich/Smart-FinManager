@@ -9,8 +9,6 @@ import ReactMarkdown from 'react-markdown';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import AccountManager from './AccountManager';
 import GoalManager from './GoalManager';
-import TransactionHistory from './TransactionHistory';
-import EditTransaction from './EditTransaction';
 import { cn } from '../lib/utils';
 
 interface DashboardProps {
@@ -22,6 +20,7 @@ interface DashboardProps {
   currencies: Currency[];
   userId: string;
   showTotalBalance: boolean;
+  showGoals: boolean;
   initialGoalData?: {
     name?: string;
     targetAmount?: number;
@@ -30,6 +29,8 @@ interface DashboardProps {
   onCloseGoalManager?: () => void;
   onRefresh?: () => void;
   onNavigateToAnalytics?: () => void;
+  onOpenTransactionHistory?: (accountId?: string) => void;
+  onEditTransaction?: (t: Transaction) => void;
 }
 
 export default function Dashboard({ 
@@ -41,16 +42,16 @@ export default function Dashboard({
   currencies,
   userId, 
   showTotalBalance, 
+  showGoals,
   initialGoalData, 
   onCloseGoalManager, 
   onRefresh,
-  onNavigateToAnalytics
+  onNavigateToAnalytics,
+  onOpenTransactionHistory,
+  onEditTransaction
 }: DashboardProps) {
   const [showAccountManager, setShowAccountManager] = useState(false);
   const [showGoalManager, setShowGoalManager] = useState(!!initialGoalData);
-  const [showTransactionHistory, setShowTransactionHistory] = useState(false);
-  const [filterAccountId, setFilterAccountId] = useState<string | 'all'>('all');
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   // Sync showGoalManager with initialGoalData
   useEffect(() => {
@@ -105,7 +106,7 @@ export default function Dashboard({
   const recentTransactions = useMemo(() => {
     return [...transactions]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5);
+      .slice(0, 8);
   }, [transactions]);
 
   const activeGoals = useMemo(() => {
@@ -233,8 +234,7 @@ export default function Dashboard({
               <div 
                 key={account.id} 
                 onClick={() => {
-                  setFilterAccountId(account.id);
-                  setShowTransactionHistory(true);
+                  if (onOpenTransactionHistory) onOpenTransactionHistory(account.id);
                 }}
                 className={cn(
                   "min-w-[90px] flex-shrink-0 bg-white p-3 rounded-2xl border transition-all duration-300 snap-start relative cursor-pointer",
@@ -285,7 +285,9 @@ export default function Dashboard({
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-lg">Последние операции</h3>
           <button 
-            onClick={() => setShowTransactionHistory(true)}
+            onClick={() => {
+              if (onOpenTransactionHistory) onOpenTransactionHistory();
+            }}
             className="text-theme-primary-dark text-sm font-medium hover:bg-theme-primary-light px-2 py-1 rounded-lg transition-colors"
           >
             История
@@ -303,7 +305,9 @@ export default function Dashboard({
                 return (
                   <tr 
                     key={t.id} 
-                    onClick={() => setEditingTransaction(t)}
+                    onClick={() => {
+                      if (onEditTransaction) onEditTransaction(t);
+                    }}
                     className="hover:bg-neutral-50 active:bg-neutral-100 transition-colors cursor-pointer"
                   >
                     <td className="pl-4 pr-1 py-2 align-top w-[60px]">
@@ -349,102 +353,86 @@ export default function Dashboard({
         </div>
       </section>
 
-      {showTransactionHistory && (
-        <TransactionHistory 
-          transactions={transactions}
-          categories={categories}
-          accounts={accounts}
-          onClose={() => {
-            setShowTransactionHistory(false);
-            setFilterAccountId('all');
-          }}
-          onEditTransaction={(t) => {
-            setEditingTransaction(t);
-          }}
-          initialAccountId={filterAccountId !== 'all' ? filterAccountId : undefined}
-        />
-      )}
-
-      {editingTransaction && (
-        <EditTransaction 
-          transaction={editingTransaction}
-          accounts={accounts}
-          categories={categories}
-          onClose={() => setEditingTransaction(null)}
-          onUpdate={onRefresh || (() => {})}
-        />
-      )}
-
       {/* Goals Section */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-lg">Цели</h3>
-          <button onClick={() => setShowGoalManager(true)} className="text-theme-primary-dark text-sm font-medium hover:bg-theme-primary-light px-2 py-1 rounded-lg transition-colors">Все</button>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-3">
-          {activeGoals.map(goal => {
-            const progress = Math.min(100, (goal.currentAmount / goal.targetAmount) * 100);
-            
-            // Calculate color based on deadline proximity
-            let progressColor = 'bg-theme-primary';
-            if (goal.deadline) {
-              const deadlineDate = new Date(goal.deadline);
-              const now = new Date();
-              const diffDays = Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-              
-              if (progress < 100) {
-                if (diffDays <= 3) progressColor = 'bg-rose-600';
-                else if (diffDays <= 7) progressColor = 'bg-rose-500';
-                else if (diffDays <= 14) progressColor = 'bg-orange-500';
-                else if (diffDays <= 30) progressColor = 'bg-amber-500';
-              }
-            }
-
-            return (
-              <div key={goal.id} className="bg-white rounded-2xl border border-neutral-100 overflow-hidden shadow-sm hover:shadow-md transition-all">
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold text-sm text-neutral-900">{goal.name}</span>
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                      {goal.deadline ? format(new Date(goal.deadline), 'd MMM yyyy', { locale: ru }) : 'Без срока'}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-end justify-between mb-3">
-                    <div className="space-y-0.5">
-                      <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-tight">Накоплено</p>
-                      <p className="font-bold text-sm text-theme-primary">{goal.currentAmount.toLocaleString()} ₽</p>
-                    </div>
-                    <div className="text-right space-y-0.5">
-                      <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-tight">Цель</p>
-                      <p className="font-bold text-sm text-neutral-900">{goal.targetAmount.toLocaleString()} ₽</p>
-                    </div>
-                  </div>
-
-                  {goal.description && (
-                    <div className="prose prose-sm max-w-none text-neutral-500 text-[11px] leading-tight mb-1">
-                      <ReactMarkdown>{goal.description}</ReactMarkdown>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Thin progress bar at the bottom */}
-                <div className="h-1 w-full bg-neutral-100">
-                  <div 
-                    className={cn("h-full transition-all duration-500", progress === 100 ? 'bg-theme-primary' : progressColor)}
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-          {activeGoals.length === 0 && (
-            <div className="text-center py-8 bg-white rounded-2xl border border-dashed border-neutral-200">
-              <p className="text-neutral-400 text-sm italic">Нет активных целей</p>
+      <AnimatePresence>
+        {showGoals && (
+          <motion.section
+            initial={{ height: 0, opacity: 0, marginBottom: 0 }}
+            animate={{ height: 'auto', opacity: 1, marginBottom: 24 }}
+            exit={{ height: 0, opacity: 0, marginBottom: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg">Цели</h3>
+              <button onClick={() => setShowGoalManager(true)} className="text-theme-primary-dark text-sm font-medium hover:bg-theme-primary-light px-2 py-1 rounded-lg transition-colors">Все</button>
             </div>
-          )}
-        </div>
-      </section>
+            <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-3">
+              {activeGoals.map(goal => {
+                const progress = Math.min(100, (goal.currentAmount / goal.targetAmount) * 100);
+                
+                // Calculate color based on deadline proximity
+                let progressColor = 'bg-theme-primary';
+                if (goal.deadline) {
+                  const deadlineDate = new Date(goal.deadline);
+                  const now = new Date();
+                  const diffDays = Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                  
+                  if (progress < 100) {
+                    if (diffDays <= 3) progressColor = 'bg-rose-600';
+                    else if (diffDays <= 7) progressColor = 'bg-rose-500';
+                    else if (diffDays <= 14) progressColor = 'bg-orange-500';
+                    else if (diffDays <= 30) progressColor = 'bg-amber-500';
+                  }
+                }
+
+                return (
+                  <div key={goal.id} className="bg-white rounded-2xl border border-neutral-100 overflow-hidden shadow-sm hover:shadow-md transition-all">
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-bold text-sm text-neutral-900">{goal.name}</span>
+                        <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                          {goal.deadline ? format(new Date(goal.deadline), 'd MMM yyyy', { locale: ru }) : 'Без срока'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-end justify-between mb-3">
+                        <div className="space-y-0.5">
+                          <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-tight">Накоплено</p>
+                          <p className="font-bold text-sm text-theme-primary">{goal.currentAmount.toLocaleString()} ₽</p>
+                        </div>
+                        <div className="text-right space-y-0.5">
+                          <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-tight">Цель</p>
+                          <p className="font-bold text-sm text-neutral-900">{goal.targetAmount.toLocaleString()} ₽</p>
+                        </div>
+                      </div>
+
+                      {goal.description && (
+                        <div className="prose prose-sm max-w-none text-neutral-500 text-[11px] leading-tight mb-1">
+                          <ReactMarkdown>{goal.description}</ReactMarkdown>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Thin progress bar at the bottom */}
+                    <div className="h-1 w-full bg-neutral-100">
+                      <div 
+                        className={cn("h-full transition-all duration-500", progress === 100 ? 'bg-theme-primary' : progressColor)}
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+              {activeGoals.length === 0 && (
+                <div className="text-center py-8 bg-white rounded-2xl border border-dashed border-neutral-200">
+                  <p className="text-neutral-400 text-sm italic">Нет активных целей</p>
+                </div>
+              )}
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
 
       {showGoalManager && (
         <GoalManager 

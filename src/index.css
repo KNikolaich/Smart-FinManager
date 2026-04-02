@@ -42,6 +42,17 @@
   .ring-theme-primary-light { --tw-ring-color: var(--primary-light); }
 }
 
+/* Hide number input arrows */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
 body {
   @apply font-sans bg-neutral-50 text-neutral-900 antialiased;
   overscroll-behavior-y: contain;
