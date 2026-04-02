@@ -143,85 +143,16 @@ export default function Analytics({ transactions, categories, accounts, onNaviga
   const totalAmount = chartData.reduce((sum, item) => sum + item.value, 0);
 
   return (
-    <div className="p-1.5 sm:p-2 lg:p-6 space-y-6">
+    <div className="p-1.5 sm:p-2 lg:p-2 space-y-2">      
+    
       {/* Date Filters & Type Toggle */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex bg-white border border-neutral-100 p-1 rounded-2xl shadow-sm">
-          <button
-            onClick={() => setFilterType('month')}
-            className={cn(
-              "px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all",
-              filterType === 'month' ? "bg-neutral-900 text-white" : "text-neutral-400 hover:text-neutral-600"
-            )}
-          >
-            Месяц
-          </button>
-          <button
-            onClick={() => setFilterType('period')}
-            className={cn(
-              "px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all",
-              filterType === 'period' ? "bg-neutral-900 text-white" : "text-neutral-400 hover:text-neutral-600"
-            )}
-          >
-            Период
-          </button>
-          <button
-            onClick={() => setFilterType('all')}
-            className={cn(
-              "px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all",
-              filterType === 'all' ? "bg-neutral-900 text-white" : "text-neutral-400 hover:text-neutral-600"
-            )}
-          >
-            Все время
-          </button>
-        </div>
-
-        {filterType === 'month' && (
-          <div className="flex items-center gap-2 bg-white border border-neutral-100 px-3 py-1.5 rounded-2xl shadow-sm">
-            <button 
-              onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
-              className="p-1 hover:bg-neutral-50 rounded-lg transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4 text-neutral-400" />
-            </button>
-            <span className="text-xs font-bold capitalize min-w-[80px] text-center">
-              {format(selectedMonth, 'LLLL yyyy', { locale: ru })}
-            </span>
-            <button 
-              onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1))}
-              className="p-1 hover:bg-neutral-50 rounded-lg transition-colors"
-            >
-              <ChevronRight className="w-4 h-4 text-neutral-400" />
-            </button>
-          </div>
-        )}
-
-        {filterType === 'period' && (
-          <div className="flex items-center gap-2 bg-white border border-neutral-100 px-3 py-1.5 rounded-2xl shadow-sm">
-            <div className="flex items-center gap-1">
-              <input 
-                type="date" 
-                value={format(periodRange.start, 'yyyy-MM-dd')}
-                onChange={(e) => setPeriodRange(prev => ({ ...prev, start: new Date(e.target.value) }))}
-                className="text-[10px] font-bold bg-transparent border-none focus:ring-0 p-0 w-24"
-              />
-              <span className="text-neutral-300">—</span>
-              <input 
-                type="date" 
-                value={format(periodRange.end, 'yyyy-MM-dd')}
-                onChange={(e) => setPeriodRange(prev => ({ ...prev, end: new Date(e.target.value) }))}
-                className="text-[10px] font-bold bg-transparent border-none focus:ring-0 p-0 w-24"
-              />
-            </div>
-          </div>
-        )}
-
         {/* Type Toggle - Vertical and to the right */}
         <div className="flex flex-col bg-neutral-100 p-1 rounded-2xl">
           <button
             onClick={() => setActiveType('expense')}
             className={cn(
-              "px-4 py-1 rounded-xl text-[10px] font-bold transition-all flex items-center gap-2",
+              "px-1 py-1 rounded-xl text-[10px] font-bold transition-all flex items-center gap-2",
               activeType === 'expense' ? "bg-white text-rose-600 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
             )}
           >
@@ -231,7 +162,7 @@ export default function Analytics({ transactions, categories, accounts, onNaviga
           <button
             onClick={() => setActiveType('income')}
             className={cn(
-              "px-4 py-1 rounded-xl text-[10px] font-bold transition-all flex items-center gap-2",
+              "px-1 py-1 rounded-xl text-[10px] font-bold transition-all flex items-center gap-2",
               activeType === 'income' ? "bg-white text-emerald-600 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
             )}
           >
@@ -239,11 +170,82 @@ export default function Analytics({ transactions, categories, accounts, onNaviga
             Доходы
           </button>
         </div>
+        <div>
+          <div className="flex bg-white border border-neutral-100 p-1 rounded-2xl shadow-sm">
+            <button
+              onClick={() => setFilterType('month')}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all",
+                filterType === 'month' ? "bg-neutral-900 text-white" : "text-neutral-400 hover:text-neutral-600"
+              )}
+            >
+              Месяц
+            </button>
+            <button
+              onClick={() => setFilterType('period')}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all",
+                filterType === 'period' ? "bg-neutral-900 text-white" : "text-neutral-400 hover:text-neutral-600"
+              )}
+            >
+              Период
+            </button>
+            <button
+              onClick={() => setFilterType('all')}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all",
+                filterType === 'all' ? "bg-neutral-900 text-white" : "text-neutral-400 hover:text-neutral-600"
+              )}
+            >
+              Все время
+            </button>
+          </div>
+
+          {filterType === 'month' && (
+            <div className="flex items-center gap-1 bg-white border border-neutral-100 px-3 py-1.5 rounded-2xl shadow-sm">
+              <button 
+                onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
+                className="p-1 hover:bg-neutral-50 rounded-lg transition-colors"
+              >
+                <ChevronLeft className="w-2 h-4 text-neutral-400" />
+              </button>
+              <span className="text-xs font-bold capitalize min-w-[80px] text-center">
+                {format(selectedMonth, 'LLLL yyyy', { locale: ru })}
+              </span>
+              <button 
+                onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1))}
+                className="p-1 hover:bg-neutral-50 rounded-lg transition-colors"
+              >
+                <ChevronRight className="w-2 h-4 text-neutral-400" />
+              </button>
+            </div>
+          )}
+
+          {filterType === 'period' && (
+            <div className="flex items-center gap-1 bg-white border border-neutral-100 px-3 py-1.5 rounded-2xl shadow-sm">
+              <div className="flex items-center gap-1">
+                <input 
+                  type="date" 
+                  value={format(periodRange.start, 'yyyy-MM-dd')}
+                  onChange={(e) => setPeriodRange(prev => ({ ...prev, start: new Date(e.target.value) }))}
+                  className="text-[10px] font-bold bg-transparent border-none focus:ring-0 p-0 w-24"
+                />
+                <span className="text-neutral-300">—</span>
+                <input 
+                  type="date" 
+                  value={format(periodRange.end, 'yyyy-MM-dd')}
+                  onChange={(e) => setPeriodRange(prev => ({ ...prev, end: new Date(e.target.value) }))}
+                  className="text-[10px] font-bold bg-transparent border-none focus:ring-0 p-0 w-24"
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
         {/* Pie Chart */}
-        <section className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm flex flex-col">
+        <section className="bg-white p-3 rounded-3xl border border-neutral-100 shadow-sm flex flex-col">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-bold text-lg">
               {activeType === 'expense' ? 'Расходы' : 'Доходы'} по категориям
@@ -256,7 +258,7 @@ export default function Analytics({ transactions, categories, accounts, onNaviga
             </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row items-center gap-6">
+          <div className="flex flex-col sm:flex-row items-center gap-2">
             <div className="h-64 w-full sm:w-1/2 relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -264,8 +266,8 @@ export default function Analytics({ transactions, categories, accounts, onNaviga
                     data={chartData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
+                    innerRadius={50}
+                    outerRadius={100}
                     paddingAngle={5}
                     dataKey="value"
                     animationBegin={0}
@@ -276,7 +278,7 @@ export default function Analytics({ transactions, categories, accounts, onNaviga
                     ))}
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '12px' }}
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '6px' }}
                     itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
                     formatter={(value: number, name: string, props: any) => [
                       `${value.toLocaleString()} ₽`, 
@@ -311,7 +313,7 @@ export default function Analytics({ transactions, categories, accounts, onNaviga
         </section>
 
         {/* Bar Chart */}
-        <section className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm">
+        <section className="bg-white p-3 rounded-3xl border border-neutral-100 shadow-sm">
           <h3 className="font-bold text-lg mb-6">Динамика</h3>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -338,7 +340,7 @@ export default function Analytics({ transactions, categories, accounts, onNaviga
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex justify-center gap-6 mt-6">
+          <div className="flex justify-center gap-2 mt-6">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-emerald-500" />
               <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Доход</span>
@@ -350,7 +352,7 @@ export default function Analytics({ transactions, categories, accounts, onNaviga
           </div>
         </section>
         
-        <section className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm">
+        <section className="bg-white p-2 rounded-3xl border border-neutral-100 shadow-sm">
           <h3 className="font-bold text-lg mb-6">Динамика баланса</h3>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
