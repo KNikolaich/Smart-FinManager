@@ -353,6 +353,7 @@ export default function App() {
           onComplete={() => setShowAddTransaction(false)}
           onAdd={refreshData}
           accounts={accounts}
+          transactions={transactions}
           categories={categories}
           userId={user.id}
         />
@@ -363,6 +364,7 @@ export default function App() {
         <EditTransaction 
           transaction={editingTransaction}
           accounts={accounts}
+          transactions={transactions}
           categories={categories}
           onClose={() => setEditingTransaction(null)}
           onUpdate={refreshData}

@@ -1,10 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { PlanData, CashbackEntry, CashbackCategory } from '../types';
-import { Pencil, Plus, Trash2, Check, X } from 'lucide-react';
-import { cn } from '../lib/utils';
-import CashbackCategoryManager from './CashbackCategoryManager';
-
-import React, { useState, useMemo } from 'react';
 import { PlanData, CashbackEntry, CashbackCategory, Account } from '../types';
 import { Pencil, Plus, Trash2, Check, X } from 'lucide-react';
 import { cn } from '../lib/utils';

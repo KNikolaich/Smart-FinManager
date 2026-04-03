@@ -7,7 +7,8 @@ import {
   PlanCell, 
   Account, 
   Category,
-  PlanConfig
+  PlanConfig,
+  CashbackCategory
 } from '../types';
 import { 
   History, 

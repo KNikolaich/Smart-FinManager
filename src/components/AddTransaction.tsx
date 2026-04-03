@@ -8,11 +8,14 @@ import AccountSelect from './AccountSelect';
 
 interface AddTransactionProps {
   accounts: Account[];
+  transactions: Transaction[];
   categories: Category[];
   onComplete: () => void;
+  onAdd: () => void;
+  userId: string;
 }
 
-export default function AddTransaction({ accounts, categories, onComplete }: AddTransactionProps) {
+export default function AddTransaction({ accounts, transactions, categories, onComplete, onAdd, userId }: AddTransactionProps) {
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [selectedAccountId, setSelectedAccountId] = useState(accounts[0]?.id || '');
@@ -106,6 +109,8 @@ export default function AddTransaction({ accounts, categories, onComplete }: Add
             selectedAccountId={selectedAccountId} 
             onChange={setSelectedAccountId} 
             label="Счет" 
+            transactions={transactions}
+            type={type}
           />
 
           <div className="space-y-1">
@@ -118,6 +123,8 @@ export default function AddTransaction({ accounts, categories, onComplete }: Add
                 selectedAccountId={selectedTargetAccountId} 
                 onChange={setSelectedTargetAccountId} 
                 label="" 
+                transactions={transactions}
+                type={type}
               />
             ) : (
               <div className="h-48 rounded-xl flex overflow-hidden bg-neutral-50/50">

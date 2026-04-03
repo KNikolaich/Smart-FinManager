@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { Account, AccountType } from '../types';
+import { Account, AccountType, Transaction, TransactionType } from '../types';
 import { getAccountIcon } from '../lib/accountUtils';
 import { cn } from '../lib/utils';
 
@@ -9,6 +9,8 @@ interface AccountSelectProps {
   selectedAccountId: string;
   onChange: (id: string) => void;
   label: string;
+  transactions?: Transaction[];
+  type?: TransactionType;
 }
 
 const typeLabels: Record<AccountType, string> = {
@@ -20,7 +22,7 @@ const typeLabels: Record<AccountType, string> = {
 
 const sortOrder: AccountType[] = ['card', 'credit', 'cash', 'bank'];
 
-export default function AccountSelect({ accounts, selectedAccountId, onChange, label }: AccountSelectProps) {
+export default function AccountSelect({ accounts, selectedAccountId, onChange, label, transactions = [], type }: AccountSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isUpward, setIsUpward] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,17 +45,34 @@ export default function AccountSelect({ accounts, selectedAccountId, onChange, l
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const sortedAccounts = useMemo(() => {
+    if (!type || transactions.length === 0) return accounts;
+
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
+    const frequency: Record<string, number> = {};
+    transactions
+      .filter(t => t.type === type && new Date(t.createdAt) > oneMonthAgo)
+      .forEach(t => {
+        if (t.accountId) frequency[t.accountId] = (frequency[t.accountId] || 0) + 1;
+        if (t.targetAccountId) frequency[t.targetAccountId] = (frequency[t.targetAccountId] || 0) + 1;
+      });
+
+    return [...accounts].sort((a, b) => (frequency[b.id] || 0) - (frequency[a.id] || 0));
+  }, [accounts, transactions, type]);
+
   const groupedAccounts = useMemo(() => {
     const groups: Partial<Record<AccountType, Account[]>> = {};
     sortOrder.forEach(type => groups[type] = []);
     
-    accounts.filter(a => !a.isArchived).forEach(acc => {
+    sortedAccounts.filter(a => !a.isArchived).forEach(acc => {
       if (groups[acc.type]) {
         groups[acc.type]!.push(acc);
       }
     });
     return groups;
-  }, [accounts]);
+  }, [sortedAccounts]);
 
   const selectedAccount = accounts.find(a => a.id === selectedAccountId);
 

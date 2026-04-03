@@ -9,12 +9,13 @@ import AccountSelect from './AccountSelect';
 interface EditTransactionProps {
   transaction: Transaction;
   accounts: Account[];
+  transactions: Transaction[];
   categories: Category[];
   onClose: () => void;
   onUpdate: () => void;
 }
 
-export default function EditTransaction({ transaction, accounts, categories, onClose, onUpdate }: EditTransactionProps) {
+export default function EditTransaction({ transaction, accounts, transactions, categories, onClose, onUpdate }: EditTransactionProps) {
   const [amount, setAmount] = useState(transaction.amount.toString());
   const [description, setDescription] = useState(transaction.description);
   const [selectedAccountId, setSelectedAccountId] = useState(transaction.accountId);
@@ -101,7 +102,9 @@ export default function EditTransaction({ transaction, accounts, categories, onC
         )}
 
         <div className="px-6 py-3 flex items-center justify-between shrink-0">
-          <h2 className="text-base font-bold text-neutral-800">Операция</h2>
+          <h2 className="text-base font-bold text-neutral-800 capitalize">
+            {transaction.type === 'income' ? 'Доход' : transaction.type === 'expense' ? 'Расход' : 'Перевод'}
+          </h2>
           <button onClick={onClose} className="p-1.5 hover:bg-neutral-100 rounded-full transition-colors">
             <X className="w-5 h-5 text-neutral-400" />
           </button>
@@ -162,6 +165,8 @@ export default function EditTransaction({ transaction, accounts, categories, onC
             selectedAccountId={selectedAccountId} 
             onChange={setSelectedAccountId} 
             label="Счет" 
+            transactions={transactions}
+            type={transaction.type}
           />
 
           {/* Category or Target Account Selection */}
@@ -175,6 +180,8 @@ export default function EditTransaction({ transaction, accounts, categories, onC
                 selectedAccountId={selectedTargetAccountId} 
                 onChange={setSelectedTargetAccountId} 
                 label="" 
+                transactions={transactions}
+                type={transaction.type}
               />
             ) : (
               /* Compact Category Table */
