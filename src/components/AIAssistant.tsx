@@ -355,7 +355,7 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
 
   const quickActions = [   
     { label: 'Анализ бюджета', icon: PieChart, text: 'Проанализируй мой бюджет и дай советы' },
-    { label: 'Добавить расход', icon: PlusCircle, text: 'Добавь расход 3500 рублей на продукты с Дебетовой карты' },
+    { label: 'Добавить расход', icon: PlusCircle, text: 'Добавь расход 5500 рублей на продукты с Т Дебетовой карты' },
     { label: 'Создать цель', icon: Target, text: 'Хочу накопить 50000 на новый велосипед к лету' },
     { label: 'Продлить планы', icon: Calendar, text: 'Обнови планы на будущий месяц' },
   ];

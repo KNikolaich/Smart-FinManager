@@ -1016,6 +1016,46 @@ app.post("/api/ai-logs", authenticateToken, async (req: any, res) => {
   }
 });
 
+// AI Proxy Routes
+app.post("/api/ai/deepseek", authenticateToken, async (req: any, res) => {
+  try {
+    const { systemInstruction, userPrompt, responseFormat } = req.body;
+    const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+
+    if (!DEEPSEEK_API_KEY) {
+      console.error("DEEPSEEK_API_KEY is missing in server environment");
+      return res.status(500).json({ error: "DeepSeek API key is not configured on the server." });
+    }
+
+    const response = await axios.post(
+      "https://api.deepseek.com/chat/completions",
+      {
+        model: "deepseek-chat",
+        messages: [
+          { role: "system", content: systemInstruction },
+          { role: "user", content: userPrompt }
+        ],
+        response_format: responseFormat ? { type: responseFormat } : undefined,
+        temperature: 0.7
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${DEEPSEEK_API_KEY}`
+        }
+      }
+    );
+
+    res.json({ content: response.data.choices[0].message.content });
+  } catch (error: any) {
+    console.error("DeepSeek Proxy Error:", error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({ 
+      error: "Failed to call DeepSeek API",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

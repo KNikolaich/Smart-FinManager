@@ -1,14 +1,12 @@
 import { Account, Category, Transaction, Goal, Budget, Plan, Message } from "../types";
 import { api } from "../lib/api";
-import { GoogleGenAI, Type } from "@google/genai";
+import axios from "axios";
 
 export interface AIResponse {
   intent: 'transaction' | 'goal' | 'plan' | 'advice' | 'unknown';
   data: any;
   message: string;
 }
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 const logAIInteraction = async (userId: string, request: any, response: any) => {
   if (!userId) {
@@ -20,11 +18,20 @@ const logAIInteraction = async (userId: string, request: any, response: any) => 
     await api.post('/ai-logs', {
       request,
       response,
-      provider: 'gemini'
+      provider: 'deepseek'
     });
   } catch (error) {
     console.error('Error logging AI interaction:', error);
   }
+};
+
+const callDeepSeek = async (systemInstruction: string, userPrompt: string, responseFormat?: "json_object") => {
+  const response = await api.post<{ content: string }>("/ai/deepseek", {
+    systemInstruction,
+    userPrompt,
+    responseFormat
+  });
+  return response.content;
 };
 
 export const processUserMessage = async (
@@ -41,14 +48,6 @@ export const processUserMessage = async (
   const mainAccounts = accounts.filter(a => a.showOnDashboard && !a.isArchived);
   
   const systemInstruction = `Ты — финансовый ассистент. Твоя цель — извлекать данные из сообщений пользователя для создания операций, целей или анализа бюджета.
-
-  ВАЖНО:
-  1. Если пользователь хочет "создать операцию", "создать цель" или "проанализировать бюджет", верни строго JSON.
-  2. НЕ учитывай историю чата. Анализируй ТОЛЬКО текущее сообщение.
-  3. В объекте 'data' ОБЯЗАТЕЛЬНО используй ID счетов и категорий из REFERENCE DATA (Accounts/Categories).
-  4. Если это анализ бюджета, верни intent: "advice".
-  5. Ответ — ТОЛЬКО чистый JSON.
-  6. Все извлеченные данные (сумма, ID счета, ID категории) ОБЯЗАТЕЛЬНО помещай в объект 'data'.
 
   REFERENCE DATA:
   Accounts: ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name })))}
@@ -86,38 +85,28 @@ export const processUserMessage = async (
   - message: string (a concise, polite, and helpful response in Russian confirming what you understood)
   `;
 
-  const contents = [
-    { role: "user", parts: [{ text: `User message: "${text}"\nCurrent date: ${new Date().toISOString()}\n\nREFERENCE DATA:\nAccounts: ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name })))} \nCategories: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name, type: c.type })))}` }] }
-  ];
+  const userPrompt = `User message: "${text}"\nCurrent date: ${new Date().toISOString()}\n\nREFERENCE DATA:\nAccounts: ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name })))} \nCategories: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name, type: c.type })))}`;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents,
-    config: {
-      systemInstruction,
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          intent: { type: Type.STRING, description: "one of: transaction, goal, plan, advice, unknown" },
-          data: { type: Type.OBJECT, description: "extracted fields" },
-          message: { type: Type.STRING, description: "concise response in Russian" }
-        },
-        required: ["intent", "data", "message"]
-      }
+  try {
+    const responseText = await callDeepSeek(systemInstruction, userPrompt, "json_object");
+    const result = JSON.parse(responseText || "{}") as AIResponse;
+
+    // Ensure message is a string to avoid React rendering errors
+    if (result.message && typeof result.message !== 'string') {
+      result.message = JSON.stringify(result.message);
     }
-  });
 
-  const result = JSON.parse(response.text || "{}") as AIResponse;
+    await logAIInteraction(userId, { systemInstruction, userPrompt }, result);
 
-  // Ensure message is a string to avoid React rendering errors
-  if (result.message && typeof result.message !== 'string') {
-    result.message = JSON.stringify(result.message);
+    return result;
+  } catch (error) {
+    console.error("DeepSeek Error:", error);
+    return {
+      intent: 'unknown',
+      data: {},
+      message: "Извините, произошла ошибка при обращении к AI сервису."
+    };
   }
-
-  await logAIInteraction(userId, { contents }, result);
-
-  return result;
 };
 
 export const getFinancialAdvice = async (
@@ -143,17 +132,12 @@ export const getFinancialAdvice = async (
   - Отсутствие накоплений
   - Несоответствие планов и целей`;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-    config: {
-      systemInstruction
-    }
-  });
-
-  const advice = response.text || "";
-  
-  await logAIInteraction(userId, { systemInstruction, userPrompt }, { text: advice });
-
-  return advice;
+  try {
+    const advice = await callDeepSeek(systemInstruction, userPrompt);
+    await logAIInteraction(userId, { systemInstruction, userPrompt }, { text: advice });
+    return advice;
+  } catch (error) {
+    console.error("DeepSeek Advice Error:", error);
+    return "Извините, не удалось получить финансовый совет в данный момент.";
+  }
 };
