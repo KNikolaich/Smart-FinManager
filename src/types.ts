@@ -123,6 +123,26 @@ export interface PlanConfig {
   minRowColor: string;
 }
 
+export interface CashbackCategory {
+  id: string;
+  name: string;
+  color: string;
+  icon?: string;
+}
+
+export interface CashbackEntry {
+  id: string;
+  assetId: string; // Refers to an Account or a custom asset
+  categoryId: string;
+  percent: number;
+  comment?: string;
+}
+
+export interface CashbackData {
+  categories: CashbackCategory[];
+  entries: CashbackEntry[];
+}
+
 export interface PlanData {
   id: string;
   userId: string;
@@ -131,6 +151,7 @@ export interface PlanData {
   config: PlanConfig;
   comment: string;
   updatedAt: string;
+  cashback?: CashbackData; // Add this
 }
 
 export interface Currency {

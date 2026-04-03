@@ -787,18 +787,28 @@ app.post("/api/import/batch", authenticateToken, async (req: any, res) => {
           continue;
         }
 
-        await prisma.transaction.create({
-          data: {
-            ...data,
-            userId,
-            accountId: mappedAccountId,
-            targetAccountId: mappedTargetAccountId,
-            categoryId: mappedCategoryId,
-            subcategoryId: mappedSubcategoryId,
-            amount: Number(amount),
-            createdAt: createdAt ? new Date(createdAt) : new Date()
-          }
-        });
+        const { id, ...transactionData } = {
+          ...data,
+          userId,
+          accountId: mappedAccountId,
+          targetAccountId: mappedTargetAccountId,
+          categoryId: mappedCategoryId,
+          subcategoryId: mappedSubcategoryId,
+          amount: Number(amount),
+          createdAt: createdAt ? new Date(createdAt) : new Date()
+        };
+
+        if (id) {
+          await prisma.transaction.upsert({
+            where: { id: id },
+            update: transactionData,
+            create: { id: id, ...transactionData }
+          });
+        } else {
+          await prisma.transaction.create({
+            data: transactionData
+          });
+        }
 
         // Update balances
         if (data.type === 'expense') {

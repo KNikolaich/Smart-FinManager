@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '../lib/utils';
+import CashbackTab from './CashbackTab';
 
 interface PlanPageProps {
   accounts: Account[];
@@ -57,14 +58,42 @@ const INITIAL_CONFIG: PlanConfig = {
   minRowColor: '#fff2cc'
 };
 
-const DEFAULT_SUBJECTS: PlanSubject[] = [
-  { id: '1', name: 'кв пл', color: '#f3f3f3', textColor: '#000000', isArchived: false },
-  { id: '2', name: 'заплати себе', color: '#f3f3f3', textColor: '#000000', isArchived: false },
-  { id: '3', name: 'Т КК', color: '#ffff00', textColor: '#000000', isArchived: false },
-  { id: '4', name: 'Аа КК', color: '#f3f3f3', textColor: '#000000', isArchived: false },
-  { id: '5', name: 'Продукты, etc', color: '#f3f3f3', textColor: '#000000', isArchived: false },
-  { id: '6', name: 'Автомобиль', color: '#f3f3f3', textColor: '#000000', isArchived: false },
-  { id: '7', name: 'Стоматология и Йога etc', color: '#f3f3f3', textColor: '#000000', isArchived: true }
+const DEFAULT_CASHBACK_CATEGORIES: CashbackCategory[] = [
+  { id: '1', name: 'Все покупки', color: '#ff0000' },
+  { id: '2', name: 'Оплата NFC или по', color: '#cccccc' },
+  { id: '3', name: 'Автоуслуги', color: '#add8e6' },
+  { id: '4', name: 'АЗС', color: '#add8e6' },
+  { id: '5', name: 'Мед услуги', color: '#008000' },
+  { id: '6', name: 'Аптеки', color: '#008000' },
+  { id: '7', name: 'Дом, ремонт', color: '#8b4513' },
+  { id: '8', name: 'Животные', color: '#ffcc99' },
+  { id: '9', name: 'Маркетплейсы', color: '#ffcccc' },
+  { id: '10', name: 'Кафе, бары, рестораны', color: '#ff0000' },
+  { id: '11', name: 'Фастфуд', color: '#ff0000' },
+  { id: '12', name: 'Я маркет до', color: '#ffcc99' },
+  { id: '13', name: 'Супермаркеты', color: '#ffcc99' },
+  { id: '14', name: 'Такси', color: '#ffff99' },
+  { id: '15', name: 'Транспорт общественный', color: '#ffff99' },
+  { id: '16', name: 'ЖД транспорт', color: '#ffff99' },
+  { id: '17', name: 'Цветы', color: '#ccff99' },
+  { id: '18', name: 'Одежда и обувь', color: '#d8bfd8' },
+  { id: '19', name: 'Спорттовары', color: '#d8bfd8' },
+  { id: '20', name: 'Активный отдых', color: '#cccccc' },
+  { id: '21', name: 'Развлечения', color: '#cccccc' },
+  { id: '22', name: 'Фитнес', color: '#cccccc' },
+  { id: '23', name: 'Комунальные услуги', color: '#ffcccc' },
+  { id: '24', name: 'Все для НГ', color: '#ff0000' },
+  { id: '25', name: 'Строительные инст', color: '#ff0000' },
+  { id: '26', name: 'Мебель', color: '#ff0000' },
+  { id: '27', name: 'Наушники и колонки', color: '#ff0000' },
+  { id: '28', name: 'Театры, кино', color: '#0000ff' },
+  { id: '29', name: 'Книги и концтовары', color: '#ccff99' },
+  { id: '30', name: 'Образование', color: '#add8e6' },
+  { id: '31', name: 'Электроника', color: '#8b4513' },
+  { id: '32', name: 'Цифровые товары', color: '#8b4513' },
+  { id: '33', name: 'Музыка', color: '#0000ff' },
+  { id: '34', name: 'Ювелирка', color: '#4b0082' },
+  { id: '35', name: 'Красота', color: '#4b0082' },
 ];
 
 export default function PlanPage({ accounts, categories, onRefresh }: PlanPageProps) {
@@ -77,6 +106,11 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
   const [showAddSubject, setShowAddSubject] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState('');
   const [isEditingComment, setIsEditingComment] = useState(false);
+
+  // Cashback Data
+  const handleSaveCashback = (newData: PlanData) => {
+    savePlanData(newData);
+  };
 
   // Load data from API
   useEffect(() => {
@@ -96,43 +130,15 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
             // Save to server immediately
             await api.post('/plan-grid', parsed);
           } else {
-            // Initialize with default data
-            const initialRows: PlanRow[] = [];
-            const currentYear = new Date().getFullYear();
-            
-            // Generate rows for current year
-            for (let i = 0; i < 12; i++) {
-              initialRows.push({
-                id: `${currentYear}-${i}`,
-                label: SHORT_MONTHS[i],
-                type: 'month',
-                cells: {}
-              });
-              if (i === 3 || i === 7 || i === 11) {
-                initialRows.push({
-                  id: `${currentYear}-min-${i}`,
-                  label: 'MIN',
-                  type: 'min',
-                  cells: {}
-                });
-              }
-            }
-            
-            // Add next year row
-            initialRows.push({
-              id: `${currentYear + 1}`,
-              label: `${currentYear + 1}`,
-              type: 'year',
-              cells: {}
-            });
-
+            // Initialize with empty plan data
             const initialData: PlanData = {
               id: 'default',
               userId: 'user',
-              subjects: DEFAULT_SUBJECTS,
-              rows: initialRows,
+              subjects: [],
+              rows: [],
               config: INITIAL_CONFIG,
-              comment: '# Заметки по планированию\n\nЗдесь можно писать важные комментарии.',
+              cashback: { categories: DEFAULT_CASHBACK_CATEGORIES, entries: [] },
+              comment: '',
               updatedAt: new Date().toISOString()
             };
             setPlanData(initialData);
@@ -362,7 +368,9 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
       </div>
 
       <div className="bg-white p-0 border-none shadow-none overflow-hidden flex-1 flex flex-col">
-        {activeTab === 'now' || activeTab === 'past' ? (
+        {activeTab === 'cashback' ? (
+          <CashbackTab planData={planData} accounts={accounts} onSave={handleSaveCashback} />
+        ) : activeTab === 'now' || activeTab === 'past' ? (
           <div className="w-full flex-1 overflow-y-auto overflow-x-auto no-scrollbar">
             <table className="w-full border-collapse">
               <thead className="sticky top-0 z-20">

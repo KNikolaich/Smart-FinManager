@@ -167,18 +167,27 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
         { name: 'accounts', endpoint: '/accounts' },
         { name: 'categories', endpoint: '/categories' },
         { name: 'goals', endpoint: '/goals' },
-        { name: 'budgets', endpoint: '/budgets' }
+        { name: 'budgets', endpoint: '/budgets' },
+        { name: 'plans', endpoint: '/plan-grid' }
       ];
       
       let hasData = false;
       
       for (const col of collections) {
         try {
-          const data = await api.get<any[]>(col.endpoint);
-          if (data && data.length > 0) {
-            const worksheet = XLSX.utils.json_to_sheet(data);
+          const data = await api.get<any>(col.endpoint);
+          if (col.name === 'plans') {
+            // Plan grid returns an object, save it as a stringified JSON in a single cell
+            const worksheet = XLSX.utils.aoa_to_sheet([['JSON Data'], [JSON.stringify(data)]]);
             XLSX.utils.book_append_sheet(workbook, worksheet, col.name);
             hasData = true;
+          } else {
+            const exportData = Array.isArray(data) ? data : [];
+            if (exportData && exportData.length > 0) {
+              const worksheet = XLSX.utils.json_to_sheet(exportData);
+              XLSX.utils.book_append_sheet(workbook, worksheet, col.name);
+              hasData = true;
+            }
           }
         } catch (err) {
           console.error(`Error exporting ${col.name}:`, err);

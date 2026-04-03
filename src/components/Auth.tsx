@@ -21,10 +21,13 @@ export default function Auth({ onAuth }: AuthProps) {
 
     try {
       const endpoint = isLogin ? '/auth/login' : '/auth/register';
+      console.log('Auth attempt:', endpoint, email);
       const data = await api.post<{ token: string; user: UserProfile }>(endpoint, { email, password });
+      console.log('Auth success:', data);
       localStorage.setItem('token', data.token);
       onAuth(data.user);
     } catch (err: any) {
+      console.error('Auth error:', err);
       let errorMessage = 'Ошибка авторизации';
       try {
         const errorData = JSON.parse(err.message);

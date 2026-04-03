@@ -49,7 +49,7 @@ export default function App() {
     longPressTimer.current = setTimeout(() => {
       console.log('Long press triggered');
       setAddMode(prev => prev === 'text' ? 'voice' : 'text');
-    }, 2000);
+    }, 1000);
   };
 
   const handleMouseUp = () => {
@@ -132,14 +132,19 @@ export default function App() {
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
+      console.log('Checking auth, token exists:', !!token);
       if (token) {
         try {
           const userData = await api.get('/auth/me');
+          console.log('Auth check success, user:', userData);
           setUser(userData);
         } catch (error) {
+          console.error('Auth check error:', error);
           localStorage.removeItem('token');
           setUser(null);
         }
+      } else {
+        console.log('No token, user is null');
       }
       setLoading(false);
     };
@@ -147,6 +152,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    console.log('User state changed:', user);
     if (user) {
       refreshData();
     }
