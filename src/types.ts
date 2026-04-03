@@ -151,7 +151,16 @@ export interface PlanData {
   config: PlanConfig;
   comment: string;
   updatedAt: string;
-  cashback?: CashbackData; // Add this
+  cashback?: CashbackData;
+}
+
+export interface BalanceHistory {
+  id: string;
+  userId: string;
+  month: string;
+  totalBalance: number;
+  details?: any;
+  createdAt: string;
 }
 
 export interface Currency {

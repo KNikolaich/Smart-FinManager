@@ -26,6 +26,7 @@ model User {
   planGrid     PlanGrid?
   chatMessages ChatMessage[]
   aiLogs       AiLog[]
+  balanceHistory BalanceHistory[]
 
   @@map("users")
 }
@@ -170,4 +171,18 @@ model AiLog {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("ai_logs")
+}
+
+model BalanceHistory {
+  id           String   @id @default(uuid())
+  userId       String
+  month        String   // e.g., "2026-04"
+  totalBalance Float
+  details      Json?    // Optional: breakdown by account
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
+  @@map("balance_history")
 }

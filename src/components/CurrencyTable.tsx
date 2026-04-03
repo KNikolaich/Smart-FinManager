@@ -25,11 +25,11 @@ export const CurrencyTable: React.FC = () => {
   const handleUpdateRates = async () => {
     setUpdatingRates(true);
     try {
+      const { api } = await import('../lib/api');
       for (const cur of currencies) {
         if (cur.iso === 'RUB') continue;
 
-        const response = await fetch(`https://v6.exchangerate-api.com/v6/10e51cc83f012c14085c363d/latest/${cur.iso}`);
-        const data = await response.json();
+        const data = await api.get<any>(`/currencies/rates/${cur.iso}`);
         if (data.result === 'success' && data.conversion_rates && data.conversion_rates.RUB) {
           await currencyService.updateCurrency({ ...cur, rate: data.conversion_rates.RUB });
         }

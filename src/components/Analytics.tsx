@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Transaction, Category, Account } from '../types';
+import { Transaction, Category, Account, BalanceHistory } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, LineChart, Line } from 'recharts';
 import { format, startOfMonth, endOfMonth, isWithinInterval, subMonths, startOfYear, endOfYear, eachMonthOfInterval, isBefore, isAfter } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -9,6 +9,7 @@ interface AnalyticsProps {
   transactions: Transaction[];
   categories: Category[];
   accounts: Account[];
+  balanceHistory: BalanceHistory[];
   onNavigateToHistory?: (categoryName: string) => void;
 }
 
@@ -20,7 +21,7 @@ const CHEERFUL_COLORS = [
   '#FF5733', '#33FF57', '#3357FF', '#F333FF', '#33FFF3'
 ];
 
-export default function Analytics({ transactions, categories, accounts, onNavigateToHistory }: AnalyticsProps) {
+export default function Analytics({ transactions, categories, accounts, balanceHistory, onNavigateToHistory }: AnalyticsProps) {
   const [activeType, setActiveType] = useState<'expense' | 'income'>('expense');
   const [filterType, setFilterType] = useState<DateFilterType>('month');
   const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -75,6 +76,14 @@ export default function Analytics({ transactions, categories, accounts, onNaviga
   }, [filteredTransactions, categories, activeType]);
 
   const monthlyBalanceTrend = useMemo(() => {
+    if (balanceHistory && balanceHistory.length > 0) {
+      return balanceHistory.map(h => ({
+        name: format(new Date(h.month + '-01'), 'MMM', { locale: ru }),
+        balance: h.totalBalance
+      }));
+    }
+
+    // Fallback to calculation if no history
     const accountsInTotal = accounts.filter(a => a.showInTotals);
     const start = subMonths(new Date(), 5);
     const end = new Date();
@@ -100,7 +109,7 @@ export default function Analytics({ transactions, categories, accounts, onNaviga
         balance
       };
     });
-  }, [transactions, accounts]);
+  }, [transactions, accounts, balanceHistory]);
 
   const monthlyTrend = useMemo(() => {
     const data: { [key: string]: { name: string, income: number, expense: number, rawDate: Date } } = {};

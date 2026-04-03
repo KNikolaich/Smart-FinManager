@@ -7,13 +7,14 @@ import {
   Bot, 
   Plus,
   Mic,
+  AudioLines,
   X,
   LogOut,
   User as UserIcon,
   Wallet
 } from 'lucide-react';
 import { api } from './lib/api';
-import { Account, Transaction, Goal, Budget, Category, Plan, Currency } from './types';
+import { Account, Transaction, Goal, Budget, Category, Plan, Currency, BalanceHistory } from './types';
 import Dashboard from './components/Dashboard';
 import PlanPage from './components/PlanPage';
 import Analytics from './components/Analytics';
@@ -35,6 +36,7 @@ export default function App() {
   const [transactionHistoryFilter, setTransactionHistoryFilter] = useState<{ categoryId?: string, accountId?: string }>({});
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [addMode, setAddMode] = useState<'text' | 'voice'>(() => (localStorage.getItem('addMode') as 'text' | 'voice') || 'text');
+  const [isRecording, setIsRecording] = useState(false);
   const [showAILogs, setShowAILogs] = useState(false);
   const aiAssistantRef = useRef<any>(null);
   
@@ -65,8 +67,11 @@ export default function App() {
       setShowAddTransaction(true);
     } else {
       if (aiAssistantRef.current) {
-        aiAssistantRef.current.handleVoiceInput();
         setActiveTab('ai');
+        aiAssistantRef.current.handleVoiceInput(
+          () => setIsRecording(true),
+          () => setIsRecording(false)
+        );
       }
     }
   };
@@ -83,6 +88,7 @@ export default function App() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [balanceHistory, setBalanceHistory] = useState<BalanceHistory[]>([]);
   const [plans, setPlans] = useState<Plan[]>(() => {
     const saved = localStorage.getItem('ai_temporary_plans');
     return saved ? JSON.parse(saved) : [];
@@ -91,13 +97,14 @@ export default function App() {
   const refreshData = useCallback(async () => {
     if (!user) return;
     try {
-      const [accs, trans, gls, bdgs, cats, currs] = await Promise.all([
+      const [accs, trans, gls, bdgs, cats, currs, bhist] = await Promise.all([
         api.get<Account[]>('/accounts'),
         api.get<Transaction[]>('/transactions'),
         api.get<Goal[]>('/goals'),
         api.get<Budget[]>('/budgets'),
         api.get<Category[]>('/categories'),
         api.get<Currency[]>('/currencies'),
+        api.get<BalanceHistory[]>('/balance-history'),
       ]);
       setAccounts(accs);
       setTransactions(trans);
@@ -105,6 +112,7 @@ export default function App() {
       setBudgets(bdgs);
       setCategories(cats);
       setCurrencies(currs);
+      setBalanceHistory(bhist);
       
       // Load plans from localStorage
       const savedPlans = localStorage.getItem('ai_temporary_plans');
@@ -208,6 +216,7 @@ export default function App() {
             transactions={transactions} 
             categories={categories} 
             accounts={accounts} 
+            balanceHistory={balanceHistory}
             onNavigateToHistory={(categoryName) => {
               const category = categories.find(c => c.name === categoryName);
               setTransactionHistoryFilter({ categoryId: category?.id });
@@ -266,9 +275,15 @@ export default function App() {
           >
             <Bot size={20} />
           </button>
-          <div className="w-10 h-10 rounded-xl overflow-hidden border-2 border-white shadow-sm bg-theme-primary-light flex items-center justify-center">
-            <UserIcon className="text-theme-primary-dark w-6 h-6" />
-          </div>
+          <button 
+            onClick={() => setActiveTab('settings')}
+            className={cn(
+              "w-10 h-10 rounded-xl overflow-hidden border-2 border-white shadow-sm flex items-center justify-center transition-all active:scale-95",
+              activeTab === 'settings' ? "bg-theme-primary text-white shadow-lg shadow-theme-primary-light" : "bg-theme-primary-light text-theme-primary-dark"
+            )}
+          >
+            <UserIcon className="w-6 h-6" />
+          </button>
         </div>
       </header>
 
@@ -298,7 +313,7 @@ export default function App() {
           </button>
           
           {/* Add Button */}
-          <div className="relative w-14 h-full">
+          <div className="relative w-[70px] h-full">
             <button 
               onMouseDown={handleMouseDown}
               onMouseUp={handleMouseUp}
@@ -306,9 +321,18 @@ export default function App() {
               onTouchStart={handleMouseDown}
               onTouchEnd={handleMouseUp}
               onClick={handleButtonClick}
-              className="absolute bottom-[5%] left-1/2 -translate-x-1/2 h-[110%] aspect-square bg-theme-primary text-white rounded-full flex items-center justify-center shadow-xl shadow-theme-primary-light transition-all border-4 border-white z-50"
+              className={cn(
+                "absolute bottom-[5%] left-1/2 -translate-x-1/2 h-[137.5%] aspect-square text-white rounded-full flex items-center justify-center shadow-xl transition-all border-4 border-white z-50",
+                isRecording ? "bg-red-500 shadow-red-200 animate-pulse" : "bg-theme-primary shadow-theme-primary-light"
+              )}
             >
-              {addMode === 'text' ? <Plus size={24} /> : <Mic size={24} />}
+              {addMode === 'text' ? (
+                <Plus size={30} />
+              ) : isRecording ? (
+                <AudioLines size={30} className="animate-pulse" />
+              ) : (
+                <Mic size={30} />
+              )}
             </button>
           </div>
 

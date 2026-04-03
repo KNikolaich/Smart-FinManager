@@ -5,6 +5,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import axios from "axios";
 import { PrismaClient } from "@prisma/client";
 
 dotenv.config();
@@ -79,7 +80,34 @@ app.post("/api/auth/login", async (req, res) => {
 app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
-    if (!user) return res.status(404).json({ error: "User not found" });
+    if (!user) return res.status(401).json({ error: "User not found" });
+    
+    // Check and take balance snapshot for the current month if it doesn't exist
+    try {
+      const now = new Date();
+      const monthStr = now.toISOString().substring(0, 7);
+      const existing = await prisma.balanceHistory.findUnique({
+        where: { userId_month: { userId: user.id, month: monthStr } }
+      });
+      
+      if (!existing) {
+        const accounts = await prisma.account.findMany({
+          where: { userId: user.id, showInTotals: true }
+        });
+        const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+        await prisma.balanceHistory.create({
+          data: {
+            userId: user.id,
+            month: monthStr,
+            totalBalance,
+            details: accounts.map(a => ({ id: a.id, name: a.name, balance: a.balance }))
+          }
+        });
+      }
+    } catch (snapshotError) {
+      console.error("Failed to take balance snapshot:", snapshotError);
+    }
+
     res.json({ id: user.id, email: user.email, settings: user.settings });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -580,6 +608,30 @@ app.post("/api/currencies/seed", authenticateToken, async (req: any, res) => {
       });
     }
     res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/currencies/rates/:iso", authenticateToken, async (req: any, res) => {
+  try {
+    const { iso } = req.params;
+    const response = await axios.get(`https://v6.exchangerate-api.com/v6/10e51cc83f012c14085c363d/latest/${iso}`);
+    res.json(response.data);
+  } catch (error: any) {
+    console.error("Error proxying currency rates:", error.message);
+    res.status(500).json({ error: "Failed to fetch currency rates" });
+  }
+});
+
+// Balance History
+app.get("/api/balance-history", authenticateToken, async (req: any, res) => {
+  try {
+    const history = await prisma.balanceHistory.findMany({
+      where: { userId: req.user.userId },
+      orderBy: { month: 'asc' }
+    });
+    res.json(history);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

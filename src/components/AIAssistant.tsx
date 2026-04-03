@@ -18,7 +18,7 @@ interface AIAssistantProps {
 }
 
 export interface AIAssistantHandle {
-  handleVoiceInput: () => void;
+  handleVoiceInput: (onStart?: () => void, onEnd?: () => void) => void;
 }
 
 export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssistant({ accounts, categories, transactions, budgets, goals, plans, userId, onRedirectToCreateGoal, onRefresh }, ref) {
@@ -26,9 +26,10 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   useImperativeHandle(ref, () => ({
-    handleVoiceInput
+    handleVoiceInput: (onStart, onEnd) => handleVoiceInput(onStart, onEnd)
   }));
 
   useEffect(() => {
@@ -121,7 +122,12 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
     }
   };
 
-  const handleVoiceInput = () => {
+  const handleVoiceInput = (onStart?: () => void, onEnd?: () => void) => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      return;
+    }
+
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       alert('Ваш браузер не поддерживает голосовой ввод.');
@@ -129,12 +135,14 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
     }
 
     const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
     recognition.lang = 'ru-RU';
     recognition.continuous = false;
     recognition.interimResults = false;
 
     recognition.onstart = () => {
       setLoading(true);
+      if (onStart) onStart();
     };
 
     recognition.onresult = (event: any) => {
@@ -146,10 +154,22 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error', event.error);
       setLoading(false);
+      recognitionRef.current = null;
+      if (onEnd) onEnd();
+
+      if (event.error === 'not-allowed') {
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: '❌ **Ошибка доступа к микрофону.** Пожалуйста, разрешите доступ к микрофону в настройках браузера и убедитесь, что приложение имеет соответствующие права.'
+        }]);
+      }
     };
 
     recognition.onend = () => {
       setLoading(false);
+      recognitionRef.current = null;
+      if (onEnd) onEnd();
     };
 
     recognition.start();
