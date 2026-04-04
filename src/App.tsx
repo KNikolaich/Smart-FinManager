@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useVoiceInput } from './hooks/useVoiceInput';
 import { 
   LayoutDashboard, 
   CalendarRange, 
@@ -38,9 +39,9 @@ export default function App() {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [initialTransactionData, setInitialTransactionData] = useState<any | null>(null);
   const [addMode, setAddMode] = useState<'text' | 'voice'>(() => (localStorage.getItem('addMode') as 'text' | 'voice') || 'text');
-  const [isRecording, setIsRecording] = useState(false);
   const [showAILogs, setShowAILogs] = useState(false);
   const aiAssistantRef = useRef<any>(null);
+  const { isRecording, startListening, stopListening } = useVoiceInput();
   
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -63,15 +64,27 @@ export default function App() {
     }
   };
 
-  const handleButtonClick = () => {
+  const handleButtonClick = async () => {
     console.log('handleButtonClick called, addMode:', addMode);
     if (addMode === 'text') {
       setShowAddTransaction(true);
     } else {
-      if (aiAssistantRef.current) {
-        aiAssistantRef.current.handleVoiceInput(
-          () => setIsRecording(true),
-          () => setIsRecording(false)
+      if (isRecording) {
+        stopListening();
+      } else {
+        startListening(
+          async (text) => {
+            console.log('Voice result:', text);
+            try {
+              const result = await processUserMessage(user.id, text, [], accounts, categories, transactions, goals, budgets, plans);
+              handleAIResult(result);
+            } catch (error) {
+              console.error('AI Error:', error);
+            }
+          },
+          (error) => {
+            console.error('Voice error:', error);
+          }
         );
       }
     }
@@ -86,6 +99,10 @@ export default function App() {
     } else {
       setActiveTab('ai');
     }
+  };
+
+  const optimisticAddTransaction = (transaction: Transaction) => {
+    setTransactions(prev => [transaction, ...prev]);
   };
   const [showTotalBalance, setShowTotalBalance] = useState(() => {
     const saved = localStorage.getItem('showTotalBalance');
@@ -389,6 +406,7 @@ export default function App() {
         <AddTransaction 
           onComplete={() => { setShowAddTransaction(false); setInitialTransactionData(null); }}
           onAdd={refreshData}
+          onOptimisticAdd={optimisticAddTransaction}
           accounts={accounts}
           transactions={transactions}
           categories={categories}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useVoiceInput } from '../hooks/useVoiceInput';
 import { Bot, Send, User, Sparkles, Loader2, PlusCircle, Target, PieChart, Calendar, Eraser } from 'lucide-react';
 import { processUserMessage, getFinancialAdvice } from '../services/aiService';
 import { api } from '../lib/api';
@@ -27,10 +28,27 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
+  const { startListening } = useVoiceInput();
 
   useImperativeHandle(ref, () => ({
-    handleVoiceInput: (onStart, onEnd) => handleVoiceInput(onStart, onEnd)
+    handleVoiceInput: (onStart?: () => void, onEnd?: () => void) => {
+      if (onStart) onStart();
+      startListening(
+        async (text) => {
+          setInput(text);
+          await handleSend(text);
+          if (onEnd) onEnd();
+        },
+        (error) => {
+          if (onEnd) onEnd();
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: '❌ **Ошибка распознавания голоса.**'
+          }]);
+        }
+      );
+    }
   }));
 
   useEffect(() => {
@@ -128,59 +146,6 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleVoiceInput = (onStart?: () => void, onEnd?: () => void) => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      return;
-    }
-
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert('Ваш браузер не поддерживает голосовой ввод.');
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
-    recognition.lang = 'ru-RU';
-    recognition.continuous = false;
-    recognition.interimResults = false;
-
-    recognition.onstart = () => {
-      setLoading(true);
-      if (onStart) onStart();
-    };
-
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setInput(transcript);
-      handleSend(transcript);
-    };
-
-    recognition.onerror = (event: any) => {
-      console.error('Speech recognition error', event.error);
-      setLoading(false);
-      recognitionRef.current = null;
-      if (onEnd) onEnd();
-
-      if (event.error === 'not-allowed') {
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          role: 'assistant',
-          content: '❌ **Ошибка доступа к микрофону.** Пожалуйста, разрешите доступ к микрофону в настройках браузера и убедитесь, что приложение имеет соответствующие права.'
-        }]);
-      }
-    };
-
-    recognition.onend = () => {
-      setLoading(false);
-      recognitionRef.current = null;
-      if (onEnd) onEnd();
-    };
-
-    recognition.start();
   };
 
   const confirmAction = async (msgId: string, type: string, data: any) => {

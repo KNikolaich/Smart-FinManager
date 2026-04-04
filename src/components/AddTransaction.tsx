@@ -12,11 +12,12 @@ interface AddTransactionProps {
   categories: Category[];
   onComplete: () => void;
   onAdd: () => void;
+  onOptimisticAdd: (transaction: Transaction) => void;
   userId: string;
   initialData?: any;
 }
 
-export default function AddTransaction({ accounts, transactions, categories, onComplete, onAdd, userId, initialData }: AddTransactionProps) {
+export default function AddTransaction({ accounts, transactions, categories, onComplete, onAdd, onOptimisticAdd, userId, initialData }: AddTransactionProps) {
   const [type, setType] = useState<TransactionType>(initialData?.type || 'expense');
   const [amount, setAmount] = useState(initialData?.amount?.toString() || '');
   const [selectedAccountId, setSelectedAccountId] = useState(initialData?.accountId || accounts[0]?.id || '');
@@ -31,6 +32,22 @@ export default function AddTransaction({ accounts, transactions, categories, onC
   const handleSubmit = async () => {
     if (!amount || isNaN(Number(amount))) return;
     setLoading(true);
+    
+    const newTransaction: Transaction = {
+      id: Math.random().toString(36).substring(2, 9),
+      userId,
+      amount: Number(amount),
+      description,
+      accountId: selectedAccountId,
+      targetAccountId: type === 'transfer' ? selectedTargetAccountId : undefined,
+      categoryId: type !== 'transfer' ? selectedCategoryId : '',
+      createdAt: new Date(date).toISOString(),
+      type
+    };
+
+    onOptimisticAdd(newTransaction);
+    onComplete();
+
     try {
       await api.post('/transactions', {
         amount: Number(amount),
@@ -41,9 +58,10 @@ export default function AddTransaction({ accounts, transactions, categories, onC
         createdAt: new Date(date).toISOString(),
         type
       });
-      onComplete();
+      onAdd();
     } catch (err: any) {
       console.error('Error adding transaction:', err);
+      // In a real app, we would revert the optimistic update here
     } finally {
       setLoading(false);
     }
