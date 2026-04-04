@@ -24,16 +24,13 @@ const authenticateToken = (req: any, res: any, next: any) => {
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    console.log("No token provided");
     return res.status(401).json({ error: "Unauthorized" });
   }
 
   jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
     if (err) {
-      console.error("JWT Verification Error:", err.message);
       return res.status(403).json({ error: "Forbidden" });
     }
-    console.log("User authenticated:", user.userId);
     req.user = user;
     next();
   });
@@ -42,7 +39,6 @@ const authenticateToken = (req: any, res: any, next: any) => {
 // --- AUTH ROUTES ---
 
 app.post("/api/auth/register", async (req, res) => {
-  console.log("Registration attempt:", req.body.email);
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -55,7 +51,6 @@ app.post("/api/auth/register", async (req, res) => {
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET);
     res.json({ token, user: { id: user.id, email: user.email } });
   } catch (error: any) {
-    console.error("Registration error:", error);
     if (error.code === 'P2002') {
       return res.status(400).json({ error: "Email already exists" });
     }
@@ -531,15 +526,12 @@ app.delete("/api/budgets/:id", authenticateToken, async (req: any, res) => {
 
 // PlanGrid (Complex Grid)
 app.get("/api/plan-grid", authenticateToken, async (req: any, res) => {
-  console.log("Fetching plan grid for user:", req.user.userId);
   try {
     const planGrid = await prisma.planGrid.findUnique({
       where: { userId: req.user.userId }
     });
-    console.log("Plan grid found:", !!planGrid);
     res.json(planGrid ? planGrid.data : null);
   } catch (error: any) {
-    console.error("Error fetching plan grid:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -691,7 +683,6 @@ app.delete("/api/data/clear-transactions", authenticateToken, async (req: any, r
 
 app.post("/api/import/batch", authenticateToken, async (req: any, res) => {
   try {
-    console.log("Batch import request body keys:", Object.keys(req.body));
     const { accounts, categories, transactions, goals } = req.body;
     const userId = req.user.userId;
 
@@ -727,7 +718,6 @@ app.post("/api/import/batch", authenticateToken, async (req: any, res) => {
           update: { ...data, uid: String(uid || id), userId, currency: currencyCode },
           create: { ...data, id: id, uid: String(uid || id), userId, currency: currencyCode }
         });
-        console.log("Upserted account:", JSON.stringify(created));
         if (id) createdAccounts[String(id)] = created.id;
         validAccountIds.add(created.id);
       }
@@ -790,10 +780,8 @@ app.post("/api/import/batch", authenticateToken, async (req: any, res) => {
 
     // 3. Import Goals
     if (goals && goals.length > 0) {
-      console.log("Importing goals:", JSON.stringify(goals));
       for (const goal of goals) {
         const { id, deadline, ...data } = goal;
-        console.log("Upserting goal:", id, JSON.stringify(data));
         const created = await prisma.goal.upsert({
           where: { id: id },
           update: { 
@@ -808,7 +796,6 @@ app.post("/api/import/batch", authenticateToken, async (req: any, res) => {
             userId
           }
         });
-        console.log("Upserted goal:", created.id);
         if (id) createdGoals[id] = created.id;
       }
     }
@@ -996,7 +983,6 @@ app.get("/api/ai-logs", authenticateToken, async (req: any, res) => {
 app.post("/api/ai-logs", authenticateToken, async (req: any, res) => {
   try {
     const { request: aiRequest, response: aiResponse, provider } = req.body;
-    console.log(`Saving AI log for user ${req.user.userId}, provider: ${provider}`);
     
     const log = await prisma.aiLog.create({
       data: {
@@ -1088,7 +1074,6 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 

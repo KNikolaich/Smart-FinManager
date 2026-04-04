@@ -68,8 +68,8 @@ export default function AddTransaction({ accounts, transactions, categories, onC
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-1 sm:p-1 bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-white rounded-t-[32px] sm:rounded-[32px] overflow-hidden shadow-2xl flex flex-col relative max-h-[90vh] animate-in slide-in-from-bottom duration-300">
+    <div className="fixed inset-0 z-[60] flex items-stretch justify-center bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-lg bg-white overflow-hidden shadow-2xl flex flex-col relative h-full animate-in slide-in-from-bottom duration-300">
         <div className="px-6 py-3 flex items-center justify-between shrink-0">
           <h2 className="text-base font-bold text-neutral-800">Новая операция</h2>
           <button onClick={onComplete} className="p-1.5 hover:bg-neutral-100 rounded-full transition-colors">
@@ -148,7 +148,12 @@ export default function AddTransaction({ accounts, transactions, categories, onC
             ) : (
               <div className="h-48 rounded-xl flex overflow-hidden bg-neutral-50/50">
                 <div className="w-1/2 overflow-y-auto bg-neutral-50/50 no-scrollbar">
-                  {categories.filter(c => c.type === type && !c.parentId).map(cat => (
+                  {categories.filter(c => c.type === type && !c.parentId).sort((a, b) => {
+                    const aOrder = a.sortOrder ?? Infinity;
+                    const bOrder = b.sortOrder ?? Infinity;
+                    if (aOrder !== bOrder) return aOrder - bOrder;
+                    return (a.name || '').localeCompare(b.name || '');
+                  }).map(cat => (
                     <button key={cat.id} type="button" onClick={() => { setActiveParentId(cat.id); setSelectedCategoryId(cat.id); }} className={cn("w-full text-left px-3 py-2 text-xs font-bold transition-all flex items-center gap-2", activeParentId === cat.id ? "bg-white text-theme-primary shadow-sm" : "text-neutral-600 hover:bg-neutral-100/50")}>
                       <span className="text-sm">{cat.icon}</span>
                       {cat.name}
@@ -156,7 +161,12 @@ export default function AddTransaction({ accounts, transactions, categories, onC
                   ))}
                 </div>
                 <div className="w-1/2 overflow-y-auto no-scrollbar bg-white">
-                  {categories.filter(c => c.type === type && c.parentId === activeParentId).map(sub => (
+                  {categories.filter(c => c.type === type && c.parentId === activeParentId).sort((a, b) => {
+                    const aOrder = a.sortOrder ?? Infinity;
+                    const bOrder = b.sortOrder ?? Infinity;
+                    if (aOrder !== bOrder) return aOrder - bOrder;
+                    return (a.name || '').localeCompare(b.name || '');
+                  }).map(sub => (
                     <button key={sub.id} type="button" onClick={() => setSelectedCategoryId(sub.id)} className={cn("w-full text-left px-3 py-2 text-xs font-medium transition-all", selectedCategoryId === sub.id ? "bg-theme-primary-light text-theme-primary-dark font-bold" : "text-neutral-600 hover:bg-neutral-100/50")}>{sub.name}</button>
                   ))}
                 </div>

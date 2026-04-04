@@ -10,11 +10,9 @@ export interface AIResponse {
 
 const logAIInteraction = async (userId: string, request: any, response: any) => {
   if (!userId) {
-    console.warn('Attempted to log AI interaction without userId');
     return;
   }
   try {
-    console.log('Logging AI interaction for user:', userId);
     await api.post('/ai-logs', {
       request,
       response,

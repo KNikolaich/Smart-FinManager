@@ -72,8 +72,8 @@ export default function EditTransaction({ transaction, accounts, transactions, c
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-1 sm:p-1 bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-white rounded-t-[32px] sm:rounded-[32px] overflow-hidden shadow-2xl flex flex-col relative max-h-[90vh] animate-in slide-in-from-bottom duration-300">
+    <div className="fixed inset-0 z-[60] flex items-stretch justify-center bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-lg bg-white overflow-hidden shadow-2xl flex flex-col relative h-full animate-in slide-in-from-bottom duration-300">
         {/* Delete Confirmation Overlay */}
         {showDeleteConfirm && (
           <div className="absolute inset-0 z-[70] bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center p-2 text-center animate-in fade-in zoom-in duration-200">
@@ -188,7 +188,12 @@ export default function EditTransaction({ transaction, accounts, transactions, c
               <div className="h-48 rounded-xl flex overflow-hidden bg-neutral-50/50">
                 {/* Parents */}
                 <div className="w-1/2 overflow-y-auto bg-neutral-50/50 no-scrollbar">
-                  {categories.filter(c => c.type === transaction.type && !c.parentId).map(cat => (
+                  {categories.filter(c => c.type === transaction.type && !c.parentId).sort((a, b) => {
+                    const aOrder = a.sortOrder ?? Infinity;
+                    const bOrder = b.sortOrder ?? Infinity;
+                    if (aOrder !== bOrder) return aOrder - bOrder;
+                    return (a.name || '').localeCompare(b.name || '');
+                  }).map(cat => (
                     <button
                       key={cat.id}
                       type="button"
@@ -212,6 +217,12 @@ export default function EditTransaction({ transaction, accounts, transactions, c
                 <div className="w-1/2 overflow-y-auto no-scrollbar bg-white">
                   {categories
                     .filter(c => c.type === transaction.type && c.parentId === activeParentId)
+                    .sort((a, b) => {
+                      const aOrder = a.sortOrder ?? Infinity;
+                      const bOrder = b.sortOrder ?? Infinity;
+                      if (aOrder !== bOrder) return aOrder - bOrder;
+                      return (a.name || '').localeCompare(b.name || '');
+                    })
                     .map(sub => (
                       <button
                         key={sub.id}

@@ -3,7 +3,6 @@ import { Account, Category, AccountType } from '../types';
 import { subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend, addDays } from 'date-fns';
 
 export const generateDemoData = async (userId: string) => {
-  console.log('Starting demo data generation for user:', userId);
   
   // 1. Ensure Categories exist
   const existingCategories: Category[] = await api.get<Category[]>('/categories');
@@ -142,5 +141,4 @@ export const generateDemoData = async (userId: string) => {
     }
   }
   
-  console.log('Demo data generation completed.');
 };

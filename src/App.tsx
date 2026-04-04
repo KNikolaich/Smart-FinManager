@@ -50,22 +50,18 @@ export default function App() {
   }, [addMode]);
 
   const handleMouseDown = () => {
-    console.log('handleMouseDown called');
     longPressTimer.current = setTimeout(() => {
-      console.log('Long press triggered');
       setAddMode(prev => prev === 'text' ? 'voice' : 'text');
     }, 1000);
   };
 
   const handleMouseUp = () => {
-    console.log('handleMouseUp called');
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
     }
   };
 
   const handleButtonClick = async () => {
-    console.log('handleButtonClick called, addMode:', addMode);
     if (addMode === 'text') {
       setShowAddTransaction(true);
     } else {
@@ -74,7 +70,6 @@ export default function App() {
       } else {
         startListening(
           async (text) => {
-            console.log('Voice result:', text);
             try {
               const result = await processUserMessage(user.id, text, [], accounts, categories, transactions, goals, budgets, plans);
               handleAIResult(result);
@@ -200,19 +195,15 @@ export default function App() {
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
-      console.log('Checking auth, token exists:', !!token);
       if (token) {
         try {
           const userData = await api.get('/auth/me');
-          console.log('Auth check success, user:', userData);
           setUser(userData);
         } catch (error) {
           console.error('Auth check error:', error);
           localStorage.removeItem('token');
           setUser(null);
         }
-      } else {
-        console.log('No token, user is null');
       }
       setLoading(false);
     };
@@ -220,7 +211,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    console.log('User state changed:', user);
     if (user) {
       refreshData();
     }
