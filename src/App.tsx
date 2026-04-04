@@ -14,7 +14,8 @@ import {
   Wallet
 } from 'lucide-react';
 import { api } from './lib/api';
-import { Account, Transaction, Goal, Budget, Category, Plan, Currency, BalanceHistory } from './types';
+import { processUserMessage } from './services/aiService';
+import { Account, Transaction, Goal, Budget, Category, Plan, Currency, BalanceHistory, Message } from './types';
 import Dashboard from './components/Dashboard';
 import PlanPage from './components/PlanPage';
 import Analytics from './components/Analytics';
@@ -35,6 +36,7 @@ export default function App() {
   const [showTransactionHistory, setShowTransactionHistory] = useState(false);
   const [transactionHistoryFilter, setTransactionHistoryFilter] = useState<{ categoryId?: string, accountId?: string }>({});
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [initialTransactionData, setInitialTransactionData] = useState<any | null>(null);
   const [addMode, setAddMode] = useState<'text' | 'voice'>(() => (localStorage.getItem('addMode') as 'text' | 'voice') || 'text');
   const [isRecording, setIsRecording] = useState(false);
   const [showAILogs, setShowAILogs] = useState(false);
@@ -67,12 +69,22 @@ export default function App() {
       setShowAddTransaction(true);
     } else {
       if (aiAssistantRef.current) {
-        setActiveTab('ai');
         aiAssistantRef.current.handleVoiceInput(
           () => setIsRecording(true),
           () => setIsRecording(false)
         );
       }
+    }
+  };
+
+  const handleAIResult = (result: any) => {
+    if (result.intent === 'transaction') {
+      setInitialTransactionData(result.data);
+    } else if (result.intent === 'goal') {
+      setInitialGoalData(result.data);
+      setActiveTab('dashboard');
+    } else {
+      setActiveTab('ai');
     }
   };
   const [showTotalBalance, setShowTotalBalance] = useState(() => {
@@ -242,6 +254,7 @@ export default function App() {
               setActiveTab('dashboard');
             }}
             onRefresh={refreshData}
+            onResult={handleAIResult}
           />
         );
       default:
@@ -372,14 +385,15 @@ export default function App() {
       )}
 
       {/* Add Transaction Modal */}
-      {showAddTransaction && (
+      {(showAddTransaction || initialTransactionData) && (
         <AddTransaction 
-          onComplete={() => setShowAddTransaction(false)}
+          onComplete={() => { setShowAddTransaction(false); setInitialTransactionData(null); }}
           onAdd={refreshData}
           accounts={accounts}
           transactions={transactions}
           categories={categories}
           userId={user.id}
+          initialData={initialTransactionData}
         />
       )}
 

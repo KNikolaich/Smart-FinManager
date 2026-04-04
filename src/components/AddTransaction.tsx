@@ -13,16 +13,17 @@ interface AddTransactionProps {
   onComplete: () => void;
   onAdd: () => void;
   userId: string;
+  initialData?: any;
 }
 
-export default function AddTransaction({ accounts, transactions, categories, onComplete, onAdd, userId }: AddTransactionProps) {
-  const [type, setType] = useState<TransactionType>('expense');
-  const [amount, setAmount] = useState('');
-  const [selectedAccountId, setSelectedAccountId] = useState(accounts[0]?.id || '');
-  const [selectedTargetAccountId, setSelectedTargetAccountId] = useState(accounts[1]?.id || accounts[0]?.id || '');
-  const [selectedCategoryId, setSelectedCategoryId] = useState('');
-  const [activeParentId, setActiveParentId] = useState<string | null>(null);
-  const [description, setDescription] = useState('');
+export default function AddTransaction({ accounts, transactions, categories, onComplete, onAdd, userId, initialData }: AddTransactionProps) {
+  const [type, setType] = useState<TransactionType>(initialData?.type || 'expense');
+  const [amount, setAmount] = useState(initialData?.amount?.toString() || '');
+  const [selectedAccountId, setSelectedAccountId] = useState(initialData?.accountId || accounts[0]?.id || '');
+  const [selectedTargetAccountId, setSelectedTargetAccountId] = useState(initialData?.targetAccountId || accounts[1]?.id || accounts[0]?.id || '');
+  const [selectedCategoryId, setSelectedCategoryId] = useState(initialData?.categoryId || '');
+  const [activeParentId, setActiveParentId] = useState<string | null>(initialData?.categoryId ? categories.find(c => c.id === initialData.categoryId)?.parentId || null : null);
+  const [description, setDescription] = useState(initialData?.description || '');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [loading, setLoading] = useState(false);
   const activeAccounts = accounts.filter(a => !a.isArchived);

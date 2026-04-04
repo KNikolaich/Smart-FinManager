@@ -15,13 +15,14 @@ interface AIAssistantProps {
   userId: string;
   onRedirectToCreateGoal?: (data: { name?: string; targetAmount?: number; deadline?: string }) => void;
   onRefresh?: () => void;
+  onResult?: (result: any) => void;
 }
 
 export interface AIAssistantHandle {
   handleVoiceInput: (onStart?: () => void, onEnd?: () => void) => void;
 }
 
-export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssistant({ accounts, categories, transactions, budgets, goals, plans, userId, onRedirectToCreateGoal, onRefresh }, ref) {
+export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssistant({ accounts, categories, transactions, budgets, goals, plans, userId, onRedirectToCreateGoal, onRefresh, onResult }, ref) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -87,6 +88,8 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
     try {
       const result = await processUserMessage(userId, text, messages, accounts, categories, transactions, goals, budgets, plans);
       
+      if (onResult) onResult(result);
+      
       let assistantMessage: Omit<Message, 'id'>;
 
       if (result.intent === 'advice') {
@@ -96,6 +99,11 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
           content: advice
         };
       } else if (result.intent === 'unknown') {
+        assistantMessage = {
+          role: 'assistant',
+          content: result.message
+        };
+      } else if (['transaction', 'goal', 'plan'].includes(result.intent)) {
         assistantMessage = {
           role: 'assistant',
           content: result.message

@@ -56,7 +56,8 @@ export const processUserMessage = async (
   - If the user mentions an account or category by name, you MUST find its corresponding "id" from the REFERENCE DATA above and use that "id" in the data object.
   - EVERY value you mention in your "message" (amount, account name, category name, goal name) MUST be present in the "data" object.
   - If you cannot find a matching ID for an account or category mentioned by the user, set intent to "unknown" and ask for clarification.
-  - Only use "transaction", "goal", or "plan" intents if you have ALL required data. If any required field is missing, you MUST set intent to "unknown" and ask a clarifying question in the "message".
+  - You MUST return the intent and data even if some parameters are missing, as long as you have identified the intent and at least ONE parameter.
+  - Only set intent to "unknown" and ask for clarification if more than ONE required parameter is missing.
   - For transaction intent, required fields in "data" are: type, amount, accountId, accountName, categoryId.
   - For goal intent, required fields in "data" are: name, targetAmount.
   - For plan intent, required fields in "data" are: name, plannedAmount, accountId, accountName.
