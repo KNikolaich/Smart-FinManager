@@ -186,8 +186,15 @@ app.get("/api/categories", authenticateToken, async (req: any, res) => {
 
 app.post("/api/categories", authenticateToken, async (req: any, res) => {
   try {
+    const { parentId, ...data } = req.body;
+    const createData: any = { ...data, userId: req.user.userId };
+    
+    if (parentId) {
+      createData.parent = { connect: { id: parentId } };
+    }
+
     const category = await prisma.category.create({
-      data: { ...req.body, userId: req.user.userId },
+      data: createData,
     });
     res.json(category);
   } catch (error: any) {
@@ -197,9 +204,18 @@ app.post("/api/categories", authenticateToken, async (req: any, res) => {
 
 app.put("/api/categories/:id", authenticateToken, async (req: any, res) => {
   try {
+    const { parentId, ...data } = req.body;
+    const updateData: any = { ...data };
+    
+    if (parentId === null) {
+      updateData.parent = { disconnect: true };
+    } else if (parentId) {
+      updateData.parent = { connect: { id: parentId } };
+    }
+
     const category = await prisma.category.update({
       where: { id: req.params.id, userId: req.user.userId },
-      data: req.body,
+      data: updateData,
     });
     res.json(category);
   } catch (error: any) {

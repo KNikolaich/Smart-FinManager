@@ -90,9 +90,40 @@ export default function App() {
     }
   };
 
-  const handleAIResult = (result: any) => {
+  const handleAIResult = async (result: any) => {
     if (result.intent === 'transaction') {
-      setInitialTransactionData(result.data);
+      const { type, amount, accountId, accountName, categoryId } = result.data;
+      
+      if (type && amount && accountId && categoryId) {
+        // Все параметры есть, сохраняем автоматически
+        try {
+          const transactionData = {
+            amount: Number(amount),
+            description: result.data.description || '',
+            accountId: accountId,
+            targetAccountId: type === 'transfer' ? result.data.targetAccountId : null,
+            categoryId: type !== 'transfer' ? categoryId : null,
+            createdAt: new Date().toISOString(),
+            type: type
+          };
+
+          const newTransaction: Transaction = {
+            id: Math.random().toString(36).substring(2, 9),
+            userId: user.id,
+            ...transactionData,
+            categoryId: transactionData.categoryId || '',
+          };
+
+          optimisticAddTransaction(newTransaction);
+          await api.post('/transactions', transactionData);
+          refreshData();
+        } catch (err) {
+          console.error('Error saving transaction:', err);
+        }
+      } else {
+        // Не хватает параметров, открываем редактор
+        setInitialTransactionData(result.data);
+      }
     } else if (result.intent === 'goal') {
       setInitialGoalData(result.data);
       setActiveTab('dashboard');

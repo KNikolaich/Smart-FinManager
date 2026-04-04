@@ -62,6 +62,7 @@ model Category {
   icon      String
   color     String
   parentId  String?
+  sortOrder Int?
   createdAt DateTime @default(now())
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)

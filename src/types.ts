@@ -46,6 +46,7 @@ export interface Category {
   color: string;
   parentId?: string;
   subcategories?: Subcategory[];
+  sortOrder?: number;
 }
 
 export interface Transaction {

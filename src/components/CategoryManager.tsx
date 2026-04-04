@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../lib/api';
 import { Category, TransactionType } from '../types';
 import { X, Plus, Trash2, Tag, Check, AlertTriangle } from 'lucide-react';
@@ -52,17 +52,41 @@ export default function CategoryManager({ user, onClose, onRefresh }: CategoryMa
 
   const groupedExpenseCategories = useMemo(() => {
     const roots = categories.filter(c => c.type === 'expense' && !c.parentId);
+    // Sort by sortOrder (nulls last), then name
+    roots.sort((a, b) => {
+      const aOrder = a.sortOrder ?? Infinity;
+      const bOrder = b.sortOrder ?? Infinity;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return (a.name || '').localeCompare(b.name || '');
+    });
     return roots.map(root => ({
       ...root,
-      children: categories.filter(c => c.type === 'expense' && c.parentId === root.id)
+      children: categories.filter(c => c.type === 'expense' && c.parentId === root.id).sort((a, b) => {
+        const aOrder = a.sortOrder ?? Infinity;
+        const bOrder = b.sortOrder ?? Infinity;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return (a.name || '').localeCompare(b.name || '');
+      })
     }));
   }, [categories]);
 
   const groupedIncomeCategories = useMemo(() => {
     const roots = categories.filter(c => c.type === 'income' && !c.parentId);
+    // Sort by sortOrder (nulls last), then name
+    roots.sort((a, b) => {
+      const aOrder = a.sortOrder ?? Infinity;
+      const bOrder = b.sortOrder ?? Infinity;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return (a.name || '').localeCompare(b.name || '');
+    });
     return roots.map(root => ({
       ...root,
-      children: categories.filter(c => c.type === 'income' && c.parentId === root.id)
+      children: categories.filter(c => c.type === 'income' && c.parentId === root.id).sort((a, b) => {
+        const aOrder = a.sortOrder ?? Infinity;
+        const bOrder = b.sortOrder ?? Infinity;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return (a.name || '').localeCompare(b.name || '');
+      })
     }));
   }, [categories]);
 
@@ -132,40 +156,43 @@ export default function CategoryManager({ user, onClose, onRefresh }: CategoryMa
                   {groupedExpenseCategories.length === 0 ? (
                     <div className="text-center py-8 text-neutral-400 text-sm italic bg-white rounded-2xl">Нет категорий расходов</div>
                   ) : (
-                    groupedExpenseCategories.map(parent => (
-                      <div key={parent.id} className="space-y-2">
-                        {/* Parent Category */}
-                        <div 
-                          onClick={() => {
-                            setEditingCategory(parent);
-                            setShowFormModal(true);
-                          }}
-                          className="flex items-center gap-3 p-3 bg-white rounded-2xl shadow-sm hover:bg-neutral-50 transition-colors cursor-pointer"
-                        >
-                          <span className="text-xl">{parent.icon}</span>
-                          <span className="font-semibold text-neutral-700">{parent.name}</span>
-                        </div>
-                        
-                        {/* Child Categories Grid */}
-                        {parent.children.length > 0 && (
-                          <div className="grid grid-cols-2 gap-2 pl-4">
+                    <table className="w-full bg-white rounded-2xl shadow-sm overflow-hidden">
+                      <tbody>
+                        {groupedExpenseCategories.map(parent => (
+                          <React.Fragment key={parent.id}>
+                            <tr 
+                              onClick={() => {
+                                setEditingCategory(parent);
+                                setShowFormModal(true);
+                              }}
+                              className="cursor-pointer hover:bg-neutral-100 transition-colors border-b border-neutral-100 bg-neutral-100/50"
+                            >
+                              <td className="p-1.5 text-lg w-10">{parent.icon}</td>
+                              <td className="p-1.5 font-semibold text-neutral-700 text-sm">{parent.name}</td>
+                              <td className="p-1.5 text-right text-neutral-400 text-xs font-medium pr-3">
+                                {parent.sortOrder ?? ''}
+                              </td>
+                            </tr>
                             {parent.children.map(child => (
-                              <div 
+                              <tr 
                                 key={child.id}
                                 onClick={() => {
                                   setEditingCategory(child);
                                   setShowFormModal(true);
                                 }}
-                                className="p-2 bg-white rounded-xl shadow-sm hover:bg-neutral-50 transition-colors cursor-pointer text-xs text-neutral-600 truncate flex items-center gap-2"
+                                className="cursor-pointer hover:bg-neutral-50 transition-colors border-b border-neutral-100"
                               >
-                                <span>{child.icon || parent.icon}</span>
-                                {child.name}
-                              </div>
+                                <td className="p-1.5 text-lg w-10 pl-6">{child.icon || parent.icon}</td>
+                                <td className="p-1.5 text-xs text-neutral-600">{child.name}</td>
+                                <td className="p-1.5 text-right text-neutral-400 text-xs font-medium pr-3">
+                                  {child.sortOrder ?? ''}
+                                </td>
+                              </tr>
                             ))}
-                          </div>
-                        )}
-                      </div>
-                    ))
+                          </React.Fragment>
+                        ))}
+                      </tbody>
+                    </table>
                   )}
                 </div>
               </div>
@@ -185,40 +212,43 @@ export default function CategoryManager({ user, onClose, onRefresh }: CategoryMa
                   {groupedIncomeCategories.length === 0 ? (
                     <div className="text-center py-8 text-neutral-400 text-sm italic bg-white rounded-2xl">Нет категорий доходов</div>
                   ) : (
-                    groupedIncomeCategories.map(parent => (
-                      <div key={parent.id} className="space-y-2">
-                        {/* Parent Category */}
-                        <div 
-                          onClick={() => {
-                            setEditingCategory(parent);
-                            setShowFormModal(true);
-                          }}
-                          className="flex items-center gap-3 p-3 bg-white rounded-2xl shadow-sm hover:bg-neutral-50 transition-colors cursor-pointer"
-                        >
-                          <span className="text-xl">{parent.icon}</span>
-                          <span className="font-semibold text-neutral-700">{parent.name}</span>
-                        </div>
-                        
-                        {/* Child Categories Grid */}
-                        {parent.children.length > 0 && (
-                          <div className="grid grid-cols-2 gap-2 pl-4">
+                    <table className="w-full bg-white rounded-2xl shadow-sm overflow-hidden">
+                      <tbody>
+                        {groupedIncomeCategories.map(parent => (
+                          <React.Fragment key={parent.id}>
+                            <tr 
+                              onClick={() => {
+                                setEditingCategory(parent);
+                                setShowFormModal(true);
+                              }}
+                              className="cursor-pointer hover:bg-neutral-100 transition-colors border-b border-neutral-100 bg-neutral-100/50"
+                            >
+                              <td className="p-1.5 text-lg w-10">{parent.icon}</td>
+                              <td className="p-1.5 font-semibold text-neutral-700 text-sm">{parent.name}</td>
+                              <td className="p-1.5 text-right text-neutral-400 text-xs font-medium pr-3">
+                                {parent.sortOrder ?? ''}
+                              </td>
+                            </tr>
                             {parent.children.map(child => (
-                              <div 
+                              <tr 
                                 key={child.id}
                                 onClick={() => {
                                   setEditingCategory(child);
                                   setShowFormModal(true);
                                 }}
-                                className="p-2 bg-white rounded-xl shadow-sm hover:bg-neutral-50 transition-colors cursor-pointer text-xs text-neutral-600 truncate flex items-center gap-2"
+                                className="cursor-pointer hover:bg-neutral-50 transition-colors border-b border-neutral-100"
                               >
-                                <span>{child.icon || parent.icon}</span>
-                                {child.name}
-                              </div>
+                                <td className="p-1.5 text-lg w-10 pl-6">{child.icon || parent.icon}</td>
+                                <td className="p-1.5 text-xs text-neutral-600">{child.name}</td>
+                                <td className="p-1.5 text-right text-neutral-400 text-xs font-medium pr-3">
+                                  {child.sortOrder ?? ''}
+                                </td>
+                              </tr>
                             ))}
-                          </div>
-                        )}
-                      </div>
-                    ))
+                          </React.Fragment>
+                        ))}
+                      </tbody>
+                    </table>
                   )}
                 </div>
               </div>
@@ -288,6 +318,7 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
   const [icon, setIcon] = useState(category?.icon || (category?.parentId ? '' : '💰'));
   const [color, setColor] = useState(category?.color || '#000000');
   const [type, setType] = useState<TransactionType>(category?.type || 'expense');
+  const [sortOrder, setSortOrder] = useState<number | undefined>(category?.sortOrder);
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -297,22 +328,18 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
     
     setSaving(true);
     try {
+      const payload = {
+        name,
+        icon,
+        type,
+        parentId,
+        color,
+        sortOrder
+      };
       if (category) {
-        await api.put(`/categories/${category.id}`, {
-          name,
-          icon,
-          type,
-          parentId,
-          color
-        });
+        await api.put(`/categories/${category.id}`, payload);
       } else {
-        await api.post('/categories', {
-          name,
-          icon,
-          type,
-          parentId,
-          color
-        });
+        await api.post('/categories', payload);
       }
       onSuccess();
     } catch (error) {
@@ -333,7 +360,7 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6 flex-1 overflow-y-auto no-scrollbar">
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-row items-center justify-center gap-6">
             <div className="relative">
               <button
                 type="button"
@@ -346,16 +373,29 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
                   <Plus className="text-theme-primary-dark w-6 h-6" />
                 </div>
               </button>
-              {color && color !== '#000000' && (
-                <div 
-                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white shadow-sm"
-                  style={{ backgroundColor: color }}
-                />
-              )}
             </div>
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
-              {category ? `${category.id} (${type})` : `Новая категория (${type})`}
-            </p>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-4">Цвет</label>
+              <div className="flex items-center gap-3 bg-neutral-50 rounded-2xl px-4 py-3.5">
+                <input
+                  type="color"
+                  value={color === '#000000' ? '#e5e5e5' : color}
+                  onChange={(e) => setColor(e.target.value)}
+                  className="w-8 h-8 rounded-lg cursor-pointer border-none bg-transparent"
+                />
+                <button 
+                  type="button"
+                  onClick={() => setColor('#000000')}
+                  className={cn(
+                    "text-[10px] font-bold px-2 py-1 rounded-lg transition-all",
+                    color === '#000000' ? "bg-neutral-900 text-white" : "bg-neutral-200 text-neutral-500 hover:bg-neutral-300"
+                  )}
+                >
+                  Сброс
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -373,31 +413,19 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-4">Цвет</label>
-                <div className="flex items-center gap-3 bg-neutral-50 rounded-2xl px-4 py-3.5">
-                  <input
-                    type="color"
-                    value={color === '#000000' ? '#e5e5e5' : color}
-                    onChange={(e) => setColor(e.target.value)}
-                    className="w-8 h-8 rounded-lg cursor-pointer border-none bg-transparent"
-                  />
-                  <button 
-                    type="button"
-                    onClick={() => setColor('#000000')}
-                    className={cn(
-                      "text-[10px] font-bold px-2 py-1 rounded-lg transition-all",
-                      color === '#000000' ? "bg-neutral-900 text-white" : "bg-neutral-200 text-neutral-500 hover:bg-neutral-300"
-                    )}
-                  >
-                    Сброс
-                  </button>
-                </div>
+                <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-4">Порядок</label>
+                <input
+                  type="number"
+                  value={sortOrder ?? ''}
+                  onChange={(e) => setSortOrder(e.target.value ? Number(e.target.value) : undefined)}
+                  placeholder="0"
+                  className="w-full bg-neutral-50 rounded-2xl px-5 py-4 outline-none focus:ring-2 ring-theme-primary/20 font-semibold transition-all"
+                />
               </div>
-
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-4">Тип</label>
                 <div className={cn(
-                  "grid grid-cols-2 gap-1 bg-neutral-50 p-1 rounded-2xl",
+                  "grid grid-cols-2 gap-1 bg-neutral-50 p-1 rounded-2xl h-[56px]",
                   parentId && "opacity-50 cursor-not-allowed"
                 )}>
                   <button
@@ -427,7 +455,7 @@ function CategoryForm({ userId, category, categories, onClose, onSuccess, onDele
                 </div>
               </div>
             </div>
-
+            
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-4">Родительская категория</label>
               <select
