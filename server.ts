@@ -61,6 +61,9 @@ app.post("/api/auth/register", async (req, res) => {
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: "Invalid credentials" });
@@ -68,6 +71,12 @@ app.post("/api/auth/login", async (req, res) => {
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET);
     res.json({ token, user: { id: user.id, email: user.email, settings: user.settings } });
   } catch (error: any) {
+    console.error("Login Error:", error);
+    if (error.message.includes("could not write init file") || error.message.includes("Error querying the database")) {
+      return res.status(503).json({ 
+        error: "Database server error. This usually means the database server is out of disk space or has permission issues. Please check your DB server (FATAL: could not write init file)." 
+      });
+    }
     res.status(500).json({ error: error.message });
   }
 });
