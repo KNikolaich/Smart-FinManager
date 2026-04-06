@@ -120,33 +120,28 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
         const data = await api.get<PlanData | null>('/plan-grid');
         if (data) {
           setPlanData(data);
-        } else {
-          // Check localStorage for migration
-          const saved = localStorage.getItem('planData');
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            setPlanData(parsed);
-            // Save to server immediately
-            await api.post('/plan-grid', parsed);
-          } else {
+        } else {          
             // Initialize with empty plan data structure
             const initialData: PlanData = {
               id: 'default',
               userId: 'user',
               subjects: [],
               rows: [
-                { id: '2026-01', label: 'Янв 2026', cells: {}, type: 'month' },
-                { id: '2026-02', label: 'Фев 2026', cells: {}, type: 'month' },
-                { id: '2026-03', label: 'Мар 2026', cells: {}, type: 'month' },
-                { id: '2026-04', label: 'Апр 2026', cells: {}, type: 'month' },
-                { id: '2026-05', label: 'Май 2026', cells: {}, type: 'month' },
-                { id: '2026-06', label: 'Июн 2026', cells: {}, type: 'month' },
-                { id: '2026-07', label: 'Июл 2026', cells: {}, type: 'month' },
-                { id: '2026-08', label: 'Авг 2026', cells: {}, type: 'month' },
-                { id: '2026-09', label: 'Сен 2026', cells: {}, type: 'month' },
-                { id: '2026-10', label: 'Окт 2026', cells: {}, type: 'month' },
-                { id: '2026-11', label: 'Ноя 2026', cells: {}, type: 'month' },
-                { id: '2026-12', label: 'Дек 2026', cells: {}, type: 'month' }
+                { id: '2026-01', label: 'Янв', cells: {}, type: 'month' },
+                { id: '2026-02', label: 'Фев', cells: {}, type: 'month' },
+                { id: '2026-03', label: 'Мар', cells: {}, type: 'month' },
+                { id: '2026-04', label: 'Апр', cells: {}, type: 'month' },
+                { id: '2026-min-4', label: 'min', cells: {}, type: 'min' },
+                { id: '2026-05', label: 'Май', cells: {}, type: 'month' },
+                { id: '2026-06', label: 'Июн', cells: {}, type: 'month' },
+                { id: '2026-07', label: 'Июл', cells: {}, type: 'month' },
+                { id: '2026-08', label: 'Авг', cells: {}, type: 'month' },
+                { id: '2026-min-8', label: 'min', cells: {}, type: 'min' },
+                { id: '2026-09', label: 'Сен', cells: {}, type: 'month' },
+                { id: '2026-10', label: 'Окт', cells: {}, type: 'month' },
+                { id: '2026-11', label: 'Ноя', cells: {}, type: 'month' },
+                { id: '2026-12', label: 'Дек', cells: {}, type: 'month' },
+                { id: '2026-min-12', label: 'min', cells: {}, type: 'min' }
               ],
               config: INITIAL_CONFIG,
               cashback: { categories: DEFAULT_CASHBACK_CATEGORIES, entries: [] },
@@ -156,7 +151,6 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
             setPlanData(initialData);
             await api.post('/plan-grid', initialData);
           }
-        }
       } catch (error) {
         console.error('Error loading plan grid:', error);
         if (retries > 0) {
