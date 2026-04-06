@@ -1,15 +1,13 @@
 import { LogOut, User as UserIcon, Database, Shield, Github, Info, Sparkles, CheckCircle2, Eraser, Trash2, AlertTriangle, Tag, FileDown, FileUp, X, ArrowRightLeft, AlertCircle, Copy, Palette } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
-import { generateDemoData } from '../services/demoDataService';
-import { importFinancialData } from '../services/importService';
+import { useState, useRef } from 'react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import CategoryManager from './CategoryManager';
+import AccountManager from './AccountManager';
 import { CurrencyTable } from './CurrencyTable';
-import * as XLSX from 'xlsx';
-import { api } from '../lib/api';
+import { useDataManagement } from '../hooks/useDataManagement';
 
-import { UserProfile } from '../types';
+import { UserProfile, Account } from '../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -17,228 +15,40 @@ function cn(...inputs: ClassValue[]) {
 
 interface SettingsProps {
   user: UserProfile;
+  accounts: Account[];
   onLogout: () => void;
   onShowLogs: () => void;
   onRefresh: () => void;
 }
 
-export default function Settings({ user, onLogout, onShowLogs, onRefresh }: SettingsProps) {
-  const [seeding, setSeeding] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [clearing, setClearing] = useState(false);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [showClearTransactionsConfirm, setShowClearTransactionsConfirm] = useState(false);
-  const [showSeedConfirm, setShowSeedConfirm] = useState(false);
-  const [password, setPassword] = useState('');
+export default function Settings({ user, accounts, onLogout, onShowLogs, onRefresh }: SettingsProps) {
   const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [showAccountManager, setShowAccountManager] = useState(false);
   const [showCurrencyTable, setShowCurrencyTable] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState(0);
-  const [importLogs, setImportLogs] = useState<string[]>([]);
-  const [showLogModal, setShowLogModal] = useState(false);
-  const [importResult, setImportResult] = useState<{ success: boolean; count: number } | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const jsonInputRef = useRef<HTMLInputElement>(null);
-
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleJSONClick = () => {
-    jsonInputRef.current?.click();
-  };
-
-  const handleStopImport = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, isJson: boolean = false) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    setImporting(true);
-    setImportProgress(0);
-    setImportLogs(['Начало импорта...']);
-    setImportResult(null);
-    try {
-      const result = await importFinancialData(
-        file, 
-        (progress) => setImportProgress(progress),
-        (log) => setImportLogs(prev => [...prev, log]),
-        controller.signal
-      );
-      if (result.success) {
-        setImportResult({ success: true, count: result.count });
-        onRefresh();
-      }
-    } catch (error: any) {
-      if (error.message === 'Import cancelled') {
-        setImportLogs(prev => [...prev, '⚠️ Импорт остановлен пользователем']);
-      } else {
-        console.error('Import error:', error);
-        setImportLogs(prev => [...prev, `Ошибка: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`]);
-        alert('Ошибка при импорте данных');
-      }
-    } finally {
-      setImporting(false);
-      setImportProgress(0);
-      abortControllerRef.current = null;
-      if (isJson) {
-        if (jsonInputRef.current) jsonInputRef.current.value = '';
-      } else {
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      }
-    }
-  };
-
-  const verifyPassword = async () => {
-    try {
-      await api.post('/auth/verify-password', { password });
-      return true;
-    } catch (error) {
-      alert('Неверный пароль');
-      return false;
-    }
-  };
-
-  const seedInitialData = async () => {
-    if (!(await verifyPassword())) return;
-    setSeeding(true);
-    setSuccess(false);
-    try {
-      await generateDemoData(user.id);
-      setSuccess(true);
-      onRefresh();
-      setShowSeedConfirm(false);
-      setPassword('');
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (error) {
-      console.error('Seed error:', error);
-    } finally {
-      setSeeding(false);
-    }
-  };
-
-  const clearAllData = async () => {
-    if (!(await verifyPassword())) return;
-    setClearing(true);
-    try {
-      await api.delete('/data/clear');
-      onRefresh();
-      setShowClearConfirm(false);
-      setPassword('');
-    } catch (error) {
-      console.error('Clear error:', error);
-    } finally {
-      setClearing(false);
-    }
-  };
-
-  const clearTransactionsOnly = async () => {
-    if (!(await verifyPassword())) return;
-    setClearing(true);
-    try {
-      await api.delete('/data/clear-transactions');
-      onRefresh();
-      setShowClearTransactionsConfirm(false);
-      setPassword('');
-    } catch (error) {
-      console.error('Clear transactions error:', error);
-    } finally {
-      setClearing(false);
-    }
-  };
-
-  const exportData = async () => {
-    setExporting(true);
-    try {
-      const workbook = XLSX.utils.book_new();
-
-      const collections = [
-        { name: 'transactions', endpoint: '/transactions' },
-        { name: 'accounts', endpoint: '/accounts' },
-        { name: 'categories', endpoint: '/categories' },
-        { name: 'goals', endpoint: '/goals' },
-        { name: 'budgets', endpoint: '/budgets' },
-        { name: 'plans', endpoint: '/plan-grid' }
-      ];
-      
-      let hasData = false;
-      
-      for (const col of collections) {
-        try {
-          const data = await api.get<any>(col.endpoint);
-          if (col.name === 'plans') {
-            // Plan grid returns an object, save it as a stringified JSON in a single cell
-            const worksheet = XLSX.utils.aoa_to_sheet([['JSON Data'], [JSON.stringify(data)]]);
-            XLSX.utils.book_append_sheet(workbook, worksheet, col.name);
-            hasData = true;
-          } else {
-            const exportData = Array.isArray(data) ? data : [];
-            if (exportData && exportData.length > 0) {
-              const worksheet = XLSX.utils.json_to_sheet(exportData);
-              XLSX.utils.book_append_sheet(workbook, worksheet, col.name);
-              hasData = true;
-            }
-          }
-        } catch (err) {
-          console.error(`Error exporting ${col.name}:`, err);
-        }
-      }
-
-      if (!hasData) {
-        alert('Нет данных для экспорта');
-        return;
-      }
-
-      const date = new Date().toISOString().split('T')[0];
-      const fileName = `backupAiFinAssistant_${date}.xlsx`;
-      
-      XLSX.writeFile(workbook, fileName);
-    } catch (error) {
-      console.error('Export error:', error);
-      alert('Произошла ошибка при экспорте данных');
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const copyLogsToClipboard = () => {
-    const text = importLogs.join('\n');
-    navigator.clipboard.writeText(text);
-    alert('Логи скопированы в буфер обмена');
-  };
+  
+  const {
+    seeding, seedProgress, success, clearing, showClearConfirm, setShowClearConfirm,
+    showClearTransactionsConfirm, setShowClearTransactionsConfirm, showSeedConfirm, setShowSeedConfirm,
+    password, setPassword, exporting, importing, importProgress, importLogs, showLogModal, setShowLogModal,
+    importResult, fileInputRef, handleImportClick, handleFileChange, seedInitialData, clearAllData,
+    clearTransactionsOnly, exportData, copyLogsToClipboard
+  } = useDataManagement(user, onRefresh);
 
   return (
     <div className="p-1.5 sm:p-2 lg:p-6 space-y-8">
       <h2 className="text-2xl font-bold">Настройки</h2>
 
-      {/* Profile Card */}
-      <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm flex items-center gap-4">
-        <div className="w-16 h-16 bg-theme-primary-light rounded-2xl flex items-center justify-center overflow-hidden">
-          {user.photoURL ? (
-            <img src={user.photoURL} alt={user.displayName || ''} className="w-full h-full object-cover" />
-          ) : (
-            <UserIcon className="w-8 h-8 text-theme-primary" />
-          )}
-        </div>
-        <div>
-          <h3 className="font-bold text-lg">{user.displayName || 'Пользователь'}</h3>
-          <p className="text-sm text-neutral-400">{user.email}</p>
-        </div>
-      </div>
-
       {/* Settings Sections */}
       <div className="space-y-6 relative">
         {showCategoryManager && <CategoryManager user={user} onClose={() => setShowCategoryManager(false)} onRefresh={onRefresh} />}
+        {showAccountManager && (
+          <AccountManager 
+            accounts={accounts} 
+            userId={user.id} 
+            onClose={() => setShowAccountManager(false)} 
+            onRefresh={onRefresh}
+          />
+        )}
         {showCurrencyTable && (
           <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-6 sm:p-4 bg-black/40 backdrop-blur-sm">
             <div className="absolute inset-0" onClick={() => setShowCurrencyTable(false)} />
@@ -428,220 +238,80 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
 
         {/* Data Management Section */}
         <section className="space-y-3">
-          <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-widest px-4">Управление данными</h4>
+          <h4 className="text-xs font-bold text-theme-primary uppercase tracking-widest px-4">Управление данными</h4>
           <div className="bg-white rounded-3xl border border-neutral-100 overflow-hidden shadow-sm">
-            <div className="flex items-center border-b border-neutral-50">
-              <button 
-                onClick={() => setShowSeedConfirm(true)}
-                disabled={seeding || success}
-                className="flex-1 px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors"
-              >
-                <div className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
-                  success ? "bg-emerald-100" : "bg-amber-100"
-                )}>
-                  {success ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <Sparkles className="w-5 h-5 text-amber-600" />}
-                </div>
-                <div className="text-left">
-                  <p className="font-semibold text-sm">{seeding ? 'Создание...' : success ? 'Готово!' : 'Создать демо-данные'}</p>
-                  <p className="text-xs text-neutral-400">
-                    {success ? 'Проверьте вкладку "Обзор"' : 'Добавить 3 карты и операции за 3 месяца'}
-                  </p>
-                </div>
-              </button>
-              <button
-                onClick={() => setShowClearTransactionsConfirm(true)}
-                className="px-6 py-4 hover:bg-blue-50 text-blue-400 hover:text-blue-600 transition-all border-l border-neutral-50 group"
-                title="Очистить только операции"
-              >
-                <Eraser className="w-6 h-6 group-hover:scale-110 transition-transform" />
-              </button>
-              <button
-                onClick={() => setShowClearConfirm(true)}
-                className="px-6 py-4 hover:bg-rose-50 text-rose-400 hover:text-rose-600 transition-all border-l border-neutral-50 group"
-                title="Очистить всё (счета, категории, цели)"
-              >
-                <Eraser className="w-6 h-6 group-hover:scale-110 transition-transform" />
-              </button>
-            </div>
-            
+            <button 
+              onClick={() => setShowSeedConfirm(true)}
+              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
+            >
+              <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-amber-600" />
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-sm">Создать демо-данные</p>
+                <p className="text-xs text-neutral-400">Добавить примеры операций</p>
+              </div>
+            </button>
+
             <button 
               onClick={exportData}
               disabled={exporting}
               className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
             >
-              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                {exporting ? (
-                  <div className="w-5 h-5 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
-                ) : (
-                  <FileDown className="w-5 h-5 text-blue-600" />
-                )}
+              <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
+                <FileDown className="w-5 h-5 text-sky-600" />
               </div>
               <div className="text-left">
                 <p className="font-semibold text-sm">Экспорт данных</p>
-                <p className="text-xs text-neutral-400">Скачать все данные в Excel</p>
+                <p className="text-xs text-neutral-400">Скачать резервную копию (Excel)</p>
               </div>
             </button>
 
-            <div 
+            <button 
               onClick={handleImportClick}
-              className={cn(
-                "w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50 cursor-pointer",
-                importing && "pointer-events-none opacity-80"
-              )}
+              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
             >
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={(e) => handleFileChange(e, false)}
-                accept=".csv,.xlsx,.xls"
-                className="hidden"
-              />
-              <div className={cn(
-                "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
-                importResult?.success ? "bg-theme-primary-light" : "bg-theme-primary-light"
-              )}>
-                {importing ? (
-                  <div className="w-5 h-5 border-2 border-theme-primary/30 border-t-theme-primary rounded-full animate-spin" />
-                ) : importResult?.success ? (
-                  <CheckCircle2 className="w-5 h-5 text-theme-primary" />
-                ) : (
-                  <FileUp className="w-5 h-5 text-theme-primary" />
-                )}
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx,.xls" />
+              <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                <FileUp className="w-5 h-5 text-indigo-600" />
               </div>
-              <div className="text-left flex-1">
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold text-sm">
-                    {importing ? 'Импорт...' : importResult?.success ? `Импортировано: ${importResult.count}` : 'Импорт данных'}
-                  </p>
-                  {importLogs.length > 0 && !importing && (
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowLogModal(true);
-                      }}
-                      className="p-1.5 hover:bg-orange-100 rounded-lg text-orange-500 transition-all active:scale-90"
-                      title="Показать логи"
-                    >
-                      <AlertCircle size={18} />
-                    </button>
-                  )}
-                </div>
-                <p className="text-xs text-neutral-400">Загрузить CSV или Excel файл</p>
-                {importing && (
-                  <div className="mt-2 space-y-2">
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 bg-neutral-100 rounded-full h-1.5 overflow-hidden">
-                        <div 
-                          className="bg-orange-500 h-full transition-all duration-300" 
-                          style={{ width: `${importProgress}%` }}
-                        />
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleStopImport();
-                        }}
-                        className="px-2 py-1 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-lg hover:bg-rose-100 transition-colors pointer-events-auto"
-                      >
-                        СТОП
-                      </button>
-                    </div>
-                    <div className="bg-neutral-50 rounded-lg p-2 max-h-32 overflow-y-auto text-[10px] font-mono text-neutral-500 space-y-1">
-                      {importLogs.map((log, idx) => (
-                        <div key={idx} className="flex gap-2">
-                          <span className="text-neutral-300">[{new Date().toLocaleTimeString()}]</span>
-                          <span>{log}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              <div className="text-left">
+                <p className="font-semibold text-sm">Импорт данных</p>
+                <p className="text-xs text-neutral-400">Загрузить данные из Excel</p>
               </div>
-            </div>
+            </button>
 
-            <div 
-              onClick={handleJSONClick}
-              className={cn(
-                "w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors cursor-pointer",
-                importing && "pointer-events-none opacity-80"
-              )}
+            <button 
+              onClick={() => setShowClearTransactionsConfirm(true)}
+              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
             >
-              <input
-                type="file"
-                ref={jsonInputRef}
-                onChange={(e) => handleFileChange(e, true)}
-                accept=".json"
-                className="hidden"
-              />
-              <div className={cn(
-                "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
-                importResult?.success ? "bg-theme-primary-light" : "bg-theme-primary-light"
-              )}>
-                {importing ? (
-                  <div className="w-5 h-5 border-2 border-theme-primary/30 border-t-theme-primary rounded-full animate-spin" />
-                ) : importResult?.success ? (
-                  <CheckCircle2 className="w-5 h-5 text-theme-primary" />
-                ) : (
-                  <FileUp className="w-5 h-5 text-theme-primary" />
-                )}
+              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-blue-600" />
               </div>
-              <div className="text-left flex-1">
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold text-sm">
-                    {importing ? 'Импорт...' : importResult?.success ? `Импортировано: ${importResult.count}` : 'Импорт из JSON'}
-                  </p>
-                  {importLogs.length > 0 && !importing && (
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowLogModal(true);
-                      }}
-                      className="p-1.5 hover:bg-yellow-100 rounded-lg text-yellow-500 transition-all active:scale-90"
-                      title="Показать логи"
-                    >
-                      <AlertCircle size={18} />
-                    </button>
-                  )}
-                </div>
-                <p className="text-xs text-neutral-400">Загрузить .json файл</p>
-                {importing && (
-                  <div className="mt-2 space-y-2">
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 bg-neutral-100 rounded-full h-1.5 overflow-hidden">
-                        <div 
-                          className="bg-yellow-500 h-full transition-all duration-300" 
-                          style={{ width: `${importProgress}%` }}
-                        />
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleStopImport();
-                        }}
-                        className="px-2 py-1 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-lg hover:bg-rose-100 transition-colors pointer-events-auto"
-                      >
-                        СТОП
-                      </button>
-                    </div>
-                    <div className="bg-neutral-50 rounded-lg p-2 max-h-32 overflow-y-auto text-[10px] font-mono text-neutral-500 space-y-1">
-                      {importLogs.map((log, idx) => (
-                        <div key={idx} className="flex gap-2">
-                          <span className="text-neutral-300">[{new Date().toLocaleTimeString()}]</span>
-                          <span>{log}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              <div className="text-left">
+                <p className="font-semibold text-sm">Стереть операции</p>
+                <p className="text-xs text-neutral-400">Удалить только транзакции</p>
               </div>
-            </div>
+            </button>
+
+            <button 
+              onClick={() => setShowClearConfirm(true)}
+              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors"
+            >
+              <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center">
+                <Eraser className="w-5 h-5 text-rose-600" />
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-sm">Стереть все данные</p>
+                <p className="text-xs text-neutral-400 text-rose-500">Полная очистка аккаунта</p>
+              </div>
+            </button>
           </div>
         </section>
 
-        {/* App Settings Section */}
+        {/* Data Section */}
         <section className="space-y-3">
-          <h4 className="text-xs font-bold text-theme-primary uppercase tracking-widest px-4">Приложение</h4>
+          <h4 className="text-xs font-bold text-theme-primary uppercase tracking-widest px-4">Данные</h4>
           <div className="bg-white rounded-3xl border border-neutral-100 overflow-hidden shadow-sm">
             <button 
               onClick={() => setShowCategoryManager(true)}
@@ -656,6 +326,38 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
               </div>
             </button>
 
+            <button 
+              onClick={() => setShowAccountManager(true)}
+              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
+            >
+              <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                <Database className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-sm">Счета</p>
+                <p className="text-xs text-neutral-400">Управление вашими счетами</p>
+              </div>
+            </button>
+
+            <button 
+              onClick={() => setShowCurrencyTable(true)}
+              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors"
+            >
+              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                <ArrowRightLeft className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-sm">Валюты</p>
+                <p className="text-xs text-neutral-400">Справочник доступных валют</p>
+              </div>
+            </button>
+          </div>
+        </section>
+
+        {/* App Settings Section */}
+        <section className="space-y-3">
+          <h4 className="text-xs font-bold text-theme-primary uppercase tracking-widest px-4">Приложение</h4>
+          <div className="bg-white rounded-3xl border border-neutral-100 overflow-hidden shadow-sm">
             <div className="px-6 py-4 border-b border-neutral-50">
               <div className="flex items-center gap-4 mb-3">
                 <div className="w-10 h-10 bg-pink-100 rounded-xl flex items-center justify-center">
@@ -698,19 +400,6 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
             </div>
 
             <button 
-              onClick={() => setShowCurrencyTable(true)}
-              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
-            >
-              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                <ArrowRightLeft className="w-5 h-5 text-blue-600" />
-              </div>
-              <div className="text-left">
-                <p className="font-semibold text-sm">Валюты</p>
-                <p className="text-xs text-neutral-400">Справочник доступных валют</p>
-              </div>
-            </button>
-
-            <button 
               onClick={onShowLogs}
               className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
             >
@@ -735,35 +424,6 @@ export default function Settings({ user, onLogout, onShowLogs, onRefresh }: Sett
           </div>
         </section>
 
-        <section className="bg-white rounded-3xl border border-neutral-100 overflow-hidden shadow-sm">
-          <a href="https://github.com/KNikolaich/AiFinAssistant" target="_blank" className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50">
-            <div className="w-10 h-10 bg-neutral-100 rounded-xl flex items-center justify-center">
-              <Github className="w-5 h-5 text-neutral-600" />
-            </div>
-            <div className="text-left">
-              <p className="font-semibold text-sm">GitHub</p>
-              <p className="text-xs text-neutral-400">Исходный код проекта</p>
-            </div>
-          </a>
-          
-          <button className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors">
-            <div className="w-10 h-10 bg-neutral-100 rounded-xl flex items-center justify-center">
-              <Info className="w-5 h-5 text-neutral-600" />
-            </div>
-            <div className="text-left">
-              <p className="font-semibold text-sm">О приложении</p>
-              <p className="text-xs text-neutral-400">Версия 1.0.0 (MVP)</p>
-            </div>
-          </button>
-        </section>
-
-        <button 
-          onClick={onLogout}
-          className="w-full bg-rose-50 text-rose-600 font-bold py-4 rounded-3xl flex items-center justify-center gap-2 hover:bg-rose-100 transition-all active:scale-95"
-        >
-          <LogOut className="w-5 h-5" />
-          Выйти из аккаунта
-        </button>
       </div>
     </div>
   );

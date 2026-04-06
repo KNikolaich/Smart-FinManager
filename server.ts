@@ -112,7 +112,20 @@ app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
       console.error("Failed to take balance snapshot:", snapshotError);
     }
 
-    res.json({ id: user.id, email: user.email, settings: user.settings });
+    res.json({ id: user.id, email: user.email, displayName: user.displayName, photoURL: user.photoURL, settings: user.settings });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put("/api/auth/me", authenticateToken, async (req: any, res) => {
+  try {
+    const { displayName, photoURL } = req.body;
+    const user = await prisma.user.update({
+      where: { id: req.user.userId },
+      data: { displayName, photoURL },
+    });
+    res.json({ id: user.id, email: user.email, displayName: user.displayName, photoURL: user.photoURL, settings: user.settings });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

@@ -17,6 +17,7 @@ import {
 import { api } from './lib/api';
 import { processUserMessage } from './services/aiService';
 import { Account, Transaction, Goal, Budget, Category, Plan, Currency, BalanceHistory, Message } from './types';
+import UserPage from './components/UserPage';
 import Dashboard from './components/Dashboard';
 import PlanPage from './components/PlanPage';
 import Analytics from './components/Analytics';
@@ -40,6 +41,7 @@ export default function App() {
   const [initialTransactionData, setInitialTransactionData] = useState<any | null>(null);
   const [addMode, setAddMode] = useState<'text' | 'voice'>(() => (localStorage.getItem('addMode') as 'text' | 'voice') || 'text');
   const [showAILogs, setShowAILogs] = useState(false);
+  const [showUserPage, setShowUserPage] = useState(false);
   const aiAssistantRef = useRef<any>(null);
   const { isRecording, startListening, stopListening } = useVoiceInput();
   
@@ -275,7 +277,7 @@ export default function App() {
           />
         );
       case 'settings':
-        return <Settings user={user} onLogout={handleLogout} onShowLogs={() => setShowAILogs(true)} onRefresh={refreshData} />;
+        return <Settings user={user} accounts={accounts} onLogout={handleLogout} onShowLogs={() => setShowAILogs(true)} onRefresh={refreshData} />;
       case 'ai':
         return (
           <AIAssistant 
@@ -327,10 +329,10 @@ export default function App() {
             <Bot size={20} />
           </button>
           <button 
-            onClick={() => setActiveTab('settings')}
+            onClick={() => setShowUserPage(true)}
             className={cn(
               "w-10 h-10 rounded-xl overflow-hidden border-2 border-white shadow-sm flex items-center justify-center transition-all active:scale-95",
-              activeTab === 'settings' ? "bg-theme-primary text-white shadow-lg shadow-theme-primary-light" : "bg-theme-primary-light text-theme-primary-dark"
+              showUserPage ? "bg-theme-primary text-white shadow-lg shadow-theme-primary-light" : "bg-theme-primary-light text-theme-primary-dark"
             )}
           >
             <UserIcon className="w-6 h-6" />
@@ -448,13 +450,20 @@ export default function App() {
         />
       )}
 
-      {/* AI Logs Modal */}
+      {showUserPage && (
+        <UserPage 
+          user={user} 
+          onLogout={handleLogout} 
+          onClose={() => setShowUserPage(false)} 
+          onUpdateUser={(updatedUser) => setUser(updatedUser)}
+          onRefresh={refreshData}
+        />
+      )}
       {showAILogs && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden rounded-[32px] shadow-2xl">
-            <AILogs userId={user.id} onClose={() => setShowAILogs(false)} />
-          </div>
-        </div>
+        <AILogs 
+          userId={user.id}
+          onClose={() => setShowAILogs(false)}
+        />
       )}
     </div>
   );

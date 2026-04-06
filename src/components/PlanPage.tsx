@@ -129,12 +129,25 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
             // Save to server immediately
             await api.post('/plan-grid', parsed);
           } else {
-            // Initialize with empty plan data
+            // Initialize with empty plan data structure
             const initialData: PlanData = {
               id: 'default',
               userId: 'user',
               subjects: [],
-              rows: [],
+              rows: [
+                { id: '2026-01', label: 'Янв 2026', cells: {}, type: 'month' },
+                { id: '2026-02', label: 'Фев 2026', cells: {}, type: 'month' },
+                { id: '2026-03', label: 'Мар 2026', cells: {}, type: 'month' },
+                { id: '2026-04', label: 'Апр 2026', cells: {}, type: 'month' },
+                { id: '2026-05', label: 'Май 2026', cells: {}, type: 'month' },
+                { id: '2026-06', label: 'Июн 2026', cells: {}, type: 'month' },
+                { id: '2026-07', label: 'Июл 2026', cells: {}, type: 'month' },
+                { id: '2026-08', label: 'Авг 2026', cells: {}, type: 'month' },
+                { id: '2026-09', label: 'Сен 2026', cells: {}, type: 'month' },
+                { id: '2026-10', label: 'Окт 2026', cells: {}, type: 'month' },
+                { id: '2026-11', label: 'Ноя 2026', cells: {}, type: 'month' },
+                { id: '2026-12', label: 'Дек 2026', cells: {}, type: 'month' }
+              ],
               config: INITIAL_CONFIG,
               cashback: { categories: DEFAULT_CASHBACK_CATEGORIES, entries: [] },
               comment: '',
@@ -177,7 +190,19 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
   };
 
   const calculateRowTotal = (row: PlanRow) => {
-    return Object.values(row.cells).reduce((sum, cell) => sum + parseValue(cell.value), 0);
+    const subjectIdsToSum = activeTab === 'now' 
+      ? planData!.subjects.filter(s => !s.isArchived).map(s => s.id)
+      : planData!.subjects.map(s => s.id);
+      
+    return Object.entries(row.cells).reduce((sum, [subjectId, cell]) => {
+      if (!subjectIdsToSum.includes(subjectId)) return sum;
+      
+      const val = cell.value;
+      if (val === undefined || val === null || val === '') return sum;
+      
+      const parsed = parseValue(val);
+      return sum + parsed;
+    }, 0);
   };
 
   const getQuarterlyVisibility = (rowId: string) => {
@@ -229,6 +254,15 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
 
   const visibleSubjects = useMemo(() => {
     if (!planData) return [];
+    if (planData.subjects.length === 0) {
+      return [{
+        id: 'default-expense',
+        name: 'Расход',
+        color: '#f3f3f3',
+        textColor: '#000000',
+        isArchived: false
+      }];
+    }
     if (activeTab === 'now') return planData.subjects.filter(s => !s.isArchived);
     if (activeTab === 'past') return planData.subjects;
     return planData.subjects;
@@ -294,9 +328,15 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
 
   const handleDeleteSubject = (id: string) => {
     if (!planData) return;
+    const newRows = planData.rows.map(row => {
+      const newCells = { ...row.cells };
+      delete newCells[id];
+      return { ...row, cells: newCells };
+    });
     savePlanData({
       ...planData,
-      subjects: planData.subjects.filter(s => s.id !== id)
+      subjects: planData.subjects.filter(s => s.id !== id),
+      rows: newRows
     });
     setSubjectToDelete(null);
   };

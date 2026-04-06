@@ -1,10 +1,16 @@
 import { api } from '../lib/api';
-import { Account, Category, AccountType } from '../types';
-import { subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend, addDays } from 'date-fns';
+import { Account, Category, AccountType, PlanData, Goal } from '../types';
+import { subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend, addDays, format } from 'date-fns';
+import { ru } from 'date-fns/locale';
 
-export const generateDemoData = async (userId: string) => {
+export const generateDemoData = async (
+  userId: string, 
+  onProgress: (message: string) => void
+) => {
+  onProgress('Начинаем генерацию данных...');
   
   // 1. Ensure Categories exist
+  onProgress('Проверка категорий...');
   const existingCategories: Category[] = await api.get<Category[]>('/categories');
   
   const defaultCategories = [
@@ -28,11 +34,12 @@ export const generateDemoData = async (userId: string) => {
   }
 
   // 2. Ensure Accounts exist
+  onProgress('Проверка счетов...');
   const existingAccounts: Account[] = await api.get<Account[]>('/accounts');
   
   const accountData = [
     { name: 'Наличные', type: 'cash' as AccountType, balance: 250000, currency: '₽' },
-    { name: 'Кредитная карта', type: 'card' as AccountType, balance: -45000, currency: '₽' },
+    { name: 'Дебетовая карта', type: 'card' as AccountType, balance: 150000, currency: '₽' },
     { name: 'Бизнес-счет', type: 'bank' as AccountType, balance: 1200000, currency: '₽' },
   ];
 
@@ -60,6 +67,9 @@ export const generateDemoData = async (userId: string) => {
   const shoppingCat = categories.find(c => c.name === 'Покупки');
 
   for (const monthDate of months) {
+    const monthName = format(monthDate, 'LLLL', { locale: ru });
+    onProgress(`Генерация транзакций за ${monthName}...`);
+    
     const start = startOfMonth(monthDate);
     const end = monthDate === now ? now : endOfMonth(monthDate);
     
@@ -140,5 +150,45 @@ export const generateDemoData = async (userId: string) => {
       }
     }
   }
-  
+
+  // 4. Create Goals
+  onProgress('Генерация целей...');
+  const goals = [
+    { name: 'Новый ноутбук', targetAmount: 150000, currentAmount: 45000, deadline: addDays(now, 90) },
+    { name: 'Отпуск на море', targetAmount: 200000, currentAmount: 100000, deadline: addDays(now, 180) },
+    { name: 'Подушка безопасности', targetAmount: 500000, currentAmount: 250000, deadline: addDays(now, 365) },
+  ];
+  for (const goal of goals) {
+    await api.post('/goals', goal);
+  }
+
+  // 5. Generate Plan
+  onProgress('Генерация финансового плана...');
+  const planData: PlanData = {
+    id: 'default',
+    userId,
+    subjects: [
+      { id: '1', name: 'Зарплата', color: '#d9ead3', textColor: '#000000', isArchived: false },
+      { id: '2', name: 'Фриланс', color: '#d9ead3', textColor: '#000000', isArchived: false },
+      { id: '3', name: 'Расходы', color: '#fff2cc', textColor: '#000000', isArchived: false },
+    ],
+    rows: [
+      { id: '2026-04', label: 'Апр 26', type: 'month', cells: { '1': { value: '150' }, '2': { value: '350' }, '3': { value: '200' } } },
+      { id: '2026-05', label: 'Май 26', type: 'month', cells: { '1': { value: '150' }, '2': { value: '300' }, '3': { value: '180' } } },
+      { id: '2026-06', label: 'Июн 26', type: 'month', cells: { '1': { value: '150' }, '2': { value: '400' }, '3': { value: '220' } } },
+    ],
+    config: { targetAmount: 500, totalColumnColor: '#f3f3f3', headerColor: '#f3f3f3', firstColumnColor: '#f3f3f3', minRowColor: '#fff2cc' },
+    cashback: {
+      categories: [
+        { id: '1', name: 'Супермаркеты', color: '#ffcc99' },
+        { id: '2', name: 'Такси', color: '#ffff99' },
+      ],
+      entries: []
+    },
+    comment: 'План на ближайшие месяцы.',
+    updatedAt: now.toISOString()
+  };
+  await api.post('/plan-grid', planData);
+
+  onProgress('Готово!');
 };
