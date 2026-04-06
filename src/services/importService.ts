@@ -115,6 +115,12 @@ const importFromJSON = async (
           parentId: pUid ? pUid.toString() : null
         });
       }
+      // Sort categories: parents first (parentId is null)
+      categoriesToImport.sort((a, b) => {
+        if (a.parentId === null && b.parentId !== null) return -1;
+        if (a.parentId !== null && b.parentId === null) return 1;
+        return 0;
+      });
     }
 
     // 3. Import INOUTCOME -> Transactions
@@ -229,6 +235,17 @@ const importFromExcel = async (
             const worksheet = workbook.Sheets[sheetName];
             importData[sheetName] = XLSX.utils.sheet_to_json(worksheet);
           }
+        }
+        
+        // Sort categories: parents first
+        if (importData.categories) {
+           importData.categories.sort((a: any, b: any) => {
+             const aParent = a.parentId || a.pUid || null;
+             const bParent = b.parentId || b.pUid || null;
+             if (aParent === null && bParent !== null) return -1;
+             if (aParent !== null && bParent === null) return 1;
+             return 0;
+           });
         }
 
         if (onLog) onLog('Синхронизация данных...');

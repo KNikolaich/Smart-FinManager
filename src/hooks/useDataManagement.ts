@@ -135,26 +135,36 @@ export function useDataManagement(user: UserProfile, onRefresh: () => void) {
         { name: 'accounts', endpoint: '/accounts' },
         { name: 'categories', endpoint: '/categories' },
         { name: 'goals', endpoint: '/goals' },
-        { name: 'budgets', endpoint: '/budgets' },
-        { name: 'plans', endpoint: '/plan-grid' }
+        { name: 'budgets', endpoint: '/budgets' }
       ];
       
       let hasData = false;
       
+      // Export plans separately
+      try {
+        const plansData = await api.get<any>('/plan-grid');
+        if (plansData) {
+          const blob = new Blob([JSON.stringify(plansData, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `plans_${new Date().toISOString().split('T')[0]}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+          hasData = true;
+        }
+      } catch (err) {
+        console.error('Error exporting plans:', err);
+      }
+      
       for (const col of collections) {
         try {
           const data = await api.get<any>(col.endpoint);
-          if (col.name === 'plans') {
-            const worksheet = XLSX.utils.aoa_to_sheet([['JSON Data'], [JSON.stringify(data)]]);
+          const exportData = Array.isArray(data) ? data : [];
+          if (exportData && exportData.length > 0) {
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
             XLSX.utils.book_append_sheet(workbook, worksheet, col.name);
             hasData = true;
-          } else {
-            const exportData = Array.isArray(data) ? data : [];
-            if (exportData && exportData.length > 0) {
-              const worksheet = XLSX.utils.json_to_sheet(exportData);
-              XLSX.utils.book_append_sheet(workbook, worksheet, col.name);
-              hasData = true;
-            }
           }
         } catch (err) {
           console.error(`Error exporting ${col.name}:`, err);

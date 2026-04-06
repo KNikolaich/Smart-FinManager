@@ -35,7 +35,7 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
       if (onStart) onStart();
       startListening(
         async (text) => {
-          setInput(text);
+          // Final result
           await handleSend(text);
           if (onEnd) onEnd();
         },
@@ -46,6 +46,10 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
             role: 'assistant',
             content: '❌ **Ошибка распознавания голоса.**'
           }]);
+        },
+        (interimText) => {
+          // Interim result
+          setInput(interimText);
         }
       );
     }

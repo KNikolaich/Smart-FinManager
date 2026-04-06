@@ -12,7 +12,8 @@ import {
   X,
   LogOut,
   User as UserIcon,
-  Wallet
+  Wallet,
+  Loader2
 } from 'lucide-react';
 import { api } from './lib/api';
 import { processUserMessage } from './services/aiService';
@@ -42,6 +43,7 @@ export default function App() {
   const [addMode, setAddMode] = useState<'text' | 'voice'>(() => (localStorage.getItem('addMode') as 'text' | 'voice') || 'text');
   const [showAILogs, setShowAILogs] = useState(false);
   const [showUserPage, setShowUserPage] = useState(false);
+  const [isProcessingAI, setIsProcessingAI] = useState(false);
   const aiAssistantRef = useRef<any>(null);
   const { isRecording, startListening, stopListening } = useVoiceInput();
   
@@ -64,6 +66,8 @@ export default function App() {
   };
 
   const handleButtonClick = async () => {
+    if (isProcessingAI) return;
+
     if (addMode === 'text') {
       setShowAddTransaction(true);
     } else {
@@ -72,15 +76,21 @@ export default function App() {
       } else {
         startListening(
           async (text) => {
+            // Final result
+            if (isProcessingAI) return;
+            setIsProcessingAI(true);
             try {
               const result = await processUserMessage(user.id, text, [], accounts, categories, transactions, goals, budgets, plans);
-              handleAIResult(result);
+              await handleAIResult(result);
             } catch (error) {
               console.error('AI Error:', error);
+            } finally {
+              setIsProcessingAI(false);
             }
           },
           (error) => {
             console.error('Voice error:', error);
+            setIsProcessingAI(false);
           }
         );
       }
@@ -374,12 +384,16 @@ export default function App() {
               onTouchStart={handleMouseDown}
               onTouchEnd={handleMouseUp}
               onClick={handleButtonClick}
+              disabled={isProcessingAI}
               className={cn(
                 "absolute bottom-[5%] left-1/2 -translate-x-1/2 h-[137.5%] aspect-square text-white rounded-full flex items-center justify-center shadow-xl transition-all border-4 border-white z-50",
-                isRecording ? "bg-red-500 shadow-red-200 animate-pulse" : "bg-theme-primary shadow-theme-primary-light"
+                isRecording ? "bg-red-500 shadow-red-200 animate-pulse" : 
+                isProcessingAI ? "bg-amber-500 opacity-80" : "bg-theme-primary shadow-theme-primary-light"
               )}
             >
-              {addMode === 'text' ? (
+              {isProcessingAI ? (
+                <Loader2 size={30} className="animate-spin" />
+              ) : addMode === 'text' ? (
                 <Plus size={30} />
               ) : isRecording ? (
                 <AudioLines size={30} className="animate-pulse" />
