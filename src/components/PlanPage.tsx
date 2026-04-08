@@ -100,6 +100,7 @@ const DEFAULT_CASHBACK_CATEGORIES: CashbackCategory[] = [
 export default function PlanPage({ accounts, categories, onRefresh }: PlanPageProps) {
   const [activeTab, setActiveTab] = useState<TabType>('now');
   const [planData, setPlanData] = useState<PlanData | null>(null);
+  const [loadedTabs, setLoadedTabs] = useState<Set<TabType>>(new Set(['config']));
   const [editingCell, setEditingCell] = useState<{ rowId: string, subjectId: string } | null>(null);
   const [cellEditValue, setCellEditValue] = useState<PlanCell | null>(null);
   const [editingSubject, setEditingSubject] = useState<PlanSubject | null>(null);
@@ -107,22 +108,24 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
   const [showAddSubject, setShowAddSubject] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState('');
   const [isEditingComment, setIsEditingComment] = useState(false);
+  
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, rowId: string | null }>({ x: 0, y: 0, rowId: null });
+  const [rowEditor, setRowEditor] = useState<{ mode: 'addBefore' | 'addAfter' | null, rowId: string | null, label: string, type: 'month' | 'min' | 'year' | 'past' }>({ mode: null, rowId: null, label: '', type: 'month' });
+  const [rowToDelete, setRowToDelete] = useState<string | null>(null);
 
-  // Cashback Data
   const handleSaveCashback = (newData: PlanData) => {
-    savePlanData(newData);
+    savePlanData(newData, 'cashback');
   };
 
   // Load data from API
   useEffect(() => {
-    const loadData = async (retries = 3) => {
+    const loadData = async (type: TabType, retries = 3) => {
       try {
-        const data = await api.get<PlanData | null>('/plan-grid');
+        const data = await api.get<any>(`/plan-grid/${type}`);
+        
         if (data) {
-          setPlanData(data);
-        } else {          
-            // Initialize with empty plan data structure
-            const initialData: PlanData = {
+          setPlanData(prev => {
+            const newData: PlanData = prev ? { ...prev } : {
               id: 'default',
               userId: 'user',
               subjects: [],
@@ -148,31 +151,82 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
               comment: '',
               updatedAt: new Date().toISOString()
             };
-            setPlanData(initialData);
-            await api.post('/plan-grid', initialData);
-          }
+            
+            if (type === 'now' || type === 'past') {
+              newData.subjects = data.subjects || [];
+              newData.rows = data.rows || newData.rows;
+            } else if (type === 'config') {
+              newData.config = data;
+            } else if (type === 'cashback') {
+              newData.cashback = data;
+            } else if (type === 'comment') {
+              newData.comment = typeof data === 'string' ? data : (data.comment || '');
+            }
+            return newData;
+          });
+          setLoadedTabs(prev => new Set(prev).add(type));
+        } else {
+          // Initialize with default if no data found
+          setPlanData(prev => prev || {
+            id: 'default',
+            userId: 'user',
+            subjects: [],
+            rows: [
+              { id: '2026-01', label: 'Янв', cells: {}, type: 'month' },
+              { id: '2026-02', label: 'Фев', cells: {}, type: 'month' },
+              { id: '2026-03', label: 'Мар', cells: {}, type: 'month' },
+              { id: '2026-04', label: 'Апр', cells: {}, type: 'month' },
+              { id: '2026-min-4', label: 'min', cells: {}, type: 'min' },
+              { id: '2026-05', label: 'Май', cells: {}, type: 'month' },
+              { id: '2026-06', label: 'Июн', cells: {}, type: 'month' },
+              { id: '2026-07', label: 'Июл', cells: {}, type: 'month' },
+              { id: '2026-08', label: 'Авг', cells: {}, type: 'month' },
+              { id: '2026-min-8', label: 'min', cells: {}, type: 'min' },
+              { id: '2026-09', label: 'Сен', cells: {}, type: 'month' },
+              { id: '2026-10', label: 'Окт', cells: {}, type: 'month' },
+              { id: '2026-11', label: 'Ноя', cells: {}, type: 'month' },
+              { id: '2026-12', label: 'Дек', cells: {}, type: 'month' },
+              { id: '2026-min-12', label: 'min', cells: {}, type: 'min' }
+            ],
+            config: INITIAL_CONFIG,
+            cashback: { categories: DEFAULT_CASHBACK_CATEGORIES, entries: [] },
+            comment: '',
+            updatedAt: new Date().toISOString()
+          });
+          setLoadedTabs(prev => new Set(prev).add(type));
+        }
       } catch (error) {
-        console.error('Error loading plan grid:', error);
+        console.error(`Error loading plan grid type ${type}:`, error);
         if (retries > 0) {
           await new Promise(resolve => setTimeout(resolve, 1000));
-          await loadData(retries - 1);
-        } else {
-          // Alert user if it's a network error
-          if (error instanceof TypeError && error.message === 'Failed to fetch') {
-            console.error('Network error - check if server is running');
-          }
+          await loadData(type, retries - 1);
         }
       }
     };
-    loadData();
-  }, []);
 
-  const savePlanData = async (newData: PlanData) => {
+    // Always load config
+    if (!loadedTabs.has('config')) {
+      loadData('config');
+    }
+    
+    // Load active tab if not loaded
+    if (!loadedTabs.has(activeTab)) {
+      loadData(activeTab);
+    }
+  }, [activeTab, loadedTabs]);
+
+  const savePlanData = async (newData: PlanData, type: TabType) => {
     setPlanData(newData);
     try {
-      await api.post('/plan-grid', newData);
+      let dataToSave: any;
+      if (type === 'now' || type === 'past') dataToSave = { subjects: newData.subjects, rows: newData.rows };
+      else if (type === 'config') dataToSave = newData.config;
+      else if (type === 'cashback') dataToSave = newData.cashback;
+      else if (type === 'comment') dataToSave = { comment: newData.comment };
+      
+      await api.post(`/plan-grid/${type}`, dataToSave);
     } catch (error) {
-      console.error('Error saving plan grid:', error);
+      console.error(`Error saving plan grid type ${type}:`, error);
     }
   };
 
@@ -240,9 +294,12 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
 
   const filteredRows = useMemo(() => {
     if (!planData) return [];
+    if (activeTab === 'past') {
+      return [...(planData.rows.filter(row => getQuarterlyVisibility(row.id))), ...(planData.pastRows || [])];
+    }
     return planData.rows.filter(row => {
       const isPast = getQuarterlyVisibility(row.id);
-      return activeTab === 'past' ? isPast : !isPast;
+      return !isPast;
     });
   }, [planData, activeTab]);
 
@@ -262,8 +319,12 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
     return planData.subjects;
   }, [planData, activeTab]);
 
+  const handleContextMenu = (e: React.MouseEvent, rowId: string) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, rowId });
+  };
+
   const handleCellClick = (rowId: string, subjectId: string) => {
-    if (activeTab === 'past') return;
     const row = planData?.rows.find(r => r.id === rowId);
     const cell = row?.cells[subjectId] || { value: '' };
     setEditingCell({ rowId, subjectId });
@@ -290,7 +351,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
       ...planData,
       rows: newRows,
       updatedAt: new Date().toISOString()
-    });
+    }, activeTab);
     setEditingCell(null);
   };
 
@@ -306,7 +367,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
     savePlanData({
       ...planData,
       subjects: [...planData.subjects, newSubject]
-    });
+    }, activeTab);
     setNewSubjectName('');
     setShowAddSubject(false);
   };
@@ -316,7 +377,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
     savePlanData({
       ...planData,
       subjects: planData.subjects.map(s => s.id === editingSubject.id ? editingSubject : s)
-    });
+    }, activeTab);
     setEditingSubject(null);
   };
 
@@ -331,8 +392,48 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
       ...planData,
       subjects: planData.subjects.filter(s => s.id !== id),
       rows: newRows
-    });
+    }, activeTab);
     setSubjectToDelete(null);
+  };
+
+  const handleArchiveRow = (rowId: string) => {
+    if (!planData) return;
+    const rowToArchive = planData.rows.find(r => r.id === rowId);
+    if (!rowToArchive) return;
+
+    const newRows = planData.rows.filter(r => r.id !== rowId);
+    // Mark as past and ensure it's in the pastRows array
+    const archivedRow = { ...rowToArchive, type: 'past' as 'past' };
+    const newPastRows = [...(planData.pastRows || []), archivedRow];
+
+    savePlanData({
+      ...planData,
+      rows: newRows,
+      pastRows: newPastRows
+    }, 'now');
+  };
+
+  const handleAddRow = () => {
+    if (!planData || !rowEditor.rowId) return;
+    
+    const newRow: PlanRow = {
+      id: Date.now().toString(),
+      label: rowEditor.label,
+      type: rowEditor.type as 'month' | 'min' | 'year' | 'past',
+      cells: {}
+    };
+
+    const rowIndex = planData.rows.findIndex(r => r.id === rowEditor.rowId);
+    const newRows = [...planData.rows];
+    
+    if (rowEditor.mode === 'addBefore') {
+      newRows.splice(rowIndex, 0, newRow);
+    } else {
+      newRows.splice(rowIndex + 1, 0, newRow);
+    }
+
+    savePlanData({ ...planData, rows: newRows }, 'now');
+    setRowEditor({ mode: null, rowId: null, label: '', type: 'month' });
   };
 
   if (!planData) return null;
@@ -451,8 +552,9 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                   const isOverTarget = total > planData.config.targetAmount;
                   
                   return (
-                    <tr 
+                      <tr 
                       key={row.id}
+                      onContextMenu={(e) => handleContextMenu(e, row.id)}
                       style={{ 
                         backgroundColor: row.type === 'min' ? planData.config.minRowColor : 'transparent'
                       }}
@@ -556,7 +658,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                   onChange={(e) => savePlanData({
                     ...planData,
                     config: { ...planData.config, targetAmount: parseInt(e.target.value) || 0 }
-                  })}
+                  }, 'config')}
                   className="w-full p-3 bg-neutral-50 border border-neutral-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -571,7 +673,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                       onChange={(e) => savePlanData({
                         ...planData,
                         config: { ...planData.config, totalColumnColor: e.target.value }
-                      })}
+                      }, 'config')}
                       className="w-8 h-8 rounded-lg cursor-pointer border-none"
                     />
                     <span className="text-xs font-mono">{planData.config.totalColumnColor}</span>
@@ -586,7 +688,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                       onChange={(e) => savePlanData({
                         ...planData,
                         config: { ...planData.config, headerColor: e.target.value }
-                      })}
+                      }, 'config')}
                       className="w-8 h-8 rounded-lg cursor-pointer border-none"
                     />
                     <span className="text-xs font-mono">{planData.config.headerColor}</span>
@@ -601,7 +703,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                       onChange={(e) => savePlanData({
                         ...planData,
                         config: { ...planData.config, firstColumnColor: e.target.value }
-                      })}
+                      }, 'config')}
                       className="w-8 h-8 rounded-lg cursor-pointer border-none"
                     />
                     <span className="text-xs font-mono">{planData.config.firstColumnColor}</span>
@@ -616,7 +718,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                       onChange={(e) => savePlanData({
                         ...planData,
                         config: { ...planData.config, minRowColor: e.target.value }
-                      })}
+                      }, 'config')}
                       className="w-8 h-8 rounded-lg cursor-pointer border-none"
                     />
                     <span className="text-xs font-mono">{planData.config.minRowColor}</span>
@@ -653,7 +755,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                       const before = text.substring(0, start);
                       const after = text.substring(end);
                       const selected = text.substring(start, end);
-                      savePlanData({ ...planData, comment: before + `**${selected}**` + after });
+                      savePlanData({ ...planData, comment: before + `**${selected}**` + after }, 'comment');
                     }}
                     className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                     title="Жирный"
@@ -669,7 +771,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                       const before = text.substring(0, start);
                       const after = text.substring(end);
                       const selected = text.substring(start, end);
-                      savePlanData({ ...planData, comment: before + `*${selected}*` + after });
+                      savePlanData({ ...planData, comment: before + `*${selected}*` + after }, 'comment');
                     }}
                     className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                     title="Курсив"
@@ -685,7 +787,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                       const before = text.substring(0, start);
                       const after = text.substring(end);
                       const selected = text.substring(start, end);
-                      savePlanData({ ...planData, comment: before + `~~${selected}~~` + after });
+                      savePlanData({ ...planData, comment: before + `~~${selected}~~` + after }, 'comment');
                     }}
                     className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                     title="Зачеркнутый"
@@ -701,7 +803,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                       const before = text.substring(0, start);
                       const after = text.substring(end);
                       const selected = text.substring(start, end);
-                      savePlanData({ ...planData, comment: before + `\n# ${selected}` + after });
+                      savePlanData({ ...planData, comment: before + `\n# ${selected}` + after }, 'comment');
                     }}
                     className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                     title="Заголовок"
@@ -717,7 +819,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                 <textarea 
                   id="comment-editor"
                   value={planData.comment}
-                  onChange={(e) => savePlanData({ ...planData, comment: e.target.value })}
+                  onChange={(e) => savePlanData({ ...planData, comment: e.target.value }, 'comment')}
                   className="w-full h-full p-6 bg-neutral-50 border border-neutral-100 rounded-[32px] focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm resize-none shadow-inner no-scrollbar"
                   placeholder="Введите текст в формате Markdown..."
                   autoFocus
@@ -905,7 +1007,97 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {contextMenu.rowId && (
+        <div 
+          className="fixed bg-white shadow-lg border border-neutral-200 rounded-lg z-50 py-1 min-w-[150px]"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={() => setContextMenu({ x: 0, y: 0, rowId: null })}
+        >
+          <button className="block w-full text-left px-4 py-2 text-xs hover:bg-neutral-100" onClick={() => setRowEditor({ mode: 'addBefore', rowId: contextMenu.rowId, label: '', type: 'month' })}>Добавить до</button>
+          <button className="block w-full text-left px-4 py-2 text-xs hover:bg-neutral-100" onClick={() => setRowEditor({ mode: 'addAfter', rowId: contextMenu.rowId, label: '', type: 'month' })}>Добавить после</button>
+          <button className="block w-full text-left px-4 py-2 text-xs hover:bg-neutral-100 text-neutral-500" onClick={() => handleArchiveRow(contextMenu.rowId!)}>В архив</button>
+          <button className="block w-full text-left px-4 py-2 text-xs hover:bg-rose-50 text-rose-500" onClick={() => setRowToDelete(contextMenu.rowId)}>Удалить</button>
+        </div>
+      )}
+
+      {/* Row Editor Modal */}
+      {rowEditor.mode && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6 sm:p-4">
+          <div className="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-2xl space-y-6">
+            <h3 className="text-xl font-bold text-center">Добавить строку</h3>
+            <div className="space-y-4">
+              <input 
+                type="text"
+                placeholder="Текст"
+                value={rowEditor.label}
+                onChange={(e) => setRowEditor({ ...rowEditor, label: e.target.value })}
+                className="w-full p-3 border border-neutral-200 rounded-2xl"
+              />
+              <select 
+                value={rowEditor.type}
+                onChange={(e) => setRowEditor({ ...rowEditor, type: e.target.value as any })}
+                className="w-full p-3 border border-neutral-200 rounded-2xl"
+              >
+                <option value="month">Месяц</option>
+                <option value="min">Минимум</option>
+                <option value="year">Год</option>
+              </select>
+            </div>
+            <div className="flex gap-3">
+              <button 
+                onClick={handleAddRow}
+                className="flex-1 bg-emerald-500 text-white py-3 rounded-2xl font-bold hover:bg-emerald-600 transition-colors"
+              >
+                Добавить
+              </button>
+              <button 
+                onClick={() => setRowEditor({ mode: null, rowId: null, label: '', type: 'month' })}
+                className="flex-1 bg-neutral-100 text-neutral-600 py-3 rounded-2xl font-bold hover:bg-neutral-200 transition-colors"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Row Confirmation Modal */}
+      {rowToDelete && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6 sm:p-4">
+          <div className="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-2xl space-y-6 text-center">
+            <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto">
+              <Trash2 size={32} />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold">Удалить строку?</h3>
+              <p className="text-sm text-neutral-500">
+                Вы уверены, что хотите удалить эту строку? Это действие нельзя отменить.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => {
+                  if (!planData) return;
+                  const newRows = planData.rows.filter(r => r.id !== rowToDelete);
+                  savePlanData({ ...planData, rows: newRows }, 'now');
+                  setRowToDelete(null);
+                }}
+                className="flex-1 bg-rose-500 text-white py-3 rounded-2xl font-bold hover:bg-rose-600 transition-colors"
+              >
+                Удалить
+              </button>
+              <button 
+                onClick={() => setRowToDelete(null)}
+                className="flex-1 bg-neutral-100 text-neutral-600 py-3 rounded-2xl font-bold hover:bg-neutral-200 transition-colors"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Subject Confirmation Modal */}
       {subjectToDelete && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6 sm:p-4">
           <div className="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-2xl space-y-6 text-center">

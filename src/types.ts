@@ -74,15 +74,6 @@ export interface Goal {
   isCompleted: boolean;
 }
 
-export interface Budget {
-  id: string;
-  userId: string;
-  categoryId: string;
-  amount: number;
-  period: 'monthly' | 'weekly';
-  spent: number;
-}
-
 export interface Plan {
   id: string;
   userId: string;
@@ -112,7 +103,7 @@ export interface PlanSubject {
 export interface PlanRow {
   id: string;
   label: string;
-  type: 'month' | 'min' | 'year';
+  type: 'month' | 'min' | 'year' | 'past';
   cells: { [subjectId: string]: PlanCell };
 }
 
@@ -149,6 +140,7 @@ export interface PlanData {
   userId: string;
   subjects: PlanSubject[];
   rows: PlanRow[];
+  pastRows?: PlanRow[];
   config: PlanConfig;
   comment: string;
   updatedAt: string;

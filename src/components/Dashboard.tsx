@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Account, Transaction, Goal, Budget, Category, AccountType, Currency } from '../types';
+import { Account, Transaction, Goal, Category, AccountType, Currency } from '../types';
 import { Wallet, TrendingUp, TrendingDown, Target, ChevronRight, CreditCard, Landmark } from 'lucide-react';
 import { CoinStack } from './CustomIcons';
 import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
@@ -15,7 +15,6 @@ interface DashboardProps {
   accounts: Account[];
   transactions: Transaction[];
   goals: Goal[];
-  budgets: Budget[];
   categories: Category[];
   currencies: Currency[];
   userId: string;
@@ -37,7 +36,6 @@ export default function Dashboard({
   accounts, 
   transactions, 
   goals, 
-  budgets, 
   categories, 
   currencies,
   userId, 

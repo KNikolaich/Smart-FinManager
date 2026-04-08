@@ -33,6 +33,15 @@ export default function AddTransaction({ accounts, transactions, categories, onC
     if (!amount || isNaN(Number(amount))) return;
     setLoading(true);
     
+    const now = new Date();
+    const selectedDate = new Date(date);
+    let finalCreatedAt = selectedDate.toISOString();
+
+    // If selected date is today, use current time
+    if (format(now, 'yyyy-MM-dd') === date) {
+      finalCreatedAt = now.toISOString();
+    }
+
     const newTransaction: Transaction = {
       id: Math.random().toString(36).substring(2, 9),
       userId,
@@ -41,7 +50,7 @@ export default function AddTransaction({ accounts, transactions, categories, onC
       accountId: selectedAccountId,
       targetAccountId: type === 'transfer' ? selectedTargetAccountId : undefined,
       categoryId: type !== 'transfer' ? selectedCategoryId : '',
-      createdAt: new Date(date).toISOString(),
+      createdAt: finalCreatedAt,
       type
     };
 
@@ -55,7 +64,7 @@ export default function AddTransaction({ accounts, transactions, categories, onC
         accountId: selectedAccountId,
         targetAccountId: type === 'transfer' ? selectedTargetAccountId : null,
         categoryId: type !== 'transfer' ? selectedCategoryId : null,
-        createdAt: new Date(date).toISOString(),
+        createdAt: finalCreatedAt,
         type
       });
       onAdd();
@@ -105,7 +114,7 @@ export default function AddTransaction({ accounts, transactions, categories, onC
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="На что потратили?"
+                placeholder="Комментарий"
                 className="w-full bg-neutral-50 border-none rounded-xl px-1 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all"
               />
             </div>
@@ -146,29 +155,31 @@ export default function AddTransaction({ accounts, transactions, categories, onC
                 type={type}
               />
             ) : (
-              <div className="h-48 rounded-xl flex overflow-hidden bg-neutral-50/50">
-                <div className="w-1/2 overflow-y-auto bg-neutral-50/50 no-scrollbar">
+              <div className="h-100 rounded-xl flex overflow-hidden bg-neutral-50/50 border border-neutral-100">
+                <div className="w-1/3 overflow-y-auto bg-neutral-50/50 no-scrollbar border-r border-neutral-100">
                   {categories.filter(c => c.type === type && !c.parentId).sort((a, b) => {
                     const aOrder = a.sortOrder ?? Infinity;
                     const bOrder = b.sortOrder ?? Infinity;
                     if (aOrder !== bOrder) return aOrder - bOrder;
                     return (a.name || '').localeCompare(b.name || '');
                   }).map(cat => (
-                    <button key={cat.id} type="button" onClick={() => { setActiveParentId(cat.id); setSelectedCategoryId(cat.id); }} className={cn("w-full text-left px-3 py-2 text-xs font-bold transition-all flex items-center gap-2", activeParentId === cat.id ? "bg-white text-theme-primary shadow-sm" : "text-neutral-600 hover:bg-neutral-100/50")}>
-                      <span className="text-sm">{cat.icon}</span>
-                      {cat.name}
+                    <button key={cat.id} type="button" onClick={() => { setActiveParentId(cat.id); setSelectedCategoryId(cat.id); }} className={cn("w-full text-left px-2 py-2 text-[11px] font-bold transition-all flex items-center gap-2", activeParentId === cat.id ? "bg-white text-theme-primary shadow-sm" : "text-neutral-600 hover:bg-neutral-100/50")}>
+                      <span className="text-base">{cat.icon}</span>
+                      <span className="truncate">{cat.name}</span>
                     </button>
                   ))}
                 </div>
-                <div className="w-1/2 overflow-y-auto no-scrollbar bg-white">
-                  {categories.filter(c => c.type === type && c.parentId === activeParentId).sort((a, b) => {
-                    const aOrder = a.sortOrder ?? Infinity;
-                    const bOrder = b.sortOrder ?? Infinity;
-                    if (aOrder !== bOrder) return aOrder - bOrder;
-                    return (a.name || '').localeCompare(b.name || '');
-                  }).map(sub => (
-                    <button key={sub.id} type="button" onClick={() => setSelectedCategoryId(sub.id)} className={cn("w-full text-left px-3 py-2 text-xs font-medium transition-all", selectedCategoryId === sub.id ? "bg-theme-primary-light text-theme-primary-dark font-bold" : "text-neutral-600 hover:bg-neutral-100/50")}>{sub.name}</button>
-                  ))}
+                <div className="w-2/3 overflow-y-auto no-scrollbar bg-white p-1">
+                  <div className="grid grid-cols-2 gap-1">
+                    {categories.filter(c => c.type === type && c.parentId === activeParentId).sort((a, b) => {
+                      const aOrder = a.sortOrder ?? Infinity;
+                      const bOrder = b.sortOrder ?? Infinity;
+                      if (aOrder !== bOrder) return aOrder - bOrder;
+                      return (a.name || '').localeCompare(b.name || '');
+                    }).map(sub => (
+                      <button key={sub.id} type="button" onClick={() => setSelectedCategoryId(sub.id)} className={cn("w-full text-left px-2 py-1.5 rounded-lg text-[11px] font-medium transition-all border", selectedCategoryId === sub.id ? "bg-theme-primary-light border-theme-primary text-theme-primary-dark font-bold" : "text-neutral-600 border-transparent hover:bg-neutral-50")}>{sub.name}</button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}

@@ -493,77 +493,65 @@ app.delete("/api/goals/:id", authenticateToken, async (req: any, res) => {
   }
 });
 
-// Budgets
-app.get("/api/budgets", authenticateToken, async (req: any, res) => {
-  try {
-    const budgets = await prisma.budget.findMany({ where: { userId: req.user.userId } });
-    res.json(budgets);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post("/api/budgets", authenticateToken, async (req: any, res) => {
-  try {
-    const { amount, spent, ...rest } = req.body;
-    const budget = await prisma.budget.create({
-      data: { 
-        ...rest, 
-        amount: Number(amount),
-        spent: Number(spent || 0),
-        userId: req.user.userId 
-      },
-    });
-    res.json(budget);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.put("/api/budgets/:id", authenticateToken, async (req: any, res) => {
-  try {
-    const { amount, spent, ...rest } = req.body;
-    const updateData: any = { ...rest };
-    if (amount !== undefined) updateData.amount = Number(amount);
-    if (spent !== undefined) updateData.spent = Number(spent);
-
-    const budget = await prisma.budget.update({
-      where: { id: req.params.id, userId: req.user.userId },
-      data: updateData,
-    });
-    res.json(budget);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.delete("/api/budgets/:id", authenticateToken, async (req: any, res) => {
-  try {
-    await prisma.budget.delete({ where: { id: req.params.id, userId: req.user.userId } });
-    res.json({ success: true });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // PlanGrid (Complex Grid)
-app.get("/api/plan-grid", authenticateToken, async (req: any, res) => {
+app.get("/api/plan-grid/:type", authenticateToken, async (req: any, res) => {
   try {
-    const planGrid = await prisma.planGrid.findUnique({
-      where: { userId: req.user.userId }
+    const { type } = req.params;
+    const userId = req.user.userId;
+
+    // Try to find the specific type
+    let planGrid = await prisma.planGrid.findFirst({
+      where: { userId, type }
     });
+
+    // Backward compatibility: if not found, check for old "all-in-one" format
+    if (!planGrid) {
+      const oldPlanGrid = await prisma.planGrid.findFirst({
+        where: { userId, type: 'all' } // Assuming old format used 'all' or similar
+      });
+      
+      if (oldPlanGrid) {
+        // Found old format, distribute data
+        const oldData = oldPlanGrid.data as any;
+        
+        // Distribute to new format
+        const types = ['config', 'cashbacks', 'comments', 'budget', 'goals'];
+        for (const t of types) {
+          if (oldData[t]) {
+            await prisma.planGrid.upsert({
+              where: { userId_type: { userId, type: t } },
+              update: { data: oldData[t] },
+              create: { userId, type: t, data: oldData[t] }
+            });
+          }
+        }
+        
+        // Delete old format
+        await prisma.planGrid.delete({ where: { id: oldPlanGrid.id } });
+        
+        // Return requested type
+        planGrid = await prisma.planGrid.findFirst({
+          where: { userId, type }
+        });
+      }
+    }
+
     res.json(planGrid ? planGrid.data : null);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.post("/api/plan-grid", authenticateToken, async (req: any, res) => {
+app.post("/api/plan-grid/:type", authenticateToken, async (req: any, res) => {
   try {
+    const { type } = req.params;
+    const userId = req.user.userId;
+    const data = req.body;
+
     const planGrid = await prisma.planGrid.upsert({
-      where: { userId: req.user.userId },
-      update: { data: req.body },
-      create: { userId: req.user.userId, data: req.body }
+      where: { userId_type: { userId, type } },
+      update: { data },
+      create: { userId, type, data }
     });
     res.json(planGrid.data);
   } catch (error: any) {
@@ -676,7 +664,6 @@ app.delete("/api/data/clear", authenticateToken, async (req: any, res) => {
       prisma.account.deleteMany({ where: { userId } }),
       prisma.category.deleteMany({ where: { userId } }),
       prisma.goal.deleteMany({ where: { userId } }),
-      prisma.budget.deleteMany({ where: { userId } }),
       prisma.planGrid.deleteMany({ where: { userId } }),
     ]);
     res.json({ success: true });

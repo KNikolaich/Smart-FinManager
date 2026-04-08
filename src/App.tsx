@@ -152,7 +152,6 @@ export default function App() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
-  const [budgets, setBudgets] = useState<Budget[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [balanceHistory, setBalanceHistory] = useState<BalanceHistory[]>([]);
@@ -164,11 +163,10 @@ export default function App() {
   const refreshData = useCallback(async () => {
     if (!user) return;
     try {
-      const [accs, trans, gls, bdgs, cats, currs, bhist] = await Promise.all([
+      const [accs, trans, gls, cats, currs, bhist] = await Promise.all([
         api.get<Account[]>('/accounts'),
         api.get<Transaction[]>('/transactions'),
         api.get<Goal[]>('/goals'),
-        api.get<Budget[]>('/budgets'),
         api.get<Category[]>('/categories'),
         api.get<Currency[]>('/currencies'),
         api.get<BalanceHistory[]>('/balance-history'),
@@ -176,7 +174,6 @@ export default function App() {
       setAccounts(accs);
       setTransactions(trans);
       setGoals(gls);
-      setBudgets(bdgs);
       setCategories(cats);
       setCurrencies(currs);
       setBalanceHistory(bhist);
@@ -253,7 +250,6 @@ export default function App() {
             accounts={accounts} 
             transactions={transactions} 
             goals={goals} 
-            budgets={budgets} 
             categories={categories}
             currencies={currencies}
             userId={user.id}
@@ -295,7 +291,6 @@ export default function App() {
             accounts={accounts} 
             categories={categories} 
             transactions={transactions} 
-            budgets={budgets} 
             goals={goals} 
             plans={plans}
             userId={user.id}

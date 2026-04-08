@@ -24,8 +24,7 @@ model User {
   categories   Category[]
   transactions Transaction[]
   goals        Goal[]
-  budgets      Budget[]
-  planGrid     PlanGrid?
+  planGrid     PlanGrid[]
   chatMessages ChatMessage[]
   aiLogs       AiLog[]
   balanceHistory BalanceHistory[]
@@ -71,7 +70,6 @@ model Category {
   parent       Category?     @relation("CategoryToSubcategory", fields: [parentId], references: [id])
   children     Category[]    @relation("CategoryToSubcategory")
   transactions Transaction[]
-  budgets      Budget[]
 
   @@map("categories")
 }
@@ -113,28 +111,16 @@ model Goal {
   @@map("goals")
 }
 
-model Budget {
-  id         String @id @default(uuid())
-  userId     String
-  categoryId String
-  amount     Float
-  period     String @default("monthly")
-  spent      Float  @default(0)
-
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category Category @relation(fields: [categoryId], references: [id])
-
-  @@map("budgets")
-}
-
 model PlanGrid {
   id        String   @id @default(uuid())
-  userId    String   @unique
+  userId    String
+  type      String?   // e.g., "config", "cashbacks", "comments", etc.
   data      Json
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, type])
   @@map("plan_grids")
 }
 
