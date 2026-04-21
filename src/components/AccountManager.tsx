@@ -143,11 +143,15 @@ export default function AccountManager({ accounts, userId, onClose, onRefresh }:
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-1 sm:p-4">
-      <div className="bg-white w-full max-w-2xl rounded-t-[32px] sm:rounded-[32px] overflow-hidden flex flex-col max-h-[90vh] shadow-2xl animate-in slide-in-from-bottom duration-300">
-        <div className="p-4 flex items-center justify-between shrink-0">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[120] flex items-end sm:items-center justify-center p-1 sm:p-4">
+      <div className="bg-white w-full max-w-2xl rounded-t-[32px] sm:rounded-[32px] overflow-hidden flex flex-col max-h-[90vh] shadow-2xl animate-in slide-in-from-bottom duration-300 relative">
+        <div className="p-4 flex items-center justify-between shrink-0 relative z-10 border-b border-neutral-100">
           <h2 className="text-xl font-bold">Управление счетами</h2>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
+          <button 
+            onClick={onClose} 
+            className="p-2 hover:bg-neutral-100 rounded-full transition-colors relative z-20 cursor-pointer"
+            aria-label="Закрыть"
+          >
             <X className="w-6 h-6 text-neutral-400" />
           </button>
         </div>

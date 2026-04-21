@@ -206,11 +206,15 @@ function CurrencyForm({ currency, onClose, onSuccess }: CurrencyFormProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-6">
-        <div className="flex items-center justify-between">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-6 relative">
+        <div className="flex items-center justify-between relative z-10">
           <h3 className="text-xl font-bold">{currency ? 'Редактировать валюту' : 'Новая валюта'}</h3>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
+          <button 
+            onClick={onClose} 
+            className="p-2 hover:bg-neutral-100 rounded-full transition-colors cursor-pointer relative z-20"
+            aria-label="Закрыть"
+          >
             <X size={20} />
           </button>
         </div>

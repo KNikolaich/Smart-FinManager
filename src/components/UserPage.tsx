@@ -43,10 +43,14 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-neutral-50 flex flex-col">
-      <div className="p-4 flex items-center justify-between bg-white border-b border-neutral-100">
+    <div className="fixed inset-0 z-[120] bg-neutral-50 flex flex-col">
+      <div className="p-4 flex items-center justify-between bg-white border-b border-neutral-100 relative z-[130]">
         <h2 className="text-xl font-bold">Профиль</h2>
-        <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full">
+        <button 
+          onClick={onClose} 
+          className="p-2 hover:bg-neutral-100 rounded-full cursor-pointer relative z-[140]"
+          aria-label="Закрыть"
+        >
           <X className="w-6 h-6 text-neutral-400" />
         </button>
       </div>

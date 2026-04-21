@@ -1,20 +1,83 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Финансист AI New
 
-# Run and deploy your AI Studio app
+Индивидуальный менеджер финансов с использованием ИИ для отслеживания транзакций, планирования бюджета и постановки финансовых целей.
 
-This contains everything you need to run your app locally.
+## Быстрый старт с Docker
 
-View your app in AI Studio: https://ai.studio/apps/8bee037a-3197-4e43-a346-46cecd660b01
+Для развертывания проекта в один клик убедитесь, что у вас установлены [Docker](https://docs.docker.com/get-docker/) и [Docker Compose](https://docs.docker.com/compose/install/).
 
-## Run Locally
+### 1. Подготовка переменных окружения
 
-**Prerequisites:**  Node.js
+Создайте файл `.env` в корневом каталоге проекта и заполните его необходимыми значениями (см. `.env.example`):
 
+```env
+POSTGRES_USER=user
+POSTGRES_PASSWORD=password
+POSTGRES_DB=finance_db
+JWT_SECRET=your_secure_random_secret
+DEEPSEEK_API_KEY=your_deepseek_api_key
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### 2. Запуск приложения
+
+Выполните следующую команду в терминале:
+
+```bash
+docker compose up -d --build
+```
+
+Эта команда:
+1. Выполнит сборку Docker-образа приложения.
+2. Поднимет контейнер с базой данных PostgreSQL.
+3. Применит все миграции базы данных через Prisma.
+4. Скомпилирует фронтенд и запустит сервер на порту `3000`.
+
+### 3. Доступ к приложению
+
+После успешного запуска приложение будет доступно по адресу:
+[http://localhost:3000](http://localhost:3000)
+
+## Основные команды Docker
+
+- **Остановить контейнеры:**
+  ```bash
+  docker compose down
+  ```
+
+- **Просмотр логов:**
+  ```bash
+  docker compose logs -f app
+  ```
+
+- **Перезагрузка контейнеров:**
+  ```bash
+  docker compose restart
+  ```
+
+## Разработка без Docker
+
+Если вы хотите запустить проект локально для разработки:
+
+1. **Установите зависимости:**
+   ```bash
+   npm install
+   ```
+
+2. **Настройте базу данных:**
+   Укажите `DATABASE_URL` в `.env` и примените миграции:
+   ```bash
+   npx prisma migrate dev
+   ```
+
+3. **Запустите сервер:**
+   ```bash
+   npm run dev
+   ```
+
+## Технологический стек
+
+- **Frontend:** React 19, Vite, Tailwind CSS, Lucide icons.
+- **Backend:** Node.js (Express), Prisma ORM.
+- **AI:** Google Gemini API.
+- **Database:** PostgreSQL.
+- **Deployment:** Docker, Docker Compose.

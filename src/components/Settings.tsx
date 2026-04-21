@@ -50,12 +50,16 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
           />
         )}
         {showCurrencyTable && (
-          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-6 sm:p-4 bg-black/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-6 sm:p-4 bg-black/40 backdrop-blur-sm">
             <div className="absolute inset-0" onClick={() => setShowCurrencyTable(false)} />
             <div className="relative w-full max-w-lg bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 max-h-[90vh] flex flex-col">
-              <div className="p-4 border-b border-neutral-100 flex items-center justify-between shrink-0">
+              <div className="p-4 border-b border-neutral-100 flex items-center justify-between shrink-0 relative z-10">
                 <h3 className="font-bold">Справочник валют</h3>
-                <button onClick={() => setShowCurrencyTable(false)} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
+                <button 
+                  onClick={() => setShowCurrencyTable(false)} 
+                  className="p-2 hover:bg-neutral-100 rounded-full transition-colors cursor-pointer relative z-20"
+                  aria-label="Закрыть"
+                >
                   <X className="w-5 h-5 text-neutral-400" />
                 </button>
               </div>

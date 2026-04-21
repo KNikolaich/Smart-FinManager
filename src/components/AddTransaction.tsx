@@ -77,11 +77,15 @@ export default function AddTransaction({ accounts, transactions, categories, onC
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-stretch justify-center bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[120] flex items-stretch justify-center bg-black/40 backdrop-blur-sm">
       <div className="w-full max-w-lg bg-white overflow-hidden shadow-2xl flex flex-col relative h-full animate-in slide-in-from-bottom duration-300">
-        <div className="px-6 py-3 flex items-center justify-between shrink-0">
+        <div className="px-6 py-3 flex items-center justify-between shrink-0 relative z-10">
           <h2 className="text-base font-bold text-neutral-800">Новая операция</h2>
-          <button onClick={onComplete} className="p-1.5 hover:bg-neutral-100 rounded-full transition-colors">
+          <button 
+            onClick={onComplete} 
+            className="p-1.5 hover:bg-neutral-100 rounded-full transition-colors relative z-20 cursor-pointer"
+            aria-label="Закрыть"
+          >
             <X className="w-5 h-5 text-neutral-400" />
           </button>
         </div>

@@ -134,27 +134,30 @@ export function useDataManagement(user: UserProfile, onRefresh: () => void) {
         { name: 'transactions', endpoint: '/transactions' },
         { name: 'accounts', endpoint: '/accounts' },
         { name: 'categories', endpoint: '/categories' },
-        { name: 'goals', endpoint: '/goals' },
-        { name: 'budgets', endpoint: '/budgets' }
+        { name: 'goals', endpoint: '/goals' }
       ];
       
       let hasData = false;
       
-      // Export plans separately
+      // Export plans as CSV
       try {
-        const plansData = await api.get<any>('/plan-grid');
-        if (plansData) {
-          const blob = new Blob([JSON.stringify(plansData, null, 2)], { type: 'application/json' });
+        const plansData = await api.get<any>('/plan-grids');
+        if (plansData && Array.isArray(plansData)) {
+          let csvContent = "id,userId,type,data,updatedAt\n";
+          for (const plan of plansData) {
+            const dataStr = JSON.stringify(plan.data).replace(/"/g, '""');
+            csvContent += `${plan.id},${plan.userId},${plan.type},"${dataStr}",${plan.updatedAt}\n`;
+          }
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
           const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `plans_${new Date().toISOString().split('T')[0]}.json`;
-          a.click();
-          URL.revokeObjectURL(url);
+          const link = document.createElement('a');
+          link.setAttribute('href', url);
+          link.setAttribute('download', `plans_${new Date().toISOString().split('T')[0]}.csv`);
+          link.click();
           hasData = true;
         }
       } catch (err) {
-        console.error('Error exporting plans:', err);
+        console.error(`Error exporting plans:`, err);
       }
       
       for (const col of collections) {

@@ -103,10 +103,10 @@ export default function CategoryManager({ user, onClose, onRefresh }: CategoryMa
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm">
       <div className="w-full max-w-4xl bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
         {/* Header */}
-        <div className="p-2 sm:p-2 flex items-center justify-between bg-white sticky top-0 z-10">
+        <div className="p-2 sm:p-2 flex items-center justify-between bg-white sticky top-0 z-50 border-b border-neutral-100">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-theme-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-theme-primary-light flex-shrink-0">
               <Tag size={20} />
@@ -115,7 +115,7 @@ export default function CategoryManager({ user, onClose, onRefresh }: CategoryMa
               <h2 className="text-lg sm:text-xl font-bold">Категории</h2>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 relative z-20">
             <button 
               onClick={() => {
                 setEditingCategory(null);
@@ -126,7 +126,11 @@ export default function CategoryManager({ user, onClose, onRefresh }: CategoryMa
               <Plus size={18} />
               <span className="hidden sm:inline">Добавить</span>
             </button>
-            <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
+            <button 
+              onClick={onClose} 
+              className="p-2 hover:bg-neutral-100 rounded-full transition-colors cursor-pointer relative z-30"
+              aria-label="Закрыть"
+            >
               <X className="w-6 h-6 text-neutral-400" />
             </button>
           </div>

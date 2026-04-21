@@ -155,6 +155,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
             if (type === 'now' || type === 'past') {
               newData.subjects = data.subjects || [];
               newData.rows = data.rows || newData.rows;
+              newData.pastRows = data.pastRows || [];
             } else if (type === 'config') {
               newData.config = data;
             } else if (type === 'cashback') {
@@ -219,7 +220,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
     setPlanData(newData);
     try {
       let dataToSave: any;
-      if (type === 'now' || type === 'past') dataToSave = { subjects: newData.subjects, rows: newData.rows };
+      if (type === 'now' || type === 'past') dataToSave = { subjects: newData.subjects, rows: newData.rows, pastRows: newData.pastRows };
       else if (type === 'config') dataToSave = newData.config;
       else if (type === 'cashback') dataToSave = newData.cashback;
       else if (type === 'comment') dataToSave = { comment: newData.comment };
@@ -253,54 +254,12 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
     }, 0);
   };
 
-  const getQuarterlyVisibility = (rowId: string) => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    
-    // Parse row info
-    const parts = rowId.split('-');
-    const rowYear = parseInt(parts[0]);
-    const rowMonth = parts.length > 1 ? parseInt(parts[parts.length - 1]) : null;
-
-    if (isNaN(rowYear)) return true; // Fallback
-
-    // Logic for "Past" vs "Current"
-    // In March (2): Before Dec (inclusive) -> Past
-    // In July (6): Before Apr (inclusive) -> Past
-    // In November (10): Before Aug (inclusive) -> Past
-
-    let pastThresholdYear = currentYear;
-    let pastThresholdMonth = -1;
-
-    if (currentMonth >= 2 && currentMonth < 6) { // March to June
-      pastThresholdYear = currentYear - 1;
-      pastThresholdMonth = 11; // Dec of prev year
-    } else if (currentMonth >= 6 && currentMonth < 10) { // July to Oct
-      pastThresholdYear = currentYear;
-      pastThresholdMonth = 3; // April
-    } else if (currentMonth >= 10) { // Nov to Dec
-      pastThresholdYear = currentYear;
-      pastThresholdMonth = 7; // August
-    } else { // Jan to Feb
-      pastThresholdYear = currentYear - 1;
-      pastThresholdMonth = 7; // August of prev year (assuming previous threshold)
-    }
-
-    const isPast = rowYear < pastThresholdYear || (rowYear === pastThresholdYear && rowMonth !== null && rowMonth <= pastThresholdMonth);
-    
-    return isPast;
-  };
-
   const filteredRows = useMemo(() => {
     if (!planData) return [];
     if (activeTab === 'past') {
-      return [...(planData.rows.filter(row => getQuarterlyVisibility(row.id))), ...(planData.pastRows || [])];
+      return planData.pastRows || [];
     }
-    return planData.rows.filter(row => {
-      const isPast = getQuarterlyVisibility(row.id);
-      return !isPast;
-    });
+    return planData.rows.filter(row => row.type !== 'past');
   }, [planData, activeTab]);
 
   const visibleSubjects = useMemo(() => {
@@ -396,7 +355,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
     setSubjectToDelete(null);
   };
 
-  const handleArchiveRow = (rowId: string) => {
+  const handleArchiveRow = async (rowId: string) => {
     if (!planData) return;
     const rowToArchive = planData.rows.find(r => r.id === rowId);
     if (!rowToArchive) return;
@@ -406,11 +365,14 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
     const archivedRow = { ...rowToArchive, type: 'past' as 'past' };
     const newPastRows = [...(planData.pastRows || []), archivedRow];
 
-    savePlanData({
+    const newData = {
       ...planData,
       rows: newRows,
       pastRows: newPastRows
-    }, 'now');
+    };
+
+    await savePlanData(newData, 'now');
+    await savePlanData(newData, 'past');
   };
 
   const handleAddRow = () => {

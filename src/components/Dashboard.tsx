@@ -142,6 +142,16 @@ export default function Dashboard({
     return Object.values(data).sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime());
   }, [transactions]);
 
+  const groupedTransactions = useMemo(() => {
+    const groups: { [key: string]: Transaction[] } = {};
+    recentTransactions.forEach(t => {
+      const dateKey = format(new Date(t.createdAt), 'dd.MM.yyyy', { locale: ru });
+      if (!groups[dateKey]) groups[dateKey] = [];
+      groups[dateKey].push(t);
+    });
+    return Object.entries(groups).sort((a, b) => new Date(b[0].split('.').reverse().join('-')).getTime() - new Date(a[0].split('.').reverse().join('-')).getTime());
+  }, [recentTransactions]);
+
   return (
     <div className="p-1.5 sm:p-2 space-y-6">
       {/* Total Balance Card */}
@@ -292,57 +302,64 @@ export default function Dashboard({
           </button>
         </div>
         <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
-          <table className="w-full text-left border-collapse table-fixed">
-            <tbody className="divide-y divide-neutral-50">
-              {recentTransactions.map(t => {
-                const category = categories.find(c => c.id === t.categoryId);
-                const parentCategory = category?.parentId ? categories.find(c => c.id === category.parentId) : category;
-                const account = accounts.find(a => a.id === t.accountId);
-                const targetAccount = t.targetAccountId ? accounts.find(a => a.id === t.targetAccountId) : null;
-                
-                return (
-                  <tr 
-                    key={t.id} 
-                    onClick={() => {
-                      if (onEditTransaction) onEditTransaction(t);
-                    }}
-                    className="hover:bg-neutral-50 active:bg-neutral-100 transition-colors cursor-pointer"
-                  >
-                    <td className="pl-4 pr-1 py-2 align-top w-[60px]">
-                      <p className="text-[11px] font-bold text-neutral-900">{format(new Date(t.createdAt), 'dd.MM')}</p>
-                    </td>
-                    <td className="pl-1 pr-2 py-2 align-top">
-                      <div className="flex items-start gap-2">
-                        <span className="text-lg shrink-0">{t.type === 'transfer' ? '🔄' : (category?.icon || parentCategory?.icon || '💰')}</span>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-neutral-900 truncate">{t.description || category?.name || (t.type === 'transfer' ? 'Перевод' : 'Без описания')}</p>
-                          <p 
-                            className="text-[10px] font-medium truncate"
-                            style={{ color: account?.color && account.color !== '#000000' ? account.color : '#737373' }}
-                          >
-                            {account?.name || 'Счет'}
-                            {targetAccount && ` → ${targetAccount.name}`}
+          {groupedTransactions.map(([dateKey, transactions]) => (
+            <div key={dateKey}>
+              <div className="px-4 py-2 bg-neutral-50 text-[10px] font-bold text-neutral-500 uppercase tracking-wider">
+                {dateKey}
+              </div>
+              <table className="w-full text-left border-collapse table-fixed">
+                <tbody className="divide-y divide-neutral-50">
+                  {transactions.map(t => {
+                    const category = categories.find(c => c.id === t.categoryId);
+                    const parentCategory = category?.parentId ? categories.find(c => c.id === category.parentId) : category;
+                    const account = accounts.find(a => a.id === t.accountId);
+                    const targetAccount = t.targetAccountId ? accounts.find(a => a.id === t.targetAccountId) : null;
+                    
+                    return (
+                      <tr 
+                        key={t.id} 
+                        onClick={() => {
+                          if (onEditTransaction) onEditTransaction(t);
+                        }}
+                        className="hover:bg-neutral-50 active:bg-neutral-100 transition-colors cursor-pointer"
+                      >
+                        <td className="pl-4 pr-2 py-1 align-top">
+                          <div className="flex items-start gap-2">
+                            <span className="text-lg shrink-0">{t.type === 'transfer' ? '🔄' : (category?.icon || parentCategory?.icon || '💰')}</span>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-neutral-900 truncate">{t.description || category?.name || (t.type === 'transfer' ? 'Перевод' : 'Без описания')}</p>
+                              <p 
+                                className="text-[10px] font-medium truncate"
+                                style={{ color: account?.color && account.color !== '#000000' ? account.color : '#737373' }}
+                              >
+                                {account?.name || 'Счет'}
+                                {targetAccount && ` → ${targetAccount.name}`}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className={cn(
+                          "px-4 py-3 align-top w-1/2",
+                          t.type === 'income' ? "text-left" : 
+                          t.type === 'transfer' ? "text-center" : 
+                          "text-right"
+                        )}>
+                          <p className={cn(
+                            "text-xs font-bold", 
+                            t.type === 'income' ? "text-emerald-600" : 
+                            t.type === 'transfer' ? "text-blue-600" : 
+                            "text-neutral-900"
+                          )}>
+                            {t.type === 'income' ? '+' : t.type === 'transfer' ? '' : '-'}{t.amount.toLocaleString()} ₽
                           </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className={cn(
-                      "px-4 py-2 align-top text-right w-[100px]"
-                    )}>
-                      <p className={cn(
-                        "text-xs font-bold", 
-                        t.type === 'income' ? "text-emerald-600" : 
-                        t.type === 'transfer' ? "text-blue-600" : 
-                        "text-neutral-900"
-                      )}>
-                        {t.type === 'income' ? '+' : t.type === 'transfer' ? '' : '-'}{t.amount.toLocaleString()} ₽
-                      </p>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ))}
           {recentTransactions.length === 0 && (
             <div className="text-center py-8">
               <p className="text-neutral-400 text-sm">Операций пока нет</p>

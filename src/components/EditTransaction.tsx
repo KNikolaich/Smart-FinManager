@@ -86,11 +86,11 @@ export default function EditTransaction({ transaction, accounts, transactions, c
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-stretch justify-center bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[120] flex items-stretch justify-center bg-black/40 backdrop-blur-sm">
       <div className="w-full max-w-lg bg-white overflow-hidden shadow-2xl flex flex-col relative h-full animate-in slide-in-from-bottom duration-300">
         {/* Delete Confirmation Overlay */}
         {showDeleteConfirm && (
-          <div className="absolute inset-0 z-[70] bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center p-2 text-center animate-in fade-in zoom-in duration-200">
+          <div className="absolute inset-0 z-[130] bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center p-2 text-center animate-in fade-in zoom-in duration-200">
             <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mb-4">
               <Trash2 className="w-8 h-8 text-rose-600" />
             </div>
@@ -115,11 +115,15 @@ export default function EditTransaction({ transaction, accounts, transactions, c
           </div>
         )}
 
-        <div className="px-6 py-3 flex items-center justify-between shrink-0">
+        <div className="px-6 py-3 flex items-center justify-between shrink-0 relative z-10">
           <h2 className="text-base font-bold text-neutral-800 capitalize">
             {transaction.type === 'income' ? 'Доход' : transaction.type === 'expense' ? 'Расход' : 'Перевод'}
           </h2>
-          <button onClick={onClose} className="p-1.5 hover:bg-neutral-100 rounded-full transition-colors">
+          <button 
+            onClick={onClose} 
+            className="p-1.5 hover:bg-neutral-100 rounded-full transition-colors relative z-20 cursor-pointer"
+            aria-label="Закрыть"
+          >
             <X className="w-5 h-5 text-neutral-400" />
           </button>
         </div>

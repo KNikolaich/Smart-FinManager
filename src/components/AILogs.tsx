@@ -75,9 +75,9 @@ export default function AILogs({ userId, onClose }: AILogsProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-2 sm:p-4">
-      <div className="bg-white w-full max-w-4xl rounded-3xl overflow-hidden flex flex-col max-h-[90vh] shadow-2xl">
-        <div className="p-4 sm:p-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-900 text-white">
+    <div className="fixed inset-0 z-[120] bg-black/50 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
+      <div className="bg-white w-full max-w-4xl rounded-3xl overflow-hidden flex flex-col max-h-[90vh] shadow-2xl relative">
+        <div className="p-4 sm:p-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-900 text-white relative z-10">
           <div className="flex items-center gap-3">
             <div className="bg-theme-primary p-2 rounded-xl">
               <Terminal className="w-5 h-5" />
@@ -87,7 +87,7 @@ export default function AILogs({ userId, onClose }: AILogsProps) {
               <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold">Последние 100 операций</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 relative z-20">
             <button 
               onClick={fetchLogs}
               disabled={loading}
@@ -96,7 +96,11 @@ export default function AILogs({ userId, onClose }: AILogsProps) {
             >
               <RefreshCw className={cn("w-5 h-5", loading && "animate-spin")} />
             </button>
-            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+            <button 
+              onClick={onClose} 
+              className="p-2 hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+              aria-label="Закрыть"
+            >
               <X className="w-6 h-6" />
             </button>
           </div>

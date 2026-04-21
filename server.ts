@@ -494,6 +494,18 @@ app.delete("/api/goals/:id", authenticateToken, async (req: any, res) => {
 });
 
 // PlanGrid (Complex Grid)
+app.get("/api/plan-grids", authenticateToken, async (req: any, res) => {
+  try {
+    const userId = req.user.userId;
+    const planGrids = await prisma.planGrid.findMany({
+      where: { userId }
+    });
+    res.json(planGrids);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get("/api/plan-grid/:type", authenticateToken, async (req: any, res) => {
   try {
     const { type } = req.params;
