@@ -119,13 +119,9 @@ export default function Analytics({ transactions, categories, accounts, balanceH
     if (filterType === 'month') {
       start = subMonths(selectedMonth, 5);
       end = selectedMonth;
-    } else if (filterType === 'period') {
+    } else {
       start = periodRange.start;
       end = periodRange.end;
-    } else {
-      // For 'all', show last 12 months
-      end = new Date();
-      start = subMonths(end, 11);
     }
 
     // Initialize months
@@ -152,104 +148,104 @@ export default function Analytics({ transactions, categories, accounts, balanceH
   const totalAmount = chartData.reduce((sum, item) => sum + item.value, 0);
 
   return (
-    <div className="p-1.5 sm:p-2 lg:p-2 space-y-2">      
+    <div className="p-0.5 sm:p-1 lg:p-1 space-y-2">      
     
       {/* Date Filters & Type Toggle */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Type Toggle - Vertical and to the right */}
-        <div className="flex flex-col bg-neutral-100 p-1 rounded-2xl">
-          <button
-            onClick={() => setActiveType('expense')}
-            className={cn(
-              "px-1 py-1 rounded-xl text-[10px] font-bold transition-all flex items-center gap-2",
-              activeType === 'expense' ? "bg-white text-rose-600 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
-            )}
-          >
-            <TrendingDown className="w-3 h-3" />
-            Расходы
-          </button>
-          <button
-            onClick={() => setActiveType('income')}
-            className={cn(
-              "px-1 py-1 rounded-xl text-[10px] font-bold transition-all flex items-center gap-2",
-              activeType === 'income' ? "bg-white text-emerald-600 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
-            )}
-          >
-            <TrendingUp className="w-3 h-3" />
-            Доходы
-          </button>
-        </div>
-        <div>
-          <div className="flex bg-white border border-neutral-100 p-1 rounded-2xl shadow-sm">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5">
+        <div className="bg-white p-1 sm:p-1.5 rounded-3xl border border-neutral-100 shadow-sm flex items-stretch gap-1.5 sm:gap-2 overflow-hidden">
+          {/* Left column: Type Toggle (Vertical) */}
+          <div className="flex flex-col bg-neutral-100 p-0.5 rounded-2xl w-22 sm:w-26 shrink-0">
             <button
-              onClick={() => setFilterType('month')}
+              onClick={() => setActiveType('expense')}
               className={cn(
-                "px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all",
-                filterType === 'month' ? "bg-neutral-900 text-white" : "text-neutral-400 hover:text-neutral-600"
+                "flex-1 px-1 sm:px-2 py-0.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 sm:gap-2",
+                activeType === 'expense' ? "bg-white text-rose-600 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
               )}
             >
-              Месяц
+              <TrendingDown className="w-1 h-1" />
+              Расход
             </button>
             <button
-              onClick={() => setFilterType('period')}
+              onClick={() => setActiveType('income')}
               className={cn(
-                "px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all",
-                filterType === 'period' ? "bg-neutral-900 text-white" : "text-neutral-400 hover:text-neutral-600"
+                "flex-1 px-1 sm:px-2 py-0.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 sm:gap-2",
+                activeType === 'income' ? "bg-white text-emerald-600 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
               )}
             >
-              Период
-            </button>
-            <button
-              onClick={() => setFilterType('all')}
-              className={cn(
-                "px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all",
-                filterType === 'all' ? "bg-neutral-900 text-white" : "text-neutral-400 hover:text-neutral-600"
-              )}
-            >
-              Все время
+              <TrendingUp className="w-1 h-1" />
+              Доход
             </button>
           </div>
 
-          {filterType === 'month' && (
-            <div className="flex items-center gap-1 bg-white border border-neutral-100 px-3 py-1.5 rounded-2xl shadow-sm">
-              <button 
-                onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
-                className="p-1 hover:bg-neutral-50 rounded-lg transition-colors"
+          {/* Right column: Filter Type and Specific Selector */}
+          <div className="flex flex-col gap-1.5 flex-1 justify-center min-w-0">
+            {/* Row 1: Month / Period Toggle */}
+            <div className="flex bg-neutral-100/50 p-0.5 rounded-xl w-full">
+              <button
+                onClick={() => setFilterType('month')}
+                className={cn(
+                  "flex-1 px-1 sm:px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all",
+                  filterType === 'month' ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
+                )}
               >
-                <ChevronLeft className="w-2 h-4 text-neutral-400" />
+                Месяц
               </button>
-              <span className="text-xs font-bold capitalize min-w-[80px] text-center">
-                {format(selectedMonth, 'LLLL yyyy', { locale: ru })}
-              </span>
-              <button 
-                onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1))}
-                className="p-1 hover:bg-neutral-50 rounded-lg transition-colors"
+              <button
+                onClick={() => setFilterType('period')}
+                className={cn(
+                  "flex-1 px-1 sm:px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all",
+                  filterType === 'period' ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
+                )}
               >
-                <ChevronRight className="w-2 h-4 text-neutral-400" />
+                Период
               </button>
             </div>
-          )}
 
-          {filterType === 'period' && (
-            <div className="flex items-center gap-1 bg-white border border-neutral-100 px-3 py-1.5 rounded-2xl shadow-sm">
-              <div className="flex items-center gap-1">
-                <input 
-                  type="date" 
-                  value={format(periodRange.start, 'yyyy-MM-dd')}
-                  onChange={(e) => setPeriodRange(prev => ({ ...prev, start: new Date(e.target.value) }))}
-                  className="text-[10px] font-bold bg-transparent border-none focus:ring-0 p-0 w-24"
-                />
-                <span className="text-neutral-300">—</span>
-                <input 
-                  type="date" 
-                  value={format(periodRange.end, 'yyyy-MM-dd')}
-                  onChange={(e) => setPeriodRange(prev => ({ ...prev, end: new Date(e.target.value) }))}
-                  className="text-[10px] font-bold bg-transparent border-none focus:ring-0 p-0 w-24"
-                />
-              </div>
+            {/* Row 2: The actual picker based on selection */}
+            <div className="flex items-center w-full min-w-0">
+              {filterType === 'month' && (
+                <div className="flex items-center justify-between gap-1 bg-white border border-neutral-100 px-0.5 sm:px-1 py-0.5 rounded-xl shadow-sm w-full">
+                  <button 
+                    onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
+                    className="p-0.5 hover:bg-neutral-50 rounded-lg transition-colors"
+                  >
+                    <ChevronLeft className="w-2.5 h-2.5 text-neutral-400" />
+                  </button>
+                  <span className="text-[10px] font-bold capitalize flex-1 text-center truncate">
+                    {format(selectedMonth, 'LLLL yyyy', { locale: ru })}
+                  </span>
+                  <button 
+                    onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1))}
+                    className="p-0.5 hover:bg-neutral-50 rounded-lg transition-colors"
+                  >
+                    <ChevronRight className="w-2.5 h-2.5 text-neutral-400" />
+                  </button>
+                </div>
+              )}
+
+              {filterType === 'period' && (
+                <div className="flex items-center justify-center gap-1 bg-white border border-neutral-100 px-0.5 py-1 rounded-xl shadow-sm w-full overflow-hidden">
+                  <div className="flex items-center gap-0.5 justify-between w-full px-0.5">
+                    <input 
+                      type="date" 
+                      value={format(periodRange.start, 'yyyy-MM-dd')}
+                      onChange={(e) => setPeriodRange(prev => ({ ...prev, start: new Date(e.target.value) }))}
+                      className="text-[9px] sm:text-[10px] font-bold bg-transparent border-none focus:ring-0 p-0 w-[45%] text-center"
+                    />
+                    <span className="text-neutral-300 text-[10px] shrink-0">—</span>
+                    <input 
+                      type="date" 
+                      value={format(periodRange.end, 'yyyy-MM-dd')}
+                      onChange={(e) => setPeriodRange(prev => ({ ...prev, end: new Date(e.target.value) }))}
+                      className="text-[9px] sm:text-[10px] font-bold bg-transparent border-none focus:ring-0 p-0 w-[45%] text-center"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
+        <div className="hidden lg:block" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
