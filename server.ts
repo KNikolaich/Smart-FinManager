@@ -501,60 +501,6 @@ app.delete("/api/goals/:id", authenticateToken, async (req: any, res) => {
   }
 });
 
-// Budgets
-app.get("/api/budgets", authenticateToken, async (req: any, res) => {
-  try {
-    const budgets = await prisma.budget.findMany({ where: { userId: req.user.userId } });
-    res.json(budgets);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post("/api/budgets", authenticateToken, async (req: any, res) => {
-  try {
-    const { categoryId, amount, month } = req.body;
-    const budget = await prisma.budget.create({
-      data: {
-        userId: req.user.userId,
-        categoryId,
-        amount: Number(amount),
-        month
-      }
-    });
-    res.json(budget);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.put("/api/budgets/:id", authenticateToken, async (req: any, res) => {
-  try {
-    const { amount, categoryId, month } = req.body;
-    const updateData: any = {};
-    if (amount !== undefined) updateData.amount = Number(amount);
-    if (categoryId !== undefined) updateData.categoryId = categoryId;
-    if (month !== undefined) updateData.month = month;
-
-    const budget = await prisma.budget.update({
-      where: { id: req.params.id, userId: req.user.userId },
-      data: updateData
-    });
-    res.json(budget);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.delete("/api/budgets/:id", authenticateToken, async (req: any, res) => {
-  try {
-    await prisma.budget.delete({ where: { id: req.params.id, userId: req.user.userId } });
-    res.json({ success: true });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // PlanGrid (Complex Grid)
 app.get("/api/plan-grids", authenticateToken, async (req: any, res) => {
   try {
@@ -738,7 +684,6 @@ app.delete("/api/data/clear", authenticateToken, async (req: any, res) => {
       prisma.account.deleteMany({ where: { userId } }),
       prisma.category.deleteMany({ where: { userId } }),
       prisma.goal.deleteMany({ where: { userId } }),
-      prisma.budget.deleteMany({ where: { userId } }),
       prisma.planGrid.deleteMany({ where: { userId } }),
     ]);
     res.json({ success: true });

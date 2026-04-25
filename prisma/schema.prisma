@@ -28,7 +28,6 @@ model User {
   chatMessages ChatMessage[]
   aiLogs       AiLog[]
   balanceHistory BalanceHistory[]
-  budgets      Budget[]
 
   @@map("users")
 }
@@ -71,7 +70,6 @@ model Category {
   parent       Category?     @relation("CategoryToSubcategory", fields: [parentId], references: [id])
   children     Category[]    @relation("CategoryToSubcategory")
   transactions Transaction[]
-  budgets      Budget[]
 
   @@map("categories")
 }
@@ -176,19 +174,4 @@ model BalanceHistory {
 
   @@unique([userId, month])
   @@map("balance_history")
-}
-
-model Budget {
-  id         String   @id @default(uuid())
-  userId     String
-  categoryId String
-  amount     Float
-  month      String   // e.g., "2026-04"
-  createdAt  DateTime @default(now())
-
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category Category @relation(fields: [categoryId], references: [id])
-
-  @@unique([userId, categoryId, month])
-  @@map("budgets")
 }

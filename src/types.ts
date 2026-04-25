@@ -100,14 +100,6 @@ export interface PlanSubject {
   isArchived?: boolean;
 }
 
-export interface Budget {
-  id: string;
-  userId: string;
-  categoryId: string;
-  amount: number;
-  month: string; // e.g., "2026-04"
-}
-
 export interface PlanRow {
   id: string;
   label: string;

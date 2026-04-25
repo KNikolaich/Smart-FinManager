@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { api } from './lib/api';
 import { processUserMessage } from './services/aiService';
-import { Account, Transaction, Goal, Budget, Category, Plan, Currency, BalanceHistory, Message } from './types';
+import { Account, Transaction, Goal, Category, Plan, Currency, BalanceHistory, Message } from './types';
 import UserPage from './components/UserPage';
 import Dashboard from './components/Dashboard';
 import PlanPage from './components/PlanPage';
@@ -80,7 +80,7 @@ export default function App() {
             if (isProcessingAI) return;
             setIsProcessingAI(true);
             try {
-              const result = await processUserMessage(user.id, text, [], accounts, categories, transactions, goals, budgets, plans);
+              const result = await processUserMessage(user.id, text, [], accounts, categories, transactions, goals, plans);
               await handleAIResult(result);
             } catch (error) {
               console.error('AI Error:', error);
@@ -153,7 +153,6 @@ export default function App() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [budgets, setBudgets] = useState<Budget[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [balanceHistory, setBalanceHistory] = useState<BalanceHistory[]>([]);
   const [plans, setPlans] = useState<Plan[]>(() => {
@@ -164,12 +163,11 @@ export default function App() {
   const refreshData = useCallback(async () => {
     if (!user) return;
     try {
-      const [accs, trans, gls, cats, bgs, currs, bhist] = await Promise.all([
+      const [accs, trans, gls, cats, currs, bhist] = await Promise.all([
         api.get<Account[]>('/accounts'),
         api.get<Transaction[]>('/transactions'),
         api.get<Goal[]>('/goals'),
         api.get<Category[]>('/categories'),
-        api.get<Budget[]>('/budgets'),
         api.get<Currency[]>('/currencies'),
         api.get<BalanceHistory[]>('/balance-history'),
       ]);
@@ -177,7 +175,6 @@ export default function App() {
       setTransactions(trans);
       setGoals(gls);
       setCategories(cats);
-      setBudgets(bgs);
       setCurrencies(currs);
       setBalanceHistory(bhist);
       
@@ -295,7 +292,6 @@ export default function App() {
             categories={categories} 
             transactions={transactions} 
             goals={goals} 
-            budgets={budgets}
             plans={plans}
             userId={user.id}
             onRedirectToCreateGoal={(data) => {

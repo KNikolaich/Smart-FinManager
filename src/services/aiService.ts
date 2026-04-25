@@ -1,4 +1,4 @@
-import { Account, Category, Transaction, Goal, Budget, Plan, Message } from "../types";
+import { Account, Category, Transaction, Goal, Plan, Message } from "../types";
 import { api } from "../lib/api";
 import axios from "axios";
 
@@ -40,7 +40,6 @@ export const processUserMessage = async (
   categories: Category[], 
   transactions: Transaction[], 
   goals: Goal[], 
-  budgets: Budget[],
   plans: Plan[]
 ): Promise<AIResponse> => {
   const mainAccounts = accounts.filter(a => a.showOnDashboard && !a.isArchived);
@@ -111,7 +110,6 @@ export const processUserMessage = async (
 export const getFinancialAdvice = async (
   userId: string,
   transactions: Transaction[], 
-  budgets: Budget[], 
   goals: Goal[],
   accounts: Account[],
   plans: Plan[]
@@ -120,13 +118,11 @@ export const getFinancialAdvice = async (
   
   const userPrompt = `Проанализируй финансы пользователя и дай 3 кратких совета на русском языке.
   Транзакции за последний месяц: ${JSON.stringify(transactions.slice(0, 30))}
-  Бюджеты: ${JSON.stringify(budgets)}
   Цели: ${JSON.stringify(goals)}
   Счета: ${JSON.stringify(accounts)}
   Планы: ${JSON.stringify(plans)}
   
   Обрати внимание на:
-  - Превышение бюджета
   - Снижение баланса
   - Отсутствие накоплений
   - Несоответствие планов и целей`;

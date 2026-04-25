@@ -3,7 +3,7 @@ import { useVoiceInput } from '../hooks/useVoiceInput';
 import { Bot, Send, User, Sparkles, Loader2, PlusCircle, Target, PieChart, Calendar, Eraser } from 'lucide-react';
 import { processUserMessage, getFinancialAdvice } from '../services/aiService';
 import { api } from '../lib/api';
-import { Account, Category, Transaction, Goal, Budget, Plan, Message } from '../types';
+import { Account, Category, Transaction, Goal, Plan, Message } from '../types';
 import ReactMarkdown from 'react-markdown';
 
 interface AIAssistantProps {
@@ -11,7 +11,6 @@ interface AIAssistantProps {
   categories: Category[];
   transactions: Transaction[];
   goals: Goal[];
-  budgets: Budget[];
   plans: Plan[];
   userId: string;
   onRedirectToCreateGoal?: (data: { name?: string; targetAmount?: number; deadline?: string }) => void;
@@ -23,7 +22,7 @@ export interface AIAssistantHandle {
   handleVoiceInput: (onStart?: () => void, onEnd?: () => void) => void;
 }
 
-export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssistant({ accounts, categories, transactions, goals, budgets, plans, userId, onRedirectToCreateGoal, onRefresh, onResult }, ref) {
+export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssistant({ accounts, categories, transactions, goals, plans, userId, onRedirectToCreateGoal, onRefresh, onResult }, ref) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -108,14 +107,14 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
     await saveMessage(userMessage);
 
     try {
-      const result = await processUserMessage(userId, text, messages, accounts, categories, transactions, goals, budgets, plans);
+      const result = await processUserMessage(userId, text, messages, accounts, categories, transactions, goals, plans);
       
       if (onResult) onResult(result);
       
       let assistantMessage: Omit<Message, 'id'>;
 
       if (result.intent === 'advice') {
-        const advice = await getFinancialAdvice(userId, transactions, budgets, goals, accounts, plans);
+        const advice = await getFinancialAdvice(userId, transactions, goals, accounts, plans);
         assistantMessage = {
           role: 'assistant',
           content: advice
