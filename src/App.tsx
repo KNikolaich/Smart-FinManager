@@ -312,7 +312,7 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen bg-neutral-50 flex flex-col overflow-hidden">
+    <div className="h-[100dvh] bg-neutral-50 flex flex-col overflow-hidden">
       {/* Header */}
       <header className="px-6 py-4 flex items-center justify-between bg-white border-b border-neutral-100 shrink-0 z-40 [@media(max-width:767px)_and_(orientation:landscape)]:hidden">
         <div 
@@ -351,13 +351,15 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
-        <div className="h-full w-full max-w-7xl mx-auto overflow-y-auto no-scrollbar landscape:max-w-none">
-          {renderContent()}
+        <div className="absolute inset-0 overflow-y-auto no-scrollbar pb-24 md:pb-0">
+          <div className="max-w-7xl mx-auto h-full landscape:max-w-none">
+            {renderContent()}
+          </div>
         </div>
       </main>
 
       {/* Navigation Bar */}
-      <nav className="bg-white border-t border-neutral-100 px-6 pb-safe shrink-0 z-40 flex items-center justify-center shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.05)] rounded-t-[20px] landscape:px-4 landscape:rounded-none">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-100 px-6 pb-safe h-16 shrink-0 z-40 flex items-center justify-center shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.05)] rounded-t-[20px] md:relative md:h-auto md:rounded-none landscape:px-4 landscape:rounded-none">
         <div className="max-w-7xl mx-auto w-full flex items-center justify-around relative h-11">
            <button 
             onClick={() => setActiveTab('dashboard')}

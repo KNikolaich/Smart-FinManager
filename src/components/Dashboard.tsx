@@ -171,8 +171,10 @@ export default function Dashboard({
               <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
                 {/* Left Side: Balance and Stats */}
                 <div>
-                  <p className="text-theme-primary-light text-sm font-medium mb-1">Общий баланс</p>
-                  <h2 className="text-4xl font-bold mb-6">{totalBalance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2})} ₽</h2>
+                  <div className="flex items-baseline gap-2 mb-6">
+                    <p className="text-theme-primary-light text-[10px] sm:text-xs font-bold uppercase tracking-wider">Общий баланс</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold">{totalBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} ₽</h2>
+                  </div>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white/10 rounded-2xl p-3 flex items-center gap-3">

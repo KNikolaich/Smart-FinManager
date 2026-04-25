@@ -35,9 +35,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
   } = useDataManagement(user, onRefresh);
 
   return (
-    <div className="p-1.5 sm:p-2 lg:p-6 space-y-8">
-      <h2 className="text-2xl font-bold">Настройки</h2>
-
+    <div className="p-1.5 sm:p-2 lg:p-2 space-y-8">
       {/* Settings Sections */}
       <div className="space-y-6 relative">
         {showCategoryManager && <CategoryManager user={user} onClose={() => setShowCategoryManager(false)} onRefresh={onRefresh} />}
