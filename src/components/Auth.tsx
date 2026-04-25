@@ -31,7 +31,6 @@ export default function Auth({ onAuth }: AuthProps) {
       const message = err.message || '';
       if (message.includes('{')) {
         try {
-          // If the message is a JSON string (from our new api.ts error handler)
           const potentialJson = message.substring(message.indexOf('{'));
           const errorData = JSON.parse(potentialJson);
           errorMessage = errorData.error || errorData.message || errorMessage;
@@ -42,8 +41,19 @@ export default function Auth({ onAuth }: AuthProps) {
         errorMessage = message;
       }
       
-      // Clean up common technical prefixes
+      // Clean up common technical prefixes and translate
       errorMessage = errorMessage.replace(/^Expected JSON but received .*?: /, '');
+      
+      const translations: Record<string, string> = {
+        'Invalid credentials': 'Неверный логин или пароль',
+        'Email and password are required': 'Введите email и пароль',
+        'Email already exists': 'Пользователь с таким email уже существует',
+        'User not found': 'Пользователь не найден',
+        'Unauthorized': 'Неавторизован',
+        'Session expired. Please log in again.': 'Сессия истекла. Пожалуйста, войдите снова.'
+      };
+      
+      errorMessage = translations[errorMessage] || errorMessage;
       
       setError(errorMessage);
     } finally {
