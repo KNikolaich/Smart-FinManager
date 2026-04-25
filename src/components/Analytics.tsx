@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Transaction, Category, Account, BalanceHistory } from '../types';
+import { Transaction, Category, Account, BalanceHistory, Currency } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, LineChart, Line } from 'recharts';
 import { format, startOfMonth, endOfMonth, isWithinInterval, subMonths, startOfYear, endOfYear, eachMonthOfInterval, isBefore, isAfter } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -9,6 +9,7 @@ interface AnalyticsProps {
   transactions: Transaction[];
   categories: Category[];
   accounts: Account[];
+  currencies: Currency[];
   balanceHistory: BalanceHistory[];
   onNavigateToHistory?: (categoryName: string) => void;
 }
@@ -21,7 +22,7 @@ const CHEERFUL_COLORS = [
   '#FF5733', '#33FF57', '#3357FF', '#F333FF', '#33FFF3'
 ];
 
-export default function Analytics({ transactions, categories, accounts, balanceHistory, onNavigateToHistory }: AnalyticsProps) {
+export default function Analytics({ transactions, categories, accounts, currencies, balanceHistory, onNavigateToHistory }: AnalyticsProps) {
   const [activeType, setActiveType] = useState<'expense' | 'income'>('expense');
   const [filterType, setFilterType] = useState<DateFilterType>('month');
   const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -76,40 +77,40 @@ export default function Analytics({ transactions, categories, accounts, balanceH
   }, [filteredTransactions, categories, activeType]);
 
   const monthlyBalanceTrend = useMemo(() => {
-    if (balanceHistory && balanceHistory.length > 0) {
-      return balanceHistory.map(h => ({
+    // Calculate current balance (total in Rubles)
+    const currentTotalBalance = accounts
+      .filter(a => a.showInTotals && !a.isArchived)
+      .reduce((sum, acc) => {
+        const rate = acc.currency === '₽' ? 1 : (currencies.find(c => c.symbol === acc.currency)?.rate || 1);
+        return sum + (acc.balance * rate);
+      }, 0);
+
+    // 1. Get history points and sort them by month ascending
+    const historyPoints = [...balanceHistory]
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .map(h => ({
         name: format(new Date(h.month + '-01'), 'MMM', { locale: ru }),
+        month: h.month,
         balance: h.totalBalance
       }));
-    }
 
-    // Fallback to calculation if no history
-    const accountsInTotal = accounts.filter(a => a.showInTotals);
-    const start = subMonths(new Date(), 5);
-    const end = new Date();
-    
-    const months = eachMonthOfInterval({ start, end });
-    
-    return months.map(month => {
-      const monthEnd = endOfMonth(month);
-      
-      let balance = 0;
-      
-      transactions.forEach(t => {
-        if (isBefore(new Date(t.createdAt), monthEnd) || isWithinInterval(new Date(t.createdAt), { start: startOfMonth(month), end: monthEnd })) {
-          if (accountsInTotal.some(a => a.id === t.accountId)) {
-            if (t.type === 'income') balance += t.amount;
-            else if (t.type === 'expense') balance -= t.amount;
-          }
-        }
-      });
-      
-      return {
-        name: format(month, 'MMM', { locale: ru }),
-        balance
-      };
-    });
-  }, [transactions, accounts, balanceHistory]);
+    // 2. Add current state as the last point
+    const currentMonthKey = format(new Date(), 'yyyy-MM');
+    const currentPoint = {
+      name: format(new Date(), 'MMM', { locale: ru }),
+      month: currentMonthKey,
+      balance: currentTotalBalance
+    };
+
+    // If we already have a history point for this month, override it with current balance
+    const existingIndex = historyPoints.findIndex(p => p.month === currentMonthKey);
+    if (existingIndex !== -1) {
+      historyPoints[existingIndex] = currentPoint;
+      return historyPoints;
+    } else {
+      return [...historyPoints, currentPoint].sort((a, b) => a.month.localeCompare(b.month));
+    }
+  }, [balanceHistory, accounts, currencies]);
 
   const monthlyTrend = useMemo(() => {
     const data: { [key: string]: { name: string, income: number, expense: number, rawDate: Date } } = {};

@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Account, Transaction, Goal, Category, AccountType, Currency } from '../types';
+import { Account, Transaction, Goal, Category, AccountType, Currency, BalanceHistory } from '../types';
 import { Wallet, TrendingUp, TrendingDown, Target, ChevronRight, CreditCard, Landmark } from 'lucide-react';
 import { CoinStack } from './CustomIcons';
 import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
@@ -17,6 +17,7 @@ interface DashboardProps {
   goals: Goal[];
   categories: Category[];
   currencies: Currency[];
+  balanceHistory: BalanceHistory[];
   userId: string;
   showTotalBalance: boolean;
   showGoals: boolean;
@@ -38,6 +39,7 @@ export default function Dashboard({
   goals, 
   categories, 
   currencies,
+  balanceHistory,
   userId, 
   showTotalBalance, 
   showGoals,
@@ -152,6 +154,35 @@ export default function Dashboard({
     return Object.entries(groups).sort((a, b) => new Date(b[0].split('.').reverse().join('-')).getTime() - new Date(a[0].split('.').reverse().join('-')).getTime());
   }, [recentTransactions]);
 
+  const balanceTrend = useMemo(() => {
+    // 1. Get history points and sort them by month ascending
+    const historyPoints = [...balanceHistory]
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .map(h => ({
+        name: format(new Date(h.month + '-01'), 'MMM', { locale: ru }),
+        month: h.month,
+        balance: h.totalBalance
+      }));
+
+    // 2. Add current state as the last point
+    const currentMonthKey = format(new Date(), 'yyyy-MM');
+    const currentPoint = {
+      name: format(new Date(), 'MMM', { locale: ru }),
+      month: currentMonthKey,
+      balance: totalBalance
+    };
+
+    // If we already have a history point for this month, override it with current balance
+    // otherwise append the current balance
+    const existingIndex = historyPoints.findIndex(p => p.month === currentMonthKey);
+    if (existingIndex !== -1) {
+      historyPoints[existingIndex] = currentPoint;
+      return historyPoints;
+    } else {
+      return [...historyPoints, currentPoint].sort((a, b) => a.month.localeCompare(b.month));
+    }
+  }, [balanceHistory, totalBalance]);
+
   return (
     <div className="p-1.5 sm:p-2 space-y-6">
       {/* Total Balance Card */}
@@ -201,7 +232,7 @@ export default function Dashboard({
                 {/* Right Side: Dynamics Chart (Hidden on mobile) */}
                 <div className="hidden sm:block h-[140px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={threeMonthTrend}>
+                    <BarChart data={balanceTrend}>
                       <XAxis 
                         dataKey="name" 
                         axisLine={false} 
@@ -209,8 +240,7 @@ export default function Dashboard({
                         tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.6)', fontWeight: 600 }} 
                       />
                       <YAxis hide />
-                      <Bar dataKey="income" fill="rgba(255,255,255,0.9)" radius={[4, 4, 0, 0]} barSize={12} />
-                      <Bar dataKey="expense" fill="rgba(255,255,255,0.4)" radius={[4, 4, 0, 0]} barSize={12} />
+                      <Bar dataKey="balance" fill="rgba(255,255,255,0.9)" radius={[4, 4, 0, 0]} barSize={12} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

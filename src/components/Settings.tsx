@@ -1,9 +1,10 @@
-import { LogOut, User as UserIcon, Database, Shield, Github, Info, Sparkles, CheckCircle2, Eraser, Trash2, AlertTriangle, Tag, FileDown, FileUp, X, ArrowRightLeft, AlertCircle, Copy, Palette } from 'lucide-react';
+import { LogOut, User as UserIcon, Database, Shield, Github, Info, Sparkles, CheckCircle2, Eraser, Trash2, AlertTriangle, Tag, FileDown, FileUp, X, ArrowRightLeft, AlertCircle, Copy, Palette, ArrowUp } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import CategoryManager from './CategoryManager';
 import AccountManager from './AccountManager';
+import BalanceManager from './BalanceManager';
 import { CurrencyTable } from './CurrencyTable';
 import { useDataManagement } from '../hooks/useDataManagement';
 
@@ -25,6 +26,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showAccountManager, setShowAccountManager] = useState(false);
   const [showCurrencyTable, setShowCurrencyTable] = useState(false);
+  const [showBalanceManager, setShowBalanceManager] = useState(false);
   
   const {
     seeding, seedProgress, success, clearing, showClearConfirm, setShowClearConfirm,
@@ -44,6 +46,13 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
             accounts={accounts} 
             userId={user.id} 
             onClose={() => setShowAccountManager(false)} 
+            onRefresh={onRefresh}
+          />
+        )}
+        {showBalanceManager && (
+          <BalanceManager 
+            userId={user.id}
+            onClose={() => setShowBalanceManager(false)}
             onRefresh={onRefresh}
           />
         )}
@@ -143,6 +152,19 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
               <div className="text-left">
                 <p className="font-semibold text-sm">Счета</p>
                 <p className="text-xs text-neutral-400">Управление вашими счетами</p>
+              </div>
+            </button>
+
+            <button 
+              onClick={() => setShowBalanceManager(true)}
+              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
+            >
+              <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+                <ArrowUp className="w-5 h-5 text-amber-600" />
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-sm">Баланс</p>
+                <p className="text-xs text-neutral-400">История общего баланса по месяцам</p>
               </div>
             </button>
 

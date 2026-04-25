@@ -667,9 +667,47 @@ app.get("/api/balance-history", authenticateToken, async (req: any, res) => {
   try {
     const history = await prisma.balanceHistory.findMany({
       where: { userId: req.user.userId },
-      orderBy: { month: 'asc' }
+      orderBy: { month: 'desc' }
     });
     res.json(history);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/balance-history", authenticateToken, async (req: any, res) => {
+  try {
+    const { month, totalBalance } = req.body;
+    const history = await prisma.balanceHistory.upsert({
+      where: { userId_month: { userId: req.user.userId, month } },
+      update: { totalBalance: Number(totalBalance) },
+      create: { userId: req.user.userId, month, totalBalance: Number(totalBalance) }
+    });
+    res.json(history);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put("/api/balance-history/:id", authenticateToken, async (req: any, res) => {
+  try {
+    const { month, totalBalance } = req.body;
+    const history = await prisma.balanceHistory.update({
+      where: { id: req.params.id, userId: req.user.userId },
+      data: { month, totalBalance: Number(totalBalance) }
+    });
+    res.json(history);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/api/balance-history/:id", authenticateToken, async (req: any, res) => {
+  try {
+    await prisma.balanceHistory.delete({
+      where: { id: req.params.id, userId: req.user.userId }
+    });
+    res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

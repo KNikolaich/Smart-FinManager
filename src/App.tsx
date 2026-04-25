@@ -252,6 +252,7 @@ export default function App() {
             goals={goals} 
             categories={categories}
             currencies={currencies}
+            balanceHistory={balanceHistory}
             userId={user.id}
             showTotalBalance={showTotalBalance}
             showGoals={showTotalBalance}
@@ -274,6 +275,7 @@ export default function App() {
             transactions={transactions} 
             categories={categories} 
             accounts={accounts} 
+            currencies={currencies}
             balanceHistory={balanceHistory}
             onNavigateToHistory={(categoryName) => {
               const category = categories.find(c => c.name === categoryName);
