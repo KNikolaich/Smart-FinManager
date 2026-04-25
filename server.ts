@@ -18,6 +18,14 @@ const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
 app.use(cors());
 app.use(express.json());
 
+// Request logging middleware
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    console.log(`[API Request] ${req.method} ${req.path}`);
+  }
+  next();
+});
+
 // Auth Middleware
 const authenticateToken = (req: any, res: any, next: any) => {
   const authHeader = req.headers['authorization'];
@@ -1080,6 +1088,11 @@ app.post("/api/ai/deepseek", authenticateToken, async (req: any, res) => {
 });
 
 async function startServer() {
+  // Catch-all for API routes to avoid falling through to SPA fallback
+  app.all("/api/*", (req, res) => {
+    res.status(404).json({ error: `API endpoint not found: ${req.method} ${req.path}` });
+  });
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -1094,7 +1107,17 @@ async function startServer() {
     });
   }
 
+  // Global Error Handler
+  app.use((err: any, req: any, res: any, next: any) => {
+    console.error("Global Error:", err);
+    res.status(err.status || 500).json({
+      error: err.message || "Internal Server Error",
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined
+    });
+  });
+
   app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 

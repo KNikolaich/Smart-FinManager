@@ -27,12 +27,24 @@ export default function Auth({ onAuth }: AuthProps) {
     } catch (err: any) {
       console.error('Auth error:', err);
       let errorMessage = 'Ошибка авторизации';
-      try {
-        const errorData = JSON.parse(err.message);
-        errorMessage = errorData.error || errorMessage;
-      } catch {
-        errorMessage = err.message || errorMessage;
+      
+      const message = err.message || '';
+      if (message.includes('{')) {
+        try {
+          // If the message is a JSON string (from our new api.ts error handler)
+          const potentialJson = message.substring(message.indexOf('{'));
+          const errorData = JSON.parse(potentialJson);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          errorMessage = message;
+        }
+      } else {
+        errorMessage = message;
       }
+      
+      // Clean up common technical prefixes
+      errorMessage = errorMessage.replace(/^Expected JSON but received .*?: /, '');
+      
       setError(errorMessage);
     } finally {
       setLoading(false);
