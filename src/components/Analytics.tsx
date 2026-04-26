@@ -385,9 +385,10 @@ export default function Analytics({ transactions, categories, accounts, currenci
             </ResponsiveContainer>
           </div>
         </section>
-        
-        {/* Spacer for bottom bar (mobile only) */}
+
+        {/* Bottom Bar Spacer */}
         <div className="h-10 lg:hidden shrink-0" />
+
       </div>
     </div>
   );

@@ -490,9 +490,9 @@ export default function Dashboard({
           onRefresh={onRefresh}
         />
       )}
+      {/* Bottom Bar Spacer */}
+      <div className="h-10 lg:hidden shrink-0" />
 
-      {/* Bottom Spacer */}
-      <div className="h-10 md:hidden shrink-0" />
     </div>
   );
 }

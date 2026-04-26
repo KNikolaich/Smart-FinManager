@@ -76,3 +76,48 @@ body {
 .safe-bottom {
   padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
 }
+
+/* Markdown Styles */
+.markdown-body h1 {
+  @apply text-2xl font-bold mb-4 mt-2 block;
+}
+.markdown-body h2 {
+  @apply text-xl font-bold mb-3 mt-4 block;
+}
+.markdown-body h3 {
+  @apply text-lg font-bold mb-2 mt-4 block;
+}
+.markdown-body p {
+  @apply mb-3 leading-relaxed;
+}
+.markdown-body ul {
+  @apply list-disc pl-5 mb-4;
+}
+.markdown-body ol {
+  @apply list-decimal pl-5 mb-4;
+}
+.markdown-body li {
+  @apply mb-1;
+}
+.markdown-body blockquote {
+  @apply border-l-4 border-neutral-300 pl-4 italic mb-4;
+}
+.markdown-body code {
+  @apply bg-neutral-100 px-1 rounded text-sm font-mono;
+}
+.markdown-body pre {
+  @apply bg-neutral-900 text-white p-4 rounded-xl overflow-x-auto mb-4;
+}
+.markdown-body .task-list-item {
+  @apply list-none pl-0 flex items-start gap-2;
+}
+.markdown-body input[type="checkbox"] {
+  @apply mt-1 rounded border-neutral-300;
+  color: var(--primary);
+}
+.markdown-body input[type="checkbox"]:focus {
+  --tw-ring-color: var(--primary);
+}
+.markdown-body hr {
+  @apply my-6 border-neutral-100;
+}

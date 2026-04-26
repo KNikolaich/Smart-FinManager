@@ -255,6 +255,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
 
         {/* Bottom Bar Spacer */}
         <div className="h-10 lg:hidden shrink-0" />
+
       </div>
     </div>
   );

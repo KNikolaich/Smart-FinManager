@@ -349,12 +349,10 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
-        <div className="absolute inset-0 overflow-y-auto no-scrollbar pb-24 md:pb-0">
+        <div className="absolute inset-0 overflow-y-auto no-scrollbar pb-16 md:pb-0">
           <div className="max-w-7xl mx-auto h-full landscape:max-w-none">
             {renderContent()}
           </div>
-          {/* Spacer for bottom bar */}
-          <div className="h-20 md:hidden shrink-0" />
         </div>
       </main>
 

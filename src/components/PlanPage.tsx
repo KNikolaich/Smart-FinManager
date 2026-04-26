@@ -21,7 +21,10 @@ import {
   Type, 
   Italic,
   Strikethrough,
-  Heading1,
+  Heading1, 
+  Heading2,
+  Heading3,
+  ListChecks,
   Palette,
   Plus,
   Trash2,
@@ -30,6 +33,7 @@ import {
   Check
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { cn } from '../lib/utils';
 import CashbackTab from './CashbackTab';
 
@@ -403,11 +407,11 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
   return (
     <div className="p-0 sm:p-0 space-y-0 max-w-[100vw] overflow-hidden h-full flex flex-col">
       {/* Custom Minimalist Tabs */}
-      <div className="flex items-end space-x-1 border-b border-neutral-200 px-1 pt-1.5 shrink-0">
+      <div className="flex items-end space-x-1 border-b border-neutral-200 px-1 pt-1 shrink-0">
         <button
           onClick={() => setActiveTab('now')}
           className={cn(
-            "px-2 py-1 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
             activeTab === 'now' 
               ? "bg-emerald-500 text-white border-emerald-500 translate-y-[1px]" 
               : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
@@ -419,7 +423,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
         <button
           onClick={() => setActiveTab('cashback')}
           className={cn(
-            "px-2 py-1 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
             activeTab === 'cashback' 
               ? "bg-purple-500 text-white border-purple-500 translate-y-[1px]" 
               : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
@@ -430,18 +434,18 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
         <button
           onClick={() => setActiveTab('comment')}
           className={cn(
-            "px-2 py-1 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
             activeTab === 'comment' 
               ? "bg-purple-500 text-white border-purple-500 translate-y-[1px]" 
               : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
           )}
         >
-          Комментарий
+          Заметки
         </button>
         <button
           onClick={() => setActiveTab('config')}
           className={cn(
-            "px-2 py-1 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
             activeTab === 'config' 
               ? "bg-blue-500 text-white border-blue-500 translate-y-[1px]" 
               : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
@@ -452,7 +456,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
         <button
           onClick={() => setActiveTab('past')}
           className={cn(
-            "px-2 py-1 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
             activeTab === 'past' 
               ? "bg-amber-500 text-white border-amber-500 translate-y-[1px]" 
               : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
@@ -568,7 +572,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
             
             {/* Bottom Bar Spacer */}
             {activeTab === 'now' && (
-              <div className="mt-8 px-6 pb-6 flex items-center gap-4">
+              <div className="mt-0 px-4 pb-0 flex items-center gap-4">
                 {showAddSubject ? (
                   <div className="flex items-center gap-2">
                     <input 
@@ -692,9 +696,8 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
           </div>
         ) : (
           <div className="flex-1 flex flex-col min-h-0">
-            <div className="flex items-center justify-between p-6 pb-2 shrink-0">
+            <div className="flex items-center justify-between p-1 pb-2 shrink-0">
               <div className="flex items-center gap-3">
-                <h3 className="text-xl font-bold">Заметки</h3>
                 <button 
                   onClick={() => setIsEditingComment(!isEditingComment)}
                   className={cn(
@@ -720,10 +723,10 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                       const selected = text.substring(start, end);
                       savePlanData({ ...planData, comment: before + `**${selected}**` + after }, 'comment');
                     }}
-                    className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all"
+                    className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                     title="Жирный"
                   >
-                    <Bold size={16} />
+                    <Bold size={14} />
                   </button>
                   <button 
                     onClick={() => {
@@ -736,10 +739,10 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                       const selected = text.substring(start, end);
                       savePlanData({ ...planData, comment: before + `*${selected}*` + after }, 'comment');
                     }}
-                    className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all"
+                    className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                     title="Курсив"
                   >
-                    <Italic size={16} />
+                    <Italic size={14} />
                   </button>
                   <button 
                     onClick={() => {
@@ -752,10 +755,10 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                       const selected = text.substring(start, end);
                       savePlanData({ ...planData, comment: before + `~~${selected}~~` + after }, 'comment');
                     }}
-                    className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all"
+                    className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                     title="Зачеркнутый"
                   >
-                    <Strikethrough size={16} />
+                    <Strikethrough size={14} />
                   </button>
                   <button 
                     onClick={() => {
@@ -768,16 +771,81 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                       const selected = text.substring(start, end);
                       savePlanData({ ...planData, comment: before + `\n# ${selected}` + after }, 'comment');
                     }}
-                    className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all"
+                    className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                     title="Заголовок"
                   >
-                    <Heading1 size={16} />
+                    <Heading1 size={14} />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const textarea = document.getElementById('comment-editor') as HTMLTextAreaElement;
+                      const start = textarea.selectionStart;
+                      const end = textarea.selectionEnd;
+                      const text = textarea.value;
+                      const before = text.substring(0, start);
+                      const after = text.substring(end);
+                      const selected = text.substring(start, end);
+                      savePlanData({ ...planData, comment: before + `\n## ${selected}` + after }, 'comment');
+                    }}
+                    className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
+                    title="Заголок 2"
+                  >
+                    <Heading2 size={14} />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const textarea = document.getElementById('comment-editor') as HTMLTextAreaElement;
+                      const start = textarea.selectionStart;
+                      const end = textarea.selectionEnd;
+                      const text = textarea.value;
+                      const before = text.substring(0, start);
+                      const after = text.substring(end);
+                      const selected = text.substring(start, end);
+                      savePlanData({ ...planData, comment: before + `\n### ${selected}` + after }, 'comment');
+                    }}
+                    className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
+                    title="Заголок 3"
+                  >
+                    <Heading3 size={14} />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const textarea = document.getElementById('comment-editor') as HTMLTextAreaElement;
+                      const start = textarea.selectionStart;
+                      const end = textarea.selectionEnd;
+                      const text = textarea.value;
+                      const before = text.substring(0, start);
+                      const after = text.substring(end);
+                      const selected = text.substring(start, end);
+                      savePlanData({ ...planData, comment: before + `\n- [ ] ${selected}` + after }, 'comment');
+                    }}
+                    className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
+                    title="Список задач"
+                  >
+                    <ListChecks size={14} />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const textarea = document.getElementById('comment-editor') as HTMLTextAreaElement;
+                      const start = textarea.selectionStart;
+                      const end = textarea.selectionEnd;
+                      const text = textarea.value;
+                      const before = text.substring(0, start);
+                      const after = text.substring(end);
+                      const selected = text.substring(start, end);
+                      // PlainText - just inserted as is if wrapped, or maybe just inserted
+                      savePlanData({ ...planData, comment: before + selected + after }, 'comment');
+                    }}
+                    className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
+                    title="Обычный текст"
+                  >
+                    <Type size={14} />
                   </button>
                 </div>
               )}
             </div>
             
-            <div className="flex-1 p-6 pt-2 overflow-hidden">
+            <div className="flex-1 p-1 pt-2 overflow-hidden">
               {isEditingComment ? (
                 <textarea 
                   id="comment-editor"
@@ -788,8 +856,8 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                   autoFocus
                 />
               ) : (
-                <div className="w-full h-full p-8 bg-white border border-neutral-100 rounded-[32px] overflow-auto prose prose-sm max-w-none shadow-sm no-scrollbar">
-                  <ReactMarkdown>{planData.comment}</ReactMarkdown>
+                <div className="w-full h-full p-8 bg-white border border-neutral-100 rounded-[32px] overflow-auto markdown-body shadow-sm no-scrollbar">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{planData.comment}</ReactMarkdown>
                 </div>
               )}
             </div>
@@ -799,8 +867,8 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
 
       {/* Cell Edit Modal */}
       {editingCell && cellEditValue && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6 sm:p-4">
-          <div className="bg-white rounded-[32px] p-6 w-full max-w-md shadow-2xl space-y-6">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-2">
+          <div className="bg-white rounded-[32px] p-3 w-full max-w-md shadow-2xl space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold">Редактирование ячейки</h3>
               <button onClick={() => setEditingCell(null)} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
