@@ -436,7 +436,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
           className={cn(
             "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
             activeTab === 'comment' 
-              ? "bg-purple-500 text-white border-purple-500 translate-y-[1px]" 
+              ? "bg-blue-500 text-white border-purple-500 translate-y-[1px]" 
               : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
           )}
         >

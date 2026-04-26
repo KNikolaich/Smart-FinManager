@@ -72,6 +72,7 @@ export interface Goal {
   deadline?: string;
   completedAt?: string;
   isCompleted: boolean;
+  sortOrder?: number;
 }
 
 export interface Plan {

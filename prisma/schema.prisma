@@ -105,6 +105,7 @@ model Goal {
   completedAt   DateTime?
   isCompleted   Boolean   @default(false)
   createdAt     DateTime  @default(now())
+  sortOrder     Int?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

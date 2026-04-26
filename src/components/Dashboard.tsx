@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Account, Transaction, Goal, Category, AccountType, Currency, BalanceHistory } from '../types';
-import { Wallet, TrendingUp, TrendingDown, Target, ChevronRight, CreditCard, Landmark } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Target, ChevronRight, CreditCard, Landmark, GripVertical, Check, Save, X, Trash2, Calendar, Edit2, Plus } from 'lucide-react';
 import { CoinStack } from './CustomIcons';
 import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -10,6 +10,300 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import AccountManager from './AccountManager';
 import GoalManager from './GoalManager';
 import { cn } from '../lib/utils';
+import { api } from '../lib/api';
+import {
+  DndContext, 
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+
+interface SortableGoalCardProps {
+  goal: Goal;
+  isEditing: boolean;
+  onStartEdit: (goal: Goal) => void;
+  onCancelEdit: () => void;
+  onSave: (id: string, data: any) => void;
+  onDelete: (id: string) => void;
+  onToggleComplete: (goal: Goal) => void;
+}
+
+function SortableGoalCard({ 
+  goal, 
+  isEditing, 
+  onStartEdit, 
+  onCancelEdit, 
+  onSave, 
+  onDelete,
+  onToggleComplete 
+}: SortableGoalCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: goal.id });
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 20 : 0,
+    opacity: isDragging ? 0.5 : 1
+  };
+
+  const [editName, setEditName] = useState(goal.name);
+  const [editTarget, setEditTarget] = useState(goal.targetAmount.toString());
+  const [editCurrent, setEditCurrent] = useState(goal.currentAmount.toString());
+  const [editDeadline, setEditDeadline] = useState(goal.deadline ? goal.deadline.split('T')[0] : '');
+  const [editDescription, setEditDescription] = useState(goal.description || '');
+
+  const progress = Math.min(100, (goal.currentAmount / goal.targetAmount) * 100);
+
+  const handleLongPress = () => {
+    if (!isEditing) onStartEdit(goal);
+  };
+
+  const handleSaveWithCheck = () => {
+    onSave(goal.id, {
+      name: editName,
+      targetAmount: parseFloat(editTarget),
+      currentAmount: parseFloat(editCurrent),
+      deadline: editDeadline || null,
+      description: editDescription
+    });
+  };
+
+  if (isEditing) {
+    return (
+      <div 
+        ref={setNodeRef}
+        style={style}
+        className="bg-white rounded-2xl border-2 border-theme-primary p-4 shadow-xl space-y-4"
+      >
+        <div className="flex justify-between items-center gap-2">
+          <input 
+            type="text" 
+            value={editName} 
+            onChange={(e) => setEditName(e.target.value)} 
+            className="flex-1 bg-neutral-50 rounded-lg px-2 py-1 text-sm font-bold outline-none focus:ring-2 ring-emerald-500/20" 
+            placeholder="Название"
+          />
+          <input 
+            type="date" 
+            value={editDeadline} 
+            onChange={(e) => setEditDeadline(e.target.value)} 
+            className="w-32 bg-neutral-50 rounded-lg px-2 py-1 text-[10px] outline-none focus:ring-2 ring-emerald-500/20"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest text-[8px]">Накоплено</label>
+            <input 
+              type="number" 
+              value={editCurrent} 
+              onChange={(e) => setEditCurrent(e.target.value)} 
+              className="w-full bg-neutral-50 rounded-lg px-2 py-1 text-xs font-bold text-emerald-600 outline-none focus:ring-2 ring-emerald-500/20"
+            />
+          </div>
+          <div className="space-y-1 text-right">
+            <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest text-[8px]">Цель</label>
+            <input 
+              type="number" 
+              value={editTarget} 
+              onChange={(e) => setEditTarget(e.target.value)} 
+              className="w-full bg-neutral-50 rounded-lg px-2 py-1 text-xs font-bold text-right outline-none focus:ring-2 ring-emerald-500/20"
+            />
+          </div>
+        </div>
+
+        <textarea 
+          value={editDescription} 
+          onChange={(e) => setEditDescription(e.target.value)} 
+          className="w-full bg-neutral-50 rounded-lg px-4 py-2 text-xs outline-none focus:ring-2 ring-emerald-500/20 min-h-[60px] resize-none" 
+          placeholder="Описание (Markdown)"
+        />
+
+        <div className="flex justify-between items-center pt-2">
+          {showDeleteConfirm ? (
+            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
+              <span className="text-[10px] font-bold text-rose-500 uppercase tracking-tight">Удалить?</span>
+              <button 
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(goal.id);
+                }} 
+                className="px-2 py-1 bg-rose-500 text-white rounded-lg text-[10px] font-bold hover:bg-rose-600 transition-colors"
+              >
+                Да
+              </button>
+              <button 
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDeleteConfirm(false);
+                }} 
+                className="px-2 py-1 bg-neutral-100 text-neutral-500 rounded-lg text-[10px] font-bold hover:bg-neutral-200 transition-colors"
+              >
+                Нет
+              </button>
+            </div>
+          ) : (
+            <button 
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowDeleteConfirm(true);
+              }} 
+              className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer relative z-30"
+              title="Удалить цель"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+          <div className="flex gap-2">
+            <button 
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDeleteConfirm(false);
+                onCancelEdit();
+              }} 
+              className="px-3 py-1.5 bg-neutral-100 text-neutral-500 rounded-lg text-xs font-bold hover:bg-neutral-200 transition-colors"
+            >
+              Отмена
+            </button>
+            <button 
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleComplete(goal);
+              }}
+              className={cn(
+                "px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 font-bold text-xs",
+                goal.isCompleted 
+                  ? "bg-emerald-500 border-emerald-500 text-white" 
+                  : "bg-neutral-50 border-neutral-200 text-neutral-400 hover:border-emerald-500 hover:text-emerald-500"
+              )}
+              title={goal.isCompleted ? "Снять отметку о выполнении" : "Отметить как выполненную"}
+            >
+              <Check size={14} />
+              Выполнена
+            </button>
+            <button 
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDeleteConfirm(false);
+                handleSaveWithCheck();
+              }} 
+              className="flex items-center gap-2 px-4 py-1.5 bg-theme-primary text-white rounded-lg text-xs font-bold shadow-lg shadow-theme-primary/20 hover:bg-theme-primary-dark transition-all"
+            >
+              <Save size={14} />
+              Сохранить
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "bg-white rounded-2xl border border-neutral-100 overflow-hidden shadow-sm hover:shadow-md transition-all relative group",
+        isDragging && "shadow-2xl scale-105 z-20",
+        goal.isCompleted && "opacity-75 bg-neutral-50"
+      )}
+      onPointerDown={(e) => {
+        const timer = setTimeout(handleLongPress, 500);
+        const cleanup = () => clearTimeout(timer);
+        e.currentTarget.addEventListener('pointerup', cleanup, { once: true });
+        e.currentTarget.addEventListener('pointermove', cleanup, { once: true });
+        e.currentTarget.addEventListener('pointercancel', cleanup, { once: true });
+      }}
+    >
+      <div 
+        className="absolute left-1 top-1/2 -translate-y-1/2 p-1 text-neutral-300 hover:text-neutral-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical size={16} />
+      </div>
+
+      <div className="p-4 pl-8">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className={cn("font-bold text-sm truncate block", goal.isCompleted ? "text-neutral-400 line-through" : "text-neutral-900")}>
+                {goal.name}
+              </span>
+              {goal.isCompleted && (
+                <Check size={12} className="text-emerald-500 shrink-0" />
+              )}
+            </div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-1">
+                <Calendar className="w-2.5 h-2.5" />
+                {goal.deadline ? format(new Date(goal.deadline), 'd MMM yyyy', { locale: ru }) : 'Без срока'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-end mb-3">
+          <div>
+            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest leading-none mb-1">Накоплено</p>
+            <p className="font-bold text-emerald-600 leading-none">{goal.currentAmount.toLocaleString()} ₽</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest leading-none mb-1">Цель</p>
+            <p className="font-bold text-neutral-900 leading-none">{goal.targetAmount.toLocaleString()} ₽</p>
+          </div>
+        </div>
+
+        {goal.description && (
+          <div className="mb-3 p-2 bg-neutral-50 rounded-xl text-[10px] text-neutral-500 overflow-hidden line-clamp-2">
+            <ReactMarkdown>{goal.description}</ReactMarkdown>
+          </div>
+        )}
+
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
+            <span className="text-neutral-400">Прогресс</span>
+            <span className="text-emerald-600">{progress.toFixed(1)}%</span>
+          </div>
+          <div className="h-1.5 w-full bg-neutral-100 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-theme-primary transition-all duration-500"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface DashboardProps {
   accounts: Account[];
@@ -31,6 +325,7 @@ interface DashboardProps {
   onNavigateToAnalytics?: () => void;
   onOpenTransactionHistory?: (accountId?: string) => void;
   onEditTransaction?: (t: Transaction) => void;
+  initialEditingGoalId?: string;
 }
 
 export default function Dashboard({ 
@@ -48,12 +343,26 @@ export default function Dashboard({
   onRefresh,
   onNavigateToAnalytics,
   onOpenTransactionHistory,
-  onEditTransaction
+  onEditTransaction,
+  initialEditingGoalId
 }: DashboardProps) {
   const [showAccountManager, setShowAccountManager] = useState(false);
   const [showGoalManager, setShowGoalManager] = useState(!!initialGoalData);
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const [showCompletedGoals, setShowCompletedGoals] = useState(false);
 
-  // Sync showGoalManager with initialGoalData
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Sync showGoalManager with initialGoalData (for creation from UserPage)
   useEffect(() => {
     if (initialGoalData) {
       setShowGoalManager(true);
@@ -63,6 +372,59 @@ export default function Dashboard({
   const handleCloseGoalManager = () => {
     setShowGoalManager(false);
     if (onCloseGoalManager) onCloseGoalManager();
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = displayedGoals.findIndex((g: Goal) => g.id === active.id);
+      const newIndex = displayedGoals.findIndex((g: Goal) => g.id === over.id);
+      
+      const newOrderedGoals = arrayMove(displayedGoals, oldIndex, newIndex);
+      
+      try {
+        const updates = newOrderedGoals.map((goal, index) => {
+          return api.put(`/goals/${goal.id}`, { sortOrder: index });
+        });
+        await Promise.all(updates);
+        onRefresh?.();
+      } catch (error) {
+        console.error('Error updating goal order:', error);
+      }
+    }
+  };
+
+  const handleSaveGoal = async (id: string, data: any) => {
+    try {
+      await api.put(`/goals/${id}`, data);
+      setEditingGoalId(null);
+      onRefresh?.();
+    } catch (error) {
+      console.error('Error saving goal:', error);
+    }
+  };
+
+  const handleDeleteGoal = async (id: string) => {
+    try {
+      await api.delete(`/goals/${id}`);
+      setEditingGoalId(null);
+      onRefresh?.();
+    } catch (error) {
+      console.error('Error deleting goal:', error);
+    }
+  };
+
+  const handleToggleCompleteGoal = async (goal: Goal) => {
+    try {
+      const completed = !goal.isCompleted;
+      await api.put(`/goals/${goal.id}`, { 
+        isCompleted: completed,
+        completedAt: completed ? new Date().toISOString() : null
+      });
+      onRefresh?.();
+    } catch (error) {
+      console.error('Error toggling goal completion:', error);
+    }
   };
 
   const totalBalance = useMemo(() => {
@@ -109,15 +471,21 @@ export default function Dashboard({
       .slice(0, 8);
   }, [transactions]);
 
-  const activeGoals = useMemo(() => {
-    return goals
-      .filter(g => !g.isCompleted)
+  const displayedGoals = useMemo(() => {
+    return [...goals]
+      .filter(g => showCompletedGoals ? g.isCompleted : !g.isCompleted)
       .sort((a, b) => {
+        // Sort by sortOrder first
+        const orderA = a.sortOrder ?? 9999;
+        const orderB = b.sortOrder ?? 9999;
+        if (orderA !== orderB) return orderA - orderB;
+        
+        // Then by deadline
         if (!a.deadline) return 1;
         if (!b.deadline) return -1;
         return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
       });
-  }, [goals]);
+  }, [goals, showCompletedGoals]);
 
   const threeMonthTrend = useMemo(() => {
     const end = new Date();
@@ -411,69 +779,62 @@ export default function Dashboard({
             className="overflow-hidden"
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg">Цели</h3>
-              <button onClick={() => setShowGoalManager(true)} className="text-theme-primary-dark text-sm font-medium hover:bg-theme-primary-light px-2 py-1 rounded-lg transition-colors">Все</button>
+              <div className="flex items-center gap-4">
+                <h3 className="font-bold text-lg">Цели</h3>
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <div 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowCompletedGoals(!showCompletedGoals);
+                    }}
+                    className={cn(
+                      "w-4 h-4 rounded border transition-all flex items-center justify-center",
+                      showCompletedGoals ? "bg-theme-primary border-theme-primary" : "border-neutral-300 group-hover:border-theme-primary"
+                    )}
+                  >
+                    {showCompletedGoals && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest leading-none">Завершенные</span>
+                </label>
+              </div>
+              <button 
+                onClick={() => setShowGoalManager(true)} 
+                className="flex items-center gap-1 text-theme-primary-dark text-sm font-medium hover:bg-theme-primary-light px-2 py-1 rounded-lg transition-colors"
+              >
+                <Plus size={14} />
+                Добавить
+              </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-3">
-              {activeGoals.map(goal => {
-                const progress = Math.min(100, (goal.currentAmount / goal.targetAmount) * 100);
-                
-                // Calculate color based on deadline proximity
-                let progressColor = 'bg-theme-primary';
-                if (goal.deadline) {
-                  const deadlineDate = new Date(goal.deadline);
-                  const now = new Date();
-                  const diffDays = Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                  
-                  if (progress < 100) {
-                    if (diffDays <= 3) progressColor = 'bg-rose-600';
-                    else if (diffDays <= 7) progressColor = 'bg-rose-500';
-                    else if (diffDays <= 14) progressColor = 'bg-orange-500';
-                    else if (diffDays <= 30) progressColor = 'bg-amber-500';
-                  }
-                }
-
-                return (
-                  <div key={goal.id} className="bg-white rounded-2xl border border-neutral-100 overflow-hidden shadow-sm hover:shadow-md transition-all">
-                    <div className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-bold text-sm text-neutral-900">{goal.name}</span>
-                        <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                          {goal.deadline ? format(new Date(goal.deadline), 'd MMM yyyy', { locale: ru }) : 'Без срока'}
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-end justify-between mb-3">
-                        <div className="space-y-0.5">
-                          <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-tight">Накоплено</p>
-                          <p className="font-bold text-sm text-theme-primary">{goal.currentAmount.toLocaleString()} ₽</p>
-                        </div>
-                        <div className="text-right space-y-0.5">
-                          <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-tight">Цель</p>
-                          <p className="font-bold text-sm text-neutral-900">{goal.targetAmount.toLocaleString()} ₽</p>
-                        </div>
-                      </div>
-
-                      {goal.description && (
-                        <div className="prose prose-sm max-w-none text-neutral-500 text-[11px] leading-tight mb-1">
-                          <ReactMarkdown>{goal.description}</ReactMarkdown>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Thin progress bar at the bottom */}
-                    <div className="h-1 w-full bg-neutral-100">
-                      <div 
-                        className={cn("h-full transition-all duration-500", progress === 100 ? 'bg-theme-primary' : progressColor)}
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-              {activeGoals.length === 0 && (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+                modifiers={[restrictToVerticalAxis]}
+              >
+                <SortableContext
+                  items={displayedGoals.map(g => g.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {displayedGoals.map(goal => (
+                    <SortableGoalCard 
+                      key={goal.id} 
+                      goal={goal}
+                      isEditing={editingGoalId === goal.id}
+                      onStartEdit={(g) => setEditingGoalId(g.id)}
+                      onCancelEdit={() => setEditingGoalId(null)}
+                      onSave={handleSaveGoal}
+                      onDelete={handleDeleteGoal}
+                      onToggleComplete={handleToggleCompleteGoal}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+              {displayedGoals.length === 0 && (
                 <div className="text-center py-8 bg-white rounded-2xl border border-dashed border-neutral-200">
-                  <p className="text-neutral-400 text-sm italic">Нет активных целей</p>
+                  <p className="text-neutral-400 text-sm italic">
+                    {showCompletedGoals ? 'Нет завершенных целей' : 'Нет активных целей'}
+                  </p>
                 </div>
               )}
             </div>
@@ -487,6 +848,7 @@ export default function Dashboard({
           userId={userId} 
           onClose={handleCloseGoalManager} 
           initialData={initialGoalData}
+          initialEditingGoalId={editingGoalId || undefined}
           onRefresh={onRefresh}
         />
       )}
