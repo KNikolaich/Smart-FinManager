@@ -24,7 +24,7 @@ import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
+  rectSortingStrategy,
   useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -58,7 +58,8 @@ function SortableGoalCard({
     isDragging
   } = useSortable({ id: goal.id });
 
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -141,50 +142,23 @@ function SortableGoalCard({
         />
 
         <div className="flex justify-between items-center pt-2">
-          {showDeleteConfirm ? (
-            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
-              <span className="text-[10px] font-bold text-rose-500 uppercase tracking-tight">Удалить?</span>
-              <button 
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(goal.id);
-                }} 
-                className="px-2 py-1 bg-rose-500 text-white rounded-lg text-[10px] font-bold hover:bg-rose-600 transition-colors"
-              >
-                Да
-              </button>
-              <button 
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowDeleteConfirm(false);
-                }} 
-                className="px-2 py-1 bg-neutral-100 text-neutral-500 rounded-lg text-[10px] font-bold hover:bg-neutral-200 transition-colors"
-              >
-                Нет
-              </button>
-            </div>
-          ) : (
-            <button 
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setShowDeleteConfirm(true);
-              }} 
-              className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer relative z-30"
-              title="Удалить цель"
-            >
-              <Trash2 size={16} />
-            </button>
-          )}
+          <button 
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowDeleteModal(true);
+            }} 
+            className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer relative z-30"
+            title="Удалить цель"
+          >
+            <Trash2 size={16} />
+          </button>
           <div className="flex gap-2">
             <button 
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
-                setShowDeleteConfirm(false);
                 onCancelEdit();
               }} 
               className="px-3 py-1.5 bg-neutral-100 text-neutral-500 rounded-lg text-xs font-bold hover:bg-neutral-200 transition-colors"
@@ -195,24 +169,22 @@ function SortableGoalCard({
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
-                onToggleComplete(goal);
+                setShowCompleteModal(true);
               }}
               className={cn(
-                "px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 font-bold text-xs",
+                "p-2 rounded-lg border transition-all flex items-center justify-center font-bold",
                 goal.isCompleted 
                   ? "bg-emerald-500 border-emerald-500 text-white" 
-                  : "bg-neutral-50 border-neutral-200 text-neutral-400 hover:border-emerald-500 hover:text-emerald-500"
+                  : "bg-neutral-100 border-neutral-200 text-neutral-400 hover:border-emerald-500 hover:text-emerald-500"
               )}
               title={goal.isCompleted ? "Снять отметку о выполнении" : "Отметить как выполненную"}
             >
               <Check size={14} />
-              Выполнена
             </button>
             <button 
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
-                setShowDeleteConfirm(false);
                 handleSaveWithCheck();
               }} 
               className="flex items-center gap-2 px-4 py-1.5 bg-theme-primary text-white rounded-lg text-xs font-bold shadow-lg shadow-theme-primary/20 hover:bg-theme-primary-dark transition-all"
@@ -222,6 +194,70 @@ function SortableGoalCard({
             </button>
           </div>
         </div>
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[200] flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl animate-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-3 text-rose-500 mb-4">
+                <Trash2 size={24} />
+                <h4 className="font-bold text-lg">Удалить цель?</h4>
+              </div>
+              <p className="text-neutral-500 text-sm mb-6">Это действие нельзя отменить.</p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setShowDeleteModal(false)}
+                  className="flex-1 px-4 py-2 bg-neutral-100 text-neutral-500 rounded-xl font-bold text-sm"
+                >
+                  Отмена
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    onDelete(goal.id);
+                  }}
+                  className="flex-1 px-4 py-2 bg-rose-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-rose-200"
+                >
+                  Удалить
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Toggle Complete Confirmation Modal */}
+        {showCompleteModal && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[200] flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl animate-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-3 text-emerald-500 mb-4">
+                <Check size={24} />
+                <h4 className="font-bold text-lg">{goal.isCompleted ? "Вернуть в работу?" : "Цель достигнута?"}</h4>
+              </div>
+              <p className="text-neutral-500 text-sm mb-6">
+                {goal.isCompleted 
+                  ? "Цель снова станет активной и появится в общем списке." 
+                  : "Цель будет отмечена как выполненная."}
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setShowCompleteModal(false)}
+                  className="flex-1 px-4 py-2 bg-neutral-100 text-neutral-500 rounded-xl font-bold text-sm"
+                >
+                  Отмена
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowCompleteModal(false);
+                    onToggleComplete(goal);
+                  }}
+                  className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-200"
+                >
+                  {goal.isCompleted ? "Вернуть" : "Выполнена!"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -244,7 +280,7 @@ function SortableGoalCard({
       }}
     >
       <div 
-        className="absolute left-1 top-1/2 -translate-y-1/2 p-1 text-neutral-300 hover:text-neutral-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute left-1 top-1/2 -translate-y-1/2 p-1 text-neutral-300 hover:text-neutral-500 cursor-grab active:cursor-grabbing opacity-30 group-hover:opacity-100 transition-opacity"
         {...attributes}
         {...listeners}
       >
@@ -810,11 +846,10 @@ export default function Dashboard({
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
-                modifiers={[restrictToVerticalAxis]}
               >
                 <SortableContext
                   items={displayedGoals.map(g => g.id)}
-                  strategy={verticalListSortingStrategy}
+                  strategy={rectSortingStrategy}
                 >
                   {displayedGoals.map(goal => (
                     <SortableGoalCard 
