@@ -566,6 +566,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
               </tbody>
             </table>
             
+            {/* Bottom Bar Spacer */}
             {activeTab === 'now' && (
               <div className="mt-8 px-6 pb-6 flex items-center gap-4">
                 {showAddSubject ? (

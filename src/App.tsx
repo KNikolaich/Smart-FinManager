@@ -312,7 +312,7 @@ export default function App() {
   return (
     <div className="h-[100dvh] bg-neutral-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="px-6 py-4 flex items-center justify-between bg-white border-b border-neutral-100 shrink-0 z-40 [@media(max-width:767px)_and_(orientation:landscape)]:hidden">
+      <header className="px-6 py-4 flex items-center justify-between bg-white border-b border-neutral-100 shrink-0 z-40">
         <div 
           className="flex items-center gap-3 cursor-pointer group"
           onClick={() => setShowTotalBalance(!showTotalBalance)}
@@ -353,6 +353,8 @@ export default function App() {
           <div className="max-w-7xl mx-auto h-full landscape:max-w-none">
             {renderContent()}
           </div>
+          {/* Spacer for bottom bar */}
+          <div className="h-20 md:hidden shrink-0" />
         </div>
       </main>
 

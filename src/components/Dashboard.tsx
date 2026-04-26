@@ -189,15 +189,15 @@ export default function Dashboard({
       <AnimatePresence>
         {showTotalBalance && (
           <motion.div 
-            initial={{ height: 0, opacity: 0, marginBottom: 0 }}
-            animate={{ height: 'auto', opacity: 1, marginBottom: 24 }}
-            exit={{ height: 0, opacity: 0, marginBottom: 0 }}
+            initial={{ height: 0, opacity: 0.3, marginBottom: 0 }}
+            animate={{ height: 'auto', opacity: 0.7, marginBottom: 24 }}
+            exit={{ height: 0, opacity: 0.3, marginBottom: 0 }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
             <div 
               onClick={onNavigateToAnalytics}
-              className="bg-theme-primary rounded-3xl p-6 text-white shadow-xl shadow-theme-primary-light cursor-pointer group relative overflow-hidden"
+              className="bg-theme-primary rounded-3xl p-2 text-white shadow-xl shadow-theme-primary-light cursor-pointer group relative overflow-hidden"
             >
               <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
                 {/* Left Side: Balance and Stats */}
@@ -264,7 +264,7 @@ export default function Dashboard({
             Все
           </button>
         </div>
-        <div className="flex gap-1 overflow-x-auto pb-4 -mx-1.5 px-1.5 no-scrollbar snap-x snap-mandatory">
+        <div className="flex gap-1 overflow-x-auto pb-2 -mx-1.5 px-1.5 no-scrollbar snap-x snap-mandatory">
           {dashboardAccounts.map(account => {
             const isNegative = account.balance < 0;
             const Icon = account.type === 'card' ? CreditCard : account.type === 'bank' ? Landmark : account.type === 'cash' ? CoinStack : Wallet;
@@ -277,7 +277,7 @@ export default function Dashboard({
                   if (onOpenTransactionHistory) onOpenTransactionHistory(account.id);
                 }}
                 className={cn(
-                  "min-w-[90px] flex-shrink-0 bg-white p-3 rounded-2xl border transition-all duration-300 snap-start relative cursor-pointer",
+                  "min-w-[90px] flex-shrink-0 bg-white p-1 rounded-2xl border transition-all duration-300 snap-start relative cursor-pointer",
                   isNegative 
                     ? "shadow-lg shadow-rose-100/60 border-rose-50" 
                     : "shadow-lg shadow-theme-primary-light border-emerald-50"
@@ -490,6 +490,9 @@ export default function Dashboard({
           onRefresh={onRefresh}
         />
       )}
+
+      {/* Bottom Spacer */}
+      <div className="h-10 md:hidden shrink-0" />
     </div>
   );
 }

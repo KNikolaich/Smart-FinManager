@@ -408,6 +408,8 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
             </div>
           </div>
         )}
+        {/* Spacer to allow scrolling past the fixed input and bottom nav */}
+        <div className="h-24 shrink-0" />
         <div ref={chatEndRef} />
       </div>
 
