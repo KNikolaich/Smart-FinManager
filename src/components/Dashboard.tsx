@@ -197,41 +197,41 @@ export default function Dashboard({
           >
             <div 
               onClick={onNavigateToAnalytics}
-              className="bg-theme-primary rounded-3xl p-2 text-white shadow-xl shadow-theme-primary-light cursor-pointer group relative overflow-hidden"
+              className="bg-theme-primary rounded-xl p-2 text-white shadow-xl shadow-theme-primary-light cursor-pointer group relative overflow-hidden"
             >
-              <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
+              <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-1 items-center">
                 {/* Left Side: Balance and Stats */}
                 <div>
-                  <div className="flex items-baseline gap-2 mb-6">
+                  <div className="flex items-baseline gap-2 mb-1">
                     <p className="text-theme-primary-light text-[10px] sm:text-xs font-bold uppercase tracking-wider">Общий баланс</p>
                     <h2 className="text-2xl sm:text-3xl font-bold">{totalBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} ₽</h2>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white/10 rounded-2xl p-3 flex items-center gap-3">
+                    <div className="bg-white/10 rounded-2xl p-1 flex items-center gap-3">
                       <div className="bg-white/20 p-2 rounded-xl">
                         <TrendingUp className="w-4 h-4" />
+                        <p className="text-xs text-theme-primary-light">Доход</p>
                       </div>
                       <div>
-                        <p className="text-xs text-theme-primary-light">Доход</p>
-                        <p className="font-semibold">+{monthlyStats.income.toLocaleString()} ₽</p>
+                        <p className="font-semibold">{monthlyStats.income.toLocaleString()} ₽</p>
                       </div>
                     </div>
-                    <div className="bg-white/10 rounded-2xl p-3 flex items-center gap-3">
+                    <div className="bg-white/10 rounded-2xl p-1 flex items-center gap-3">
                       <div className="bg-white/20 p-2 rounded-xl">
+                        <p className="text-xs text-theme-primary-light">Расход</p>
                         <TrendingDown className="w-4 h-4" />
                       </div>
                       <div>
-                        <p className="text-xs text-theme-primary-light">Расход</p>
-                        <p className="font-semibold">-{monthlyStats.expense.toLocaleString()} ₽</p>
+                        <p className="font-semibold">{monthlyStats.expense.toLocaleString()} ₽</p>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Right Side: Dynamics Chart (Hidden on mobile) */}
-                <div className="hidden sm:block h-[140px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="hidden sm:block h-[100px] w-[100%] items-right">
+                  <ResponsiveContainer width="80%" height="80%">
                     <BarChart data={balanceTrend}>
                       <XAxis 
                         dataKey="name" 
@@ -255,16 +255,16 @@ export default function Dashboard({
 
       {/* Accounts Section */}
       <section>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-1">
           <h3 className="font-bold text-lg">Счета</h3>
           <button 
             onClick={() => setShowAccountManager(true)}
-            className="text-theme-primary-dark text-sm font-medium hover:bg-theme-primary-light px-2 py-1 rounded-lg transition-colors"
+            className="text-theme-primary-dark text-sm font-medium hover:bg-theme-primary-light px-2 py-2 rounded-lg transition-colors"
           >
             Все
           </button>
         </div>
-        <div className="flex gap-1 overflow-x-auto pb-2 -mx-1.5 px-1.5 no-scrollbar snap-x snap-mandatory">
+        <div className="flex gap-1 overflow-x-auto pb-0 -mx-1.5 px-2 no-scrollbar snap-x snap-mandatory">
           {dashboardAccounts.map(account => {
             const isNegative = account.balance < 0;
             const Icon = account.type === 'card' ? CreditCard : account.type === 'bank' ? Landmark : account.type === 'cash' ? CoinStack : Wallet;
@@ -277,7 +277,7 @@ export default function Dashboard({
                   if (onOpenTransactionHistory) onOpenTransactionHistory(account.id);
                 }}
                 className={cn(
-                  "min-w-[90px] flex-shrink-0 bg-white p-1 rounded-2xl border transition-all duration-300 snap-start relative cursor-pointer",
+                  "min-w-[85px] flex-shrink-0 bg-white p-1 rounded-2xl border transition-all duration-300 snap-start relative cursor-pointer",
                   isNegative 
                     ? "shadow-lg shadow-rose-100/60 border-rose-50" 
                     : "shadow-lg shadow-theme-primary-light border-emerald-50"

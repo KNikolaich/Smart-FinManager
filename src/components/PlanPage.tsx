@@ -443,17 +443,6 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
           Заметки
         </button>
         <button
-          onClick={() => setActiveTab('config')}
-          className={cn(
-            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
-            activeTab === 'config' 
-              ? "bg-blue-500 text-white border-blue-500 translate-y-[1px]" 
-              : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
-          )}
-        >
-          Конфиг
-        </button>
-        <button
           onClick={() => setActiveTab('past')}
           className={cn(
             "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
@@ -572,127 +561,126 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
             
             {/* Bottom Bar Spacer */}
             {activeTab === 'now' && (
-              <div className="mt-0 px-4 pb-0 flex items-center gap-4">
-                {showAddSubject ? (
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="text"
-                      value={newSubjectName}
-                      onChange={(e) => setNewSubjectName(e.target.value)}
-                      placeholder="Название графы"
-                      className="text-xs p-2 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      autoFocus
-                    />
+              <div className="mt-0 px-4 pb-0 flex flex-col gap-6">
+                <div className="flex items-center gap-4">
+                  {showAddSubject ? (
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="text"
+                        value={newSubjectName}
+                        onChange={(e) => setNewSubjectName(e.target.value)}
+                        placeholder="Название графы"
+                        className="text-xs p-2 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        autoFocus
+                      />
+                      <button 
+                        onClick={handleAddSubject}
+                        className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors"
+                      >
+                        <Check size={14} />
+                      </button>
+                      <button 
+                        onClick={() => setShowAddSubject(false)}
+                        className="p-2 bg-neutral-100 text-neutral-500 rounded-xl hover:bg-neutral-200 transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
                     <button 
-                      onClick={handleAddSubject}
-                      className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors"
+                      onClick={() => setShowAddSubject(true)}
+                      className="flex items-center gap-2 text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
                     >
-                      <Check size={14} />
+                      <Plus size={14} />
+                      Добавить графу расходов
                     </button>
-                    <button 
-                      onClick={() => setShowAddSubject(false)}
-                      className="p-2 bg-neutral-100 text-neutral-500 rounded-xl hover:bg-neutral-200 transition-colors"
-                    >
-                      <X size={14} />
-                    </button>
+                  )}
+                </div>
+
+                {/* Config Section embedded at the bottom of NOW tab */}
+                <div className="border-t border-neutral-100 pt-6 pb-12 space-y-4 max-w-xl">
+                  <h3 className="text-sm font-bold text-neutral-400 uppercase tracking-wider">Настройки таблицы</h3>
+                  
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-neutral-400 uppercase">Сумма к которой стремимся</label>
+                      <input 
+                        type="number"
+                        value={planData.config.targetAmount}
+                        onChange={(e) => savePlanData({
+                          ...planData,
+                          config: { ...planData.config, targetAmount: parseInt(e.target.value) || 0 }
+                        }, 'config')}
+                        className="w-full p-2 bg-neutral-50 border border-neutral-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-neutral-400 uppercase">Цвет итогов</label>
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="color"
+                            value={planData.config.totalColumnColor}
+                            onChange={(e) => savePlanData({
+                              ...planData,
+                              config: { ...planData.config, totalColumnColor: e.target.value }
+                            }, 'config')}
+                            className="w-6 h-6 rounded cursor-pointer border-none p-0 bg-transparent"
+                          />
+                          <span className="text-[10px] font-mono text-neutral-400">{planData.config.totalColumnColor}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-neutral-400 uppercase">Цвет заголовка</label>
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="color"
+                            value={planData.config.headerColor}
+                            onChange={(e) => savePlanData({
+                              ...planData,
+                              config: { ...planData.config, headerColor: e.target.value }
+                            }, 'config')}
+                            className="w-6 h-6 rounded cursor-pointer border-none p-0 bg-transparent"
+                          />
+                          <span className="text-[10px] font-mono text-neutral-400">{planData.config.headerColor}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-neutral-400 uppercase">Цвет 1-й колонки</label>
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="color"
+                            value={planData.config.firstColumnColor}
+                            onChange={(e) => savePlanData({
+                              ...planData,
+                              config: { ...planData.config, firstColumnColor: e.target.value }
+                            }, 'config')}
+                            className="w-6 h-6 rounded cursor-pointer border-none p-0 bg-transparent"
+                          />
+                          <span className="text-[10px] font-mono text-neutral-400">{planData.config.firstColumnColor}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-neutral-400 uppercase">Цвет строки MIN</label>
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="color"
+                            value={planData.config.minRowColor}
+                            onChange={(e) => savePlanData({
+                              ...planData,
+                              config: { ...planData.config, minRowColor: e.target.value }
+                            }, 'config')}
+                            className="w-6 h-6 rounded cursor-pointer border-none p-0 bg-transparent"
+                          />
+                          <span className="text-[10px] font-mono text-neutral-400">{planData.config.minRowColor}</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <button 
-                    onClick={() => setShowAddSubject(true)}
-                    className="flex items-center gap-2 text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
-                  >
-                    <Plus size={14} />
-                    Добавить графу расходов
-                  </button>
-                )}
-                
-                <div className="text-[10px] text-neutral-400 italic">
-                  * Нажмите на ячейку для редактирования. Нажмите на заголовок для настройки графы.
                 </div>
               </div>
             )}
-          </div>
-        ) : activeTab === 'config' ? (
-          <div className="space-y-6 max-w-md p-6">
-            <h3 className="text-lg font-bold">Настройки таблицы</h3>
-            
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-neutral-500 uppercase">Сумма к которой стремимся</label>
-                <input 
-                  type="number"
-                  value={planData.config.targetAmount}
-                  onChange={(e) => savePlanData({
-                    ...planData,
-                    config: { ...planData.config, targetAmount: parseInt(e.target.value) || 0 }
-                  }, 'config')}
-                  className="w-full p-3 bg-neutral-50 border border-neutral-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-neutral-500 uppercase">Цвет итогов</label>
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="color"
-                      value={planData.config.totalColumnColor}
-                      onChange={(e) => savePlanData({
-                        ...planData,
-                        config: { ...planData.config, totalColumnColor: e.target.value }
-                      }, 'config')}
-                      className="w-8 h-8 rounded-lg cursor-pointer border-none"
-                    />
-                    <span className="text-xs font-mono">{planData.config.totalColumnColor}</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-neutral-500 uppercase">Цвет заголовка</label>
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="color"
-                      value={planData.config.headerColor}
-                      onChange={(e) => savePlanData({
-                        ...planData,
-                        config: { ...planData.config, headerColor: e.target.value }
-                      }, 'config')}
-                      className="w-8 h-8 rounded-lg cursor-pointer border-none"
-                    />
-                    <span className="text-xs font-mono">{planData.config.headerColor}</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-neutral-500 uppercase">Цвет 1-й колонки</label>
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="color"
-                      value={planData.config.firstColumnColor}
-                      onChange={(e) => savePlanData({
-                        ...planData,
-                        config: { ...planData.config, firstColumnColor: e.target.value }
-                      }, 'config')}
-                      className="w-8 h-8 rounded-lg cursor-pointer border-none"
-                    />
-                    <span className="text-xs font-mono">{planData.config.firstColumnColor}</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-neutral-500 uppercase">Цвет строки MIN</label>
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="color"
-                      value={planData.config.minRowColor}
-                      onChange={(e) => savePlanData({
-                        ...planData,
-                        config: { ...planData.config, minRowColor: e.target.value }
-                      }, 'config')}
-                      className="w-8 h-8 rounded-lg cursor-pointer border-none"
-                    />
-                    <span className="text-xs font-mono">{planData.config.minRowColor}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         ) : (
           <div className="flex-1 flex flex-col min-h-0">
