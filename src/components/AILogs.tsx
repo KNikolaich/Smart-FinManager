@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { cn } from '../lib/utils';
-import { X, Terminal, Clock, User, Bot, ChevronDown, ChevronRight, AlertCircle, RefreshCw } from 'lucide-react';
+import { X, Terminal, Clock, User, ChevronDown, ChevronRight, AlertCircle, RefreshCw } from 'lucide-react';
+import { RobotIcon } from './icons/RobotIcon';
 
 interface AILog {
   id: string;
@@ -162,7 +163,7 @@ export default function AILogs({ userId, onClose }: AILogsProps) {
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-emerald-600 mb-1">
-                        <Bot className="w-4 h-4" />
+                        <RobotIcon className="w-4 h-4" />
                         <span className="text-[10px] font-bold uppercase tracking-wider">Response</span>
                       </div>
                       <pre 

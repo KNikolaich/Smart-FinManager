@@ -1,9 +1,10 @@
-import { LogOut, Github, Info, X, Sparkles, Eraser, FileDown, FileUp, Edit2, Check, Trash2, AlertTriangle, Copy, Database } from 'lucide-react';
+import { LogOut, Sparkles, Eraser, FileDown, FileUp, Edit2, Check, Trash2, AlertTriangle, X } from 'lucide-react';
 import { useState } from 'react';
 import { UserProfile } from '../types';
 import { cn } from '../lib/utils';
 import { api } from '../lib/api';
 import { useDataManagement } from '../hooks/useDataManagement';
+import { APP_VERSION } from '../version';
 
 interface UserPageProps {
   user: UserProfile;
@@ -28,6 +29,8 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
     setShowClearTransactionsConfirm, clearTransactionsOnly, exporting, exportData,
     fileInputRef, handleImportClick, handleFileChange, clearing
   } = useDataManagement(user, onRefresh);
+
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const handleSave = async () => {
     setError(null);
@@ -179,31 +182,8 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
           </div>
         </section>
 
-        {/* GitHub & Info */}
-        <section className="bg-white rounded-3xl border border-neutral-100 overflow-hidden shadow-sm">
-          <a href="https://github.com/KNikolaich/AiFinAssistant" target="_blank" className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50">
-            <div className="w-10 h-10 bg-neutral-100 rounded-xl flex items-center justify-center">
-              <Github className="w-5 h-5 text-neutral-600" />
-            </div>
-            <div className="text-left">
-              <p className="font-semibold text-sm">GitHub</p>
-              <p className="text-xs text-neutral-400">Исходный код проекта</p>
-            </div>
-          </a>
-          
-          <div className="w-full px-6 py-4 flex items-center gap-4">
-            <div className="w-10 h-10 bg-neutral-100 rounded-xl flex items-center justify-center">
-              <Info className="w-5 h-5 text-neutral-600" />
-            </div>
-            <div className="text-left">
-              <p className="font-semibold text-sm">О приложении</p>
-              <p className="text-xs text-neutral-400">Версия 1.0.0 (MVP)</p>
-            </div>
-          </div>
-        </section>
-
         <button 
-          onClick={onLogout}
+          onClick={() => setShowLogoutConfirm(true)}
           className="w-full bg-rose-50 text-rose-600 font-bold py-4 rounded-3xl flex items-center justify-center gap-2 hover:bg-rose-100 transition-all active:scale-95"
         >
           <LogOut className="w-5 h-5" />
@@ -211,6 +191,31 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
         </button>
 
         {/* Modals */}
+        {showLogoutConfirm && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-full max-w-sm bg-white rounded-[32px] p-8 text-center shadow-2xl animate-in zoom-in duration-200 border border-neutral-100">
+              <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <LogOut className="w-8 h-8 text-rose-600" />
+              </div>
+              <h3 className="text-xl font-bold text-neutral-900 mb-2">Выйти из аккаунта?</h3>
+              <p className="text-neutral-500 mb-8 text-sm">Вы сможете войти снова, используя вашу электронную почту.</p>
+              <div className="flex flex-col w-full gap-3">
+                <button
+                  onClick={onLogout}
+                  className="w-full bg-rose-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all active:scale-95"
+                >
+                  Выйти
+                </button>
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="w-full bg-neutral-100 text-neutral-600 font-bold py-4 rounded-2xl hover:bg-neutral-200 transition-all active:scale-95"
+                >
+                  Отмена
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {showSeedConfirm && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="w-full max-w-md bg-white rounded-[32px] p-8 text-center shadow-2xl animate-in zoom-in duration-200 border border-amber-100">

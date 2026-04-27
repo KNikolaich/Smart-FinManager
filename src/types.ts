@@ -131,9 +131,17 @@ export interface CashbackEntry {
   comment?: string;
 }
 
+export interface CashbackMonth {
+  id: string; // e.g., "2026-04"
+  label: string; // e.g., "Апрель"
+  entries: CashbackEntry[];
+}
+
 export interface CashbackData {
   categories: CashbackCategory[];
-  entries: CashbackEntry[];
+  months: CashbackMonth[];
+  /** @deprecated use months[].entries */
+  entries?: CashbackEntry[];
 }
 
 export interface PlanData {

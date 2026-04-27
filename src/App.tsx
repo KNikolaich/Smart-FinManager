@@ -5,7 +5,6 @@ import {
   CalendarRange, 
   BarChart2, 
   Settings as SettingsIcon, 
-  Bot, 
   Plus,
   Mic,
   AudioLines,
@@ -30,6 +29,7 @@ import EditTransaction from './components/EditTransaction';
 import AILogs from './components/AILogs';
 import Auth from './components/Auth';
 import { cn } from './lib/utils';
+import { RobotIcon } from './components/icons/RobotIcon';
 
 export default function App() {
   const [user, setUser] = useState<any | null>(null);
@@ -320,21 +320,29 @@ export default function App() {
           <div className="w-10 h-10 bg-theme-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-theme-primary-light group-active:scale-95 transition-all">
             <Wallet size={20} />
           </div>
-          <div>
-            <h2 className="font-bold text-sm leading-tight group-hover:text-theme-primary-dark transition-colors">Finance</h2>
-            <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">Manager</p>
+          <div className="flex items-center gap-2">
+            <div>
+              <h2 className="font-bold text-sm leading-tight group-hover:text-theme-primary-dark transition-colors">Finance</h2>
+              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">Manager</p>
+            </div>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveTab('ai');
+              }}
+              className={cn(
+                "ml-1 p-1 rounded-lg transition-all active:scale-90",
+                activeTab === 'ai' 
+                  ? "text-theme-primary bg-theme-primary-light shadow-sm" 
+                  : "text-neutral-300 hover:text-neutral-400"
+              )}
+              title="AI Assistant"
+            >
+              <RobotIcon className="w-6 h-6" />
+            </button>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setActiveTab('ai')}
-            className={cn(
-              "p-2 rounded-xl transition-all",
-              activeTab === 'ai' ? "bg-theme-primary text-white shadow-lg shadow-theme-primary-light" : "bg-neutral-100 text-neutral-500"
-            )}
-          >
-            <Bot size={20} />
-          </button>
           <button 
             onClick={() => setShowUserPage(true)}
             className={cn(

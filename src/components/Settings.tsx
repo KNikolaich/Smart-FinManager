@@ -7,6 +7,7 @@ import AccountManager from './AccountManager';
 import BalanceManager from './BalanceManager';
 import { CurrencyTable } from './CurrencyTable';
 import { useDataManagement } from '../hooks/useDataManagement';
+import { APP_VERSION } from '../version';
 
 import { UserProfile, Account } from '../types';
 
@@ -170,7 +171,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
 
             <button 
               onClick={() => setShowCurrencyTable(true)}
-              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors"
+              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
             >
               <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
                 <ArrowRightLeft className="w-5 h-5 text-blue-600" />
@@ -178,6 +179,19 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
               <div className="text-left">
                 <p className="font-semibold text-sm">Валюты</p>
                 <p className="text-xs text-neutral-400">Справочник доступных валют</p>
+              </div>
+            </button>
+
+            <button 
+              onClick={onShowLogs}
+              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors"
+            >
+              <div className="w-10 h-10 bg-neutral-900 rounded-xl flex items-center justify-center">
+                <Database className="w-5 h-5 text-white" />
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-sm">Логи AI</p>
+                <p className="text-xs text-neutral-400">История запросов и ответов ассистента</p>
               </div>
             </button>
           </div>
@@ -228,28 +242,30 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
               </div>
             </div>
 
-            <button 
-              onClick={onShowLogs}
-              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
-            >
-              <div className="w-10 h-10 bg-neutral-900 rounded-xl flex items-center justify-center">
-                <Database className="w-5 h-5 text-white" />
-              </div>
-              <div className="text-left">
-                <p className="font-semibold text-sm">Логи AI</p>
-                <p className="text-xs text-neutral-400">История запросов и ответов ассистента</p>
-              </div>
-            </button>
-
-            <button className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors">
+            <div className="w-full px-6 py-4 flex items-center gap-4 border-b border-neutral-50">
               <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-                <Shield className="w-5 h-5 text-purple-600" />
+                <Info className="w-5 h-5 text-purple-600" />
               </div>
               <div className="text-left">
-                <p className="font-semibold text-sm">Безопасность</p>
-                <p className="text-xs text-neutral-400">Управление доступом и сессиями</p>
+                <p className="font-semibold text-sm">Версия приложения</p>
+                <p className="text-xs text-neutral-400">{APP_VERSION}</p>
               </div>
-            </button>
+            </div>
+
+            <a 
+              href="https://github.com/KNikolaich/Smart-FinManager" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors"
+            >
+              <div className="w-10 h-10 bg-neutral-100 rounded-xl flex items-center justify-center">
+                <Github className="w-5 h-5 text-neutral-600" />
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-sm">GitHub</p>
+                <p className="text-xs text-neutral-400">Исходный код проекта</p>
+              </div>
+            </a>
           </div>
         </section>
 

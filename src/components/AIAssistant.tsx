@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { useVoiceInput } from '../hooks/useVoiceInput';
-import { Bot, Send, User, Sparkles, Loader2, PlusCircle, Target, PieChart, Calendar, Eraser } from 'lucide-react';
+import { Send, User, Sparkles, Loader2, PlusCircle, Target, PieChart, Calendar, Eraser } from 'lucide-react';
+import { RobotIcon } from './icons/RobotIcon';
 import { processUserMessage, getFinancialAdvice } from '../services/aiService';
 import { api } from '../lib/api';
 import { Account, Category, Transaction, Goal, Plan, Message } from '../types';
@@ -364,7 +365,7 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
               "w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0",
               m.role === 'assistant' ? "bg-theme-primary text-white" : "bg-neutral-200 text-neutral-600"
             )}>
-              {m.role === 'assistant' ? <Bot className="w-4 h-4 sm:w-5 sm:h-5" /> : <User className="w-4 h-4 sm:w-5 sm:h-5" />}
+              {m.role === 'assistant' ? <RobotIcon className="w-4 h-4 sm:w-5 sm:h-5" /> : <User className="w-4 h-4 sm:w-5 sm:h-5" />}
             </div>
             <div className="space-y-2 sm:space-y-3 max-w-[82%] sm:max-w-[85%]">
               <div className={cn(
@@ -400,7 +401,7 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
         {loading && (
           <div className="flex gap-3">
             <div className="w-8 h-8 rounded-full bg-theme-primary text-white flex items-center justify-center">
-              <Bot className="w-5 h-5" />
+              <RobotIcon className="w-5 h-5" />
             </div>
             <div className="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />

@@ -151,7 +151,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                 { id: '2026-min-12', label: 'min', cells: {}, type: 'min' }
               ],
               config: INITIAL_CONFIG,
-              cashback: { categories: DEFAULT_CASHBACK_CATEGORIES, entries: [] },
+              cashback: { categories: DEFAULT_CASHBACK_CATEGORIES, entries: [], months: [] },
               comment: '',
               updatedAt: new Date().toISOString()
             };
@@ -194,7 +194,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
               { id: '2026-min-12', label: 'min', cells: {}, type: 'min' }
             ],
             config: INITIAL_CONFIG,
-            cashback: { categories: DEFAULT_CASHBACK_CATEGORIES, entries: [] },
+            cashback: { categories: DEFAULT_CASHBACK_CATEGORIES, entries: [], months: [] },
             comment: '',
             updatedAt: new Date().toISOString()
           });

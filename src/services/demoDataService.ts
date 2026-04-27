@@ -183,6 +183,7 @@ export const generateDemoData = async (
         { id: '1', name: 'Супермаркеты', color: '#ffcc99' },
         { id: '2', name: 'Такси', color: '#ffff99' },
       ],
+      months: [],
       entries: []
     },
     comment: 'План на ближайшие месяцы.',
