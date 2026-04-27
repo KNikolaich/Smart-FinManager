@@ -501,6 +501,35 @@ export default function Dashboard({
     return { income, expense };
   }, [transactions]);
 
+  const monthlyRollingBalance = useMemo(() => {
+    const now = new Date();
+    const oneMonthAgo = subMonths(now, 1);
+    
+    const relevantAccountIds = new Set(accounts.filter(a => a.showInTotals).map(a => a.id));
+
+    return transactions
+      .filter(t => {
+        const tDate = new Date(t.createdAt);
+        return tDate >= oneMonthAgo && tDate <= now && 
+               (t.type === 'income' || t.type === 'expense') &&
+               relevantAccountIds.has(t.accountId);
+      })
+      .reduce((sum, t) => {
+        const amount = t.type === 'income' ? t.amount : -t.amount;
+        
+        const acc = accounts.find(a => a.id === t.accountId);
+        if (!acc) return sum;
+        
+        if (acc.currency === '₽') {
+          return sum + amount;
+        }
+        
+        const currency = currencies.find(c => c.symbol === acc.currency);
+        const rate = currency ? currency.rate : 1;
+        return sum + (amount * rate);
+      }, 0);
+  }, [transactions, accounts, currencies]);
+
   const recentTransactions = useMemo(() => {
     return [...transactions]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -588,7 +617,7 @@ export default function Dashboard({
   }, [balanceHistory, totalBalance]);
 
   return (
-    <div className="p-1.5 sm:p-2 space-y-6">
+    <div className="pt-[10px] pb-[8px] px-1.5 sm:px-2 space-y-6">
       {/* Total Balance Card */}
       <AnimatePresence>
         {showTotalBalance && (
@@ -606,27 +635,38 @@ export default function Dashboard({
               <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-1 items-center">
                 {/* Left Side: Balance and Stats */}
                 <div>
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <p className="text-theme-primary-light text-[10px] sm:text-xs font-bold uppercase tracking-wider">Общий баланс</p>
-                    <h2 className="text-2xl sm:text-3xl font-bold">{totalBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} ₽</h2>
+                  <div className="mb-4 grid grid-cols-2 gap-1 px-2">
+                    <div className="pt-2 text-center">
+                      <p className="text-theme-primary-light text-[10px] sm:text-xs font-bold uppercase tracking-wider">Общий баланс</p>
+                      <h2 className="text-lg sm:text-xl font-bold">{totalBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} ₽</h2>
+                    </div>
+                    <div className="text-center border-l border-white/10 pt-2 pl-2">
+                      <p className="text-theme-primary-light text-[10px] sm:text-xs font-bold uppercase tracking-wider">За месяц</p>
+                      <h2 className={cn(
+                        "text-lg sm:text-xl font-bold",
+                        monthlyRollingBalance >= 0 ? "text-emerald-300" : "text-rose-300"
+                      )}>
+                        {monthlyRollingBalance > 0 ? "+" : ""}{monthlyRollingBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} ₽
+                      </h2>
+                    </div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white/10 rounded-2xl p-1 flex items-center gap-3">
                       <div className="bg-white/20 p-2 rounded-xl">
-                        <TrendingUp className="w-4 h-4" />
-                        <p className="text-xs text-theme-primary-light">Доход</p>
+                        <TrendingUp className="w-4 h-4" />                        
                       </div>
                       <div>
+                        <p className="text-xs text-theme-primary-light">Доход</p>                      
                         <p className="font-semibold">{monthlyStats.income.toLocaleString()} ₽</p>
                       </div>
                     </div>
                     <div className="bg-white/10 rounded-2xl p-1 flex items-center gap-3">
                       <div className="bg-white/20 p-2 rounded-xl">
-                        <p className="text-xs text-theme-primary-light">Расход</p>
                         <TrendingDown className="w-4 h-4" />
                       </div>
                       <div>
+                        <p className="text-xs text-theme-primary-light">Расход</p>
                         <p className="font-semibold">{monthlyStats.expense.toLocaleString()} ₽</p>
                       </div>
                     </div>
@@ -658,7 +698,7 @@ export default function Dashboard({
       </AnimatePresence>
 
       {/* Accounts Section */}
-      <section>
+      <section className="mb-2">
         <div className="flex items-center justify-between mb-1">
           <h3 className="font-bold text-lg">Счета</h3>
           <button 
@@ -668,8 +708,8 @@ export default function Dashboard({
             Все
           </button>
         </div>
-        <div className="flex gap-1 overflow-x-auto pb-0 -mx-1.5 px-2 no-scrollbar snap-x snap-mandatory">
-          {dashboardAccounts.map(account => {
+        <div className="flex gap-1 overflow-x-auto pb-0 mx-0 px-2 no-scrollbar snap-x snap-mandatory">
+          {dashboardAccounts.map((account, index) => {
             const isNegative = account.balance < 0;
             const Icon = account.type === 'card' ? CreditCard : account.type === 'bank' ? Landmark : account.type === 'cash' ? CoinStack : Wallet;
             const hasColor = account.color && account.color !== '#000000';
@@ -681,7 +721,8 @@ export default function Dashboard({
                   if (onOpenTransactionHistory) onOpenTransactionHistory(account.id);
                 }}
                 className={cn(
-                  "min-w-[85px] flex-shrink-0 bg-white p-1 rounded-2xl border transition-all duration-300 snap-start relative cursor-pointer",
+                  "min-w-[85px] flex-shrink-0 bg-white p-1 rounded-xl border transition-all duration-300 snap-start relative cursor-pointer",
+                  index === 0 && "px-[5px]",
                   isNegative 
                     ? "shadow-lg shadow-rose-100/60 border-rose-50" 
                     : "shadow-lg shadow-theme-primary-light border-emerald-50"
@@ -703,7 +744,7 @@ export default function Dashboard({
                   />
                 </div>
                 <p className="text-neutral-400 text-[10px] font-bold uppercase tracking-tight mb-0.5 truncate">{account.name}</p>
-                <p className={cn("font-bold text-sm truncate", isNegative ? "text-rose-600" : "text-neutral-900")}>
+                <p className={cn("font-bold text-sm text-right truncate", isNegative ? "text-rose-600" : "text-neutral-900")}>
                   {account.balance.toLocaleString()}
                 </p>
               </div>
@@ -725,7 +766,7 @@ export default function Dashboard({
       )}
 
       {/* Recent Transactions */}
-      <section>
+      <section className="mb-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-lg">Последние операции</h3>
           <button 

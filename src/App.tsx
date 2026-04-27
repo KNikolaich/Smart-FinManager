@@ -312,7 +312,7 @@ export default function App() {
   return (
     <div className="h-[100dvh] bg-neutral-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="px-6 py-4 flex items-center justify-between bg-white border-b border-neutral-100 shrink-0 z-40">
+      <header className="px-6 h-[70px] flex items-center justify-between bg-white border-b border-neutral-100 shrink-0 z-40">
         <div 
           className="flex items-center gap-3 cursor-pointer group"
           onClick={() => setShowTotalBalance(!showTotalBalance)}
@@ -322,8 +322,8 @@ export default function App() {
           </div>
           <div className="flex items-center gap-2">
             <div>
-              <h2 className="font-bold text-sm leading-tight group-hover:text-theme-primary-dark transition-colors">Finance</h2>
-              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">Manager</p>
+              <h2 className="font-bold text-sm leading-tight group-hover:text-theme-primary-dark transition-colors ml-5">Finance</h2>
+              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest ml-[15px]">Manager</p>
             </div>
             <button 
               onClick={(e) => {
@@ -331,14 +331,14 @@ export default function App() {
                 setActiveTab('ai');
               }}
               className={cn(
-                "ml-1 p-1 rounded-lg transition-all active:scale-90",
+                "ml-10 pl-0 mb-[-5px] flex items-center justify-center rounded-xl transition-all active:scale-90 w-[80px] h-[48px] border shadow-md",
                 activeTab === 'ai' 
-                  ? "text-theme-primary bg-theme-primary-light shadow-sm" 
-                  : "text-neutral-300 hover:text-neutral-400"
+                  ? "text-theme-primary bg-theme-primary-light border-theme-primary/30 shadow-theme-primary-light/50" 
+                  : "text-neutral-400 hover:text-neutral-500 bg-white border-neutral-100"
               )}
               title="AI Assistant"
             >
-              <RobotIcon className="w-6 h-6" />
+              <RobotIcon className="w-[42px] h-[46px]" />
             </button>
           </div>
         </div>
