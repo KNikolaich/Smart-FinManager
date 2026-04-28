@@ -533,7 +533,7 @@ export default function Dashboard({
   const recentTransactions = useMemo(() => {
     return [...transactions]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 8);
+      .slice(0, 12);
   }, [transactions]);
 
   const displayedGoals = useMemo(() => {
@@ -636,12 +636,12 @@ export default function Dashboard({
                 {/* Left Side: Balance and Stats */}
                 <div>
                   <div className="mb-4 grid grid-cols-2 gap-1 px-2">
-                    <div className="pt-[36px] pb-[16px] pr-[16px] text-center">
+                    <div className="pt-0 pb-0 pr-0 text-center">
                       <p className="text-theme-primary-light text-[10px] sm:text-xs font-bold uppercase tracking-wider">Общий баланс</p>
                       <h2 className="text-lg sm:text-xl font-bold">{totalBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} ₽</h2>
                     </div>
-                    <div className="text-center border-l border-white/10 pt-[10px] pb-[4px] pl-[16px]">
-                      <p className="text-theme-primary-light text-[10px] sm:text-xs font-bold uppercase tracking-wider">За месяц</p>
+                    <div className="text-center border-l border-white/10 pt-0 pb-0 pl-0">
+                      <p className="text-theme-primary-light text-[10px] sm:text-xs font-bold uppercase tracking-wider">За прошедший месяц</p>
                       <h2 className={cn(
                         "text-lg sm:text-xl font-bold",
                         monthlyRollingBalance >= 0 ? "text-emerald-300" : "text-rose-300"
@@ -651,23 +651,23 @@ export default function Dashboard({
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4 pb-[25px]">
-                    <div className="bg-white/10 rounded-[12px] p-1 flex items-center gap-3">
+                  <div className="grid grid-cols-2 gap-4 pb-0">
+                    <div className="mt-3 pt-2 pl-1 bg-white/10 rounded-[12px] p-1 flex items-center gap-3">
                       <div className="bg-white/20 pt-[6px] pb-[6px] px-2 rounded-[12px]">
-                        <TrendingUp className="w-4 h-4" />                        
+                        <TrendingUp className="mr-0 pr-0 w-4 h-4" />                        
                       </div>
-                      <div className="leading-[12px]">
-                        <p className="text-xs text-theme-primary-light pt-[2px] pb-[2px] px-[6px] rounded-0">Доход</p>                      
+                      <div className="leading-[12px] pb-0">
+                        <p className="text-xs pt-0 pb-[6px] px-[6px] rounded-0" style={{ color: '#b9feac' }}>Доход</p>                      
                         <p className="font-semibold pt-[2px] pb-[2px] px-[6px]">{monthlyStats.income.toLocaleString()} ₽</p>
                       </div>
                     </div>
-                    <div className="bg-white/10 rounded-2xl p-1 flex items-center gap-3">
-                      <div className="bg-white/20 p-2 rounded-xl">
-                        <TrendingDown className="w-4 h-4" />
+                    <div className="mt-3 pt-2 pb-1 bg-white/10 rounded-[12px] p-1 flex items-center gap-3">
+                      <div className="bg-white/20 pt-[6px] pb-[6px] px-2 rounded-[12px]">
+                        <TrendingDown className="mr-0 pr-0 w-4 h-4" />
                       </div>
                       <div>
-                        <p className="text-xs text-theme-primary-light">Расход</p>
-                        <p className="font-semibold">{monthlyStats.expense.toLocaleString()} ₽</p>
+                        <p className="text-xs pt-[2px] pb-[2px]" style={{ color: '#ffa1ad' }}>Расход</p>
+                        <p className="font-semibold pt-0 text-neutral-100">{monthlyStats.expense.toLocaleString()} ₽</p>
                       </div>
                     </div>
                   </div>
