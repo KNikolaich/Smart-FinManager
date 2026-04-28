@@ -636,11 +636,11 @@ export default function Dashboard({
                 {/* Left Side: Balance and Stats */}
                 <div>
                   <div className="mb-4 grid grid-cols-2 gap-1 px-2">
-                    <div className="pt-2 text-center">
+                    <div className="pt-[36px] pb-[16px] pr-[16px] text-center">
                       <p className="text-theme-primary-light text-[10px] sm:text-xs font-bold uppercase tracking-wider">Общий баланс</p>
                       <h2 className="text-lg sm:text-xl font-bold">{totalBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} ₽</h2>
                     </div>
-                    <div className="text-center border-l border-white/10 pt-2 pl-2">
+                    <div className="text-center border-l border-white/10 pt-[10px] pb-[4px] pl-[16px]">
                       <p className="text-theme-primary-light text-[10px] sm:text-xs font-bold uppercase tracking-wider">За месяц</p>
                       <h2 className={cn(
                         "text-lg sm:text-xl font-bold",
@@ -651,14 +651,14 @@ export default function Dashboard({
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white/10 rounded-2xl p-1 flex items-center gap-3">
-                      <div className="bg-white/20 p-2 rounded-xl">
+                  <div className="grid grid-cols-2 gap-4 pb-[25px]">
+                    <div className="bg-white/10 rounded-[12px] p-1 flex items-center gap-3">
+                      <div className="bg-white/20 pt-[6px] pb-[6px] px-2 rounded-[12px]">
                         <TrendingUp className="w-4 h-4" />                        
                       </div>
-                      <div>
-                        <p className="text-xs text-theme-primary-light">Доход</p>                      
-                        <p className="font-semibold">{monthlyStats.income.toLocaleString()} ₽</p>
+                      <div className="leading-[12px]">
+                        <p className="text-xs text-theme-primary-light pt-[2px] pb-[2px] px-[6px] rounded-0">Доход</p>                      
+                        <p className="font-semibold pt-[2px] pb-[2px] px-[6px]">{monthlyStats.income.toLocaleString()} ₽</p>
                       </div>
                     </div>
                     <div className="bg-white/10 rounded-2xl p-1 flex items-center gap-3">

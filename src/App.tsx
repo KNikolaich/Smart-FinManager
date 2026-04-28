@@ -312,12 +312,12 @@ export default function App() {
   return (
     <div className="h-[100dvh] bg-neutral-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="px-6 h-[70px] flex items-center justify-between bg-white border-b border-neutral-100 shrink-0 z-40">
+      <header className="px-6 h-16 flex items-center justify-between bg-white border-b border-neutral-100 shrink-0 z-40">
         <div 
           className="flex items-center gap-3 cursor-pointer group"
           onClick={() => setShowTotalBalance(!showTotalBalance)}
         >
-          <div className="w-10 h-10 bg-theme-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-theme-primary-light group-active:scale-95 transition-all">
+          <div className="w-11 h-11 mb-[7px] bg-theme-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-theme-primary-light group-active:scale-95 transition-all">
             <Wallet size={20} />
           </div>
           <div className="flex items-center gap-2">
@@ -331,7 +331,7 @@ export default function App() {
                 setActiveTab('ai');
               }}
               className={cn(
-                "ml-10 pl-0 mb-[-5px] flex items-center justify-center rounded-xl transition-all active:scale-90 w-[80px] h-[48px] border shadow-md",
+                "ml-10 mb-2 flex items-center justify-center rounded-xl transition-all active:scale-90 w-12 h-12 shadow-md",
                 activeTab === 'ai' 
                   ? "text-theme-primary bg-theme-primary-light border-theme-primary/30 shadow-theme-primary-light/50" 
                   : "text-neutral-400 hover:text-neutral-500 bg-white border-neutral-100"
@@ -365,20 +365,20 @@ export default function App() {
       </main>
 
       {/* Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-100 px-6 pb-safe h-16 shrink-0 z-40 flex items-center justify-center shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.05)] rounded-t-[20px] md:relative md:h-auto md:rounded-none landscape:px-4 landscape:rounded-none">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-100 px-6 pb-safe h-[50px] shrink-0 z-40 flex items-center justify-center shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.05)] rounded-t-[20px] md:relative md:h-auto md:rounded-none landscape:px-4 landscape:rounded-none">
         <div className="max-w-7xl mx-auto w-full flex items-center justify-around relative h-11">
            <button 
             onClick={() => setActiveTab('dashboard')}
             className={cn("flex flex-col items-center justify-center h-full gap-0.5 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'dashboard' ? "text-theme-primary-dark landscape:bg-theme-primary-light" : "text-neutral-400")}
           >
-            <LayoutDashboard size={20} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
+            <LayoutDashboard size={24} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
             <span className="hidden landscape:block text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">Главная</span>
           </button>
           <button 
             onClick={() => setActiveTab('plan')}
             className={cn("flex flex-col items-center justify-center h-full gap-0.5 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'plan' ? "text-theme-primary-dark landscape:bg-theme-primary-light" : "text-neutral-400")}
           >
-            <CalendarRange size={20} strokeWidth={activeTab === 'plan' ? 2.5 : 2} />
+            <CalendarRange size={24} strokeWidth={activeTab === 'plan' ? 2.5 : 2} />
             <span className="hidden landscape:block text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">План</span>
           </button>
           
@@ -414,14 +414,14 @@ export default function App() {
             onClick={() => setActiveTab('analytics')}
             className={cn("flex flex-col items-center justify-center h-full gap-0.5 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'analytics' ? "text-theme-primary-dark landscape:bg-theme-primary-light" : "text-neutral-400")}
           >
-            <BarChart2 size={20} strokeWidth={activeTab === 'analytics' ? 2.5 : 2} />
+            <BarChart2 size={24} strokeWidth={activeTab === 'analytics' ? 2.5 : 2} />
             <span className="hidden landscape:block text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">Анализ</span>
           </button>
           <button 
             onClick={() => setActiveTab('settings')}
             className={cn("flex flex-col items-center justify-center h-full gap-0.5 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'settings' ? "text-theme-primary-dark landscape:bg-theme-primary-light" : "text-neutral-400")}
           >
-            <SettingsIcon size={20} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
+            <SettingsIcon size={24} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
             <span className="hidden landscape:block text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">Настройки</span>
           </button>
         </div>
