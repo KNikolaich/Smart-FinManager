@@ -58,7 +58,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
           />
         )}
         {showCurrencyTable && (
-          <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-6 sm:p-4 bg-black/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-6 sm:p-2 bg-black/40 backdrop-blur-sm">
             <div className="absolute inset-0" onClick={() => setShowCurrencyTable(false)} />
             <div className="relative w-full max-w-lg bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 max-h-[90vh] flex flex-col">
               <div className="p-4 border-b border-neutral-100 flex items-center justify-between shrink-0 relative z-10">
@@ -79,7 +79,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
         )}
         
         {showLogModal && (
-          <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-6 sm:p-4 bg-black/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-6 sm:p-2 bg-black/40 backdrop-blur-sm">
             <div className="absolute inset-0" onClick={() => setShowLogModal(false)} />
             <div className="relative w-full max-w-2xl bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[90vh]">
               <div className="p-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50 shrink-0">
@@ -132,7 +132,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
           <div className="bg-white rounded-3xl border border-neutral-100 overflow-hidden shadow-sm">
             <button 
               onClick={() => setShowCategoryManager(true)}
-              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
+              className="w-full px-6 py-2 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
             >
               <div className="w-10 h-10 bg-theme-primary-light rounded-xl flex items-center justify-center">
                 <Tag className="w-5 h-5 text-theme-primary" />
@@ -145,7 +145,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
 
             <button 
               onClick={() => setShowAccountManager(true)}
-              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
+              className="w-full px-6 py-2 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
             >
               <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
                 <Database className="w-5 h-5 text-emerald-600" />
@@ -158,7 +158,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
 
             <button 
               onClick={() => setShowBalanceManager(true)}
-              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
+              className="w-full px-6 py-2 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
             >
               <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
                 <ArrowUp className="w-5 h-5 text-amber-600" />
@@ -171,7 +171,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
 
             <button 
               onClick={() => setShowCurrencyTable(true)}
-              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
+              className="w-full px-6 py-2 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
             >
               <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
                 <ArrowRightLeft className="w-5 h-5 text-blue-600" />
@@ -184,7 +184,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
 
             <button 
               onClick={onShowLogs}
-              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors"
+              className="w-full px-6 py-2 flex items-center gap-4 hover:bg-neutral-50 transition-colors"
             >
               <div className="w-10 h-10 bg-neutral-900 rounded-xl flex items-center justify-center">
                 <Database className="w-5 h-5 text-white" />
@@ -201,7 +201,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
         <section className="space-y-3">
           <h4 className="text-xs font-bold text-theme-primary uppercase tracking-widest px-4">Приложение</h4>
           <div className="bg-white rounded-3xl border border-neutral-100 overflow-hidden shadow-sm">
-            <div className="px-6 py-4 border-b border-neutral-50">
+            <div className="px-6 py-2 border-b border-neutral-50">
               <div className="flex items-center gap-4 mb-3">
                 <div className="w-10 h-10 bg-pink-100 rounded-xl flex items-center justify-center">
                   <Palette className="w-5 h-5 text-pink-600" />
@@ -242,7 +242,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
               </div>
             </div>
 
-            <div className="w-full px-6 py-4 flex items-center gap-4 border-b border-neutral-50">
+            <div className="w-full px-6 py-2 flex items-center gap-4 border-b border-neutral-50">
               <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
                 <Info className="w-5 h-5 text-purple-600" />
               </div>
@@ -256,7 +256,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
               href="https://github.com/KNikolaich/Smart-FinManager" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors"
+              className="w-full px-6 py-2 flex items-center gap-4 hover:bg-neutral-50 transition-colors"
             >
               <div className="w-10 h-10 bg-neutral-100 rounded-xl flex items-center justify-center">
                 <Github className="w-5 h-5 text-neutral-600" />

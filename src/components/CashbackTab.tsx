@@ -236,7 +236,7 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
             className="p-3 text-emerald-500 hover:bg-emerald-50 transition-colors border-b border-neutral-200 flex items-center justify-center"
             title="Добавить месяц"
           >
-            <Plus size={16} />
+            <Plus size={18} />
           </button>
         </div>
         
@@ -267,7 +267,7 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
         <div className="px-4 py-2 bg-white border-b border-neutral-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-bold text-neutral-900 capitalize">{activeMonth?.label}</h2>
-            <span className="text-[10px] font-mono text-neutral-400">{activeMonth?.id}</span>
+            <span className="text-[12px] font-mono text-neutral-400">{activeMonth?.id}</span>
           </div>
           {isEditorMode && activeMonth && activeMonth.entries.length === 0 && (
             <button 

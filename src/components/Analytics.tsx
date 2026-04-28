@@ -159,7 +159,7 @@ export default function Analytics({ transactions, categories, accounts, currenci
             <button
               onClick={() => setActiveType('expense')}
               className={cn(
-                "flex-1 px-1 sm:px-2 py-0.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 sm:gap-2",
+                "flex-1 px-1 sm:px-2 py-0.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 sm:gap-2 p-[10px]",
                 activeType === 'expense' ? "bg-white text-rose-600 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
               )}
             >
@@ -169,7 +169,7 @@ export default function Analytics({ transactions, categories, accounts, currenci
             <button
               onClick={() => setActiveType('income')}
               className={cn(
-                "flex-1 px-1 sm:px-2 py-0.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 sm:gap-2",
+                "flex-1 px-1 sm:px-2 py-0.5 rounded-xl font-bold transition-all flex items-center justify-center gap-1 sm:gap-2 pr-[14px] text-[13px]",
                 activeType === 'income' ? "bg-white text-emerald-600 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
               )}
             >
@@ -185,7 +185,7 @@ export default function Analytics({ transactions, categories, accounts, currenci
               <button
                 onClick={() => setFilterType('month')}
                 className={cn(
-                  "flex-1 px-1 sm:px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all",
+                  "flex-1 px-1 sm:px-2 py-1 rounded-lg font-bold uppercase tracking-wider transition-all pr-[14px] text-[12px]",
                   filterType === 'month' ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
                 )}
               >
@@ -194,7 +194,7 @@ export default function Analytics({ transactions, categories, accounts, currenci
               <button
                 onClick={() => setFilterType('period')}
                 className={cn(
-                  "flex-1 px-1 sm:px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all",
+                  "flex-1 px-1 sm:px-2 py-1 rounded-lg font-bold uppercase tracking-wider transition-all pr-[14px] text-[12px]",
                   filterType === 'period' ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
                 )}
               >

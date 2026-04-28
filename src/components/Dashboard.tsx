@@ -641,9 +641,9 @@ export default function Dashboard({
                       <h2 className="text-lg sm:text-xl font-bold">{totalBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} ₽</h2>
                     </div>
                     <div className="text-center border-l border-white/10 pt-0 pb-0 pl-0">
-                      <p className="text-theme-primary-light text-[10px] sm:text-xs font-bold uppercase tracking-wider">За прошедший месяц</p>
+                      <p className="text-theme-primary-light text-[10px] sm:text-xs font-bold uppercase tracking-wider pb-[2px]">За прошедший месяц</p>
                       <h2 className={cn(
-                        "text-lg sm:text-xl font-bold",
+                        "text-lg sm:text-xl font-bold pb-[5px]",
                         monthlyRollingBalance >= 0 ? "text-emerald-300" : "text-rose-300"
                       )}>
                         {monthlyRollingBalance > 0 ? "+" : ""}{monthlyRollingBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} ₽
@@ -652,8 +652,8 @@ export default function Dashboard({
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4 pb-0">
-                    <div className="mt-3 pt-2 pl-1 bg-white/10 rounded-[12px] p-1 flex items-center gap-3">
-                      <div className="bg-white/20 pt-[6px] pb-[6px] px-2 rounded-[12px]">
+                    <div className="mt-3 pt-[10px] pb-[10px] pl-[10px] bg-white/10 rounded-[12px] flex items-center gap-3">
+                      <div className="bg-white/20 p-[6px] rounded-[12px]">
                         <TrendingUp className="mr-0 pr-0 w-4 h-4" />                        
                       </div>
                       <div className="leading-[12px] pb-0">
@@ -661,8 +661,8 @@ export default function Dashboard({
                         <p className="font-semibold pt-[2px] pb-[2px] px-[6px]">{monthlyStats.income.toLocaleString()} ₽</p>
                       </div>
                     </div>
-                    <div className="mt-3 pt-2 pb-1 bg-white/10 rounded-[12px] p-1 flex items-center gap-3">
-                      <div className="bg-white/20 pt-[6px] pb-[6px] px-2 rounded-[12px]">
+                    <div className="mt-[12px] p-[10px] bg-white/10 rounded-[12px] flex items-center gap-3">
+                      <div className="bg-white/20 p-[6px] rounded-[12px]">
                         <TrendingDown className="mr-0 pr-0 w-4 h-4" />
                       </div>
                       <div>
