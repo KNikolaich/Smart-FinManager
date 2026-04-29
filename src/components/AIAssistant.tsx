@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import { Send, User, Sparkles, Loader2, PlusCircle, Target, PieChart, Calendar, Eraser } from 'lucide-react';
 import { RobotIcon } from './icons/RobotIcon';
@@ -18,13 +19,14 @@ interface AIAssistantProps {
   onRedirectToCreateGoal?: (data: { name?: string; targetAmount?: number; deadline?: string }) => void;
   onRefresh?: () => void;
   onResult?: (result: any) => void;
+  showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export interface AIAssistantHandle {
   handleVoiceInput: (onStart?: () => void, onEnd?: () => void) => void;
 }
 
-const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssistant({ accounts, categories, transactions, goals, plans, userId, onRedirectToCreateGoal, onRefresh, onResult }, ref) {
+const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssistant({ accounts, categories, transactions, goals, plans, userId, onRedirectToCreateGoal, onRefresh, onResult, showToast }, ref) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -342,8 +344,10 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
     try {
       await api.delete('/chat-history');
       fetchHistory();
+      if (showToast) showToast('Чат очищен', 'success');
     } catch (error) {
       console.error('Error clearing chat history:', error);
+      if (showToast) showToast('Ошибка при очистке чата', 'error');
     }
   };
 
@@ -360,8 +364,15 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
     <div className="flex flex-col h-full bg-neutral-50">
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-6 space-y-4 sm:space-y-6 no-scrollbar">
-        {messages.map((m) => (
-          <div key={m.id} className={cn("flex gap-2 sm:gap-3", m.role === 'user' ? "flex-row-reverse" : "flex-row")}>
+        <AnimatePresence initial={false}>
+          {messages.map((m) => (
+            <motion.div 
+              key={m.id}
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.2 }}
+              className={cn("flex gap-2 sm:gap-3", m.role === 'user' ? "flex-row-reverse" : "flex-row")}
+            >
             <div className={cn(
               "w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0",
               m.role === 'assistant' ? "bg-theme-primary text-white" : "bg-neutral-200 text-neutral-600"
@@ -397,8 +408,9 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
         ))}
+        </AnimatePresence>
         {loading && (
           <div className="flex gap-3">
             <div className="w-8 h-8 rounded-full bg-theme-primary text-white flex items-center justify-center">

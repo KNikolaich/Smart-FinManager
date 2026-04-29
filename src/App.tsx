@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useVoiceInput } from './hooks/useVoiceInput';
 import { 
   LayoutDashboard, 
@@ -28,8 +29,20 @@ import AILogs from './components/AILogs';
 import Auth from './components/Auth';
 import { cn } from './lib/utils';
 import { RobotIcon } from './components/icons/RobotIcon';
+import { ToastContainer, ToastType } from './components/ui/Toast';
 
 export default function App() {
+  const [toasts, setToasts] = useState<{ id: string; message: string; type: ToastType }[]>([]);
+  
+  const addToast = useCallback((message: string, type: ToastType = 'info') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts(prev => [...prev, { id, message, type }]);
+  }, []);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'plan' | 'analytics' | 'settings' | 'ai'>('dashboard');
@@ -121,9 +134,11 @@ export default function App() {
 
           optimisticAddTransaction(newTransaction);
           await api.post('/transactions', transactionData);
+          addToast('Операция добавлена', 'success');
           refreshData();
         } catch (err) {
           console.error('Error saving transaction:', err);
+          addToast('Ошибка при сохранении', 'error');
         }
       } else {
         // Не хватает параметров, открываем редактор
@@ -300,6 +315,7 @@ export default function App() {
             }}
             onRefresh={refreshData}
             onResult={handleAIResult}
+            showToast={addToast}
           />
         );
       default:
@@ -310,20 +326,32 @@ export default function App() {
   return (
     <div className="h-[100dvh] bg-neutral-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="px-6 h-16 flex items-center justify-between bg-white border-b border-neutral-100 shrink-0 z-40">
+      <header className="px-6 h-16 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-white/40 shrink-0 z-40 sticky top-0">
         <div 
           className="flex items-center gap-3 cursor-pointer group"
-          onClick={() => setShowTotalBalance(!showTotalBalance)}
+          onClick={() => {
+            if (activeTab !== 'dashboard') {
+              setActiveTab('dashboard');
+            } else {
+              setShowTotalBalance(!showTotalBalance);
+            }
+          }}
         >
-          <div className="w-11 h-11 mb-[7px] bg-theme-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-theme-primary-light group-active:scale-95 transition-all">
+          <motion.div 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="w-11 h-11 mb-[7px] bg-theme-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-theme-primary-light group-active:scale-95 transition-all"
+          >
             <Wallet size={20} />
-          </div>
+          </motion.div>
           <div className="flex items-center gap-2">
             <div>
               <h2 className="font-bold text-sm leading-tight group-hover:text-theme-primary-dark transition-colors ml-5">Finance</h2>
               <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest ml-[15px]">Manager</p>
             </div>
-            <button 
+            <motion.button 
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
               onClick={(e) => {
                 e.stopPropagation();
                 setActiveTab('ai');
@@ -337,52 +365,73 @@ export default function App() {
               title="AI Assistant"
             >
               <RobotIcon className="w-8 h-8" />
-            </button>
+            </motion.button>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button 
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => setShowUserPage(true)}
             className={cn(
-              "w-10 h-10 rounded-xl overflow-hidden border-2 border-white shadow-sm flex items-center justify-center transition-all active:scale-95",
+              "w-10 h-10 rounded-xl overflow-hidden border border-white/50 shadow-sm flex items-center justify-center transition-all",
               showUserPage ? "bg-theme-primary text-white shadow-lg shadow-theme-primary-light" : "bg-theme-primary-light text-theme-primary-dark"
             )}
           >
             <UserIcon className="w-6 h-6" />
-          </button>
+          </motion.button>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
-        <div className="absolute inset-0 overflow-y-auto no-scrollbar pb-16 md:pb-0">
+        <div className="absolute inset-0 overflow-y-auto no-scrollbar pb-24 md:pb-0 px-[2px] pt-0">
           <div className="max-w-7xl mx-auto h-full landscape:max-w-none">
-            {renderContent()}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.02 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="h-full"
+              >
+                {renderContent()}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </main>
 
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+
       {/* Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-100 px-6 pb-safe h-[50px] shrink-0 z-40 flex items-center justify-center shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.05)] rounded-t-[20px] md:relative md:h-auto md:rounded-none landscape:px-4 landscape:rounded-none">
-        <div className="max-w-7xl mx-auto w-full flex items-center justify-around relative h-11">
+      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 pb-0 h-16 shrink-0 z-40 flex items-center justify-center md:relative md:bottom-0 md:translate-x-0 md:max-w-none md:bg-white md:border-t md:border-neutral-100 md:rounded-none">
+        <div className="w-full bg-white/90 backdrop-blur-xl border border-white/40 shadow-elegant rounded-3xl flex items-center justify-around h-full px-2">
            <button 
             onClick={() => setActiveTab('dashboard')}
-            className={cn("flex flex-col items-center justify-center h-full gap-0.5 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'dashboard' ? "text-theme-primary-dark landscape:bg-theme-primary-light" : "text-neutral-400")}
+            className={cn(
+              "flex flex-col items-center justify-center w-12 h-12 rounded-[18px] transition-all active:scale-95", 
+              activeTab === 'dashboard' ? "text-theme-primary bg-theme-primary-light/50" : "text-neutral-400 hover:text-neutral-500"
+            )}
           >
-            <LayoutDashboard size={24} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
-            <span className="hidden landscape:block text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">Главная</span>
+            <LayoutDashboard size={22} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
           </button>
           <button 
             onClick={() => setActiveTab('plan')}
-            className={cn("flex flex-col items-center justify-center h-full gap-0.5 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'plan' ? "text-theme-primary-dark landscape:bg-theme-primary-light" : "text-neutral-400")}
+            className={cn(
+              "flex flex-col items-center justify-center w-12 h-12 rounded-[18px] transition-all active:scale-95", 
+              activeTab === 'plan' ? "text-theme-primary bg-theme-primary-light/50" : "text-neutral-400 hover:text-neutral-500"
+            )}
           >
-            <CalendarRange size={24} strokeWidth={activeTab === 'plan' ? 2.5 : 2} />
-            <span className="hidden landscape:block text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">План</span>
+            <CalendarRange size={22} strokeWidth={activeTab === 'plan' ? 2.5 : 2} />
           </button>
           
           {/* Add Button */}
-          <div className="relative w-[70px] h-full">
-            <button 
+          <div className="relative w-12 h-12">
+            <motion.button 
+              whileHover={{ scale: 1.1, rotate: 90 }}
+              whileTap={{ scale: 0.9 }}
               onMouseDown={handleMouseDown}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
@@ -391,36 +440,40 @@ export default function App() {
               onClick={handleButtonClick}
               disabled={isProcessingAI}
               className={cn(
-                "absolute bottom-[5%] left-1/2 -translate-x-1/2 h-[137.5%] aspect-square text-white rounded-full flex items-center justify-center shadow-xl transition-all border-4 border-white z-50",
+                "w-12 h-12 text-white rounded-[18px] flex items-center justify-center shadow-lg transition-all z-50",
                 isRecording ? "bg-red-500 shadow-red-200 animate-pulse" : 
                 isProcessingAI ? "bg-amber-500 opacity-80" : "bg-theme-primary shadow-theme-primary-light"
               )}
             >
               {isProcessingAI ? (
-                <Loader2 size={30} className="animate-spin" />
+                <Loader2 size={24} className="animate-spin" />
               ) : addMode === 'text' ? (
-                <Plus size={30} />
+                <Plus size={24} />
               ) : isRecording ? (
-                <AudioLines size={30} className="animate-pulse" />
+                <AudioLines size={24} className="animate-pulse" />
               ) : (
-                <Mic size={30} />
+                <Mic size={24} />
               )}
-            </button>
+            </motion.button>
           </div>
 
           <button 
             onClick={() => setActiveTab('analytics')}
-            className={cn("flex flex-col items-center justify-center h-full gap-0.5 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'analytics' ? "text-theme-primary-dark landscape:bg-theme-primary-light" : "text-neutral-400")}
+            className={cn(
+              "flex flex-col items-center justify-center w-12 h-12 rounded-[18px] transition-all active:scale-95", 
+              activeTab === 'analytics' ? "text-theme-primary bg-theme-primary-light/50" : "text-neutral-400 hover:text-neutral-500"
+            )}
           >
-            <BarChart2 size={24} strokeWidth={activeTab === 'analytics' ? 2.5 : 2} />
-            <span className="hidden landscape:block text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">Анализ</span>
+            <BarChart2 size={22} strokeWidth={activeTab === 'analytics' ? 2.5 : 2} />
           </button>
           <button 
             onClick={() => setActiveTab('settings')}
-            className={cn("flex flex-col items-center justify-center h-full gap-0.5 transition-all landscape:flex-row landscape:px-3 landscape:py-1 landscape:rounded-lg", activeTab === 'settings' ? "text-theme-primary-dark landscape:bg-theme-primary-light" : "text-neutral-400")}
+            className={cn(
+              "flex flex-col items-center justify-center w-12 h-12 rounded-[18px] transition-all active:scale-95", 
+              activeTab === 'settings' ? "text-theme-primary bg-theme-primary-light/50" : "text-neutral-400 hover:text-neutral-500"
+            )}
           >
-            <SettingsIcon size={24} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
-            <span className="hidden landscape:block text-[10px] font-bold uppercase tracking-tighter landscape:text-[11px]">Настройки</span>
+            <SettingsIcon size={22} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
           </button>
         </div>
       </nav>

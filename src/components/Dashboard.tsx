@@ -695,7 +695,12 @@ export default function Dashboard({
       </AnimatePresence>
 
       {/* Accounts Section */}
-      <section className="p-[1px] mb-6">
+      <motion.section 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="p-[1px] mb-6"
+      >
         <div className="flex items-center justify-between mb-1">
           <h3 className="font-bold text-lg">Счета</h3>
           <button 
@@ -705,53 +710,57 @@ export default function Dashboard({
             Все
           </button>
         </div>
-        <div className="flex gap-1 overflow-x-auto pb-0 mx-0 px-2 no-scrollbar snap-x snap-mandatory">
-          {dashboardAccounts.map((account, index) => {
-            const isNegative = account.balance < 0;
-            const Icon = account.type === 'card' ? CreditCard : account.type === 'bank' ? Landmark : account.type === 'cash' ? CoinStack : Wallet;
-            const hasColor = account.color && account.color !== '#000000';
-            
-            return (
-              <div 
-                key={account.id} 
-                onClick={() => {
-                  if (onOpenTransactionHistory) onOpenTransactionHistory(account.id);
-                }}
-                className={cn(
-                  "min-w-[85px] flex-shrink-0 bg-white p-1 rounded-xl border transition-all duration-300 snap-start relative cursor-pointer",
-                  index === 0 && "px-[5px]",
-                  isNegative 
-                    ? "shadow-lg shadow-rose-100/60 border-rose-50" 
-                    : "shadow-lg shadow-theme-primary-light border-emerald-50"
-                )}
-              >
-                <div className="absolute top-3 right-3 text-xs font-bold text-neutral-400">
-                  {currencies.find(c => c.iso === account.currency)?.symbol || account.currency}
-                </div>
-                <div 
+        <div className="flex gap-3 overflow-x-auto pb-4 mx-0 px-2 no-scrollbar snap-x snap-mandatory">
+          <AnimatePresence>
+            {dashboardAccounts.map((account, index) => {
+              const isNegative = account.balance < 0;
+              const Icon = account.type === 'card' ? CreditCard : account.type === 'bank' ? Landmark : account.type === 'cash' ? CoinStack : Wallet;
+              const hasColor = account.color && account.color !== '#000000';
+              
+              return (
+                <motion.div 
+                  key={account.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.05 }}
+                  onClick={() => {
+                    if (onOpenTransactionHistory) onOpenTransactionHistory(account.id);
+                  }}
                   className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center mb-2",
-                    !hasColor && (isNegative ? "bg-rose-50" : "bg-theme-primary-light")
+                    "min-w-[100px] flex-shrink-0 bg-white p-3 rounded-2xl border transition-all duration-300 snap-start relative cursor-pointer group",
+                    isNegative 
+                      ? "shadow-soft border-rose-100 hover:shadow-rose-100/50 hover:bg-rose-50/30" 
+                      : "shadow-soft border-neutral-100 hover:shadow-theme-primary-light/50 hover:bg-theme-primary-light/10"
                   )}
-                  style={hasColor ? { backgroundColor: `${account.color}20` } : {}}
                 >
-                  <Icon 
-                    className={cn("w-4 h-4", !hasColor && (isNegative ? "text-rose-500" : "text-theme-primary"))} 
-                    style={hasColor ? { color: account.color } : {}}
-                  />
-                </div>
-                <p className="text-neutral-400 text-[10px] font-bold uppercase tracking-tight mb-0.5 truncate">{account.name}</p>
-                <p className={cn("font-bold text-sm text-right truncate", isNegative ? "text-rose-600" : "text-neutral-900")}>
-                  {account.balance.toLocaleString()}
-                </p>
-              </div>
-            );
-          })}
+                  <div className="absolute top-3 right-3 text-[10px] font-bold text-neutral-400 opacity-60">
+                    {currencies.find(c => c.iso === account.currency)?.symbol || account.currency}
+                  </div>
+                  <div 
+                    className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110",
+                      !hasColor && (isNegative ? "bg-rose-50" : "bg-theme-primary-light")
+                    )}
+                    style={hasColor ? { backgroundColor: `${account.color}20` } : {}}
+                  >
+                    <Icon 
+                      className={cn("w-5 h-5", !hasColor && (isNegative ? "text-rose-500" : "text-theme-primary"))} 
+                      style={hasColor ? { color: account.color } : {}}
+                    />
+                  </div>
+                  <p className="text-neutral-500 text-[10px] font-bold uppercase tracking-wide mb-1 truncate group-hover:text-neutral-700">{account.name}</p>
+                  <p className={cn("font-bold text-base truncate", isNegative ? "text-rose-600" : "text-neutral-900")}>
+                    {account.balance.toLocaleString()}
+                  </p>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
           {dashboardAccounts.length === 0 && (
             <p className="text-neutral-400 text-sm italic">Нет добавленных счетов</p>
           )}
         </div>
-      </section>
+      </motion.section>
 
       {showAccountManager && (
         <AccountManager 
@@ -774,10 +783,15 @@ export default function Dashboard({
             История
           </button>
         </div>
-        <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
-          {groupedTransactions.map(([dateKey, transactions]) => (
-            <div key={dateKey}>
-              <div className="px-4 py-2 bg-neutral-50 text-[10px] font-bold text-neutral-500 uppercase tracking-wider">
+        <div className="bg-white rounded-3xl border border-neutral-100 overflow-hidden shadow-soft">
+          {groupedTransactions.map(([dateKey, transactions], groupIndex) => (
+            <motion.div 
+              key={dateKey}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 + (groupIndex * 0.05) }}
+            >
+              <div className="px-4 py-2 bg-neutral-50/50 backdrop-blur-sm text-[10px] font-bold text-neutral-500 uppercase tracking-wider">
                 {dateKey}
               </div>
               <table className="w-full text-left border-collapse table-fixed">
@@ -831,7 +845,7 @@ export default function Dashboard({
                   })}
                 </tbody>
               </table>
-            </div>
+            </motion.div>
           ))}
           {recentTransactions.length === 0 && (
             <div className="text-center py-8">
