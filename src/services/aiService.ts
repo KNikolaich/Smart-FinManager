@@ -35,20 +35,19 @@ const callDeepSeek = async (systemInstruction: string, userPrompt: string, respo
 export const processUserMessage = async (
   userId: string,
   text: string, 
-  history: Message[],
   accounts: Account[], 
-  categories: Category[], 
-  transactions: Transaction[], 
-  goals: Goal[], 
-  plans: Plan[]
+  categories: Category[]
 ): Promise<AIResponse> => {
   const mainAccounts = accounts.filter(a => a.showOnDashboard && !a.isArchived);
   
-  const systemInstruction = `Ты — финансовый ассистент. Твоя цель — извлекать данные из сообщений пользователя для создания операций, целей или анализа бюджета.
+  const systemInstruction = `Ты — мудрый и дружелюбный финансовый ассистент, как понимающий старший товарищ. Твоя цель — помогать пользователю управлять деньгами легко и без стресса. Говори по-дружески, но конкретно.
+  
+  Твой тон: теплый, поддерживающий, уверенный. Ты не просто бот, ты — наставник, который уже все сделал за пользователя.
 
   REFERENCE DATA:
   Accounts: ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name })))}
   Categories: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name, type: c.type })))}
+  
   IMPORTANT: 
   - If the user mentions an account or category by name, you MUST find its corresponding "id" from the REFERENCE DATA above and use that "id" in the data object.
   - EVERY value you mention in your "message" (amount, account name, category name, goal name) MUST be present in the "data" object.
@@ -56,10 +55,11 @@ export const processUserMessage = async (
   - You MUST return the intent and data even if some parameters are missing, as long as you have identified the intent and at least ONE parameter.
   - Only set intent to "unknown" and ask for clarification if more than ONE required parameter is missing.
   - For transaction intent, required fields in "data" are: type, amount, accountId, accountName, categoryId.
-  - For goal intent, required fields in "data" are: name, targetAmount.
-  - For plan intent, required fields in "data" are: name, plannedAmount, accountId, accountName.
-  - For goal intent, the "message" should be a PROPOSAL to open the goal creation form (e.g., "Я могу открыть форму создания цели для 'Велосипед' на 60000 ₽. Подтвердите?"), NOT a confirmation that it's already done.
-  - For transaction or plan intents, the "message" should be a PROPOSAL (e.g., "Я готов записать расход... Подтвердите?"), NOT a confirmation that it's already done. DO NOT use words like "зафиксировано" or "успешно добавлено" in the initial message.
+  - **PHRASING**: Never ask for confirmation if you have all the data. Communicate that the action is DONE. 
+    - Use phrases like: "Записал твой расход...", "Добавил операцию в базу...", "Готово, отметил это в журнале...", "Сделано! Твои траты по категории... учтены."
+    - Be empathetic: "Вижу, зашел перекусить? Отметил твой обед в расходах по карте...", "Пополнил твой счет..., молодец, так держать!"
+  - For goal intent: "Я уже подготовил форму для твоей новой цели '...', давай заполним детали вместе."
+  - For plan intent: "Обновил твои планы, теперь мы точно знаем, куда идем."
   
   Intents:
   - transaction: adding income, expense, or transfer.
@@ -80,7 +80,7 @@ export const processUserMessage = async (
   Return a JSON object with:
   - intent: string (one of: transaction, goal, plan, advice, unknown)
   - data: object containing the extracted fields.
-  - message: string (a concise, polite, and helpful response in Russian confirming what you understood)
+  - message: string (a concise, friendly, and supportive response in Russian confirming the fact that the action was taken)
   `;
 
   const userPrompt = `User message: "${text}"\nCurrent date: ${new Date().toISOString()}\n\nREFERENCE DATA:\nAccounts: ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name })))} \nCategories: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name, type: c.type })))}`;
@@ -114,18 +114,18 @@ export const getFinancialAdvice = async (
   accounts: Account[],
   plans: Plan[]
 ) => {
-  const systemInstruction = "Ты — профессиональный финансовый консультант. Твои советы должны быть конкретными, вежливыми и краткими. Используй Markdown для форматирования.";
+  const systemInstruction = "Ты — мудрый финансовый наставник и добрый друг. Твои советы должны быть практичными, поддерживающими и вдохновляющими. Используй Markdown для форматирования. Обращайся к пользователю по-дружески.";
   
-  const userPrompt = `Проанализируй финансы пользователя и дай 3 кратких совета на русском языке.
-  Транзакции за последний месяц: ${JSON.stringify(transactions.slice(0, 30))}
+  const userPrompt = `Друг, посмотри на мои цифры и дай 3 коротких, но важных совета, как мне стать еще лучше в управлении деньгами. Вот мои данные:
+  Транзакции: ${JSON.stringify(transactions.slice(0, 30))}
   Цели: ${JSON.stringify(goals)}
   Счета: ${JSON.stringify(accounts)}
   Планы: ${JSON.stringify(plans)}
   
-  Обрати внимание на:
-  - Снижение баланса
-  - Отсутствие накоплений
-  - Несоответствие планов и целей`;
+  Подскажи мне, если:
+  - Баланс тает
+  - Мы забыли про накопления
+  - Планы расходятся с целями`;
 
   try {
     const advice = await callDeepSeek(systemInstruction, userPrompt);

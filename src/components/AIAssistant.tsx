@@ -6,6 +6,7 @@ import { processUserMessage, getFinancialAdvice } from '../services/aiService';
 import { api } from '../lib/api';
 import { Account, Category, Transaction, Goal, Plan, Message } from '../types';
 import ReactMarkdown from 'react-markdown';
+import { cn } from '../lib/utils';
 
 interface AIAssistantProps {
   accounts: Account[];
@@ -23,7 +24,7 @@ export interface AIAssistantHandle {
   handleVoiceInput: (onStart?: () => void, onEnd?: () => void) => void;
 }
 
-export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssistant({ accounts, categories, transactions, goals, plans, userId, onRedirectToCreateGoal, onRefresh, onResult }, ref) {
+const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssistant({ accounts, categories, transactions, goals, plans, userId, onRedirectToCreateGoal, onRefresh, onResult }, ref) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -68,7 +69,7 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
           {
             id: 'welcome',
             role: 'assistant',
-            content: 'Привет! Я твой финансовый ассистент. Могу помочь добавить операцию, создать цель или проанализировать бюджет. Просто напиши мне!'
+            content: 'Привет, друг! Я твой финансовый наставник. Расскажи, как прошел день? Могу записать твои расходы, помочь поставить цель или прикинуть план на месяц. Просто скажи — я всё сделаю!'
           }
         ]);
       } else {
@@ -108,7 +109,7 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
     await saveMessage(userMessage);
 
     try {
-      const result = await processUserMessage(userId, text, messages, accounts, categories, transactions, goals, plans);
+      const result = await processUserMessage(userId, text, accounts, categories);
       
       if (onResult) onResult(result);
       
@@ -458,6 +459,4 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
 }
 );
 
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
-}
+export default AIAssistant;

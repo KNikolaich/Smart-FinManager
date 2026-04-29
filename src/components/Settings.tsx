@@ -41,18 +41,16 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
     <div className="p-1.5 sm:p-2 lg:p-2 space-y-8">
       {/* Settings Sections */}
       <div className="space-y-6 relative">
-        {showCategoryManager && <CategoryManager user={user} onClose={() => setShowCategoryManager(false)} onRefresh={onRefresh} />}
+        {showCategoryManager && <CategoryManager onClose={() => setShowCategoryManager(false)} onRefresh={onRefresh} />}
         {showAccountManager && (
           <AccountManager 
             accounts={accounts} 
-            userId={user.id} 
             onClose={() => setShowAccountManager(false)} 
             onRefresh={onRefresh}
           />
         )}
         {showBalanceManager && (
           <BalanceManager 
-            userId={user.id}
             onClose={() => setShowBalanceManager(false)}
             onRefresh={onRefresh}
           />

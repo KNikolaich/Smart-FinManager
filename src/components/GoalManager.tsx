@@ -34,7 +34,6 @@ interface GoalManagerProps {
     targetAmount?: number;
     deadline?: string;
   };
-  initialEditingGoalId?: string;
 }
 
 interface SortableGoalItemProps {

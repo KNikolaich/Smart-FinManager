@@ -7,12 +7,11 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
 interface BalanceManagerProps {
-  userId: string;
   onClose: () => void;
   onRefresh: () => void;
 }
 
-export default function BalanceManager({ userId, onClose, onRefresh }: BalanceManagerProps) {
+export default function BalanceManager({ onClose, onRefresh }: BalanceManagerProps) {
   const [history, setHistory] = useState<BalanceHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);

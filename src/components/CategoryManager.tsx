@@ -8,7 +8,6 @@ function cn(...inputs: any[]) {
 }
 
 interface CategoryManagerProps {
-  user: { id: string; email: string };
   onClose: () => void;
   onRefresh?: () => void;
 }
@@ -25,7 +24,7 @@ const COMMON_ICONS = [
   '❤️', '⭐', '🔥', '✨', '🌈', '☀️', '🌙', '☁️', '🌧️', '❄️'
 ];
 
-export default function CategoryManager({ user, onClose, onRefresh }: CategoryManagerProps) {
+export default function CategoryManager({ onClose, onRefresh }: CategoryManagerProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFormModal, setShowFormModal] = useState(false);
@@ -34,7 +33,7 @@ export default function CategoryManager({ user, onClose, onRefresh }: CategoryMa
 
   useEffect(() => {
     fetchCategories();
-  }, [user.id]);
+  }, []);
 
   const fetchCategories = async () => {
     setLoading(true);
@@ -264,7 +263,6 @@ export default function CategoryManager({ user, onClose, onRefresh }: CategoryMa
       {/* Category Form Modal (Add/Edit) */}
       {showFormModal && (
         <CategoryForm 
-          userId={user.id}
           category={editingCategory}
           categories={categories}
           onClose={() => setShowFormModal(false)}
@@ -308,7 +306,6 @@ export default function CategoryManager({ user, onClose, onRefresh }: CategoryMa
 }
 
 interface CategoryFormProps {
-  userId: string;
   category: Category | null;
   categories: Category[];
   onClose: () => void;
@@ -316,7 +313,7 @@ interface CategoryFormProps {
   onDelete: (id: string) => void;
 }
 
-function CategoryForm({ userId, category, categories, onClose, onSuccess, onDelete }: CategoryFormProps) {
+function CategoryForm({ category, categories, onClose, onSuccess, onDelete }: CategoryFormProps) {
   const [name, setName] = useState(category?.name || '');
   const [parentId, setParentId] = useState<string | undefined>(category?.parentId);
   const [icon, setIcon] = useState(category?.icon || (category?.parentId ? '' : '💰'));

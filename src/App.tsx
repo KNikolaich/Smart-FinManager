@@ -8,21 +8,19 @@ import {
   Plus,
   Mic,
   AudioLines,
-  X,
-  LogOut,
   User as UserIcon,
   Wallet,
   Loader2
 } from 'lucide-react';
 import { api } from './lib/api';
 import { processUserMessage } from './services/aiService';
-import { Account, Transaction, Goal, Category, Plan, Currency, BalanceHistory, Message } from './types';
+import { Account, Transaction, Goal, Category, Plan, Currency, BalanceHistory, UserProfile } from './types';
 import UserPage from './components/UserPage';
 import Dashboard from './components/Dashboard';
 import PlanPage from './components/PlanPage';
 import Analytics from './components/Analytics';
 import Settings from './components/Settings';
-import AIAssistant from './components/AIAssistant';
+import AIAssistant, { AIAssistantHandle } from './components/AIAssistant';
 import AddTransaction from './components/AddTransaction';
 import TransactionHistory from './components/TransactionHistory';
 import EditTransaction from './components/EditTransaction';
@@ -32,7 +30,7 @@ import { cn } from './lib/utils';
 import { RobotIcon } from './components/icons/RobotIcon';
 
 export default function App() {
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'plan' | 'analytics' | 'settings' | 'ai'>('dashboard');
   const [showAddTransaction, setShowAddTransaction] = useState(false);
@@ -44,7 +42,7 @@ export default function App() {
   const [showAILogs, setShowAILogs] = useState(false);
   const [showUserPage, setShowUserPage] = useState(false);
   const [isProcessingAI, setIsProcessingAI] = useState(false);
-  const aiAssistantRef = useRef<any>(null);
+  const aiAssistantRef = useRef<AIAssistantHandle>(null);
   const { isRecording, startListening, stopListening } = useVoiceInput();
   
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
@@ -77,10 +75,10 @@ export default function App() {
         startListening(
           async (text) => {
             // Final result
-            if (isProcessingAI) return;
+            if (isProcessingAI || !user) return;
             setIsProcessingAI(true);
             try {
-              const result = await processUserMessage(user.id, text, [], accounts, categories, transactions, goals, plans);
+              const result = await processUserMessage(user.id, text, accounts, categories);
               await handleAIResult(result);
             } catch (error) {
               console.error('AI Error:', error);
@@ -116,7 +114,7 @@ export default function App() {
 
           const newTransaction: Transaction = {
             id: Math.random().toString(36).substring(2, 9),
-            userId: user.id,
+            userId: user?.id || '',
             ...transactionData,
             categoryId: transactionData.categoryId || '',
           };
@@ -206,7 +204,7 @@ export default function App() {
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          const userData = await api.get('/auth/me');
+          const userData = await api.get<UserProfile>('/auth/me');
           setUser(userData);
         } catch (error) {
           console.error('Auth check error:', error);

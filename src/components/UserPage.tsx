@@ -4,7 +4,6 @@ import { UserProfile } from '../types';
 import { cn } from '../lib/utils';
 import { api } from '../lib/api';
 import { useDataManagement } from '../hooks/useDataManagement';
-import { APP_VERSION } from '../version';
 
 interface UserPageProps {
   user: UserProfile;

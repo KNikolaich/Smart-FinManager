@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Account, Transaction, Goal, Category, AccountType, Currency, BalanceHistory } from '../types';
-import { Wallet, TrendingUp, TrendingDown, Target, ChevronRight, CreditCard, Landmark, GripVertical, Check, Save, X, Trash2, Calendar, Edit2, Plus } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Target, ChevronRight, CreditCard, Landmark, GripVertical, Check, Save, Trash2, Calendar, Edit2, Plus } from 'lucide-react';
 import { CoinStack } from './CustomIcons';
 import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -28,7 +28,6 @@ import {
   useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 interface SortableGoalCardProps {
   goal: Goal;
@@ -361,7 +360,6 @@ interface DashboardProps {
   onNavigateToAnalytics?: () => void;
   onOpenTransactionHistory?: (accountId?: string) => void;
   onEditTransaction?: (t: Transaction) => void;
-  initialEditingGoalId?: string;
 }
 
 export default function Dashboard({ 
@@ -380,7 +378,6 @@ export default function Dashboard({
   onNavigateToAnalytics,
   onOpenTransactionHistory,
   onEditTransaction,
-  initialEditingGoalId
 }: DashboardProps) {
   const [showAccountManager, setShowAccountManager] = useState(false);
   const [showGoalManager, setShowGoalManager] = useState(!!initialGoalData);
@@ -759,7 +756,6 @@ export default function Dashboard({
       {showAccountManager && (
         <AccountManager 
           accounts={accounts} 
-          userId={userId} 
           onClose={() => setShowAccountManager(false)} 
           onRefresh={onRefresh}
         />
@@ -924,7 +920,6 @@ export default function Dashboard({
           userId={userId} 
           onClose={handleCloseGoalManager} 
           initialData={initialGoalData}
-          initialEditingGoalId={editingGoalId || undefined}
           onRefresh={onRefresh}
         />
       )}

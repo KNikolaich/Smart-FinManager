@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { api } from '../lib/api';
 import { Transaction, Account, Category, TransactionType } from '../types';
-import { X, Check, Calendar, Trash2 } from 'lucide-react';
+import { X, Check, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import AccountSelect from './AccountSelect';

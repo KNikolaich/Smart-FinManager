@@ -22,7 +22,6 @@ import { CSS } from '@dnd-kit/utilities';
 
 interface AccountManagerProps {
   accounts: Account[];
-  userId: string;
   onClose: () => void;
   onRefresh?: () => void;
 }
@@ -223,7 +222,7 @@ function SortableAccountItem({ account, editingId, onEdit, currencies, editorPro
   );
 }
 
-export default function AccountManager({ accounts, userId, onClose, onRefresh }: AccountManagerProps) {
+export default function AccountManager({ accounts, onClose, onRefresh }: AccountManagerProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
