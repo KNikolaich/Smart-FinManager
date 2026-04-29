@@ -331,14 +331,14 @@ export default function App() {
                 setActiveTab('ai');
               }}
               className={cn(
-                "ml-[36px] mb-0 flex items-center justify-center rounded-xl transition-all active:scale-90 w-14 h-11 shadow-md pb-0",
+                "ml-[36px] mb-0 flex items-center justify-center rounded-xl transition-all active:scale-90 w-10 h-10 shadow-md pb-0",
                 activeTab === 'ai' 
                   ? "text-theme-primary bg-theme-primary-light border-theme-primary/30 shadow-theme-primary-light/50" 
                   : "text-neutral-400 hover:text-neutral-500 bg-white border-neutral-100"
               )}
               title="AI Assistant"
             >
-              <RobotIcon className="w-[56px] h-[42px]" />
+              <RobotIcon className="w-8 h-8" />
             </button>
           </div>
         </div>

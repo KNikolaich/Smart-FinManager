@@ -127,7 +127,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
 
 
         {/* Data Section */}
-        <section className="space-y-3">
+        <section className="space-y-3 mt-0 pt-0 pb-[6px]">
           <h4 className="text-xs font-bold text-theme-primary uppercase tracking-widest px-4">Данные</h4>
           <div className="bg-white rounded-3xl border border-neutral-100 overflow-hidden shadow-sm">
             <button 

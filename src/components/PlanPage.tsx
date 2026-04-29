@@ -1151,19 +1151,6 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
         .vertical-text {
           white-space: nowrap;
         }
-        .prose h1, .prose h2, .prose h3 {
-          margin-top: 1em;
-          margin-bottom: 0.5em;
-          font-weight: bold;
-        }
-        .prose p {
-          margin-bottom: 1em;
-        }
-        .prose ul {
-          list-style-type: disc;
-          padding-left: 1.5em;
-          margin-bottom: 1em;
-        }
       `}</style>
     </div>
   );

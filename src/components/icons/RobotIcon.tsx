@@ -5,46 +5,48 @@ import React from 'react';
 
 export const RobotIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
   <svg 
-    viewBox="0 0 48 48" 
+    viewBox="0 0 100 100" 
     fill="none" 
     xmlns="http://www.w3.org/2000/svg"
     className={className}
-    stroke="currentColor"
-    strokeWidth="2.5"
-    strokeLinecap="round" 
-    strokeLinejoin="round"
   >
-    {/* Head Outer Frame */}
-    <rect x="8" y="10" width="32" height="24" rx="10" />
+    {/* Main Speech Bubble Shape */}
+    <path 
+      d="M87.5 45C87.5 25.1177 70.7107 9 50 9C29.2893 9 12.5 25.1177 12.5 45C12.5 53.6841 15.7656 61.6429 21.2 67.8L18.5 83L33.4 78C38.3 80.2 44 81.5 50 81.5C70.7107 81.5 87.5 65.3823 87.5 45Z" 
+      fill="currentColor" 
+    />
     
-    {/* Small top bump */}
-    <path d="M20 10V8C20 6.89543 20.8954 6 22 6H26C27.1046 6 28 6.89543 28 8V10" />
-
+    {/* Headphones/Side parts */}
+    <rect x="5" y="38" width="8" height="30" rx="4" fill="currentColor" />
+    <rect x="87" y="38" width="8" height="30" rx="4" fill="currentColor" />
+    
     {/* Antennas */}
-    <path d="M11 10L10 4" />
-    <circle cx="10" cy="4" r="2.5" fill="none" stroke="currentColor" />
-    <path d="M37 10L38 4" />
-    <circle cx="38" cy="4" r="2.5" fill="none" stroke="currentColor" />
+    <rect x="8" y="22" width="4" height="20" rx="2" fill="currentColor" />
+    <rect x="88" y="22" width="4" height="20" rx="2" fill="currentColor" />
     
-    {/* Eyes */}
-    <circle cx="18" cy="20" r="3.5" fill="none" stroke="currentColor" />
-    <circle cx="30" cy="20" r="3.5" fill="none" stroke="currentColor" />
+    {/* Face White Area */}
+    <rect x="22" y="28" width="56" height="34" rx="17" fill="white" />
     
-    {/* Mouth (rounded slot) */}
-    <rect x="18" y="27" width="12" height="3" rx="1.5" stroke="currentColor" fill="none" />
+    {/* Smiling Eyes */}
+    <path 
+      d="M32 45C32 41 40 41 40 45" 
+      stroke="currentColor" 
+      strokeWidth="6" 
+      strokeLinecap="round" 
+    />
+    <path 
+      d="M60 45C60 41 68 41 68 45" 
+      stroke="currentColor" 
+      strokeWidth="6" 
+      strokeLinecap="round" 
+    />
     
-    {/* Side Earpieces (rectangular) */}
-    <rect x="4" y="16" width="4" height="12" rx="1.5" />
-    <rect x="40" y="16" width="4" height="12" rx="1.5" />
-    
-    {/* Boom Mic Arm */}
-    <path d="M42 28C42 36 38 40 28 40" strokeWidth="2.5" />
-    {/* Mic Tip */}
-    <rect x="22" y="38" width="6" height="4" rx="2" stroke="currentColor" fill="none"/>
-    
-    {/* Chat Bubble at bottom left */}
-    <path d="M6 38H18V46H12L6 48V38Z" strokeWidth="2.2" />
-    <path d="M9 41H15" strokeWidth="1.8" />
-    <path d="M9 44H13" strokeWidth="1.8" />
+    {/* Smile */}
+    <path 
+      d="M47 55C47 58 53 58 53 55" 
+      stroke="currentColor" 
+      strokeWidth="4" 
+      strokeLinecap="round" 
+    />
   </svg>
 );

@@ -103,10 +103,16 @@ body {
   @apply border-l-4 border-neutral-300 pl-4 italic mb-4;
 }
 .markdown-body code {
-  @apply bg-neutral-100 px-1 rounded text-sm font-mono;
+  @apply bg-neutral-100 text-neutral-800 px-1.5 py-0.5 rounded-md text-[0.9em] font-mono font-medium;
 }
 .markdown-body pre {
-  @apply bg-neutral-900 text-white p-4 rounded-xl overflow-x-auto mb-4;
+  @apply bg-neutral-800 text-neutral-50 p-4 rounded-xl overflow-x-auto my-4 font-mono shadow-inner;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+/* Ensure code inside pre blocks is perfectly readable */
+.markdown-body pre code {
+  @apply bg-transparent p-0 text-white text-sm leading-normal block w-full;
+  font-family: inherit;
 }
 .markdown-body .task-list-item {
   @apply list-none pl-0 flex items-start gap-2;

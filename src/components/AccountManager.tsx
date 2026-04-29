@@ -421,32 +421,36 @@ export default function AccountManager({ accounts, userId, onClose, onRefresh }:
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[120] flex items-end sm:items-center justify-center py-0 min-[800px]:p-4">
-      <div className="bg-white w-full min-[800px]:max-w-2xl min-[800px]:rounded-[16px] overflow-hidden flex flex-col h-[100dvh] min-[800px]:h-auto min-[800px]:max-h-[90vh] shadow-2xl animate-in slide-in-from-bottom duration-300 relative">
-        <div className="pt-[21px] pb-4 px-4 flex items-center justify-between shrink-0 relative z-10 border-b border-neutral-100">
-          <h2 className="text-xl font-bold">Счета</h2>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[120] flex items-center justify-center p-4 sm:p-1 lg:p-3">
+      <div className="bg-white w-full max-w-xl rounded-2xl overflow-hidden flex flex-col max-h-[90vh] shadow-2xl animate-in fade-in zoom-in-95 duration-300 relative border border-white/10">
+        <div className="p-1 flex items-center justify-between gap-4 shrink-0 relative z-10 border-b border-neutral-100">
+          <div className="flex items-baseline gap-3">
+            <h2 className="text-2xl font-black text-neutral-900">Счета</h2>
+            <p className="text-neutral-400 font-medium text-sm">Всего: {accounts.length}</p>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {!isAdding && !editingId && (
+              <button 
+                onClick={() => setIsAdding(true)}
+                className="flex items-center gap-2 bg-theme-primary text-white px-5 py-2.5 rounded-2xl text-sm font-bold shadow-lg shadow-theme-primary/20 hover:scale-105 transition-all active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                Добавить
+              </button>
+            )}
 
-          <p className="text-neutral-500 text-sm">Всего: {accounts.length}</p>
-          {!isAdding && !editingId && (
             <button 
-              onClick={() => setIsAdding(true)}
-              className="flex items-center gap-2 bg-theme-primary text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-theme-primary-dark transition-all active:scale-95"
+              onClick={onClose} 
+              className="p-2 hover:bg-neutral-100 rounded-2xl transition-all cursor-pointer text-neutral-400 hover:text-neutral-600"
+              aria-label="Закрыть"
             >
-              <Plus className="w-4 h-4" />
-              Добавить
+              <X className="w-6 h-6" />
             </button>
-          )}
-
-          <button 
-            onClick={onClose} 
-            className="p-2 hover:bg-neutral-100 rounded-full transition-colors relative z-20 cursor-pointer"
-            aria-label="Закрыть"
-          >
-            <X className="w-6 h-6 text-neutral-400" />
-          </button>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 no-scrollbar">
+        <div className="flex-1 overflow-y-auto p-2 no-scrollbar">
 
 
           {isAdding && (

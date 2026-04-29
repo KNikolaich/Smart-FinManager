@@ -372,7 +372,7 @@ export default forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssist
                 "p-2.5 sm:p-4 rounded-xl sm:rounded-2xl text-xs sm:text-sm shadow-sm",
                 m.role === 'assistant' ? "bg-white text-neutral-800 rounded-tl-none" : "bg-theme-primary text-white rounded-tr-none"
               )}>
-                <div className="prose prose-sm max-w-none prose-p:leading-relaxed text-[12px] sm:text-sm">
+                <div className="markdown-body text-[12px] sm:text-sm">
                   <ReactMarkdown>
                     {typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}
                   </ReactMarkdown>

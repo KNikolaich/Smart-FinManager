@@ -319,7 +319,7 @@ function SortableGoalCard({
         </div>
 
         {goal.description && (
-          <div className="mb-3 p-2 bg-neutral-50 rounded-xl text-[10px] text-neutral-500 overflow-hidden line-clamp-2">
+          <div className="mb-3 p-2 bg-neutral-50 rounded-xl text-[10px] text-neutral-500 overflow-hidden line-clamp-2 markdown-body">
             <ReactMarkdown>{goal.description}</ReactMarkdown>
           </div>
         )}
@@ -630,12 +630,12 @@ export default function Dashboard({
           >
             <div 
               onClick={onNavigateToAnalytics}
-              className="bg-theme-primary rounded-xl p-2 text-white shadow-xl shadow-theme-primary-light cursor-pointer group relative overflow-hidden"
+              className="bg-theme-primary rounded-2xl p-2 text-white shadow-xl shadow-theme-primary-light cursor-pointer group relative overflow-hidden"
             >
               <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-1 items-center">
                 {/* Left Side: Balance and Stats */}
                 <div>
-                  <div className="mb-4 grid grid-cols-2 gap-1 px-2">
+                  <div className="mb-0 grid grid-cols-2 gap-1 px-2">
                     <div className="pt-0 pb-0 pr-0 text-center">
                       <p className="text-theme-primary-light text-[10px] sm:text-xs font-bold uppercase tracking-wider">Общий баланс</p>
                       <h2 className="text-lg sm:text-xl font-bold">{totalBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} ₽</h2>
@@ -698,7 +698,7 @@ export default function Dashboard({
       </AnimatePresence>
 
       {/* Accounts Section */}
-      <section className="mb-2">
+      <section className="p-[1px] mb-6">
         <div className="flex items-center justify-between mb-1">
           <h3 className="font-bold text-lg">Счета</h3>
           <button 
