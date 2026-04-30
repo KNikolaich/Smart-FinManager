@@ -326,9 +326,9 @@ export default function App() {
   return (
     <div className="h-[100dvh] bg-neutral-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="px-6 h-16 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-white/40 shrink-0 z-40 sticky top-0">
+      <header className="px-6 h-16 md:h-20 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-white/40 shrink-0 z-50 sticky top-0 transition-all">
         <div 
-          className="flex items-center gap-3 cursor-pointer group"
+          className="flex items-center gap-4 cursor-pointer group"
           onClick={() => {
             if (activeTab !== 'dashboard') {
               setActiveTab('dashboard');
@@ -340,15 +340,16 @@ export default function App() {
           <motion.div 
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="w-11 h-11 mb-[7px] bg-theme-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-theme-primary-light group-active:scale-95 transition-all"
+            className="w-11 h-11 bg-theme-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-theme-primary-light transition-all"
           >
             <Wallet size={20} />
           </motion.div>
-          <div className="flex items-center gap-2">
-            <div>
-              <h2 className="font-bold text-sm leading-tight group-hover:text-theme-primary-dark transition-colors ml-5">Finance</h2>
-              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest ml-[15px]">Manager</p>
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col">
+              <h2 className="font-bold text-sm leading-none group-hover:text-theme-primary transition-colors">Finance</h2>
+              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mt-0.5">Manager</p>
             </div>
+            
             <motion.button 
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -357,9 +358,9 @@ export default function App() {
                 setActiveTab('ai');
               }}
               className={cn(
-                "ml-[36px] mb-0 flex items-center justify-center rounded-xl transition-all active:scale-90 w-10 h-10 shadow-md pb-0",
+                "flex items-center justify-center rounded-xl transition-all w-10 h-10 shadow-sm border",
                 activeTab === 'ai' 
-                  ? "text-theme-primary bg-theme-primary-light border-theme-primary/30 shadow-theme-primary-light/50" 
+                  ? "text-theme-primary bg-theme-primary-light border-theme-primary/20 shadow-theme-primary-light/30" 
                   : "text-neutral-400 hover:text-neutral-500 bg-white border-neutral-100"
               )}
               title="AI Assistant"
@@ -374,7 +375,7 @@ export default function App() {
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowUserPage(true)}
             className={cn(
-              "w-10 h-10 rounded-xl overflow-hidden border border-white/50 shadow-sm flex items-center justify-center transition-all",
+              "w-10 h-10 md:w-11 md:h-11 rounded-xl overflow-hidden border border-white/50 shadow-sm flex items-center justify-center transition-all",
               showUserPage ? "bg-theme-primary text-white shadow-lg shadow-theme-primary-light" : "bg-theme-primary-light text-theme-primary-dark"
             )}
           >
@@ -406,8 +407,8 @@ export default function App() {
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Navigation Bar */}
-      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 pb-0 h-16 shrink-0 z-40 flex items-center justify-center md:relative md:bottom-0 md:translate-x-0 md:max-w-none md:bg-white md:border-t md:border-neutral-100 md:rounded-none">
-        <div className="w-full bg-white/90 backdrop-blur-xl border border-white/40 shadow-elegant rounded-3xl flex items-center justify-around h-full px-2">
+      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 pb-0 h-16 shrink-0 z-40 flex items-center justify-center md:relative md:bottom-0 md:left-auto md:translate-x-0 md:max-w-none md:bg-white md:border-t md:border-neutral-100 md:rounded-none">
+        <div className="w-full bg-white/90 backdrop-blur-xl border border-white/40 shadow-elegant rounded-3xl flex items-center justify-around h-full px-2 md:bg-transparent md:backdrop-blur-none md:border-none md:shadow-none md:rounded-none">
            <button 
             onClick={() => setActiveTab('dashboard')}
             className={cn(

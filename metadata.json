@@ -1,5 +1,7 @@
 {
-  "name": "Финансист AI new",
+  "name": "AI финансовый Ассистент",
   "description": "AI-first personal finance manager with NLP-based transaction tracking, budgeting, and financial goals.",
-  "requestFramePermissions": ["microphone"]
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }
