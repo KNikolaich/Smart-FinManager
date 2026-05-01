@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useVoiceInput } from './hooks/useVoiceInput';
+import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { 
   LayoutDashboard, 
   CalendarRange, 
@@ -58,6 +59,15 @@ export default function App() {
   const aiAssistantRef = useRef<AIAssistantHandle>(null);
   const { isRecording, startListening, stopListening } = useVoiceInput();
   
+  useNetworkStatus((status) => {
+    if (status === 'offline') {
+      addToast('Вы перешли в оффлайн режим', 'error');
+    } else {
+      addToast('Соединение восстановлено', 'success');
+      refreshData();
+    }
+  });
+
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
