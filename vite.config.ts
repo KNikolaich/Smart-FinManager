@@ -33,10 +33,12 @@ export default defineConfig(({ mode }) => {
 
       rollupOptions: {
         output: {
-          manualChunks: {
-            react: ['react', 'react-dom'],
-            vendor: ['axios'],
-            charts: ['recharts'],
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('react')) return 'vendor-react';
+              if (id.includes('recharts')) return 'vendor-charts';
+              return 'vendor';
+            }
           },
         },
       },

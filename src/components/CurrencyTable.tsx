@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { api } from '../lib/api';
 import { currencyService } from '../services/currencyService';
 import { Currency } from '../types';
 import { Plus, Trash2, X, Check, AlertTriangle } from 'lucide-react';
@@ -25,7 +26,6 @@ export const CurrencyTable: React.FC = () => {
   const handleUpdateRates = async () => {
     setUpdatingRates(true);
     try {
-      const { api } = await import('../lib/api');
       for (const cur of currencies) {
         if (cur.iso === 'RUB') continue;
 
