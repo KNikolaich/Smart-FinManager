@@ -35,9 +35,16 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks(id) {
             if (id.includes('node_modules')) {
-              if (id.includes('react')) return 'vendor-react';
-              if (id.includes('recharts')) return 'vendor-charts';
-              return 'vendor';
+              // Group React and related core libraries to avoid circular dependencies
+              if (id.includes('react') || id.includes('scheduler') || id.includes('motion')) {
+                return 'vendor-core';
+              }
+              // Group charts and data libs
+              if (id.includes('recharts') || id.includes('d3') || id.includes('chart.js')) {
+                return 'vendor-charts';
+              }
+              // Everything else in node_modules
+              return 'vendor-libs';
             }
           },
         },
