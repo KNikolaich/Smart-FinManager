@@ -373,11 +373,14 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
               transition={{ duration: 0.2 }}
               className={cn("flex gap-2 sm:gap-3", m.role === 'user' ? "flex-row-reverse" : "flex-row")}
             >
-            <div className={cn(
-              "w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0",
-              m.role === 'assistant' ? "bg-theme-primary text-white" : "bg-neutral-200 text-neutral-600"
-            )}>
-              {m.role === 'assistant' ? <RobotIcon className="w-4 h-4 sm:w-5 sm:h-5" /> : <User className="w-4 h-4 sm:w-5 sm:h-5" />}
+            <div className="shrink-0 pt-0.5">
+              {m.role === 'assistant' ? (
+                <RobotIcon className="w-6 h-6 sm:w-8 sm:h-8 text-theme-primary" />
+              ) : (
+                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-theme-main flex items-center justify-center text-theme-muted border border-theme-base">
+                  <User className="w-4 h-4 sm:w-5 sm:h-5" />
+                </div>
+              )}
             </div>
             <div className="space-y-2 sm:space-y-3 max-w-[82%] sm:max-w-[85%]">
               <div className={cn(
@@ -413,8 +416,8 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
         </AnimatePresence>
         {loading && (
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-theme-primary text-white flex items-center justify-center">
-              <RobotIcon className="w-5 h-5" />
+            <div className="shrink-0 pt-0.5">
+              <RobotIcon className="w-6 h-6 sm:w-8 sm:h-8 text-theme-primary" />
             </div>
             <div className="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />

@@ -199,44 +199,87 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
         <section className="space-y-3">
           <h4 className="text-xs font-bold text-theme-primary uppercase tracking-widest px-4">Приложение</h4>
           <div className="bg-white rounded-3xl border border-neutral-100 overflow-hidden shadow-sm">
-            <div className="px-6 py-2 border-b border-neutral-50">
-              <div className="flex items-center gap-4 mb-3">
-                <div className="w-10 h-10 bg-pink-100 rounded-xl flex items-center justify-center">
-                  <Palette className="w-5 h-5 text-pink-600" />
+            <div className="px-6 py-4 border-b border-neutral-50 last:border-0">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-10 h-10 bg-pink-100 dark:bg-pink-900/30 rounded-xl flex items-center justify-center">
+                  <Palette className="w-5 h-5 text-pink-600 dark:text-pink-400" />
                 </div>
-                <p className="font-semibold text-sm">Тема оформления</p>
+                <div>
+                  <p className="font-semibold text-sm">Тема оформления</p>
+                  <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-bold">Выберите настроение</p>
+                </div>
               </div>
-              <div className="grid grid-cols-7 gap-2">
-                {[
-                  { id: 'theme-light-green', color: 'bg-emerald-500' },
-                  { id: 'theme-light-blue', color: 'bg-blue-500' },
-                  { id: 'theme-light-orange', color: 'bg-orange-500' },
-                  { id: 'theme-light-brown', color: 'bg-yellow-700' },
-                  { id: 'theme-light-gray', color: 'bg-neutral-500' },
-                  { id: 'theme-light-purple', color: 'bg-purple-500' },
-                ].map((theme) => (
-                  <button
-                    key={theme.id}
-                    onClick={() => {
-                      const themes = [
-                        'theme-light-green', 'theme-light-blue', 'theme-light-orange', 
-                        'theme-light-brown', 'theme-light-gray', 'theme-light-purple'
-                      ];
-                      document.body.classList.remove(...themes);
-                      document.body.classList.add(theme.id);
-                      localStorage.setItem('theme', theme.id);
-                    }}
-                    className={cn(
-                      "w-8 h-8 rounded-full border-2 border-white shadow-sm transition-transform active:scale-90",
-                      theme.id === 'theme-light-green' ? 'bg-emerald-500' :
-                      theme.id === 'theme-light-blue' ? 'bg-blue-500' :
-                      theme.id === 'theme-light-orange' ? 'bg-orange-500' :
-                      theme.id === 'theme-light-brown' ? 'bg-yellow-700' :
-                      theme.id === 'theme-light-gray' ? 'bg-neutral-500' :
-                      'bg-purple-500'
-                    )}
-                  />
-                ))}
+              
+              <div className="space-y-4">
+                <div>
+                  <p className="text-[10px] font-bold text-neutral-400 uppercase mb-2 px-1">Светлые</p>
+                  <div className="flex flex-wrap gap-3">
+                    {[
+                      { id: 'theme-light-green', color: 'bg-emerald-500', name: 'Изумруд' },
+                      { id: 'theme-light-blue', color: 'bg-blue-500', name: 'Лазурь' },
+                      { id: 'theme-nordic', color: 'bg-sky-400', name: 'Нордик' },
+                      { id: 'theme-light-orange', color: 'bg-orange-400', name: 'Апельсин' },
+                      { id: 'theme-light-ruby', color: 'bg-rose-600', name: 'Рубин' },
+                      { id: 'theme-light-violet', color: 'bg-violet-500', name: 'Фиалка' },
+                    ].map((theme) => (
+                      <button
+                        key={theme.id}
+                        onClick={() => {
+                          const themes = [
+                            'theme-light-green', 'theme-light-blue', 'theme-nordic',
+                            'theme-light-orange', 'theme-light-ruby', 'theme-light-violet',
+                            'theme-midnight', 'theme-carbon', 'theme-oled', 'theme-forest-dark', 'theme-purple-night', 'theme-cyber'
+                          ];
+                          document.body.classList.remove(...themes);
+                          document.body.classList.add(theme.id);
+                          localStorage.setItem('theme', theme.id);
+                        }}
+                        className="group flex flex-col items-center gap-1"
+                      >
+                        <div className={cn(
+                          "w-10 h-10 rounded-2xl border-2 border-white shadow-sm transition-all group-active:scale-95 group-hover:ring-2 ring-emerald-500/20",
+                          theme.color
+                        )} />
+                        <span className="text-[10px] font-medium text-neutral-500">{theme.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-bold text-neutral-400 uppercase mb-2 px-1">Темные</p>
+                  <div className="flex flex-wrap gap-3">
+                    {[
+                      { id: 'theme-midnight', color: 'bg-indigo-900', name: 'Полночь' },
+                      { id: 'theme-carbon', color: 'bg-neutral-800', name: 'Уголь' },
+                      { id: 'theme-oled', color: 'bg-black', name: 'OLED' },
+                      { id: 'theme-forest-dark', color: 'bg-emerald-950', name: 'Тайга' },
+                      { id: 'theme-purple-night', color: 'bg-purple-900', name: 'Неон' },
+                      { id: 'theme-cyber', color: 'bg-cyan-400', name: 'Кибер' },
+                    ].map((theme) => (
+                      <button
+                        key={theme.id}
+                        onClick={() => {
+                          const themes = [
+                            'theme-light-green', 'theme-light-blue', 'theme-nordic',
+                            'theme-light-orange', 'theme-light-ruby', 'theme-light-violet',
+                            'theme-midnight', 'theme-carbon', 'theme-oled', 'theme-forest-dark', 'theme-purple-night', 'theme-cyber'
+                          ];
+                          document.body.classList.remove(...themes);
+                          document.body.classList.add(theme.id);
+                          localStorage.setItem('theme', theme.id);
+                        }}
+                        className="group flex flex-col items-center gap-1"
+                      >
+                        <div className={cn(
+                          "w-10 h-10 rounded-2xl border-2 border-neutral-800 shadow-sm transition-all group-active:scale-95 group-hover:ring-2 ring-emerald-500/20",
+                          theme.color
+                        )} />
+                        <span className="text-[10px] font-medium text-neutral-500">{theme.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 

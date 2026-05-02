@@ -165,30 +165,29 @@ export default function Analytics({
 
   return (
     <div className="p-0.5 sm:p-1 lg:p-1 space-y-2">      
-    
       {/* Date Filters & Type Toggle */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5">
-        <div className="bg-white p-1 sm:p-1.5 rounded-3xl border border-neutral-100 shadow-sm flex items-stretch gap-1.5 sm:gap-2 overflow-hidden">
+        <div className="bg-theme-surface p-1 sm:p-1.5 rounded-3xl border border-theme-base shadow-sm flex items-stretch gap-1.5 sm:gap-2 overflow-hidden">
           {/* Left column: Type Toggle (Vertical) */}
-          <div className="flex flex-col bg-neutral-100 p-0.5 rounded-2xl w-22 sm:w-26 shrink-0">
+          <div className="flex flex-col bg-theme-main p-0.5 rounded-2xl w-22 sm:w-26 shrink-0">
             <button
               onClick={() => setActiveType('expense')}
               className={cn(
                 "flex-1 px-1 sm:px-2 py-0.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 sm:gap-2 p-[10px]",
-                activeType === 'expense' ? "bg-white text-rose-600 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
+                activeType === 'expense' ? "bg-theme-surface text-rose-500 shadow-sm" : "text-theme-muted hover:text-theme-main"
               )}
             >
-              <TrendingDown className="w-1 h-1" />
+              <TrendingDown className="w-3 h-3" />
               Расход
             </button>
             <button
               onClick={() => setActiveType('income')}
               className={cn(
-                "flex-1 px-1 sm:px-2 py-0.5 rounded-xl font-bold transition-all flex items-center justify-center gap-1 sm:gap-2 pr-[14px] text-[13px]",
-                activeType === 'income' ? "bg-white text-emerald-600 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
+                "flex-1 px-1 sm:px-2 py-0.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 sm:gap-2 p-[10px]",
+                activeType === 'income' ? "bg-theme-surface text-emerald-500 shadow-sm" : "text-theme-muted hover:text-theme-main"
               )}
             >
-              <TrendingUp className="w-1 h-1" />
+              <TrendingUp className="w-3 h-3" />
               Доход
             </button>
           </div>
@@ -196,12 +195,12 @@ export default function Analytics({
           {/* Right column: Filter Type and Specific Selector */}
           <div className="flex flex-col gap-1.5 flex-1 justify-center min-w-0">
             {/* Row 1: Month / Period Toggle */}
-            <div className="flex bg-neutral-100/50 p-0.5 rounded-xl w-full">
+            <div className="flex bg-theme-main p-0.5 rounded-xl w-full">
               <button
                 onClick={() => setFilterType('month')}
                 className={cn(
-                  "flex-1 px-1 sm:px-2 py-1 rounded-lg font-bold uppercase tracking-wider transition-all pr-[14px] text-[12px]",
-                  filterType === 'month' ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
+                  "flex-1 px-1 sm:px-2 py-1 rounded-lg font-bold uppercase tracking-wider transition-all text-[11px]",
+                  filterType === 'month' ? "bg-theme-surface text-theme-main shadow-sm" : "text-theme-muted hover:text-theme-main"
                 )}
               >
                 Месяц
@@ -209,8 +208,8 @@ export default function Analytics({
               <button
                 onClick={() => setFilterType('period')}
                 className={cn(
-                  "flex-1 px-1 sm:px-2 py-1 rounded-lg font-bold uppercase tracking-wider transition-all pr-[14px] text-[12px]",
-                  filterType === 'period' ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
+                  "flex-1 px-1 sm:px-2 py-1 rounded-lg font-bold uppercase tracking-wider transition-all text-[11px]",
+                  filterType === 'period' ? "bg-theme-surface text-theme-main shadow-sm" : "text-theme-muted hover:text-theme-main"
                 )}
               >
                 Период
@@ -220,40 +219,40 @@ export default function Analytics({
             {/* Row 2: The actual picker based on selection */}
             <div className="flex items-center w-full min-w-0">
               {filterType === 'month' && (
-                <div className="flex items-center justify-between gap-1 bg-white border border-neutral-100 px-0.5 sm:px-1 py-0.5 rounded-xl shadow-sm w-full">
+                <div className="flex items-center justify-between gap-1 bg-theme-main/50 border border-theme-base px-0.5 sm:px-1 py-0.5 rounded-xl shadow-sm w-full">
                   <button 
                     onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
-                    className="p-0.5 hover:bg-neutral-50 rounded-lg transition-colors"
+                    className="p-1 hover:bg-theme-surface rounded-lg transition-colors"
                   >
-                    <ChevronLeft className="w-2.5 h-2.5 text-neutral-400" />
+                    <ChevronLeft className="w-3 h-3 text-theme-muted" />
                   </button>
-                  <span className="text-[10px] font-bold capitalize flex-1 text-center truncate">
+                  <span className="text-[10px] font-bold capitalize flex-1 text-center truncate text-theme-main">
                     {format(selectedMonth, 'LLLL yyyy', { locale: ru })}
                   </span>
                   <button 
                     onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1))}
-                    className="p-0.5 hover:bg-neutral-50 rounded-lg transition-colors"
+                    className="p-1 hover:bg-theme-surface rounded-lg transition-colors"
                   >
-                    <ChevronRight className="w-2.5 h-2.5 text-neutral-400" />
+                    <ChevronRight className="w-3 h-3 text-theme-muted" />
                   </button>
                 </div>
               )}
 
               {filterType === 'period' && (
-                <div className="flex items-center justify-center gap-1 bg-white border border-neutral-100 px-0.5 py-1 rounded-xl shadow-sm w-full overflow-hidden">
+                <div className="flex items-center justify-center gap-1 bg-theme-main/50 border border-theme-base px-0.5 py-1 rounded-xl shadow-sm w-full overflow-hidden">
                   <div className="flex items-center gap-0.5 justify-between w-full px-0.5">
                     <input 
                       type="date" 
                       value={format(periodRange.start, 'yyyy-MM-dd')}
                       onChange={(e) => setPeriodRange(prev => ({ ...prev, start: new Date(e.target.value) }))}
-                      className="text-[9px] sm:text-[10px] font-bold bg-transparent border-none focus:ring-0 p-0 w-[45%] text-center"
+                      className="text-[9px] sm:text-[10px] font-bold bg-transparent border-none focus:ring-0 p-0 w-[45%] text-center text-theme-main"
                     />
-                    <span className="text-neutral-300 text-[10px] shrink-0">—</span>
+                    <span className="text-theme-muted text-[10px] shrink-0">—</span>
                     <input 
                       type="date" 
                       value={format(periodRange.end, 'yyyy-MM-dd')}
                       onChange={(e) => setPeriodRange(prev => ({ ...prev, end: new Date(e.target.value) }))}
-                      className="text-[9px] sm:text-[10px] font-bold bg-transparent border-none focus:ring-0 p-0 w-[45%] text-center"
+                      className="text-[9px] sm:text-[10px] font-bold bg-transparent border-none focus:ring-0 p-0 w-[45%] text-center text-theme-main"
                     />
                   </div>
                 </div>
@@ -266,14 +265,14 @@ export default function Analytics({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
         {/* Pie Chart */}
-        <section className="bg-white p-3 rounded-3xl border border-neutral-100 shadow-sm flex flex-col">
+        <section className="bg-theme-surface p-3 rounded-3xl border border-theme-base shadow-sm flex flex-col">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-bold text-lg">
+            <h3 className="font-bold text-lg text-theme-main">
               {activeType === 'expense' ? 'Расходы' : 'Доходы'} по категориям
             </h3>
             <div className="text-right">
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Итого</p>
-              <p className={cn("text-lg font-bold", activeType === 'income' ? "text-emerald-600" : "text-rose-600")}>
+              <p className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">Итого</p>
+              <p className={cn("text-lg font-bold", activeType === 'income' ? "text-emerald-500" : "text-rose-500")}>
                 {totalAmount.toLocaleString()} ₽
               </p>
             </div>
@@ -299,8 +298,9 @@ export default function Analytics({
                     ))}
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '6px' }}
-                    itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                    contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'var(--theme-surface)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)', padding: '8px' }}
+                    itemStyle={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--theme-main)' }}
+                    labelStyle={{ color: 'var(--text-muted)' }}
                     formatter={(value: number, name: string, props: any) => [
                       `${value.toLocaleString()} ₽`, 
                       props.payload.name
@@ -309,7 +309,7 @@ export default function Analytics({
                 </PieChart>
               </ResponsiveContainer>
               {chartData.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center text-neutral-300 text-sm font-medium">
+                <div className="absolute inset-0 flex items-center justify-center text-theme-muted text-sm font-medium italic">
                   Нет данных
                 </div>
               )}
@@ -322,11 +322,11 @@ export default function Analytics({
                   onClick={() => {
                     if (onNavigateToHistory) onNavigateToHistory(item.name);
                   }}
-                  className="flex items-center gap-3 group cursor-pointer hover:bg-neutral-50 p-2 rounded-xl transition-colors"
+                  className="flex items-center gap-3 group cursor-pointer hover:bg-theme-primary/5 p-2 rounded-xl transition-colors"
                 >
                   <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                  <span className="text-sm text-neutral-600 truncate flex-1">{item.name}</span>
-                  <span className="text-sm font-bold text-neutral-900">{item.value.toLocaleString()} ₽</span>
+                  <span className="text-sm text-theme-main truncate flex-1">{item.name}</span>
+                  <span className="text-sm font-bold text-theme-main">{item.value.toLocaleString()} ₽</span>
                 </div>
               ))}
             </div>
@@ -334,8 +334,8 @@ export default function Analytics({
         </section>
 
         {/* Bar Chart */}
-        <section className="bg-white p-3 rounded-3xl border border-neutral-100 shadow-sm">
-          <h3 className="font-bold text-lg mb-6">Динамика</h3>
+        <section className="bg-theme-surface p-3 rounded-3xl border border-theme-base shadow-sm">
+          <h3 className="font-bold text-lg mb-6 text-theme-main">Динамика</h3>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthlyTrend}>
@@ -343,17 +343,17 @@ export default function Analytics({
                   dataKey="name" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} 
+                  tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 600 }} 
                 />
                 <YAxis 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{ fontSize: 10, fill: '#94a3b8' }}
+                  tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
                   tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip 
-                  cursor={{ fill: '#f8fafc' }}
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
+                  cursor={{ fill: 'var(--theme-main)', opacity: 0.05 }}
+                  contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'var(--theme-surface)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}
                   itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
                 />
                 <Bar dataKey="income" name="Доход" fill="#10b981" radius={[4, 4, 0, 0]} barSize={12} />
@@ -364,17 +364,17 @@ export default function Analytics({
           <div className="flex justify-center gap-2 mt-6">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-emerald-500" />
-              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Доход</span>
+              <span className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">Доход</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-rose-500" />
-              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Расход</span>
+              <span className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">Расход</span>
             </div>
           </div>
         </section>
         
-        <section className="bg-white p-2 rounded-3xl border border-neutral-100 shadow-sm">
-          <h3 className="font-bold text-lg mb-6">Динамика баланса</h3>
+        <section className="bg-theme-surface p-2 rounded-3xl border border-theme-base shadow-sm">
+          <h3 className="font-bold text-lg mb-6 text-theme-main">Динамика баланса</h3>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={monthlyBalanceTrend}>
@@ -382,20 +382,20 @@ export default function Analytics({
                   dataKey="name" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} 
+                  tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 600 }} 
                 />
                 <YAxis 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{ fontSize: 10, fill: '#94a3b8' }}
+                  tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
                   tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip 
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
+                  contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'var(--theme-surface)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}
                   itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
                   formatter={(value: number) => [`${value.toLocaleString()} ₽`, 'Баланс']}
                 />
-                <Line type="monotone" dataKey="balance" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="balance" stroke="var(--primary)" strokeWidth={3} dot={{ r: 4, fill: 'var(--primary)' }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>

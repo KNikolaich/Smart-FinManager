@@ -162,8 +162,8 @@ export default function AILogs({ userId, onClose }: AILogsProps) {
                       />
                     </div>
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-emerald-600 mb-1">
-                        <RobotIcon className="w-4 h-4" />
+                      <div className="flex items-center gap-2 text-emerald-500 mb-1">
+                        <RobotIcon className="w-5 h-5" />
                         <span className="text-[10px] font-bold uppercase tracking-wider">Response</span>
                       </div>
                       <pre 

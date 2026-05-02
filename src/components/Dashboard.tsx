@@ -94,41 +94,41 @@ function SortableGoalCard({
       <div 
         ref={setNodeRef}
         style={style}
-        className="bg-white rounded-2xl border-2 border-theme-primary p-4 shadow-xl space-y-4"
+        className="bg-theme-surface rounded-2xl border-2 border-theme-primary p-4 shadow-xl space-y-4"
       >
         <div className="flex justify-between items-center gap-2">
           <input 
             type="text" 
             value={editName} 
             onChange={(e) => setEditName(e.target.value)} 
-            className="flex-1 bg-neutral-50 rounded-lg px-2 py-1 text-sm font-bold outline-none focus:ring-2 ring-emerald-500/20" 
+            className="flex-1 bg-theme-main rounded-lg px-2 py-1 text-sm font-bold outline-none focus:ring-2 ring-theme-primary/20 text-theme-main" 
             placeholder="Название"
           />
           <input 
             type="date" 
             value={editDeadline} 
             onChange={(e) => setEditDeadline(e.target.value)} 
-            className="w-32 bg-neutral-50 rounded-lg px-2 py-1 text-[10px] outline-none focus:ring-2 ring-emerald-500/20"
+            className="w-32 bg-theme-main rounded-lg px-2 py-1 text-[10px] outline-none focus:ring-2 ring-theme-primary/20 text-theme-main"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest text-[8px]">Накоплено</label>
+            <label className="text-[9px] font-bold text-theme-muted uppercase tracking-widest">Накоплено</label>
             <input 
               type="number" 
               value={editCurrent} 
               onChange={(e) => setEditCurrent(e.target.value)} 
-              className="w-full bg-neutral-50 rounded-lg px-2 py-1 text-xs font-bold text-emerald-600 outline-none focus:ring-2 ring-emerald-500/20"
+              className="w-full bg-theme-main rounded-lg px-2 py-1 text-xs font-bold text-emerald-500 outline-none focus:ring-2 ring-theme-primary/20"
             />
           </div>
           <div className="space-y-1 text-right">
-            <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest text-[8px]">Цель</label>
+            <label className="text-[9px] font-bold text-theme-muted uppercase tracking-widest">Цель</label>
             <input 
               type="number" 
               value={editTarget} 
               onChange={(e) => setEditTarget(e.target.value)} 
-              className="w-full bg-neutral-50 rounded-lg px-2 py-1 text-xs font-bold text-right outline-none focus:ring-2 ring-emerald-500/20"
+              className="w-full bg-theme-main rounded-lg px-2 py-1 text-xs font-bold text-right outline-none focus:ring-2 ring-theme-primary/20 text-theme-main"
             />
           </div>
         </div>
@@ -136,7 +136,7 @@ function SortableGoalCard({
         <textarea 
           value={editDescription} 
           onChange={(e) => setEditDescription(e.target.value)} 
-          className="w-full bg-neutral-50 rounded-lg px-4 py-2 text-xs outline-none focus:ring-2 ring-emerald-500/20 min-h-[60px] resize-none" 
+          className="w-full bg-theme-main rounded-lg px-4 py-2 text-xs outline-none focus:ring-2 ring-theme-primary/20 min-h-[60px] resize-none text-theme-main" 
           placeholder="Описание (Markdown)"
         />
 
@@ -148,7 +148,7 @@ function SortableGoalCard({
               e.stopPropagation();
               setShowDeleteModal(true);
             }} 
-            className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer relative z-30"
+            className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer relative z-30"
             title="Удалить цель"
           >
             <Trash2 size={16} />
@@ -160,7 +160,7 @@ function SortableGoalCard({
                 e.stopPropagation();
                 onCancelEdit();
               }} 
-              className="px-3 py-1.5 bg-neutral-100 text-neutral-500 rounded-lg text-xs font-bold hover:bg-neutral-200 transition-colors"
+              className="px-3 py-1.5 bg-theme-main text-theme-muted rounded-lg text-xs font-bold hover:bg-theme-base transition-colors"
             >
               Отмена
             </button>
@@ -174,7 +174,7 @@ function SortableGoalCard({
                 "p-2 rounded-lg border transition-all flex items-center justify-center font-bold",
                 goal.isCompleted 
                   ? "bg-emerald-500 border-emerald-500 text-white" 
-                  : "bg-neutral-100 border-neutral-200 text-neutral-400 hover:border-emerald-500 hover:text-emerald-500"
+                  : "bg-theme-main border-theme-base text-theme-muted hover:border-emerald-500 hover:text-emerald-500"
               )}
               title={goal.isCompleted ? "Снять отметку о выполнении" : "Отметить как выполненную"}
             >
@@ -186,7 +186,7 @@ function SortableGoalCard({
                 e.stopPropagation();
                 handleSaveWithCheck();
               }} 
-              className="flex items-center gap-2 px-4 py-1.5 bg-theme-primary text-white rounded-lg text-xs font-bold shadow-lg shadow-theme-primary/20 hover:bg-theme-primary-dark transition-all"
+              className="flex items-center gap-2 px-4 py-1.5 bg-theme-primary text-theme-on-primary rounded-lg text-xs font-bold shadow-lg shadow-theme-primary/20 hover:bg-theme-primary-dark transition-all"
             >
               <Save size={14} />
               Сохранить
@@ -197,16 +197,16 @@ function SortableGoalCard({
         {/* Delete Confirmation Modal */}
         {showDeleteModal && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[200] flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="bg-theme-surface rounded-3xl p-6 w-full max-w-xs shadow-2xl animate-in zoom-in-95 duration-200 border border-theme-base">
               <div className="flex items-center gap-3 text-rose-500 mb-4">
                 <Trash2 size={24} />
                 <h4 className="font-bold text-lg">Удалить цель?</h4>
               </div>
-              <p className="text-neutral-500 text-sm mb-6">Это действие нельзя отменить.</p>
+              <p className="text-theme-muted text-sm mb-6">Это действие нельзя отменить.</p>
               <div className="flex gap-3">
                 <button 
                   onClick={() => setShowDeleteModal(false)}
-                  className="flex-1 px-4 py-2 bg-neutral-100 text-neutral-500 rounded-xl font-bold text-sm"
+                  className="flex-1 px-4 py-2 bg-theme-main text-theme-muted rounded-xl font-bold text-sm"
                 >
                   Отмена
                 </button>
@@ -227,12 +227,12 @@ function SortableGoalCard({
         {/* Toggle Complete Confirmation Modal */}
         {showCompleteModal && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[200] flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="bg-theme-surface rounded-3xl p-6 w-full max-w-xs shadow-2xl animate-in zoom-in-95 duration-200 border border-theme-base">
               <div className="flex items-center gap-3 text-emerald-500 mb-4">
                 <Check size={24} />
-                <h4 className="font-bold text-lg">{goal.isCompleted ? "Вернуть в работу?" : "Цель достигнута?"}</h4>
+                <h4 className="font-bold text-lg text-theme-main">{goal.isCompleted ? "Вернуть в работу?" : "Цель достигнута?"}</h4>
               </div>
-              <p className="text-neutral-500 text-sm mb-6">
+              <p className="text-theme-muted text-sm mb-6">
                 {goal.isCompleted 
                   ? "Цель снова станет активной и появится в общем списке." 
                   : "Цель будет отмечена как выполненная."}
@@ -240,7 +240,7 @@ function SortableGoalCard({
               <div className="flex gap-3">
                 <button 
                   onClick={() => setShowCompleteModal(false)}
-                  className="flex-1 px-4 py-2 bg-neutral-100 text-neutral-500 rounded-xl font-bold text-sm"
+                  className="flex-1 px-4 py-2 bg-theme-main text-theme-muted rounded-xl font-bold text-sm"
                 >
                   Отмена
                 </button>
@@ -266,9 +266,9 @@ function SortableGoalCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "bg-white rounded-2xl border border-neutral-100 overflow-hidden shadow-sm hover:shadow-md transition-all relative group",
+        "bg-theme-surface rounded-2xl border border-theme-base overflow-hidden shadow-sm hover:shadow-md transition-all relative group",
         isDragging && "shadow-2xl scale-105 z-20",
-        goal.isCompleted && "opacity-75 bg-neutral-50"
+        goal.isCompleted && "opacity-75 bg-theme-main"
       )}
       onPointerDown={(e) => {
         const timer = setTimeout(handleLongPress, 500);
@@ -279,7 +279,7 @@ function SortableGoalCard({
       }}
     >
       <div 
-        className="absolute left-1 top-1/2 -translate-y-1/2 p-1 text-neutral-300 hover:text-neutral-500 cursor-grab active:cursor-grabbing opacity-30 group-hover:opacity-100 transition-opacity"
+        className="absolute left-1 top-1/2 -translate-y-1/2 p-1 text-theme-muted opacity-30 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
         {...attributes}
         {...listeners}
       >
@@ -290,7 +290,7 @@ function SortableGoalCard({
         <div className="flex items-center justify-between mb-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className={cn("font-bold text-sm truncate block", goal.isCompleted ? "text-neutral-400 line-through" : "text-neutral-900")}>
+              <span className={cn("font-bold text-sm truncate block", goal.isCompleted ? "text-theme-muted line-through" : "text-theme-main")}>
                 {goal.name}
               </span>
               {goal.isCompleted && (
@@ -298,7 +298,7 @@ function SortableGoalCard({
               )}
             </div>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-1">
+              <span className="text-[10px] font-bold text-theme-muted uppercase tracking-widest flex items-center gap-1">
                 <Calendar className="w-2.5 h-2.5" />
                 {goal.deadline ? format(new Date(goal.deadline), 'd MMM yyyy', { locale: ru }) : 'Без срока'}
               </span>
@@ -308,27 +308,27 @@ function SortableGoalCard({
 
         <div className="flex justify-between items-end mb-3">
           <div>
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest leading-none mb-1">Накоплено</p>
-            <p className="font-bold text-emerald-600 leading-none">{goal.currentAmount.toLocaleString()} ₽</p>
+            <p className="text-[10px] font-bold text-theme-muted uppercase tracking-widest leading-none mb-1">Накоплено</p>
+            <p className="font-bold text-emerald-500 leading-none">{goal.currentAmount.toLocaleString()} ₽</p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest leading-none mb-1">Цель</p>
-            <p className="font-bold text-neutral-900 leading-none">{goal.targetAmount.toLocaleString()} ₽</p>
+            <p className="text-[10px] font-bold text-theme-muted uppercase tracking-widest leading-none mb-1">Цель</p>
+            <p className="font-bold text-theme-main leading-none">{goal.targetAmount.toLocaleString()} ₽</p>
           </div>
         </div>
 
         {goal.description && (
-          <div className="mb-3 p-2 bg-neutral-50 rounded-xl text-[10px] text-neutral-500 overflow-hidden line-clamp-2 markdown-body">
+          <div className="mb-3 p-2 bg-theme-main rounded-xl text-[10px] text-theme-muted overflow-hidden line-clamp-2 markdown-body">
             <ReactMarkdown>{goal.description}</ReactMarkdown>
           </div>
         )}
 
         <div className="space-y-1.5">
           <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-            <span className="text-neutral-400">Прогресс</span>
-            <span className="text-emerald-600">{progress.toFixed(1)}%</span>
+            <span className="text-theme-muted">Прогресс</span>
+            <span className="text-emerald-500">{progress.toFixed(1)}%</span>
           </div>
-          <div className="h-1.5 w-full bg-neutral-100 rounded-full overflow-hidden">
+          <div className="h-1.5 w-full bg-theme-base rounded-full overflow-hidden">
             <div 
               className="h-full bg-theme-primary transition-all duration-500"
               style={{ width: `${progress}%` }}
@@ -630,21 +630,21 @@ export default function Dashboard({
                 filterType: 'period', 
                 periodRange: { start: subMonths(new Date(), 1), end: new Date() } 
               })}
-              className="bg-theme-primary rounded-2xl p-2 text-white shadow-xl shadow-theme-primary-light cursor-pointer group relative overflow-hidden"
+              className="bg-theme-surface rounded-2xl p-2 text-theme-main border border-theme-base shadow-soft cursor-pointer group relative overflow-hidden"
             >
               <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-1 items-center">
                 {/* Left Side: Balance and Stats */}
                 <div>
                   <div className="mb-0 grid grid-cols-2 gap-1 px-2">
                     <div className="pt-0 pb-0 pr-0 text-center">
-                      <p className="text-theme-primary-light text-[10px] sm:text-xs font-bold uppercase tracking-wider">Общий баланс</p>
+                      <p className="text-theme-muted text-[10px] sm:text-xs font-bold uppercase tracking-wider">Общий баланс</p>
                       <h2 className="text-lg sm:text-xl font-bold">{totalBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} ₽</h2>
                     </div>
-                    <div className="text-center border-l border-white/10 pt-0 pb-0 pl-0">
-                      <p className="text-theme-primary-light text-[10px] sm:text-xs font-bold uppercase tracking-wider pb-[2px]">За прошедший месяц</p>
+                    <div className="text-center border-l border-theme-base pt-0 pb-0 pl-0">
+                      <p className="text-theme-muted text-[10px] sm:text-xs font-bold uppercase tracking-wider pb-[2px]">За прошедший месяц</p>
                       <h2 className={cn(
                         "text-lg sm:text-xl font-bold pb-[5px]",
-                        monthlyRollingBalance >= 0 ? "text-emerald-300" : "text-rose-300"
+                        monthlyRollingBalance >= 0 ? "text-emerald-500" : "text-rose-500"
                       )}>
                         {monthlyRollingBalance > 0 ? "+" : ""}{monthlyRollingBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} ₽
                       </h2>
@@ -657,14 +657,14 @@ export default function Dashboard({
                         e.stopPropagation();
                         onOpenTransactionHistory?.({ type: 'income' });
                       }}
-                      className="mt-3 pt-[10px] pb-[10px] pl-[10px] bg-white/10 rounded-[12px] flex items-center gap-3 cursor-pointer hover:bg-white/20 transition-colors"
+                      className="mt-3 pt-[10px] pb-[10px] pl-[10px] bg-theme-main rounded-[12px] flex items-center gap-3 cursor-pointer hover:bg-theme-primary-light/30 transition-colors"
                     >
-                      <div className="bg-white/20 p-[6px] rounded-[12px]">
-                        <TrendingUp className="mr-0 pr-0 w-4 h-4" />                        
+                      <div className="bg-theme-primary-light/50 p-[6px] rounded-[12px]">
+                        <TrendingUp className="mr-0 pr-0 w-4 h-4 text-emerald-500" />                        
                       </div>
                       <div className="leading-[12px] pb-0">
-                        <p className="text-xs pt-0 pb-[6px] px-[6px] rounded-0" style={{ color: '#b9feac' }}>Доход</p>                      
-                        <p className="font-semibold pt-[2px] pb-[2px] px-[6px]">{monthlyStats.income.toLocaleString()} ₽</p>
+                        <p className="text-[10px] sm:text-xs pt-0 pb-[6px] px-[6px] rounded-0 font-bold uppercase text-emerald-500/80">Доход</p>                      
+                        <p className="font-semibold pt-[2px] pb-[2px] px-[6px] text-theme-main">{monthlyStats.income.toLocaleString()} ₽</p>
                       </div>
                     </div>
                     <div 
@@ -672,14 +672,14 @@ export default function Dashboard({
                         e.stopPropagation();
                         onOpenTransactionHistory?.({ type: 'expense' });
                       }}
-                      className="mt-[12px] p-[10px] bg-white/10 rounded-[12px] flex items-center gap-3 cursor-pointer hover:bg-white/20 transition-colors"
+                      className="mt-[12px] p-[10px] bg-theme-main rounded-[12px] flex items-center gap-3 cursor-pointer hover:bg-theme-primary-light/30 transition-colors"
                     >
-                      <div className="bg-white/20 p-[6px] rounded-[12px]">
-                        <TrendingDown className="mr-0 pr-0 w-4 h-4" />
+                      <div className="bg-rose-500/10 p-[6px] rounded-[12px]">
+                        <TrendingDown className="mr-0 pr-0 w-4 h-4 text-rose-500" />
                       </div>
                       <div>
-                        <p className="text-xs pt-[2px] pb-[2px]" style={{ color: '#ffa1ad' }}>Расход</p>
-                        <p className="font-semibold pt-0 text-neutral-100">{monthlyStats.expense.toLocaleString()} ₽</p>
+                        <p className="text-[10px] sm:text-xs pt-[2px] pb-[2px] font-bold uppercase text-rose-500/80">Расход</p>
+                        <p className="font-semibold pt-0 text-theme-main">{monthlyStats.expense.toLocaleString()} ₽</p>
                       </div>
                     </div>
                   </div>
@@ -693,10 +693,10 @@ export default function Dashboard({
                         dataKey="name" 
                         axisLine={false} 
                         tickLine={false} 
-                        tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.6)', fontWeight: 600 }} 
+                        tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 600 }} 
                       />
                       <YAxis hide />
-                      <Bar dataKey="balance" fill="rgba(255,255,255,0.9)" radius={[4, 4, 0, 0]} barSize={12} />
+                      <Bar dataKey="balance" fill="var(--primary)" radius={[4, 4, 0, 0]} barSize={12} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -717,10 +717,10 @@ export default function Dashboard({
         className="p-[1px] mb-6"
       >
         <div className="flex items-center justify-between mb-1">
-          <h3 className="font-bold text-lg">Счета</h3>
+          <h3 className="font-bold text-lg text-theme-main">Счета</h3>
           <button 
             onClick={() => setShowAccountManager(true)}
-            className="text-theme-primary-dark text-sm font-medium hover:bg-theme-primary-light px-2 py-2 rounded-lg transition-colors"
+            className="text-theme-primary font-medium hover:bg-theme-primary/10 px-2 py-2 rounded-lg transition-colors"
           >
             Все
           </button>
@@ -742,19 +742,19 @@ export default function Dashboard({
                     if (onOpenTransactionHistory) onOpenTransactionHistory(account.id);
                   }}
                   className={cn(
-                    "min-w-[100px] flex-shrink-0 bg-white p-3 rounded-2xl border transition-all duration-300 snap-start relative cursor-pointer group",
+                    "min-w-[100px] flex-shrink-0 bg-theme-surface p-3 rounded-2xl border transition-all duration-300 snap-start relative cursor-pointer group shadow-sm",
                     isNegative 
-                      ? "shadow-soft border-rose-100 hover:shadow-rose-100/50 hover:bg-rose-50/30" 
-                      : "shadow-soft border-neutral-100 hover:shadow-theme-primary-light/50 hover:bg-theme-primary-light/10"
+                      ? "border-rose-500/30 hover:shadow-rose-500/10 hover:bg-rose-500/5" 
+                      : "border-theme-base hover:shadow-theme-primary/10 hover:bg-theme-primary/5"
                   )}
                 >
-                  <div className="absolute top-3 right-3 text-[10px] font-bold text-neutral-400 opacity-60">
+                  <div className="absolute top-3 right-3 text-[10px] font-bold text-theme-muted opacity-60">
                     {currencies.find(c => c.iso === account.currency)?.symbol || account.currency}
                   </div>
                   <div 
                     className={cn(
                       "w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110",
-                      !hasColor && (isNegative ? "bg-rose-50" : "bg-theme-primary-light")
+                      !hasColor && (isNegative ? "bg-rose-500/10" : "bg-theme-primary/10")
                     )}
                     style={hasColor ? { backgroundColor: `${account.color}20` } : {}}
                   >
@@ -763,8 +763,8 @@ export default function Dashboard({
                       style={hasColor ? { color: account.color } : {}}
                     />
                   </div>
-                  <p className="text-neutral-500 text-[10px] font-bold uppercase tracking-wide mb-1 truncate group-hover:text-neutral-700">{account.name}</p>
-                  <p className={cn("font-bold text-base truncate", isNegative ? "text-rose-600" : "text-neutral-900")}>
+                  <p className="text-theme-muted group-hover:text-theme-main text-[10px] font-bold uppercase tracking-wide mb-1 truncate transition-colors">{account.name}</p>
+                  <p className={cn("font-bold text-base truncate", isNegative ? "text-rose-500" : "text-theme-main")}>
                     {account.balance.toLocaleString()}
                   </p>
                 </motion.div>
@@ -772,7 +772,7 @@ export default function Dashboard({
             })}
           </AnimatePresence>
           {dashboardAccounts.length === 0 && (
-            <p className="text-neutral-400 text-sm italic">Нет добавленных счетов</p>
+            <p className="text-theme-muted text-sm italic">Нет добавленных счетов</p>
           )}
         </div>
       </motion.section>
@@ -798,7 +798,7 @@ export default function Dashboard({
             История
           </button>
         </div>
-        <div className="bg-white rounded-3xl border border-neutral-100 overflow-hidden shadow-soft">
+        <div className="bg-theme-surface rounded-3xl border border-theme-base overflow-hidden shadow-soft">
           {groupedTransactions.map(([dateKey, transactions], groupIndex) => (
             <motion.div 
               key={dateKey}
@@ -806,11 +806,11 @@ export default function Dashboard({
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 + (groupIndex * 0.05) }}
             >
-              <div className="px-4 py-2 bg-neutral-50/50 backdrop-blur-sm text-[10px] font-bold text-neutral-500 uppercase tracking-wider">
+              <div className="px-4 py-2 bg-theme-main/50 backdrop-blur-sm text-[10px] font-bold text-theme-muted uppercase tracking-wider">
                 {dateKey}
               </div>
               <table className="w-full text-left border-collapse table-fixed">
-                <tbody className="divide-y divide-neutral-50">
+                <tbody className="divide-y divide-theme-base">
                   {transactions.map(t => {
                     const category = categories.find(c => c.id === t.categoryId);
                     const parentCategory = category?.parentId ? categories.find(c => c.id === category.parentId) : category;
@@ -823,16 +823,16 @@ export default function Dashboard({
                         onClick={() => {
                           if (onEditTransaction) onEditTransaction(t);
                         }}
-                        className="hover:bg-neutral-50 active:bg-neutral-100 transition-colors cursor-pointer"
+                        className="hover:bg-theme-primary/5 active:bg-theme-primary/10 transition-colors cursor-pointer"
                       >
                         <td className="pl-4 pr-2 py-1 align-top">
                           <div className="flex items-start gap-2">
                             <span className="text-lg shrink-0">{t.type === 'transfer' ? '🔄' : (category?.icon || parentCategory?.icon || '💰')}</span>
                             <div className="min-w-0">
-                              <p className="text-xs font-bold text-neutral-900 truncate">{t.description || category?.name || (t.type === 'transfer' ? 'Перевод' : 'Без описания')}</p>
+                              <p className="text-xs font-bold text-theme-main truncate">{t.description || category?.name || (t.type === 'transfer' ? 'Перевод' : 'Без описания')}</p>
                               <p 
                                 className="text-[10px] font-medium truncate"
-                                style={{ color: account?.color && account.color !== '#000000' ? account.color : '#737373' }}
+                                style={{ color: account?.color && account.color !== '#000000' ? account.color : 'var(--text-muted)' }}
                               >
                                 {account?.name || 'Счет'}
                                 {targetAccount && ` → ${targetAccount.name}`}
@@ -848,9 +848,9 @@ export default function Dashboard({
                         )}>
                           <p className={cn(
                             "text-xs font-bold", 
-                            t.type === 'income' ? "text-emerald-600" : 
-                            t.type === 'transfer' ? "text-blue-600" : 
-                            "text-neutral-900"
+                            t.type === 'income' ? "text-emerald-500" : 
+                            t.type === 'transfer' ? "text-blue-500" : 
+                            "text-theme-main"
                           )}>
                             {t.type === 'income' ? '+' : t.type === 'transfer' ? '' : '-'}{t.amount.toLocaleString()} ₽
                           </p>
@@ -864,7 +864,7 @@ export default function Dashboard({
           ))}
           {recentTransactions.length === 0 && (
             <div className="text-center py-8">
-              <p className="text-neutral-400 text-sm">Операций пока нет</p>
+              <p className="text-theme-muted text-sm italic">Операций пока нет</p>
             </div>
           )}
         </div>
@@ -882,7 +882,7 @@ export default function Dashboard({
           >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-4">
-                <h3 className="font-bold text-lg">Цели</h3>
+                <h3 className="font-bold text-lg text-theme-main">Цели</h3>
                 <label className="flex items-center gap-2 cursor-pointer group">
                   <div 
                     onClick={(e) => {
@@ -891,17 +891,17 @@ export default function Dashboard({
                     }}
                     className={cn(
                       "w-4 h-4 rounded border transition-all flex items-center justify-center",
-                      showCompletedGoals ? "bg-theme-primary border-theme-primary" : "border-neutral-300 group-hover:border-theme-primary"
+                      showCompletedGoals ? "bg-theme-primary border-theme-primary" : "border-theme-base group-hover:border-theme-primary"
                     )}
                   >
                     {showCompletedGoals && <Check className="w-3 h-3 text-white" />}
                   </div>
-                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest leading-none">Завершенные</span>
+                  <span className="text-[10px] font-bold text-theme-muted uppercase tracking-widest leading-none">Завершенные</span>
                 </label>
               </div>
               <button 
                 onClick={() => setShowGoalManager(true)} 
-                className="flex items-center gap-1 text-theme-primary-dark text-sm font-medium hover:bg-theme-primary-light px-2 py-1 rounded-lg transition-colors"
+                className="flex items-center gap-1 text-theme-primary font-medium hover:bg-theme-primary/10 px-2 py-1 rounded-lg transition-colors"
               >
                 <Plus size={14} />
                 Добавить
@@ -932,8 +932,8 @@ export default function Dashboard({
                 </SortableContext>
               </DndContext>
               {displayedGoals.length === 0 && (
-                <div className="text-center py-8 bg-white rounded-2xl border border-dashed border-neutral-200">
-                  <p className="text-neutral-400 text-sm italic">
+                <div className="text-center py-8 bg-theme-main/10 rounded-2xl border border-dashed border-theme-base">
+                  <p className="text-theme-muted text-sm italic">
                     {showCompletedGoals ? 'Нет завершенных целей' : 'Нет активных целей'}
                   </p>
                 </div>

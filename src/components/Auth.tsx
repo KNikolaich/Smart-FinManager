@@ -62,53 +62,53 @@ export default function Auth({ onAuth }: AuthProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-50 p-4">
-      <div className="w-full max-w-md bg-white rounded-[32px] shadow-2xl overflow-hidden p-8">
+    <div className="min-h-screen flex items-center justify-center bg-theme-main p-4">
+      <div className="w-full max-w-md bg-theme-surface rounded-[32px] shadow-2xl overflow-hidden p-8 border border-theme-base">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-theme-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-theme-primary-light">
-            {isLogin ? <LogIn className="text-white w-8 h-8" /> : <UserPlus className="text-white w-8 h-8" />}
+            {isLogin ? <LogIn className="text-theme-on-primary w-8 h-8" /> : <UserPlus className="text-theme-on-primary w-8 h-8" />}
           </div>
-          <h1 className="text-2xl font-bold text-neutral-900">
+          <h1 className="text-2xl font-bold text-theme-main font-sans tracking-tight">
             {isLogin ? 'С возвращением' : 'Создать аккаунт'}
           </h1>
-          <p className="text-neutral-500 text-sm mt-2">
+          <p className="text-theme-muted text-sm mt-2">
             {isLogin ? 'Войдите в свой аккаунт' : 'Зарегистрируйтесь, чтобы начать'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 text-sm">
+            <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-center gap-3 text-rose-500 text-sm">
               <AlertCircle className="w-5 h-5 shrink-0" />
               <p>{error}</p>
             </div>
           )}
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider ml-1">Email</label>
+            <label className="text-xs font-bold text-theme-muted uppercase tracking-wider ml-1">Email</label>
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-theme-muted" />
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-neutral-50 border-none rounded-2xl pl-12 pr-4 py-3.5 outline-none focus:ring-2 ring-theme-primary-light transition-all"
+                className="w-full bg-theme-main border border-theme-base rounded-2xl pl-12 pr-4 py-3.5 outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main"
                 placeholder="your@email.com"
               />
             </div>
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider ml-1">Пароль</label>
+            <label className="text-xs font-bold text-theme-muted uppercase tracking-wider ml-1">Пароль</label>
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-theme-muted" />
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-neutral-50 border-none rounded-2xl pl-12 pr-4 py-3.5 outline-none focus:ring-2 ring-theme-primary-light transition-all"
+                className="w-full bg-theme-main border border-theme-base rounded-2xl pl-12 pr-4 py-3.5 outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main"
                 placeholder="••••••••"
               />
             </div>
@@ -117,7 +117,7 @@ export default function Auth({ onAuth }: AuthProps) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-theme-primary hover:bg-theme-primary-dark text-white font-bold py-4 rounded-2xl shadow-lg shadow-theme-primary-light transition-all disabled:opacity-50 mt-4"
+            className="w-full bg-theme-primary hover:bg-theme-primary-dark text-theme-on-primary font-bold py-4 rounded-2xl shadow-lg shadow-theme-primary-light transition-all disabled:opacity-50 mt-4 active:scale-[0.98]"
           >
             {loading ? 'Загрузка...' : isLogin ? 'Войти' : 'Зарегистрироваться'}
           </button>
@@ -126,7 +126,7 @@ export default function Auth({ onAuth }: AuthProps) {
         <div className="mt-8 text-center">
           <button
             onClick={() => setIsLogin(!isLogin)}
-            className="text-neutral-500 text-sm hover:text-theme-primary-dark transition-colors"
+            className="text-theme-muted text-sm hover:text-theme-primary transition-colors font-medium"
           >
             {isLogin ? 'Нет аккаунта? Зарегистрируйтесь' : 'Уже есть аккаунт? Войдите'}
           </button>

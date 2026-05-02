@@ -9,12 +9,71 @@
 }
 
 /* Themes */
-.theme-light-green { --primary: #10b981; --primary-light: #d1fae5; --primary-dark: #059669; --bg: #f5f5f4; }
-.theme-light-blue { --primary: #3b82f6; --primary-light: #dbeafe; --primary-dark: #2563eb; --bg: #f0f9ff; }
-.theme-light-orange { --primary: #f97316; --primary-light: #ffedd5; --primary-dark: #ea580c; --bg: #fff7ed; }
-.theme-light-brown { --primary: #a16207; --primary-light: #fef3c7; --primary-dark: #854d0e; --bg: #fefce8; }
-.theme-light-gray { --primary: #6b7280; --primary-light: #f3f4f6; --primary-dark: #4b5563; --bg: #f3f4f6; }
-.theme-light-purple { --primary: #8b5cf6; --primary-light: #ede9fe; --primary-dark: #6d28d9; --bg: #faf5ff; }
+root {
+  --primary: #10b981;
+  --primary-light: #d1fae5;
+  --primary-dark: #059669;
+  --text-on-primary: #ffffff;
+  --bg-main: #f5f5f4;
+  --bg-surface: #ffffff;
+  --text-main: #111827;
+  --text-muted: #6b7280;
+  --border-color: #f3f4f6;
+  --input-bg: #f9fafb;
+}
+
+.theme-light-green { 
+  --primary: #10b981; --primary-light: #d1fae5; --primary-dark: #059669; --text-on-primary: #ffffff;
+  --bg-main: #f5f5f4; --bg-surface: #ffffff; --text-main: #111827; --text-muted: #6b7280; --border-color: #f3f4f6;
+}
+.theme-light-blue { 
+  --primary: #3b82f6; --primary-light: #dbeafe; --primary-dark: #2563eb; --text-on-primary: #ffffff;
+  --bg-main: #f0f9ff; --bg-surface: #ffffff; --text-main: #111827; --text-muted: #64748b; --border-color: #f1f5f9;
+}
+.theme-light-ruby { 
+  --primary: #e11d48; --primary-light: #fff1f2; --primary-dark: #be123c; --text-on-primary: #ffffff;
+  --bg-main: #fff1f2; --bg-surface: #ffffff; --text-main: #111827; --text-muted: #9f1239; --border-color: #ffe4e6;
+}
+.theme-light-orange { 
+  --primary: #f59e0b; --primary-light: #fffbeb; --primary-dark: #d97706; --text-on-primary: #ffffff;
+  --bg-main: #fffbeb; --bg-surface: #ffffff; --text-main: #111827; --text-muted: #b45309; --border-color: #fef3c7;
+}
+.theme-light-violet { 
+  --primary: #8b5cf6; --primary-light: #f5f3ff; --primary-dark: #7c3aed; --text-on-primary: #ffffff;
+  --bg-main: #f5f3ff; --bg-surface: #ffffff; --text-main: #111827; --text-muted: #6d28d9; --border-color: #ede9fe;
+}
+.theme-midnight { 
+  --primary: #6366f1; --primary-light: rgba(99, 102, 241, 0.2); --primary-dark: #4f46e5; --text-on-primary: #ffffff;
+  --bg-main: #0f172a; --bg-surface: #1e293b; --text-main: #f8fafc; --text-muted: #94a3b8; --border-color: #334155;
+  --input-bg: #0f172a;
+}
+.theme-carbon { 
+  --primary: #10b981; --primary-light: rgba(16, 185, 129, 0.2); --primary-dark: #059669; --text-on-primary: #ffffff;
+  --bg-main: #121212; --bg-surface: #1e1e1e; --text-main: #e2e2e2; --text-muted: #a0a0a0; --border-color: #2e2e2e;
+  --input-bg: #262626;
+}
+.theme-oled { 
+  --primary: #10b981; --primary-light: rgba(16, 185, 129, 0.1); --primary-dark: #059669; --text-on-primary: #ffffff;
+  --bg-main: #000000; --bg-surface: #0a0a0a; --text-main: #ffffff; --text-muted: #888888; --border-color: #1a1a1a;
+  --input-bg: #111111;
+}
+.theme-nordic { 
+  --primary: #0ea5e9; --primary-light: #e0f2fe; --primary-dark: #0284c7; --text-on-primary: #ffffff;
+  --bg-main: #f8fafc; --bg-surface: #ffffff; --text-main: #0f172a; --text-muted: #64748b; --border-color: #e2e8f0;
+}
+.theme-forest-dark { 
+  --primary: #22c55e; --primary-light: rgba(34, 197, 94, 0.15); --primary-dark: #16a34a; --text-on-primary: #ffffff;
+  --bg-main: #052e16; --bg-surface: #064e3b; --text-main: #f0fdf4; --text-muted: #86efac; --border-color: #065f46;
+}
+.theme-purple-night { 
+  --primary: #d946ef; --primary-light: rgba(217, 70, 239, 0.15); --primary-dark: #c026d3; --text-on-primary: #ffffff;
+  --bg-main: #2e1065; --bg-surface: #4c1d95; --text-main: #fae8ff; --text-muted: #d8b4fe; --border-color: #581c87;
+}
+.theme-cyber {
+  --primary: #00ffcc; --primary-light: rgba(0, 255, 204, 0.2); --primary-dark: #00b38f; --text-on-primary: #000000;
+  --bg-main: #050505; --bg-surface: #121212; --text-main: #00ffcc; --text-muted: #008877; --border-color: #00ffcc44;
+  --input-bg: #000000;
+}
 
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {
@@ -32,6 +91,7 @@
   /* Theme-aware utilities */
   .bg-theme-primary { background-color: var(--primary); }
   .text-theme-primary { color: var(--primary); }
+  .text-theme-on-primary { color: var(--text-on-primary); }
   .border-theme-primary { border-color: var(--primary); }
   .ring-theme-primary { --tw-ring-color: var(--primary); }
   .text-theme-primary-dark { color: var(--primary-dark); }
@@ -39,6 +99,12 @@
   .hover\:text-theme-primary-dark:hover { color: var(--primary-dark); }
   
   /* Theme-aware background/text */
+  .bg-theme-main { background-color: var(--bg-main); }
+  .bg-theme-surface { background-color: var(--bg-surface); }
+  .text-theme-main { color: var(--text-main); }
+  .text-theme-muted { color: var(--text-muted); }
+  .border-theme-base { border-color: var(--border-color); }
+  
   .bg-theme-primary-light { background-color: var(--primary-light); }
   .hover\:bg-theme-primary-dark:hover { background-color: var(--primary-dark); }
   .shadow-theme-primary-light { --tw-shadow-color: var(--primary-light); --tw-shadow: var(--tw-shadow-colored); }
@@ -57,11 +123,50 @@ input[type=number] {
 }
 
 body {
-  @apply font-sans bg-neutral-50 text-neutral-900 antialiased;
+  @apply font-sans antialiased transition-colors duration-300;
   overscroll-behavior-y: contain;
-  background-color: var(--bg);
-  color: var(--text, inherit);
+  background-color: var(--bg-main, #f5f5f4);
+  color: var(--text-main, #111827);
 }
+
+/* Base element overrides for dark mode compatibility */
+.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-purple-night {
+  color-scheme: dark;
+}
+
+/* Common element adjustments */
+.bg-white { background-color: var(--bg-surface); }
+.bg-neutral-50, .bg-gray-50 { background-color: var(--input-bg); }
+.bg-neutral-100, .bg-gray-100 { background-color: var(--bg-main); }
+.bg-neutral-200 { background-color: var(--border-color); }
+.text-neutral-900, .text-gray-900 { color: var(--text-main); }
+.text-neutral-800 { color: var(--text-main); opacity: 0.9; }
+.text-neutral-700 { color: var(--text-main); opacity: 0.8; }
+.text-neutral-600, .text-neutral-500, .text-neutral-400, .text-gray-600, .text-gray-500, .text-gray-400 { color: var(--text-muted); }
+.border-neutral-100, .border-neutral-50, .border-neutral-200, .border-gray-100, .border-gray-200, .border-gray-300 { border-color: var(--border-color); }
+.shadow-sm, .shadow-md, .shadow-lg, .shadow-xl { --tw-shadow-color: rgba(0,0,0,0.3) !important; }
+
+/* Form Elements */
+input, select, textarea {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.6;
+}
+
+label {
+  color: var(--text-main) !important;
+  opacity: 0.9;
+}
+
+/* Table adjustments */
+table tr.bg-gray-100 { background-color: var(--bg-main); }
+table th { color: var(--text-muted); border-color: var(--border-color); }
+table td { border-color: var(--border-color); }
 
 /* Apply theme colors */
 .theme-light-green, .theme-light-blue, .theme-light-orange, .theme-light-brown, .theme-light-gray { @apply text-neutral-900; }
@@ -103,18 +208,24 @@ body {
   @apply mb-1;
 }
 .markdown-body blockquote {
-  @apply border-l-4 border-neutral-300 pl-4 italic mb-4;
+  @apply border-l-4 pl-4 italic mb-4;
+  border-color: var(--border-color);
+  color: var(--text-muted);
 }
 .markdown-body code {
-  @apply bg-neutral-100 text-neutral-800 px-1.5 py-0.5 rounded-md text-[0.9em] font-mono font-medium;
+  @apply px-1.5 py-0.5 rounded-md text-[0.9em] font-mono font-medium;
+  background-color: var(--bg-main);
+  color: var(--primary);
 }
 .markdown-body pre {
-  @apply bg-neutral-800 text-neutral-50 p-4 rounded-xl overflow-x-auto my-4 font-mono shadow-inner;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  @apply p-4 rounded-xl overflow-x-auto my-4 font-mono shadow-inner;
+  background-color: var(--bg-main);
+  border: 1px solid var(--border-color);
 }
 /* Ensure code inside pre blocks is perfectly readable */
 .markdown-body pre code {
-  @apply bg-transparent p-0 text-white text-sm leading-normal block w-full;
+  @apply bg-transparent p-0 text-sm leading-normal block w-full;
+  color: var(--text-main);
   font-family: inherit;
 }
 .markdown-body .task-list-item {

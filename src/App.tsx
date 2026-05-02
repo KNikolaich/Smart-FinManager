@@ -269,15 +269,15 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500" />
+      <div className="min-h-screen flex items-center justify-center bg-theme-main">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-theme-primary" />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-neutral-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500" /></div>}>
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-theme-main"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-theme-primary" /></div>}>
         <Auth onAuth={setUser} />
       </Suspense>
     );
@@ -366,9 +366,9 @@ export default function App() {
   };
 
   return (
-    <div className="h-[100dvh] bg-neutral-50 flex flex-col overflow-hidden">
+    <div className="h-[100dvh] bg-theme-main flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="px-6 h-16 md:h-20 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-white/40 shrink-0 z-50 sticky top-0 transition-all">
+      <header className="px-6 h-16 md:h-20 flex items-center justify-between bg-theme-surface/80 backdrop-blur-md border-b border-theme-base shrink-0 z-50 sticky top-0 transition-all">
         <div 
           className="flex items-center gap-4 cursor-pointer group"
           onClick={() => {
@@ -382,14 +382,14 @@ export default function App() {
           <motion.div 
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="w-11 h-11 bg-theme-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-theme-primary-light transition-all"
+            className="w-11 h-11 bg-theme-primary rounded-xl flex items-center justify-center text-theme-on-primary shadow-lg shadow-theme-primary-light transition-all"
           >
             <Wallet size={20} />
           </motion.div>
           <div className="flex items-center gap-3">
             <div className="flex flex-col">
-              <h2 className="font-bold text-sm leading-none group-hover:text-theme-primary transition-colors">Finance</h2>
-              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mt-0.5">Manager</p>
+              <h2 className="font-bold text-sm leading-none group-hover:text-theme-primary transition-colors text-theme-main">Finance</h2>
+              <p className="text-[10px] text-theme-muted font-bold uppercase tracking-widest mt-0.5">Manager</p>
             </div>
             
             <motion.button 
@@ -400,14 +400,14 @@ export default function App() {
                 setActiveTab('ai');
               }}
               className={cn(
-                "flex items-center justify-center rounded-xl transition-all w-10 h-10 shadow-sm border",
+                "flex items-center justify-center transition-all w-10 h-10",
                 activeTab === 'ai' 
-                  ? "text-theme-primary bg-theme-primary-light border-theme-primary/20 shadow-theme-primary-light/30" 
-                  : "text-neutral-400 hover:text-neutral-500 bg-white border-neutral-100"
+                  ? "text-theme-primary" 
+                  : "text-theme-muted hover:text-theme-primary"
               )}
               title="AI Assistant"
             >
-              <RobotIcon className="w-8 h-8" />
+              <RobotIcon className="w-8 h-8 sm:w-9 sm:h-9" />
             </motion.button>
           </div>
         </div>
@@ -417,8 +417,8 @@ export default function App() {
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowUserPage(true)}
             className={cn(
-              "w-10 h-10 md:w-11 md:h-11 rounded-xl overflow-hidden border border-white/50 shadow-sm flex items-center justify-center transition-all",
-              showUserPage ? "bg-theme-primary text-white shadow-lg shadow-theme-primary-light" : "bg-theme-primary-light text-theme-primary-dark"
+              "w-10 h-10 md:w-11 md:h-11 rounded-xl overflow-hidden border border-theme-base shadow-sm flex items-center justify-center transition-all",
+              showUserPage ? "bg-theme-primary text-theme-on-primary shadow-lg shadow-theme-primary-light" : "bg-theme-primary-light text-theme-primary-dark"
             )}
           >
             <UserIcon className="w-6 h-6" />
@@ -451,13 +451,13 @@ export default function App() {
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Navigation Bar */}
-      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 pb-0 h-16 shrink-0 z-40 flex items-center justify-center md:relative md:bottom-0 md:left-auto md:translate-x-0 md:max-w-none md:bg-white md:border-t md:border-neutral-100 md:rounded-none">
-        <div className="w-full bg-white/90 backdrop-blur-xl border border-white/40 shadow-elegant rounded-3xl flex items-center justify-around h-full px-2 md:bg-transparent md:backdrop-blur-none md:border-none md:shadow-none md:rounded-none">
+      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 pb-0 h-16 shrink-0 z-40 flex items-center justify-center md:relative md:bottom-0 md:left-auto md:translate-x-0 md:max-w-none md:bg-theme-surface md:border-t md:border-theme-base md:rounded-none">
+        <div className="w-full bg-theme-surface/90 backdrop-blur-xl border border-theme-base shadow-elegant rounded-3xl flex items-center justify-around h-full px-2 md:bg-transparent md:backdrop-blur-none md:border-none md:shadow-none md:rounded-none">
            <button 
             onClick={() => setActiveTab('dashboard')}
             className={cn(
               "flex flex-col items-center justify-center w-12 h-12 rounded-[18px] transition-all active:scale-95", 
-              activeTab === 'dashboard' ? "text-theme-primary bg-theme-primary-light/50" : "text-neutral-400 hover:text-neutral-500"
+              activeTab === 'dashboard' ? "text-theme-primary bg-theme-primary-light/50" : "text-theme-muted hover:text-theme-primary"
             )}
           >
             <LayoutDashboard size={22} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
@@ -466,7 +466,7 @@ export default function App() {
             onClick={() => setActiveTab('plan')}
             className={cn(
               "flex flex-col items-center justify-center w-12 h-12 rounded-[18px] transition-all active:scale-95", 
-              activeTab === 'plan' ? "text-theme-primary bg-theme-primary-light/50" : "text-neutral-400 hover:text-neutral-500"
+              activeTab === 'plan' ? "text-theme-primary bg-theme-primary-light/50" : "text-theme-muted hover:text-theme-primary"
             )}
           >
             <CalendarRange size={22} strokeWidth={activeTab === 'plan' ? 2.5 : 2} />
@@ -485,7 +485,7 @@ export default function App() {
               onClick={handleButtonClick}
               disabled={isProcessingAI}
               className={cn(
-                "w-12 h-12 text-white rounded-[18px] flex items-center justify-center shadow-lg transition-all z-50",
+                "w-12 h-12 text-theme-on-primary rounded-[18px] flex items-center justify-center shadow-lg transition-all z-50",
                 isRecording ? "bg-red-500 shadow-red-200 animate-pulse" : 
                 isProcessingAI ? "bg-amber-500 opacity-80" : "bg-theme-primary shadow-theme-primary-light"
               )}
@@ -506,7 +506,7 @@ export default function App() {
             onClick={() => setActiveTab('analytics')}
             className={cn(
               "flex flex-col items-center justify-center w-12 h-12 rounded-[18px] transition-all active:scale-95", 
-              activeTab === 'analytics' ? "text-theme-primary bg-theme-primary-light/50" : "text-neutral-400 hover:text-neutral-500"
+              activeTab === 'analytics' ? "text-theme-primary bg-theme-primary-light/50" : "text-theme-muted hover:text-theme-primary"
             )}
           >
             <BarChart2 size={22} strokeWidth={activeTab === 'analytics' ? 2.5 : 2} />
@@ -515,7 +515,7 @@ export default function App() {
             onClick={() => setActiveTab('settings')}
             className={cn(
               "flex flex-col items-center justify-center w-12 h-12 rounded-[18px] transition-all active:scale-95", 
-              activeTab === 'settings' ? "text-theme-primary bg-theme-primary-light/50" : "text-neutral-400 hover:text-neutral-500"
+              activeTab === 'settings' ? "text-theme-primary bg-theme-primary-light/50" : "text-theme-muted hover:text-theme-primary"
             )}
           >
             <SettingsIcon size={22} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
