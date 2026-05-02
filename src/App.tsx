@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useVoiceInput } from './hooks/useVoiceInput';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
@@ -17,17 +17,21 @@ import {
 import { api } from './lib/api';
 import { processUserMessage } from './services/aiService';
 import { Account, Transaction, Goal, Category, Plan, Currency, BalanceHistory, UserProfile } from './types';
-import UserPage from './components/UserPage';
-import Dashboard from './components/Dashboard';
-import PlanPage from './components/PlanPage';
-import Analytics from './components/Analytics';
-import Settings from './components/Settings';
-import AIAssistant, { AIAssistantHandle } from './components/AIAssistant';
-import AddTransaction from './components/AddTransaction';
-import TransactionHistory from './components/TransactionHistory';
-import EditTransaction from './components/EditTransaction';
-import AILogs from './components/AILogs';
-import Auth from './components/Auth';
+
+// Lazy load components
+const UserPage = lazy(() => import('./components/UserPage'));
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const PlanPage = lazy(() => import('./components/PlanPage'));
+const Analytics = lazy(() => import('./components/Analytics'));
+const Settings = lazy(() => import('./components/Settings'));
+const AIAssistant = lazy(() => import('./components/AIAssistant'));
+import type { AIAssistantHandle } from './components/AIAssistant';
+const AddTransaction = lazy(() => import('./components/AddTransaction'));
+const TransactionHistory = lazy(() => import('./components/TransactionHistory'));
+const EditTransaction = lazy(() => import('./components/EditTransaction'));
+const AILogs = lazy(() => import('./components/AILogs'));
+const Auth = lazy(() => import('./components/Auth'));
+
 import { cn } from './lib/utils';
 import { RobotIcon } from './components/icons/RobotIcon';
 import { ToastContainer, ToastType } from './components/ui/Toast';
@@ -262,7 +266,11 @@ export default function App() {
   }
 
   if (!user) {
-    return <Auth onAuth={setUser} />;
+    return (
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-neutral-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500" /></div>}>
+        <Auth onAuth={setUser} />
+      </Suspense>
+    );
   }
 
   const renderContent = () => {
@@ -312,7 +320,7 @@ export default function App() {
       case 'ai':
         return (
           <AIAssistant 
-            ref={aiAssistantRef}
+            ref={aiAssistantRef as any}
             accounts={accounts} 
             categories={categories} 
             transactions={transactions} 
@@ -407,7 +415,9 @@ export default function App() {
                 transition={{ duration: 0.25, ease: "easeOut" }}
                 className="h-full"
               >
-                {renderContent()}
+                <Suspense fallback={<div className="h-full flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-theme-primary" /></div>}>
+                  {renderContent()}
+                </Suspense>
               </motion.div>
             </AnimatePresence>
           </div>
@@ -489,65 +499,67 @@ export default function App() {
         </div>
       </nav>
 
-      {/* Transaction History Modal */}
-      {showTransactionHistory && (
-        <TransactionHistory 
-          transactions={transactions}
-          categories={categories}
-          accounts={accounts}
-          onClose={() => {
-            setShowTransactionHistory(false);
-            setTransactionHistoryFilter({});
-          }}
-          onEditTransaction={(t) => {
-            setEditingTransaction(t);
-          }}
-          initialAccountId={transactionHistoryFilter.accountId}
-          initialCategoryId={transactionHistoryFilter.categoryId}
-        />
-      )}
+      <Suspense fallback={null}>
+        {/* Transaction History Modal */}
+        {showTransactionHistory && (
+          <TransactionHistory 
+            transactions={transactions}
+            categories={categories}
+            accounts={accounts}
+            onClose={() => {
+              setShowTransactionHistory(false);
+              setTransactionHistoryFilter({});
+            }}
+            onEditTransaction={(t) => {
+              setEditingTransaction(t);
+            }}
+            initialAccountId={transactionHistoryFilter.accountId}
+            initialCategoryId={transactionHistoryFilter.categoryId}
+          />
+        )}
 
-      {/* Add Transaction Modal */}
-      {(showAddTransaction || initialTransactionData) && (
-        <AddTransaction 
-          onComplete={() => { setShowAddTransaction(false); setInitialTransactionData(null); }}
-          onAdd={refreshData}
-          onOptimisticAdd={optimisticAddTransaction}
-          accounts={accounts}
-          transactions={transactions}
-          categories={categories}
-          userId={user.id}
-          initialData={initialTransactionData}
-        />
-      )}
+        {/* Add Transaction Modal */}
+        {(showAddTransaction || initialTransactionData) && (
+          <AddTransaction 
+            onComplete={() => { setShowAddTransaction(false); setInitialTransactionData(null); }}
+            onAdd={refreshData}
+            onOptimisticAdd={optimisticAddTransaction}
+            accounts={accounts}
+            transactions={transactions}
+            categories={categories}
+            userId={user.id}
+            initialData={initialTransactionData}
+          />
+        )}
 
-      {/* Edit Transaction Modal */}
-      {editingTransaction && (
-        <EditTransaction 
-          transaction={editingTransaction}
-          accounts={accounts}
-          transactions={transactions}
-          categories={categories}
-          onClose={() => setEditingTransaction(null)}
-          onUpdate={refreshData}
-        />
-      )}
+        {/* Edit Transaction Modal */}
+        {editingTransaction && (
+          <EditTransaction 
+            transaction={editingTransaction}
+            accounts={accounts}
+            transactions={transactions}
+            categories={categories}
+            onClose={() => setEditingTransaction(null)}
+            onUpdate={refreshData}
+          />
+        )}
 
-      {showUserPage && (
-        <UserPage 
-          user={user} 
-          onLogout={handleLogout} 
-          onClose={() => setShowUserPage(false)} 
-          onUpdateUser={(updatedUser) => setUser(updatedUser)}
-          onRefresh={refreshData}
-        />
-      )}
-      {showAILogs && (
-        <AILogs 
-          userId={user.id}
-          onClose={() => setShowAILogs(false)}
-        />
-      )}
+        {showUserPage && (
+          <UserPage 
+            user={user} 
+            onLogout={handleLogout} 
+            onClose={() => setShowUserPage(false)} 
+            onUpdateUser={(updatedUser) => setUser(updatedUser)}
+            onRefresh={refreshData}
+          />
+        )}
+        {showAILogs && (
+          <AILogs 
+            userId={user.id}
+            onClose={() => setShowAILogs(false)}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

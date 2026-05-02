@@ -34,9 +34,11 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
-            if (id.includes('node_modules')) {
-              return 'vendor';
-            }
+             if (id.includes('node_modules')) {
+                if (id.includes('openai')) return 'ai'
+                if (id.includes('recharts') || id.includes('chart')) return 'charts'
+                return 'vendor'
+              }
           },
         },
       },
