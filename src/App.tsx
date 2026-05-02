@@ -51,9 +51,19 @@ export default function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'plan' | 'analytics' | 'settings' | 'ai'>('dashboard');
+  const [analyticsOptions, setAnalyticsOptions] = useState<{
+    type?: 'expense' | 'income';
+    filterType?: 'month' | 'period' | 'all';
+    selectedMonth?: Date;
+    periodRange?: { start: Date; end: Date };
+  }>({});
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [showTransactionHistory, setShowTransactionHistory] = useState(false);
-  const [transactionHistoryFilter, setTransactionHistoryFilter] = useState<{ categoryId?: string, accountId?: string }>({});
+  const [transactionHistoryFilter, setTransactionHistoryFilter] = useState<{ 
+    categoryId?: string, 
+    accountId?: string,
+    type?: 'all' | 'income' | 'expense'
+  }>({});
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [initialTransactionData, setInitialTransactionData] = useState<any | null>(null);
   const [addMode, setAddMode] = useState<'text' | 'voice'>(() => (localStorage.getItem('addMode') as 'text' | 'voice') || 'text');
@@ -290,9 +300,19 @@ export default function App() {
             initialGoalData={initialGoalData}
             onCloseGoalManager={() => setInitialGoalData(undefined)}
             onRefresh={refreshData}
-            onNavigateToAnalytics={() => setActiveTab('analytics')}
-            onOpenTransactionHistory={(accountId) => {
-              setTransactionHistoryFilter({ accountId });
+            onNavigateToAnalytics={(options) => {
+              if (options) setAnalyticsOptions(options);
+              else setAnalyticsOptions({});
+              setActiveTab('analytics');
+            }}
+            onOpenTransactionHistory={(filterProps) => {
+              if (typeof filterProps === 'string') {
+                setTransactionHistoryFilter({ accountId: filterProps });
+              } else if (filterProps) {
+                setTransactionHistoryFilter(filterProps);
+              } else {
+                setTransactionHistoryFilter({});
+              }
               setShowTransactionHistory(true);
             }}
             onEditTransaction={setEditingTransaction}
@@ -308,6 +328,10 @@ export default function App() {
             accounts={accounts} 
             currencies={currencies}
             balanceHistory={balanceHistory}
+            initialType={analyticsOptions.type}
+            initialFilterType={analyticsOptions.filterType}
+            initialSelectedMonth={analyticsOptions.selectedMonth}
+            initialPeriodRange={analyticsOptions.periodRange}
             onNavigateToHistory={(categoryName) => {
               const category = categories.find(c => c.name === categoryName);
               setTransactionHistoryFilter({ categoryId: category?.id });
@@ -515,6 +539,7 @@ export default function App() {
             }}
             initialAccountId={transactionHistoryFilter.accountId}
             initialCategoryId={transactionHistoryFilter.categoryId}
+            initialType={transactionHistoryFilter.type}
           />
         )}
 

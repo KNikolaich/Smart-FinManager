@@ -12,6 +12,10 @@ interface AnalyticsProps {
   currencies: Currency[];
   balanceHistory: BalanceHistory[];
   onNavigateToHistory?: (categoryName: string) => void;
+  initialType?: 'expense' | 'income';
+  initialFilterType?: DateFilterType;
+  initialSelectedMonth?: Date;
+  initialPeriodRange?: { start: Date; end: Date };
 }
 
 type DateFilterType = 'month' | 'period' | 'all';
@@ -22,15 +26,26 @@ const CHEERFUL_COLORS = [
   '#FF5733', '#33FF57', '#3357FF', '#F333FF', '#33FFF3'
 ];
 
-export default function Analytics({ transactions, categories, accounts, currencies, balanceHistory, onNavigateToHistory }: AnalyticsProps) {
-  const [activeType, setActiveType] = useState<'expense' | 'income'>('expense');
-  const [filterType, setFilterType] = useState<DateFilterType>('month');
-  const [selectedMonth, setSelectedMonth] = useState(new Date());
-  
-  const [periodRange, setPeriodRange] = useState({
+export default function Analytics({ 
+  transactions, 
+  categories, 
+  accounts, 
+  currencies, 
+  balanceHistory, 
+  onNavigateToHistory,
+  initialType = 'expense',
+  initialFilterType = 'month',
+  initialSelectedMonth = new Date(),
+  initialPeriodRange = {
     start: subMonths(new Date(), 3),
     end: new Date()
-  });
+  }
+}: AnalyticsProps) {
+  const [activeType, setActiveType] = useState<'expense' | 'income'>(initialType);
+  const [filterType, setFilterType] = useState<DateFilterType>(initialFilterType);
+  const [selectedMonth, setSelectedMonth] = useState(initialSelectedMonth);
+  
+  const [periodRange, setPeriodRange] = useState(initialPeriodRange);
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {

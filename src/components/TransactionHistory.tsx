@@ -12,12 +12,22 @@ interface TransactionHistoryProps {
   onEditTransaction: (transaction: Transaction) => void;
   initialAccountId?: string;
   initialCategoryId?: string;
+  initialType?: 'all' | 'income' | 'expense';
 }
 
-export default function TransactionHistory({ transactions, categories, accounts, onClose, onEditTransaction, initialAccountId, initialCategoryId }: TransactionHistoryProps) {
+export default function TransactionHistory({ 
+  transactions, 
+  categories, 
+  accounts, 
+  onClose, 
+  onEditTransaction, 
+  initialAccountId, 
+  initialCategoryId,
+  initialType = 'all'
+}: TransactionHistoryProps) {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>(initialType);
   const [filterCategoryId, setFilterCategoryId] = useState<string | 'all'>(initialCategoryId || 'all');
   const [filterAccountId, setFilterAccountId] = useState<string | 'all'>(initialAccountId || 'all');
   const [showFilter, setShowFilter] = useState(false);

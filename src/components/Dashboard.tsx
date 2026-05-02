@@ -357,8 +357,8 @@ interface DashboardProps {
   };
   onCloseGoalManager?: () => void;
   onRefresh?: () => void;
-  onNavigateToAnalytics?: () => void;
-  onOpenTransactionHistory?: (accountId?: string) => void;
+  onNavigateToAnalytics?: (options?: any) => void;
+  onOpenTransactionHistory?: (filterProps?: any) => void;
   onEditTransaction?: (t: Transaction) => void;
 }
 
@@ -626,7 +626,10 @@ export default function Dashboard({
             className="overflow-hidden"
           >
             <div 
-              onClick={onNavigateToAnalytics}
+              onClick={() => onNavigateToAnalytics?.({ 
+                filterType: 'period', 
+                periodRange: { start: subMonths(new Date(), 1), end: new Date() } 
+              })}
               className="bg-theme-primary rounded-2xl p-2 text-white shadow-xl shadow-theme-primary-light cursor-pointer group relative overflow-hidden"
             >
               <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-1 items-center">
@@ -649,7 +652,13 @@ export default function Dashboard({
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4 pb-0">
-                    <div className="mt-3 pt-[10px] pb-[10px] pl-[10px] bg-white/10 rounded-[12px] flex items-center gap-3">
+                    <div 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenTransactionHistory?.({ type: 'income' });
+                      }}
+                      className="mt-3 pt-[10px] pb-[10px] pl-[10px] bg-white/10 rounded-[12px] flex items-center gap-3 cursor-pointer hover:bg-white/20 transition-colors"
+                    >
                       <div className="bg-white/20 p-[6px] rounded-[12px]">
                         <TrendingUp className="mr-0 pr-0 w-4 h-4" />                        
                       </div>
@@ -658,7 +667,13 @@ export default function Dashboard({
                         <p className="font-semibold pt-[2px] pb-[2px] px-[6px]">{monthlyStats.income.toLocaleString()} ₽</p>
                       </div>
                     </div>
-                    <div className="mt-[12px] p-[10px] bg-white/10 rounded-[12px] flex items-center gap-3">
+                    <div 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenTransactionHistory?.({ type: 'expense' });
+                      }}
+                      className="mt-[12px] p-[10px] bg-white/10 rounded-[12px] flex items-center gap-3 cursor-pointer hover:bg-white/20 transition-colors"
+                    >
                       <div className="bg-white/20 p-[6px] rounded-[12px]">
                         <TrendingDown className="mr-0 pr-0 w-4 h-4" />
                       </div>
