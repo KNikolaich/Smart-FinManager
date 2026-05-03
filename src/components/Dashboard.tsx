@@ -806,11 +806,11 @@ export default function Dashboard({
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 + (groupIndex * 0.05) }}
             >
-              <div className="px-4 py-2 bg-theme-main/50 backdrop-blur-sm text-[10px] font-bold text-theme-muted uppercase tracking-wider">
+              <div className="px-4 py-2 bg-theme-primary/5 backdrop-blur-md text-[10px] font-bold text-theme-primary uppercase tracking-widest border-y border-neutral-100">
                 {dateKey}
               </div>
               <table className="w-full text-left border-collapse table-fixed">
-                <tbody className="divide-y divide-theme-base">
+                <tbody>
                   {transactions.map(t => {
                     const category = categories.find(c => c.id === t.categoryId);
                     const parentCategory = category?.parentId ? categories.find(c => c.id === category.parentId) : category;
@@ -825,7 +825,7 @@ export default function Dashboard({
                         }}
                         className="hover:bg-theme-primary/5 active:bg-theme-primary/10 transition-colors cursor-pointer"
                       >
-                        <td className="pl-4 pr-2 py-1 align-top">
+                        <td className="pl-4 pr-2 py-1.5 align-top">
                           <div className="flex items-start gap-2">
                             <span className="text-lg shrink-0">{t.type === 'transfer' ? '🔄' : (category?.icon || parentCategory?.icon || '💰')}</span>
                             <div className="min-w-0">
@@ -841,7 +841,7 @@ export default function Dashboard({
                           </div>
                         </td>
                         <td className={cn(
-                          "px-4 py-3 align-top w-1/2",
+                          "px-4 py-1.5 align-top w-1/2",
                           t.type === 'income' ? "text-left" : 
                           t.type === 'transfer' ? "text-center" : 
                           "text-right"

@@ -216,7 +216,7 @@ export default function EditTransaction({ transaction, accounts, transactions, c
                         setSelectedCategoryId(cat.id);
                       }}
                       className={cn(
-                        "w-full text-left px-2 py-2 text-[11px] font-bold transition-all flex items-center gap-2",
+                        "w-full text-left px-2 py-1.5 text-[11px] font-bold transition-all flex items-center gap-2",
                         activeParentId === cat.id
                           ? "bg-theme-surface text-theme-primary shadow-sm"
                           : "text-theme-muted hover:bg-theme-primary/5"
@@ -243,10 +243,10 @@ export default function EditTransaction({ transaction, accounts, transactions, c
                           type="button"
                           onClick={() => setSelectedCategoryId(sub.id)}
                           className={cn(
-                            "w-full text-left px-2 py-1.5 rounded-lg text-[11px] font-medium transition-all border",
+                            "w-full text-left px-2 py-1.5 rounded-lg text-[11px] font-medium transition-all border border-transparent border-b-theme-base/20",
                             selectedCategoryId === sub.id
                               ? "bg-theme-primary/10 border-theme-primary text-theme-primary font-bold"
-                              : "text-theme-muted border-transparent hover:bg-theme-main"
+                              : "text-theme-muted hover:bg-theme-main"
                           )}
                         >
                           {sub.name}

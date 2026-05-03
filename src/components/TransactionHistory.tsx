@@ -157,11 +157,11 @@ export default function TransactionHistory({
         <div className="flex-1 overflow-y-auto no-scrollbar relative">
           {groupedTransactions.map(([dateKey, transactions]) => (
             <div key={dateKey}>
-              <div className="px-4 py-1 bg-theme-main/50 backdrop-blur-md text-[10px] font-bold text-theme-muted uppercase tracking-wider sticky top-0 z-20 border-y border-theme-base/10">
+              <div className="px-4 py-2 bg-theme-primary/5 backdrop-blur-md text-[10px] font-bold text-theme-primary uppercase tracking-widest sticky top-0 z-20 border-y border-theme-base/50">
                 {dateKey}
               </div>
               <table className="w-full text-left border-collapse table-fixed">
-                <tbody className="divide-y divide-theme-base/30">
+                <tbody>
                   {transactions.map(t => {
                     const category = categories.find(c => c.id === t.categoryId);
                     const parentCategory = category?.parentId ? categories.find(c => c.id === category.parentId) : category;
@@ -174,7 +174,7 @@ export default function TransactionHistory({
                         onClick={() => onEditTransaction(t)}
                         className="hover:bg-theme-primary/5 active:bg-theme-primary/10 transition-colors cursor-pointer"
                       >
-                        <td className="pl-4 pr-2 py-1 align-top">
+                        <td className="pl-4 pr-2 py-1.5 align-top">
                           <div className="flex items-start gap-2">
                             <span className="text-lg shrink-0">{t.type === 'transfer' ? '🔄' : (category?.icon || parentCategory?.icon || '💰')}</span>
                             <div className="min-w-0">
@@ -190,7 +190,7 @@ export default function TransactionHistory({
                           </div>
                         </td>
                         <td className={cn(
-                          "px-4 py-1 align-top w-1/2",
+                          "px-4 py-1.5 align-top w-1/2",
                           t.type === 'income' ? "text-left" : 
                           t.type === 'transfer' ? "text-center" : 
                           "text-right"
