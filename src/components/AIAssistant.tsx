@@ -375,7 +375,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
             >
             <div className="shrink-0 pt-0.5">
               {m.role === 'assistant' ? (
-                <RobotIcon className="w-6 h-6 sm:w-8 sm:h-8 text-theme-primary" />
+                <RobotIcon className="w-6 h-6 sm:w-10 sm:h-10 text-theme-primary" active />
               ) : (
                 <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-theme-main flex items-center justify-center text-theme-muted border border-theme-base">
                   <User className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -417,7 +417,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
         {loading && (
           <div className="flex gap-3">
             <div className="shrink-0 pt-0.5">
-              <RobotIcon className="w-6 h-6 sm:w-8 sm:h-8 text-theme-primary" />
+              <RobotIcon className="w-6 h-6 sm:w-10 sm:h-10 text-theme-primary" active />
             </div>
             <div className="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />

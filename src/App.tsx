@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useVoiceInput } from './hooks/useVoiceInput';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
@@ -18,19 +18,19 @@ import { api } from './lib/api';
 import { processUserMessage } from './services/aiService';
 import { Account, Transaction, Goal, Category, Plan, Currency, BalanceHistory, UserProfile } from './types';
 
-// Lazy load components
-const UserPage = lazy(() => import('./components/UserPage'));
-const Dashboard = lazy(() => import('./components/Dashboard'));
-const PlanPage = lazy(() => import('./components/PlanPage'));
-const Analytics = lazy(() => import('./components/Analytics'));
-const Settings = lazy(() => import('./components/Settings'));
-const AIAssistant = lazy(() => import('./components/AIAssistant'));
+// Import components directly to avoid lazy loading issues in preview
+import UserPage from './components/UserPage';
+import Dashboard from './components/Dashboard';
+import PlanPage from './components/PlanPage';
+import Analytics from './components/Analytics';
+import Settings from './components/Settings';
+import AIAssistant from './components/AIAssistant';
 import type { AIAssistantHandle } from './components/AIAssistant';
-const AddTransaction = lazy(() => import('./components/AddTransaction'));
-const TransactionHistory = lazy(() => import('./components/TransactionHistory'));
-const EditTransaction = lazy(() => import('./components/EditTransaction'));
-const AILogs = lazy(() => import('./components/AILogs'));
-const Auth = lazy(() => import('./components/Auth'));
+import AddTransaction from './components/AddTransaction';
+import TransactionHistory from './components/TransactionHistory';
+import EditTransaction from './components/EditTransaction';
+import AILogs from './components/AILogs';
+import Auth from './components/Auth';
 
 import { cn } from './lib/utils';
 import { RobotIcon } from './components/icons/RobotIcon';
@@ -220,8 +220,13 @@ export default function App() {
       if (savedPlans) {
         setPlans(JSON.parse(savedPlans));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching data:', error);
+      if (error.message.includes('Rate exceeded')) {
+        addToast('Превышен лимит запросов. Пожалуйста, подождите немного.', 'error');
+      } else {
+        addToast('Ошибка при загрузке данных', 'error');
+      }
     }
   }, [user]);
 
@@ -277,9 +282,7 @@ export default function App() {
 
   if (!user) {
     return (
-      <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-theme-main"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-theme-primary" /></div>}>
-        <Auth onAuth={setUser} />
-      </Suspense>
+      <Auth onAuth={setUser} />
     );
   }
 
@@ -315,6 +318,7 @@ export default function App() {
               }
               setShowTransactionHistory(true);
             }}
+            onOpenAddTransaction={() => setShowAddTransaction(true)}
             onEditTransaction={setEditingTransaction}
           />
         );
@@ -391,24 +395,6 @@ export default function App() {
               <h2 className="font-bold text-sm leading-none group-hover:text-theme-primary transition-colors text-theme-main">Finance</h2>
               <p className="text-[10px] text-theme-muted font-bold uppercase tracking-widest mt-0.5">Manager</p>
             </div>
-            
-            <motion.button 
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveTab('ai');
-              }}
-              className={cn(
-                "flex items-center justify-center transition-all w-10 h-10",
-                activeTab === 'ai' 
-                  ? "text-theme-primary" 
-                  : "text-theme-muted hover:text-theme-primary"
-              )}
-              title="AI Assistant"
-            >
-              <RobotIcon className="w-8 h-8 sm:w-9 sm:h-9" />
-            </motion.button>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -428,7 +414,12 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
-        <div className="absolute inset-0 overflow-y-auto no-scrollbar pb-24 md:pb-0 px-[2px] pt-0">
+        <div className={cn(
+          "absolute inset-0 overflow-y-auto no-scrollbar px-[2px] pt-0",
+          activeTab === 'plan' 
+            ? "portrait:pb-12 landscape:pb-0" 
+            : "pb-24 md:pb-0 landscape:pb-0"
+        )}>
           <div className="max-w-7xl mx-auto h-full landscape:max-w-none">
             <AnimatePresence mode="wait">
               <motion.div
@@ -439,9 +430,7 @@ export default function App() {
                 transition={{ duration: 0.25, ease: "easeOut" }}
                 className="h-full"
               >
-                <Suspense fallback={<div className="h-full flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-theme-primary" /></div>}>
-                  {renderContent()}
-                </Suspense>
+                {renderContent()}
               </motion.div>
             </AnimatePresence>
           </div>
@@ -451,79 +440,65 @@ export default function App() {
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Navigation Bar */}
-      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 pb-0 h-16 shrink-0 z-40 flex items-center justify-center md:relative md:bottom-0 md:left-auto md:translate-x-0 md:max-w-none md:bg-theme-surface md:border-t border-theme-base md:rounded-none landscape:relative landscape:bottom-0 landscape:left-auto landscape:translate-x-0 landscape:w-20 landscape:h-full landscape:px-0 landscape:bg-theme-surface landscape:border-r landscape:border-t-0">
+      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 pb-0 h-[54px] shrink-0 z-40 flex items-center justify-center md:relative md:bottom-0 md:left-auto md:translate-x-0 md:max-w-none md:bg-theme-surface md:border-t border-theme-base md:rounded-none landscape:relative landscape:bottom-0 landscape:left-auto landscape:translate-x-0 landscape:w-20 landscape:h-full landscape:px-0 landscape:bg-theme-surface landscape:border-r landscape:border-t-0">
         <div className="w-full bg-theme-surface/90 backdrop-blur-xl border border-theme-base shadow-elegant rounded-3xl flex items-center justify-around h-full px-2 md:bg-transparent md:backdrop-blur-none md:border-none md:shadow-none md:rounded-none landscape:flex-col landscape:py-4 landscape:bg-transparent landscape:backdrop-blur-none">
            <button 
             onClick={() => setActiveTab('dashboard')}
             className={cn(
-              "flex flex-col items-center justify-center w-12 h-12 rounded-[18px] transition-all active:scale-95", 
+              "flex flex-col items-center justify-center w-12 h-10 rounded-[18px] transition-all active:scale-95", 
               activeTab === 'dashboard' ? "text-theme-primary bg-theme-primary-light/50" : "text-theme-muted hover:text-theme-primary"
             )}
           >
-            <LayoutDashboard size={22} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
+            <LayoutDashboard size={20} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
           </button>
           <button 
             onClick={() => setActiveTab('plan')}
             className={cn(
-              "flex flex-col items-center justify-center w-12 h-12 rounded-[18px] transition-all active:scale-95", 
+              "flex flex-col items-center justify-center w-12 h-10 rounded-[18px] transition-all active:scale-95", 
               activeTab === 'plan' ? "text-theme-primary bg-theme-primary-light/50" : "text-theme-muted hover:text-theme-primary"
             )}
           >
-            <CalendarRange size={22} strokeWidth={activeTab === 'plan' ? 2.5 : 2} />
+            <CalendarRange size={20} strokeWidth={activeTab === 'plan' ? 2.5 : 2} />
           </button>
           
-          {/* Add Button */}
-          <div className="relative w-12 h-12">
+          {/* AI Assistant Button */}
+          <div className="relative w-14 h-14 flex items-center justify-center -top-4 md:top-0 md:relative landscape:top-0 landscape:relative">
             <motion.button 
-              whileHover={{ scale: 1.1, rotate: 90 }}
+              whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              onMouseDown={handleMouseDown}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              onTouchStart={handleMouseDown}
-              onTouchEnd={handleMouseUp}
-              onClick={handleButtonClick}
-              disabled={isProcessingAI}
+              onClick={() => setActiveTab('ai')}
               className={cn(
-                "w-12 h-12 text-theme-on-primary rounded-[18px] flex items-center justify-center shadow-lg transition-all z-50",
-                isRecording ? "bg-red-500 shadow-red-200 animate-pulse" : 
-                isProcessingAI ? "bg-amber-500 opacity-80" : "bg-theme-primary shadow-theme-primary-light"
+                "w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all z-50",
+                activeTab === 'ai' 
+                  ? "bg-theme-primary text-theme-on-primary shadow-theme-primary-light" 
+                  : "bg-theme-surface border border-theme-base text-theme-primary shadow-soft"
               )}
             >
-              {isProcessingAI ? (
-                <Loader2 size={24} className="animate-spin" />
-              ) : addMode === 'text' ? (
-                <Plus size={24} />
-              ) : isRecording ? (
-                <AudioLines size={24} className="animate-pulse" />
-              ) : (
-                <Mic size={24} />
-              )}
+              <RobotIcon className="w-11 h-11" active={activeTab === 'ai'} />
             </motion.button>
           </div>
 
           <button 
             onClick={() => setActiveTab('analytics')}
             className={cn(
-              "flex flex-col items-center justify-center w-12 h-12 rounded-[18px] transition-all active:scale-95", 
+              "flex flex-col items-center justify-center w-12 h-10 rounded-[18px] transition-all active:scale-95", 
               activeTab === 'analytics' ? "text-theme-primary bg-theme-primary-light/50" : "text-theme-muted hover:text-theme-primary"
             )}
           >
-            <BarChart2 size={22} strokeWidth={activeTab === 'analytics' ? 2.5 : 2} />
+            <BarChart2 size={20} strokeWidth={activeTab === 'analytics' ? 2.5 : 2} />
           </button>
           <button 
             onClick={() => setActiveTab('settings')}
             className={cn(
-              "flex flex-col items-center justify-center w-12 h-12 rounded-[18px] transition-all active:scale-95", 
+              "flex flex-col items-center justify-center w-12 h-10 rounded-[18px] transition-all active:scale-95", 
               activeTab === 'settings' ? "text-theme-primary bg-theme-primary-light/50" : "text-theme-muted hover:text-theme-primary"
             )}
           >
-            <SettingsIcon size={22} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
+            <SettingsIcon size={20} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
           </button>
         </div>
       </nav>
 
-      <Suspense fallback={null}>
         {/* Transaction History Modal */}
         {showTransactionHistory && (
           <TransactionHistory 
@@ -584,7 +559,6 @@ export default function App() {
             onClose={() => setShowAILogs(false)}
           />
         )}
-      </Suspense>
     </div>
   );
 }

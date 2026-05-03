@@ -411,13 +411,13 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
         <button
           onClick={() => setActiveTab('now')}
           className={cn(
-            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            "px-2 py-0.5 rounded-t-xl font-bold transition-all border-t border-l border-r",
             activeTab === 'now' 
               ? "bg-emerald-500 text-white border-emerald-500 translate-y-[1px]" 
               : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
           )}
         >
-          Сейчас
+          <span style={{ fontSize: '9px' }}>Сейчас</span>
         </button>
         
         <button
@@ -429,7 +429,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
               : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
           )}
         >
-          Кэшбек
+          <span>Кэшбек</span>
         </button>
         <button
           onClick={() => setActiveTab('comment')}
@@ -440,18 +440,18 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
               : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
           )}
         >
-          Заметки
+          <span>Заметки</span>
         </button>
         <button
           onClick={() => setActiveTab('past')}
           className={cn(
-            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            "px-2 py-0.5 rounded-t-xl font-bold transition-all border-t border-l border-r",
             activeTab === 'past' 
               ? "bg-amber-500 text-white border-amber-500 translate-y-[1px]" 
               : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
           )}
         >
-          Прошлое
+          <span style={{ fontSize: '10px' }}>Прошлое</span>
         </button>
       </div>
 
@@ -598,7 +598,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                 </div>
 
                 {/* Config Section embedded at the bottom of NOW tab */}
-                <div className="border-t border-neutral-100 pt-6 pb-12 space-y-4 max-w-xl">
+                <div className="border-t border-neutral-100 pt-6 pb-6 landscape:pb-0 space-y-4 max-w-xl">
                   <h3 className="text-sm font-bold text-neutral-400 uppercase tracking-wider">Настройки таблицы</h3>
                   
                   <div className="space-y-4">

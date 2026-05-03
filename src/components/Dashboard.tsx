@@ -359,6 +359,7 @@ interface DashboardProps {
   onRefresh?: () => void;
   onNavigateToAnalytics?: (options?: any) => void;
   onOpenTransactionHistory?: (filterProps?: any) => void;
+  onOpenAddTransaction?: () => void;
   onEditTransaction?: (t: Transaction) => void;
 }
 
@@ -377,6 +378,7 @@ export default function Dashboard({
   onRefresh,
   onNavigateToAnalytics,
   onOpenTransactionHistory,
+  onOpenAddTransaction,
   onEditTransaction,
 }: DashboardProps) {
   const [showAccountManager, setShowAccountManager] = useState(false);
@@ -717,12 +719,12 @@ export default function Dashboard({
         className="p-[1px] mb-6"
       >
         <div className="flex items-center justify-between mb-1">
-          <h3 className="font-bold text-lg text-theme-main">Счета</h3>
           <button 
             onClick={() => setShowAccountManager(true)}
-            className="text-theme-primary font-medium hover:bg-theme-primary/10 px-2 py-2 rounded-lg transition-colors"
+            className="group flex items-center gap-2"
           >
-            Все
+            <h3 className="font-bold text-lg text-theme-main group-hover:text-theme-primary transition-colors">Счета</h3>
+            <ChevronRight className="w-4 h-4 text-theme-muted group-hover:text-theme-primary transition-all group-hover:translate-x-1" />
           </button>
         </div>
         <div className="flex gap-3 overflow-x-auto pb-4 mx-0 px-2 no-scrollbar snap-x snap-mandatory">
@@ -788,14 +790,23 @@ export default function Dashboard({
       {/* Recent Transactions */}
       <section className="mb-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-lg">Последние операции</h3>
           <button 
             onClick={() => {
               if (onOpenTransactionHistory) onOpenTransactionHistory();
             }}
-            className="text-theme-primary-dark text-sm font-medium hover:bg-theme-primary-light px-2 py-1 rounded-lg transition-colors"
+            className="group flex items-center gap-2"
           >
-            История
+            <h3 className="font-bold text-lg text-theme-main group-hover:text-theme-primary transition-colors">Операции</h3>
+            <ChevronRight className="w-4 h-4 text-theme-muted group-hover:text-theme-primary transition-all group-hover:translate-x-1" />
+          </button>
+          <button 
+            onClick={() => {
+              if (onOpenAddTransaction) onOpenAddTransaction();
+            }}
+            className="flex items-center justify-center w-8 h-8 bg-theme-primary/10 text-theme-primary rounded-full hover:bg-theme-primary/20 transition-all font-bold"
+            title="Добавить операцию"
+          >
+            <Plus size={18} strokeWidth={3} />
           </button>
         </div>
         <div className="bg-theme-surface rounded-3xl border border-theme-base overflow-hidden shadow-soft">
