@@ -90,6 +90,7 @@ export interface PlanCell {
   value: string;
   color?: string;
   isBold?: boolean;
+  fontSize?: number;
   comment?: string;
 }
 

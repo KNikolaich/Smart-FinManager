@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { api } from '../lib/api';
 import { Transaction, Account, Category, TransactionType } from '../types';
-import { X, Check, Calendar } from 'lucide-react';
+import { X, Check, Calculator as CalcIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import AccountSelect from './AccountSelect';
+import Calculator from './Calculator';
 
 interface AddTransactionProps {
   accounts: Account[];
@@ -27,6 +28,7 @@ export default function AddTransaction({ accounts, transactions, categories, onC
   const [description, setDescription] = useState(initialData?.description || '');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [loading, setLoading] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
   const activeAccounts = accounts.filter(a => !a.isArchived);
 
   const handleSubmit = async () => {
@@ -90,27 +92,80 @@ export default function AddTransaction({ accounts, transactions, categories, onC
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-1 space-y-0 no-scrollbar">
-          {/* Amount Input with Type Selector */}
-          <div className="flex items-center justify-center gap-2 py-4">
-            <div className="flex flex-col bg-theme-main p-0.5 rounded-xl shrink-0 w-18 border border-theme-base">
-              <button type="button" onClick={() => setType('expense')} className={cn("py-0.5 rounded-lg font-bold text-[10px] transition-all", type === 'expense' ? "bg-theme-surface text-theme-primary shadow-sm" : "text-theme-muted")}>Расход</button>
-              <button type="button" onClick={() => setType('income')} className={cn("py-0.5 rounded-lg font-bold text-[10px] transition-all", type === 'income' ? "bg-theme-surface text-theme-primary shadow-sm" : "text-theme-muted")}>Доход</button>
-              <button type="button" onClick={() => setType('transfer')} className={cn("py-0.5 rounded-lg font-bold text-[10px] transition-all", type === 'transfer' ? "bg-theme-surface text-theme-primary shadow-sm" : "text-theme-muted")}>Перевод</button>
+        <div className="flex-1 overflow-y-auto p-1 space-y-1 no-scrollbar">
+          <div className="flex flex-col gap-0.5 shrink-0 bg-theme-surface p-0.5 rounded-lg border border-theme-base">
+            <button type="button" onClick={() => setType('expense')} className={cn("py-0.5 px-1 rounded-md font-bold text-[8px] leading-tight transition-all", type === 'expense' ? "bg-theme-primary text-theme-on-primary shadow-sm" : "text-theme-muted")}>Расход</button>
+            <button type="button" onClick={() => setType('income')} className={cn("py-0.5 px-1 rounded-md font-bold text-[8px] leading-tight transition-all", type === 'income' ? "bg-theme-primary text-theme-on-primary shadow-sm" : "text-theme-muted")}>Доход</button>
+            <button type="button" onClick={() => setType('transfer')} className={cn("py-0.5 px-1 rounded-md font-bold text-[8px] leading-tight transition-all", type === 'transfer' ? "bg-theme-primary text-theme-on-primary shadow-sm" : "text-theme-muted")}>Перевод</button>
+          </div>
+          {/* Row 1: Amount and Date */}
+          <div className="grid grid-cols-2 gap-2 p-2">
+            {/* Amount Input */}
+            <div className="bg-theme-main rounded-2xl p-2 flex flex-col justify-center border border-theme-base min-h-[80px]">
+              <div className="flex items-center justify-between gap-1 group relative">                
+                <div className="flex-1 flex items-center justify-end gap-1">
+                  <input
+                    type="text"
+                    value={amount === '' ? '' : Number(amount.replace(/\s/g, '')).toLocaleString('ru-RU').replace(',', '.').split('.')[0]}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\s/g, '');
+                      if (/^\d*$/.test(val)) {
+                        setAmount(val);
+                      }
+                    }}
+                    className={cn(
+                      "font-bold text-right outline-none bg-transparent text-theme-main focus:ring-0 transition-all pr-1 w-full",
+                      amount.length > 10 ? "text-lg" : amount.length > 7 ? "text-xl" : "text-2xl"
+                    )}
+                    placeholder="0"
+                    autoFocus
+                    inputMode="numeric"
+                  />
+                  <span className="text-xl font-bold text-theme-muted shrink-0">₽</span>
+                </div>
+
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowCalculator(true);
+                  }}
+                  className="p-1.5 bg-theme-surface text-theme-muted rounded-lg hover:text-theme-primary transition-all border border-theme-base shadow-sm shrink-0"
+                  title="Калькулятор"
+                  type="button"
+                >
+                  <CalcIcon size={14} />
+                </button>
+
+                {showCalculator && (
+                  <div className="absolute top-full right-0 mt-4 z-[150]">
+                    <Calculator 
+                      initialValue={amount}
+                      onConfirm={(val) => {
+                        setAmount(val);
+                        setShowCalculator(false);
+                      }}
+                      onCancel={() => setShowCalculator(false)}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="relative">
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="text-2xl font-bold text-center w-32 outline-none bg-transparent text-theme-main focus:ring-0 transition-all"
-                placeholder="0"
-                autoFocus
-              />
-              <span className="absolute -right-6 top-1/2 -translate-y-1/2 text-2xl font-bold text-theme-muted">₽</span>
+
+            {/* Date Input */}
+            <div className="bg-theme-main rounded-2xl p-2 flex flex-col justify-center border border-theme-base min-h-[80px]">
+              <label className="text-[9px] font-bold text-theme-muted uppercase tracking-widest mb-1 ml-1 text-center">Дата</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full bg-theme-surface border-none rounded-xl px-2 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main font-bold text-center"
+                />
+              </div>
             </div>
           </div>
 
+          {/* Row 2: Description and Account */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Описание</label>
@@ -119,31 +174,21 @@ export default function AddTransaction({ accounts, transactions, categories, onC
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Комментарий"
-                className="w-full bg-theme-main border-none rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main"
+                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Дата</label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-muted" />
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full bg-theme-main border-none rounded-xl pl-10 pr-4 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main"
-                />
-              </div>
+              <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Счет</label>
+              <AccountSelect 
+                accounts={activeAccounts} 
+                selectedAccountId={selectedAccountId} 
+                onChange={setSelectedAccountId} 
+                label="" 
+                transactions={transactions}
+                type={type}
+              />
             </div>
           </div>
-
-          <AccountSelect 
-            accounts={activeAccounts} 
-            selectedAccountId={selectedAccountId} 
-            onChange={setSelectedAccountId} 
-            label="Счет" 
-            transactions={transactions}
-            type={type}
-          />
 
           <div className="space-y-1 p-2">
             <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">

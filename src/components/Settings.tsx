@@ -214,13 +214,13 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
                 <div>
                   <p className="text-[10px] font-bold text-neutral-400 uppercase mb-2 px-1">Светлые</p>
                   <div className="flex flex-wrap gap-3">
-                    {[
-                      { id: 'theme-light-green', color: 'bg-emerald-500', name: 'Изумруд' },
+                    {[                      
                       { id: 'theme-light-blue', color: 'bg-blue-500', name: 'Лазурь' },
                       { id: 'theme-nordic', color: 'bg-sky-400', name: 'Нордик' },
-                      { id: 'theme-light-orange', color: 'bg-orange-400', name: 'Апельсин' },
+                      { id: 'theme-light-orange', color: 'bg-orange-400', name: 'Пустыня' },
                       { id: 'theme-light-ruby', color: 'bg-rose-600', name: 'Рубин' },
                       { id: 'theme-light-violet', color: 'bg-violet-500', name: 'Фиалка' },
+                      { id: 'theme-light-green', color: 'bg-emerald-500', name: 'Салат' },
                     ].map((theme) => (
                       <button
                         key={theme.id}

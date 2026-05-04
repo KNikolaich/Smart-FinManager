@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { api } from '../lib/api';
 import { Transaction, Account, Category } from '../types';
-import { X, Trash2, Check, Calendar } from 'lucide-react';
+import { X, Trash2, Check, Calculator as CalcIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import AccountSelect from './AccountSelect';
+import Calculator from './Calculator';
 
 interface EditTransactionProps {
   transaction: Transaction;
@@ -29,6 +30,7 @@ export default function EditTransaction({ transaction, accounts, transactions, c
 
   const [date, setDate] = useState(format(new Date(transaction.createdAt), 'yyyy-MM-dd'));
   const [loading, setLoading] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -115,7 +117,7 @@ export default function EditTransaction({ transaction, accounts, transactions, c
           </div>
         )}
 
-        <div className="px-6 py-3 flex items-center justify-between shrink-0 relative z-10 border-b border-theme-base">
+        <div className="px-4 py-1 flex items-center justify-between shrink-0 relative z-10 border-b border-theme-base">
           <h2 className="text-base font-bold text-theme-main capitalize">
             {transaction.type === 'income' ? 'Доход' : transaction.type === 'expense' ? 'Расход' : 'Перевод'}
           </h2>
@@ -134,59 +136,103 @@ export default function EditTransaction({ transaction, accounts, transactions, c
               {error}
             </div>
           )}
-          {/* Amount Input */}
-          <div className="flex items-center justify-center gap-2 py-4">
-            <div className="relative">
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="text-2xl font-bold text-center w-32 outline-none bg-transparent text-theme-main focus:ring-0 transition-all font-sans"
-                placeholder="0"
-                autoFocus
-              />
-              <span className="absolute -right-6 top-1/2 -translate-y-1/2 text-2xl font-bold text-theme-muted">₽</span>
+          
+          {/* Row 1: Amount and Date */}
+          <div className="grid grid-cols-2 gap-2 p-1">
+            {/* Amount Input */}
+            <div className="bg-theme-main rounded-xl p-1 flex items-center justify-center border border-theme-base min-h-[60px]">
+              <div className="relative flex items-center gap-1 group w-full justify-between">
+                <div className="flex-1 flex items-center justify-end gap-1 overflow-hidden">
+                  <input
+                    type="text"
+                    value={amount === '' ? '' : Number(amount.replace(/\s/g, '')).toLocaleString('ru-RU').replace(',', '.').split('.')[0]}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\s/g, '');
+                      if (/^\d*$/.test(val)) {
+                        setAmount(val);
+                      }
+                    }}
+                    className={cn(
+                      "font-bold text-right outline-none bg-transparent text-theme-main focus:ring-0 transition-all pr-1 w-full",
+                      amount.length > 7 ? "text-lg" : amount.length > 5 ? "text-xl" : "text-2xl"
+                    )}
+                    placeholder="0"
+                    autoFocus
+                    inputMode="numeric"
+                  />
+                  <span className="text-xl font-bold text-theme-muted shrink-0">₽</span>
+                </div>
+
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowCalculator(true);
+                  }}
+                  className="p-1.5 bg-theme-surface text-theme-muted rounded-lg hover:text-theme-primary transition-all border border-theme-base shadow-sm shrink-0"
+                  title="Калькулятор"
+                  type="button"
+                >
+                  <CalcIcon size={14} />
+                </button>
+
+                {showCalculator && (
+                  <div className="absolute top-full right-0 mt-4 z-[150]">
+                    <Calculator 
+                      initialValue={amount}
+                      onConfirm={(val) => {
+                        setAmount(val);
+                        setShowCalculator(false);
+                      }}
+                      onCancel={() => setShowCalculator(false)}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Date Input */}
+            <div className="bg-theme-main rounded-xl p-1 flex flex-col justify-center border border-theme-base min-h-[60px]">
+              <label className="text-[9px] font-bold text-theme-muted uppercase tracking-widest mb-1 ml-1 text-center">Дата</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full bg-theme-surface border-none rounded-xl px-2 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main font-bold text-center"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2">
+          {/* Row 2: Description and Account */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-1">
             {/* Description */}
-            <div className="space-y-1">
+            <div className="">
               <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Описание</label>
               <input
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Комментарий"
-                className="w-full bg-theme-main border-none rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main"
+                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main"
               />
             </div>
 
-            {/* Date */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Дата</label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-muted" />
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full bg-theme-main border-none rounded-xl pl-10 pr-4 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main"
-                />
-              </div>
+            {/* Account */}
+            <div className="">
+              <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Счет</label>
+              <AccountSelect 
+                accounts={accounts.filter(a => !a.isArchived || a.id === transaction.accountId)} 
+                selectedAccountId={selectedAccountId} 
+                onChange={setSelectedAccountId} 
+                label="" 
+                transactions={transactions}
+                type={transaction.type}
+              />
             </div>
           </div>
 
-          <AccountSelect 
-            accounts={accounts.filter(a => !a.isArchived || a.id === transaction.accountId)} 
-            selectedAccountId={selectedAccountId} 
-            onChange={setSelectedAccountId} 
-            label="Счет" 
-            transactions={transactions}
-            type={transaction.type}
-          />
-
-          <div className="space-y-1 p-2">
+          <div className="p-1">
             <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">
               {transaction.type === 'transfer' ? 'Счет получатель' : 'Категория'}
             </label>

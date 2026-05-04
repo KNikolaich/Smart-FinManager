@@ -1,4 +1,4 @@
-import { LogOut, Sparkles, Eraser, FileDown, FileUp, Edit2, Check, Trash2, AlertTriangle, X } from 'lucide-react';
+import { LogOut, Sparkles, Eraser, FileDown, FileUp, Edit2, Check, Trash2, AlertTriangle, X, Save } from 'lucide-react';
 import { useState } from 'react';
 import { UserProfile } from '../types';
 import { cn } from '../lib/utils';
@@ -96,7 +96,7 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
                   onChange={(e) => setDisplayName(e.target.value)}
                   className="font-bold text-lg border-b-2 border-theme-primary outline-none w-full bg-transparent text-theme-main"
                 />
-                <button onClick={handleSave} className="p-1 text-theme-primary"><Check /></button>
+                <button onClick={handleSave} className="p-1 text-theme-primary" title="Сохранить"><Save size={20} /></button>
               </div>
             ) : (
               <div className="flex items-center gap-2">

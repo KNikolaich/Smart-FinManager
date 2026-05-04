@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import path from "path";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -7,12 +6,22 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import axios from "axios";
 import { PrismaClient } from "@prisma/client";
+import { createServer as createHttpServer } from "http";
+import { Server } from "socket.io";
 
 dotenv.config();
 
 const prisma = new PrismaClient();
 const app = express();
 const PORT = 5000;
+const httpServer = createHttpServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
 
 app.use(cors());
@@ -169,6 +178,7 @@ app.post("/api/accounts", authenticateToken, async (req: any, res) => {
     const account = await prisma.account.create({
       data: { ...req.body, userId: req.user.userId },
     });
+    notifyUser(req.user.userId, "data:updated", { type: "accounts" });
     res.json(account);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -181,6 +191,7 @@ app.put("/api/accounts/:id", authenticateToken, async (req: any, res) => {
       where: { id: req.params.id, userId: req.user.userId },
       data: req.body,
     });
+    notifyUser(req.user.userId, "data:updated", { type: "accounts" });
     res.json(account);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -190,6 +201,7 @@ app.put("/api/accounts/:id", authenticateToken, async (req: any, res) => {
 app.delete("/api/accounts/:id", authenticateToken, async (req: any, res) => {
   try {
     await prisma.account.delete({ where: { id: req.params.id, userId: req.user.userId } });
+    notifyUser(req.user.userId, "data:updated", { type: "accounts" });
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -221,6 +233,7 @@ app.post("/api/categories", authenticateToken, async (req: any, res) => {
     const category = await prisma.category.create({
       data: createData,
     });
+    notifyUser(req.user.userId, "data:updated", { type: "categories" });
     res.json(category);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -242,6 +255,7 @@ app.put("/api/categories/:id", authenticateToken, async (req: any, res) => {
       where: { id: req.params.id, userId: req.user.userId },
       data: updateData,
     });
+    notifyUser(req.user.userId, "data:updated", { type: "categories" });
     res.json(category);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -251,6 +265,7 @@ app.put("/api/categories/:id", authenticateToken, async (req: any, res) => {
 app.delete("/api/categories/:id", authenticateToken, async (req: any, res) => {
   try {
     await prisma.category.delete({ where: { id: req.params.id, userId: req.user.userId } });
+    notifyUser(req.user.userId, "data:updated", { type: "categories" });
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -320,6 +335,7 @@ app.post("/api/transactions", authenticateToken, async (req: any, res) => {
       return transaction;
     });
 
+    notifyUser(req.user.userId, "data:updated", { type: "transactions" });
     res.json(result);
   } catch (error: any) {
     console.error("Transaction Error:", error);
@@ -358,6 +374,7 @@ app.delete("/api/transactions/:id", authenticateToken, async (req: any, res) => 
       await tx.transaction.delete({ where: { id: req.params.id } });
     });
 
+    notifyUser(req.user.userId, "data:updated", { type: "transactions" });
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -439,6 +456,7 @@ app.put("/api/transactions/:id", authenticateToken, async (req: any, res) => {
       return updatedTransaction;
     });
 
+    notifyUser(req.user.userId, "data:updated", { type: "transactions" });
     res.json(result);
   } catch (error: any) {
     console.error("Update Transaction Error:", error);
@@ -468,6 +486,7 @@ app.post("/api/goals", authenticateToken, async (req: any, res) => {
         userId: req.user.userId 
       },
     });
+    notifyUser(req.user.userId, "data:updated", { type: "goals" });
     res.json(goal);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -486,6 +505,7 @@ app.put("/api/goals/:id", authenticateToken, async (req: any, res) => {
       where: { id: req.params.id, userId: req.user.userId },
       data: updateData,
     });
+    notifyUser(req.user.userId, "data:updated", { type: "goals" });
     res.json(goal);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -495,6 +515,7 @@ app.put("/api/goals/:id", authenticateToken, async (req: any, res) => {
 app.delete("/api/goals/:id", authenticateToken, async (req: any, res) => {
   try {
     await prisma.goal.delete({ where: { id: req.params.id, userId: req.user.userId } });
+    notifyUser(req.user.userId, "data:updated", { type: "goals" });
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -573,6 +594,7 @@ app.post("/api/plan-grid/:type", authenticateToken, async (req: any, res) => {
       update: { data },
       create: { userId, type, data }
     });
+    notifyUser(userId, "data:updated", { type: "plan-grid", planType: type });
     res.json(planGrid.data);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -1125,6 +1147,26 @@ app.post("/api/ai/deepseek", authenticateToken, async (req: any, res) => {
   }
 });
 
+// Socket.io connection logic
+io.on("connection", (socket) => {
+  console.log("A user connected:", socket.id);
+
+  socket.on("join", (userId) => {
+    if (userId) {
+      socket.join(`user:${userId}`);
+      console.log(`User ${userId} joined their room`);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+  });
+});
+
+const notifyUser = (userId: string, event: string, data: any) => {
+  io.to(`user:${userId}`).emit(event, data);
+};
+
 async function startServer() {
   // Catch-all for API routes to avoid falling through to SPA fallback
   app.all("/api/*", (req, res) => {
@@ -1132,6 +1174,7 @@ async function startServer() {
   });
 
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -1154,7 +1197,7 @@ async function startServer() {
     });
   });
 
-  app.listen(PORT, "0.0.0.0", () => {
+  httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }

@@ -143,8 +143,9 @@ function SortableAccountItem({ account, editingId, onEdit, currencies, editorPro
                     "p-0.5 rounded-md transition-colors",
                     editorProps.isBalanceEditable ? "text-theme-primary-dark bg-theme-primary-light" : "text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100"
                   )}
+                  title={editorProps.isBalanceEditable ? "Сохранить" : "Редактировать"}
                 >
-                  <Pencil className="w-3 h-3" />
+                  {editorProps.isBalanceEditable ? <Save className="w-3 h-3" /> : <Pencil className="w-3 h-3" />}
                 </button>
               </div>
             </div>

@@ -334,10 +334,9 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
   };
 
   const quickActions = [   
-    { label: 'Анализ бюджета', icon: PieChart, text: 'Проанализируй мой бюджет и дай советы' },
-    { label: 'Добавить расход', icon: PlusCircle, text: 'Добавь расход 5500 рублей на продукты с Т Дебетовой карты' },
-    { label: 'Создать цель', icon: Target, text: 'Хочу накопить 50000 на новый велосипед к лету' },
-    { label: 'Продлить планы', icon: Calendar, text: 'Обнови планы на будущий месяц' },
+    { label: 'Анализ бюджета', icon: PieChart, text: 'Проанализируй мой бюджет и дай советы, учитывай, что цели я веду в тысячах рублей. ' },
+    { label: 'Создать цель', icon: Target, text: 'Хочу накопить [сумма] на [цель накопления] к лету' },
+    { label: 'Получил доход', icon: PlusCircle, text: 'Добавь доход на сумму [сумма] рублей на [название] Дебетовую карту' },
   ];
 
   const clearChat = async () => {

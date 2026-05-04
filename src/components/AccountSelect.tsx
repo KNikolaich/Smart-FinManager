@@ -77,7 +77,7 @@ export default function AccountSelect({ accounts, selectedAccountId, onChange, l
   const selectedAccount = accounts.find(a => a.id === selectedAccountId);
 
   return (
-    <div className="space-y-1" ref={containerRef}>
+    <div ref={containerRef}>
       <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">{label}</label>
       <div className="relative">
         <button

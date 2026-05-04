@@ -30,12 +30,14 @@ import {
   Trash2,
   Edit3,
   Pencil,
-  Check
+  Check,
+  Calculator as CalcIcon
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '../lib/utils';
 import CashbackTab from './CashbackTab';
+import Calculator from './Calculator';
 
 interface PlanPageProps {
   accounts: Account[];
@@ -116,6 +118,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, rowId: string | null }>({ x: 0, y: 0, rowId: null });
   const [rowEditor, setRowEditor] = useState<{ mode: 'addBefore' | 'addAfter' | null, rowId: string | null, label: string, type: 'month' | 'min' | 'year' | 'past' }>({ mode: null, rowId: null, label: '', type: 'month' });
   const [rowToDelete, setRowToDelete] = useState<string | null>(null);
+  const [showCalculator, setShowCalculator] = useState(false);
 
   const handleSaveCashback = (newData: PlanData) => {
     savePlanData(newData, 'cashback');
@@ -411,13 +414,13 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
         <button
           onClick={() => setActiveTab('now')}
           className={cn(
-            "px-2 py-0.5 rounded-t-xl font-bold transition-all border-t border-l border-r",
+            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
             activeTab === 'now' 
               ? "bg-emerald-500 text-white border-emerald-500 translate-y-[1px]" 
               : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
           )}
         >
-          <span style={{ fontSize: '9px' }}>Сейчас</span>
+          <span>Сейчас</span>
         </button>
         
         <button
@@ -445,13 +448,13 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
         <button
           onClick={() => setActiveTab('past')}
           className={cn(
-            "px-2 py-0.5 rounded-t-xl font-bold transition-all border-t border-l border-r",
+            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
             activeTab === 'past' 
               ? "bg-amber-500 text-white border-amber-500 translate-y-[1px]" 
               : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
           )}
         >
-          <span style={{ fontSize: '10px' }}>Прошлое</span>
+          <span>Прошлое</span>
         </button>
       </div>
 
@@ -464,20 +467,15 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
               <thead className="sticky top-0 z-20">
                 <tr>
                   <th 
-                    className="p-1 border border-neutral-200 text-[10px] font-bold text-neutral-400 uppercase text-center w-10 sticky left-0 top-0 z-30"
-                    style={{ backgroundColor: planData.config.headerColor }}
+                    className="p-1 border border-neutral-200 text-[10px] font-bold text-neutral-400 uppercase text-center w-10 sticky left-0 top-0 z-30 bg-neutral-50/90 backdrop-blur-sm"
                   >
-                    <div className="rotate-180 [writing-mode:vertical-lr] mx-auto h-24">план в тыс ₽</div>
+                    <div className="rotate-180 [writing-mode:vertical-lr] mx-auto h-16">план в тыс ₽</div>
                   </th>
                   {visibleSubjects.map(subject => (
                     <th 
                       key={subject.id}
                       onClick={() => setEditingSubject({ ...subject })}
-                      className="p-1 border border-neutral-200 text-[10px] font-bold vertical-text h-32 relative group cursor-pointer hover:brightness-95 transition-all sticky top-0 z-20 min-w-[44px]"
-                      style={{ 
-                        backgroundColor: subject.color || planData.config.headerColor,
-                        color: subject.textColor || '#000000'
-                      }}
+                      className="p-1 border border-neutral-200 text-[10px] font-bold vertical-text h-22 relative group cursor-pointer hover:bg-neutral-100 transition-all sticky top-0 z-20 min-w-[44px] bg-neutral-50/90 backdrop-blur-sm hover:brightness-95"
                     >
                       <div className="rotate-180 [writing-mode:vertical-lr] mx-auto">
                         {subject.name}
@@ -494,8 +492,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                     </th>
                   ))}
                   <th 
-                    className="p-1 border border-neutral-200 text-[10px] font-bold text-neutral-900 sticky top-0 z-20 min-w-[64px]"
-                    style={{ backgroundColor: planData.config.totalColumnColor }}
+                    className="p-1 border border-neutral-200 text-[10px] font-bold text-neutral-900 sticky top-0 z-20 min-w-[64px] bg-neutral-100/80 backdrop-blur-sm"
                   >
                     <div className="rotate-180 [writing-mode:vertical-lr] mx-auto">Итого</div>
                   </th>
@@ -510,16 +507,18 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                       <tr 
                       key={row.id}
                       onContextMenu={(e) => handleContextMenu(e, row.id)}
-                      style={{ 
-                        backgroundColor: row.type === 'min' ? planData.config.minRowColor : 'transparent'
-                      }}
+                      className={cn(
+                        row.type === 'min' && "bg-amber-50/40 font-bold",
+                        row.type === 'year' && "bg-neutral-100/50"
+                      )}
                     >
                       <td 
                         className={cn(
-                          "p-1 border border-neutral-200 text-sm font-bold text-neutral-700 text-center w-10 overflow-visible sticky left-0 z-10",
-                          row.type === 'year' && "bg-neutral-100"
+                          "p-1 border border-neutral-200 text-sm font-bold text-neutral-700 text-center w-10 overflow-visible sticky left-0 z-10 bg-white",
+                          row.type === 'month' && "bg-emerald-50/20",
+                          row.type === 'year' && "bg-neutral-100",
+                          row.type === 'min' && "bg-amber-100/30"
                         )}
-                        style={{ backgroundColor: row.type === 'month' ? planData.config.firstColumnColor : (row.type === 'year' ? '#f5f5f5' : (row.type === 'min' ? planData.config.minRowColor : '#ffffff')) }}
                       >
                         <div className="rotate-[-45deg] whitespace-nowrap inline-block origin-center">
                           {row.label}
@@ -528,16 +527,19 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                       {visibleSubjects.map(subject => {
                         const cell = row.cells[subject.id];
                         return (
-                          <td 
-                            key={subject.id}
-                            onClick={() => handleCellClick(row.id, subject.id)}
-                            className={cn(
-                              "p-1 border border-neutral-200 text-[10px] text-center cursor-pointer hover:bg-neutral-50 transition-colors relative group min-w-[44px]",
-                              cell?.isBold && "font-bold"
-                            )}
-                            style={{ color: cell?.color }}
-                          >
-                            {cell?.value || '-'}
+                      <td 
+                        key={subject.id}
+                        onClick={() => handleCellClick(row.id, subject.id)}
+                        className={cn(
+                          "p-1 border border-neutral-200 text-[10px] text-center cursor-pointer hover:bg-neutral-50 transition-colors relative group min-w-[44px]",
+                          cell?.isBold && "font-bold"
+                        )}
+                        style={{ 
+                          color: cell?.color,
+                          fontSize: cell?.fontSize ? `${cell.fontSize}px` : undefined
+                        }}
+                      >
+                        {cell?.value || '-'}
                             {cell?.comment && (
                               <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-blue-400 rounded-bl-full" title={cell.comment} />
                             )}
@@ -546,10 +548,9 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                       })}
                       <td 
                         className={cn(
-                          "p-1 border border-neutral-200 text-[10px] font-bold text-center min-w-[64px]",
+                          "p-1 border border-neutral-200 text-[10px] font-bold text-center min-w-[64px] bg-neutral-100/30",
                           isOverTarget && row.type !== 'min' ? "text-rose-500" : "text-neutral-900"
                         )}
-                        style={{ backgroundColor: planData.config.totalColumnColor }}
                       >
                         {total > 0 ? total.toLocaleString() : '-'}
                       </td>
@@ -602,6 +603,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                   <h3 className="text-sm font-bold text-neutral-400 uppercase tracking-wider">Настройки таблицы</h3>
                   
                   <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold text-neutral-400 uppercase">Сумма к которой стремимся</label>
                       <input 
@@ -614,69 +616,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                         className="w-full p-2 bg-neutral-50 border border-neutral-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-neutral-400 uppercase">Цвет итогов</label>
-                        <div className="flex items-center gap-2">
-                          <input 
-                            type="color"
-                            value={planData.config.totalColumnColor}
-                            onChange={(e) => savePlanData({
-                              ...planData,
-                              config: { ...planData.config, totalColumnColor: e.target.value }
-                            }, 'config')}
-                            className="w-6 h-6 rounded cursor-pointer border-none p-0 bg-transparent"
-                          />
-                          <span className="text-[10px] font-mono text-neutral-400">{planData.config.totalColumnColor}</span>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-neutral-400 uppercase">Цвет заголовка</label>
-                        <div className="flex items-center gap-2">
-                          <input 
-                            type="color"
-                            value={planData.config.headerColor}
-                            onChange={(e) => savePlanData({
-                              ...planData,
-                              config: { ...planData.config, headerColor: e.target.value }
-                            }, 'config')}
-                            className="w-6 h-6 rounded cursor-pointer border-none p-0 bg-transparent"
-                          />
-                          <span className="text-[10px] font-mono text-neutral-400">{planData.config.headerColor}</span>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-neutral-400 uppercase">Цвет 1-й колонки</label>
-                        <div className="flex items-center gap-2">
-                          <input 
-                            type="color"
-                            value={planData.config.firstColumnColor}
-                            onChange={(e) => savePlanData({
-                              ...planData,
-                              config: { ...planData.config, firstColumnColor: e.target.value }
-                            }, 'config')}
-                            className="w-6 h-6 rounded cursor-pointer border-none p-0 bg-transparent"
-                          />
-                          <span className="text-[10px] font-mono text-neutral-400">{planData.config.firstColumnColor}</span>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-neutral-400 uppercase">Цвет строки MIN</label>
-                        <div className="flex items-center gap-2">
-                          <input 
-                            type="color"
-                            value={planData.config.minRowColor}
-                            onChange={(e) => savePlanData({
-                              ...planData,
-                              config: { ...planData.config, minRowColor: e.target.value }
-                            }, 'config')}
-                            className="w-6 h-6 rounded cursor-pointer border-none p-0 bg-transparent"
-                          />
-                          <span className="text-[10px] font-mono text-neutral-400">{planData.config.minRowColor}</span>
-                        </div>
-                      </div>
-                    </div>
+                  </div>
                   </div>
                 </div>
               </div>
@@ -692,9 +632,9 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                     "p-2 rounded-xl transition-all",
                     isEditingComment ? "bg-purple-500 text-white shadow-lg shadow-purple-100" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
                   )}
-                  title={isEditingComment ? "Просмотр" : "Редактировать"}
+                  title={isEditingComment ? "Сохранить" : "Редактировать"}
                 >
-                  <Pencil size={18} />
+                  {isEditingComment ? <Save size={18} /> : <Pencil size={18} />}
                 </button>
               </div>
               
@@ -867,50 +807,90 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-500 uppercase">Значение (в тыс ₽)</label>
-                <input 
-                  type="text"
-                  value={cellEditValue.value}
-                  onChange={(e) => setCellEditValue({ ...cellEditValue, value: e.target.value })}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleSaveCell();
-                    }
-                  }}
-                  className="w-full p-3 bg-neutral-50 border border-neutral-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  placeholder="Напр. 22,5 или 😊"
-                  autoFocus
-                />
+                <div className="relative group">
+                  <input 
+                    type="text"
+                    value={cellEditValue.value}
+                    onChange={(e) => setCellEditValue({ ...cellEditValue, value: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSaveCell();
+                      }
+                    }}
+                    className="w-full p-3 bg-neutral-50 border border-neutral-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-right pr-12"
+                    placeholder="Напр. 22,5 или 😊"
+                    autoFocus
+                  />
+                  <button 
+                    onClick={() => setShowCalculator(true)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-white text-neutral-400 rounded-xl border border-neutral-100 shadow-sm transition-all hover:text-emerald-500"
+                    title="Калькулятор"
+                  >
+                    <CalcIcon size={16} />
+                  </button>
+
+                  {showCalculator && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 z-[60]">
+                      <Calculator 
+                        initialValue={cellEditValue.value}
+                        onConfirm={(val) => {
+                          setCellEditValue({ ...cellEditValue, value: val });
+                          setShowCalculator(false);
+                        }}
+                        onCancel={() => setShowCalculator(false)}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center gap-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-neutral-500 uppercase">Стиль</label>
-                  <button 
-                    onClick={() => setCellEditValue({ ...cellEditValue, isBold: !cellEditValue.isBold })}
-                    className={cn(
-                      "p-3 rounded-xl border transition-all flex items-center gap-2",
-                      cellEditValue.isBold ? "bg-emerald-500 text-white border-emerald-500" : "bg-white text-neutral-400 border-neutral-200"
-                    )}
-                  >
-                    <Bold size={16} />
-                    Жирный
-                  </button>
-                </div>
-                <div className="space-y-2 flex-1">
-                  <label className="text-xs font-bold text-neutral-500 uppercase">Цвет текста</label>
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="color"
-                      value={cellEditValue.color || '#000000'}
-                      onChange={(e) => setCellEditValue({ ...cellEditValue, color: e.target.value })}
-                      className="w-10 h-10 rounded-lg cursor-pointer border-none"
-                    />
-                    <button 
-                      onClick={() => setCellEditValue({ ...cellEditValue, color: undefined })}
-                      className="text-[10px] text-neutral-400 underline"
-                    >
-                      Сбросить
-                    </button>
+              <div className="flex flex-col gap-6">
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 space-y-2">
+                    <label className="text-xs font-bold text-neutral-500 uppercase">Стиль текста</label>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => setCellEditValue({ ...cellEditValue, isBold: !cellEditValue.isBold })}
+                        className={cn(
+                          "flex-1 p-3 rounded-xl border transition-all flex items-center justify-center gap-2",
+                          cellEditValue.isBold ? "bg-theme-primary text-white border-theme-primary" : "bg-white text-neutral-400 border-neutral-200"
+                        )}
+                      >
+                        <Bold size={16} />
+                        <span className="text-xs">Жирный</span>
+                      </button>
+                      <button 
+                        onClick={() => setCellEditValue({ ...cellEditValue, fontSize: cellEditValue.fontSize === 14 ? 10 : (cellEditValue.fontSize === 12 ? 14 : 12) })}
+                        className={cn(
+                          "flex-1 p-3 rounded-xl border transition-all flex items-center justify-center gap-2",
+                          cellEditValue.fontSize ? "bg-theme-primary text-white border-theme-primary" : "bg-white text-neutral-400 border-neutral-200"
+                        )}
+                      >
+                        <Type size={16} />
+                        <span className="text-xs">{cellEditValue.fontSize ? `${cellEditValue.fontSize}px` : 'Размер'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-neutral-500 uppercase">Цвет текста</label>
+                    <div className="flex items-center gap-2 h-[46px]">
+                      <div className="relative group">
+                        <input 
+                          type="color"
+                          value={cellEditValue.color || '#000000'}
+                          onChange={(e) => setCellEditValue({ ...cellEditValue, color: e.target.value })}
+                          className="w-10 h-10 rounded-xl cursor-pointer border border-neutral-200 p-0 bg-transparent"
+                        />
+                        <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full border border-white shadow-sm" style={{ backgroundColor: cellEditValue.color || '#000000' }} />
+                      </div>
+                      <button 
+                        onClick={() => setCellEditValue({ ...cellEditValue, color: undefined })}
+                        className="text-[10px] text-neutral-400 underline hover:text-neutral-600"
+                      >
+                        Сбросить
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -929,14 +909,14 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
             <div className="flex gap-3 pt-4">
               <button 
                 onClick={handleSaveCell}
-                className="flex-1 bg-emerald-500 text-white py-3 rounded-2xl font-bold hover:bg-emerald-600 transition-colors flex items-center justify-center gap-2"
+                className="flex-3 bg-theme-primary text-white py-4 rounded-2xl font-bold hover:bg-theme-primary-dark transition-all active:scale-[0.98] shadow-lg shadow-theme-primary/20 flex items-center justify-center gap-2"
               >
                 <Save size={18} />
                 Сохранить
               </button>
               <button 
                 onClick={() => setEditingCell(null)}
-                className="flex-1 bg-neutral-100 text-neutral-600 py-3 rounded-2xl font-bold hover:bg-neutral-200 transition-colors"
+                className="flex-1 bg-neutral-100 text-neutral-600 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
               >
                 Отмена
               </button>
@@ -968,31 +948,6 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-neutral-500 uppercase">Цвет фона</label>
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="color"
-                      value={editingSubject.color || '#f3f3f3'}
-                      onChange={(e) => setEditingSubject({ ...editingSubject, color: e.target.value })}
-                      className="w-10 h-10 rounded-lg cursor-pointer border-none"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-neutral-500 uppercase">Цвет текста</label>
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="color"
-                      value={editingSubject.textColor || '#000000'}
-                      onChange={(e) => setEditingSubject({ ...editingSubject, textColor: e.target.value })}
-                      className="w-10 h-10 rounded-lg cursor-pointer border-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
               <div className="flex items-center gap-2 p-3 bg-neutral-50 rounded-2xl border border-neutral-100">
                 <input 
                   type="checkbox"
@@ -1010,14 +965,14 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
             <div className="flex gap-3 pt-4">
               <button 
                 onClick={handleSaveSubject}
-                className="flex-1 bg-emerald-500 text-white py-3 rounded-2xl font-bold hover:bg-emerald-600 transition-colors flex items-center justify-center gap-2"
+                className="flex-3 bg-theme-primary text-white py-4 rounded-2xl font-bold hover:bg-theme-primary-dark transition-all active:scale-[0.98] shadow-lg shadow-theme-primary/20 flex items-center justify-center gap-2"
               >
                 <Save size={18} />
                 Сохранить
               </button>
               <button 
                 onClick={() => setEditingSubject(null)}
-                className="flex-1 bg-neutral-100 text-neutral-600 py-3 rounded-2xl font-bold hover:bg-neutral-200 transition-colors"
+                className="flex-1 bg-neutral-100 text-neutral-600 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
               >
                 Отмена
               </button>
@@ -1062,16 +1017,16 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                 <option value="year">Год</option>
               </select>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-4">
               <button 
                 onClick={handleAddRow}
-                className="flex-1 bg-emerald-500 text-white py-3 rounded-2xl font-bold hover:bg-emerald-600 transition-colors"
+                className="flex-3 bg-emerald-500 text-white py-4 rounded-2xl font-bold hover:bg-emerald-600 transition-all active:scale-[0.98] shadow-lg shadow-emerald-100"
               >
-                Добавить
+                Добавить строку
               </button>
               <button 
                 onClick={() => setRowEditor({ mode: null, rowId: null, label: '', type: 'month' })}
-                className="flex-1 bg-neutral-100 text-neutral-600 py-3 rounded-2xl font-bold hover:bg-neutral-200 transition-colors"
+                className="flex-1 bg-neutral-100 text-neutral-600 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
               >
                 Отмена
               </button>
@@ -1093,7 +1048,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                 Вы уверены, что хотите удалить эту строку? Это действие нельзя отменить.
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-4">
               <button 
                 onClick={() => {
                   if (!planData) return;
@@ -1101,13 +1056,13 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                   savePlanData({ ...planData, rows: newRows }, 'now');
                   setRowToDelete(null);
                 }}
-                className="flex-1 bg-rose-500 text-white py-3 rounded-2xl font-bold hover:bg-rose-600 transition-colors"
+                className="flex-3 bg-rose-500 text-white py-4 rounded-2xl font-bold hover:bg-rose-600 transition-all active:scale-[0.98] shadow-lg shadow-rose-100"
               >
-                Удалить
+                Удалить строку
               </button>
               <button 
                 onClick={() => setRowToDelete(null)}
-                className="flex-1 bg-neutral-100 text-neutral-600 py-3 rounded-2xl font-bold hover:bg-neutral-200 transition-colors"
+                className="flex-1 bg-neutral-100 text-neutral-600 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
               >
                 Отмена
               </button>
@@ -1129,16 +1084,16 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                 Вы уверены, что хотите удалить эту графу расходов? Все данные в этой колонке будут потеряны.
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-4">
               <button 
                 onClick={() => handleDeleteSubject(subjectToDelete)}
-                className="flex-1 bg-rose-500 text-white py-3 rounded-2xl font-bold hover:bg-rose-600 transition-colors"
+                className="flex-3 bg-rose-500 text-white py-4 rounded-2xl font-bold hover:bg-rose-600 transition-all active:scale-[0.98] shadow-lg shadow-rose-100"
               >
-                Удалить
+                Удалить графу
               </button>
               <button 
                 onClick={() => setSubjectToDelete(null)}
-                className="flex-1 bg-neutral-100 text-neutral-600 py-3 rounded-2xl font-bold hover:bg-neutral-200 transition-colors"
+                className="flex-1 bg-neutral-100 text-neutral-600 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
               >
                 Отмена
               </button>

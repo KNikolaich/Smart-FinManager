@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { PlanData, CashbackEntry, CashbackCategory, Account, CashbackMonth } from '../types';
-import { Pencil, Plus, Trash2, Check, X, Copy } from 'lucide-react';
+import { Pencil, Plus, Trash2, Check, X, Copy, Save } from 'lucide-react';
 import { cn } from '../lib/utils';
 import CashbackCategoryManager from './CashbackCategoryManager';
 
@@ -254,9 +254,9 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
           <button
             onClick={() => setIsEditorMode(!isEditorMode)}
             className={editorButtonClass}
-            title={isEditorMode ? "Просмотр" : "Редактировать"}
+            title={isEditorMode ? "Сохранить" : "Редактировать"}
           >
-            <Pencil size={18} />
+            {isEditorMode ? <Save size={18} /> : <Pencil size={18} />}
           </button>
         </div>
       </div>

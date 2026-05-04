@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { io } from 'socket.io-client';
 import { useVoiceInput } from './hooks/useVoiceInput';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { 
@@ -71,6 +72,7 @@ export default function App() {
   const [showUserPage, setShowUserPage] = useState(false);
   const [isProcessingAI, setIsProcessingAI] = useState(false);
   const aiAssistantRef = useRef<AIAssistantHandle>(null);
+  const socketRef = useRef<any>(null);
   const { isRecording, startListening, stopListening } = useVoiceInput();
   
   useNetworkStatus((status) => {
@@ -260,6 +262,32 @@ export default function App() {
     };
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      const socket = io(window.location.origin, {
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        reconnectionAttempts: 20
+      });
+      
+      socket.on('connect', () => {
+        console.log('Socket connected');
+        socket.emit('join', user.id);
+      });
+
+      socket.on('data:updated', (data: any) => {
+        console.log('Real-time update received:', data);
+        refreshData();
+      });
+
+      socketRef.current = socket;
+
+      return () => {
+        socket.disconnect();
+      };
+    }
+  }, [user, refreshData]);
 
   useEffect(() => {
     if (user) {

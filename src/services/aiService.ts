@@ -23,8 +23,8 @@ const logAIInteraction = async (userId: string, request: any, response: any) => 
   }
 };
 
-const callDeepSeek = async (systemInstruction: string, userPrompt: string, responseFormat?: "json_object") => {
-  const response = await api.post<{ content: string }>("/ai/deepseek", {
+const callAI = async (systemInstruction: string, userPrompt: string, responseFormat?: "json_object") => {
+    const response = await api.post<{ content: string }>("/ai/deepseek", {
     systemInstruction,
     userPrompt,
     responseFormat
@@ -86,7 +86,7 @@ export const processUserMessage = async (
   const userPrompt = `User message: "${text}"\nCurrent date: ${new Date().toISOString()}\n\nREFERENCE DATA:\nAccounts: ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name })))} \nCategories: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name, type: c.type })))}`;
 
   try {
-    const responseText = await callDeepSeek(systemInstruction, userPrompt, "json_object");
+    const responseText = await callAI(systemInstruction, userPrompt, "json_object");
     const result = JSON.parse(responseText || "{}") as AIResponse;
 
     // Ensure message is a string to avoid React rendering errors
@@ -128,7 +128,7 @@ export const getFinancialAdvice = async (
   - Планы расходятся с целями`;
 
   try {
-    const advice = await callDeepSeek(systemInstruction, userPrompt);
+    const advice = await callAI(systemInstruction, userPrompt);
     await logAIInteraction(userId, { systemInstruction, userPrompt }, { text: advice });
     return advice;
   } catch (error) {
