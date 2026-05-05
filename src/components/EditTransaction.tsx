@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { api } from '../lib/api';
 import { Transaction, Account, Category } from '../types';
-import { X, Trash2, Check, Calculator as CalcIcon } from 'lucide-react';
+import { X, Trash2, Check, Calculator as CalcIcon, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import AccountSelect from './AccountSelect';
@@ -137,10 +137,26 @@ export default function EditTransaction({ transaction, accounts, transactions, c
             </div>
           )}
           
-          {/* Row 1: Amount and Date */}
-          <div className="grid grid-cols-2 gap-2 p-1">
+          {/* Row 1: Date and Amount */}
+          <div className="grid grid-cols-5 gap-2 p-1">
+            {/* Date Input */}
+            <div className="col-span-2 bg-theme-main rounded-xl p-1 flex flex-col justify-center border border-theme-base min-h-[60px]">
+              <div className="relative">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full bg-theme-surface border-none rounded-xl px-2 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main font-bold text-center"
+                />
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-bold text-theme-main bg-theme-surface rounded-xl">
+                  {format(new Date(date), 'dd MMM')}
+                  <Calendar className="w-4 h-4 text-theme-primary absolute right-3" />
+                </div>
+              </div>
+            </div>
+
             {/* Amount Input */}
-            <div className="bg-theme-main rounded-xl p-1 flex items-center justify-center border border-theme-base min-h-[60px]">
+            <div className="col-span-3 bg-theme-main rounded-xl p-1 flex items-center justify-center border border-theme-base min-h-[60px]">
               <div className="relative flex items-center gap-1 group w-full justify-between">
                 <div className="flex-1 flex items-center justify-end gap-1 overflow-hidden">
                   <input
@@ -153,7 +169,7 @@ export default function EditTransaction({ transaction, accounts, transactions, c
                       }
                     }}
                     className={cn(
-                      "font-bold text-right outline-none bg-transparent text-theme-main focus:ring-0 transition-all pr-1 w-full",
+                      "font-bold bg-theme-main rounded-xl text-right outline-none bg-transparent text-theme-main focus:ring-0 transition-all pr-1 w-full",
                       amount.length > 7 ? "text-lg" : amount.length > 5 ? "text-xl" : "text-2xl"
                     )}
                     placeholder="0"
@@ -168,11 +184,11 @@ export default function EditTransaction({ transaction, accounts, transactions, c
                     e.preventDefault();
                     setShowCalculator(true);
                   }}
-                  className="p-1.5 bg-theme-surface text-theme-muted rounded-lg hover:text-theme-primary transition-all border border-theme-base shadow-sm shrink-0"
+                  className="p-1.5 bg-theme-main text-theme-muted rounded-lg hover:text-theme-primary transition-all border border-theme-base shadow-sm shrink-0"
                   title="Калькулятор"
                   type="button"
                 >
-                  <CalcIcon size={14} />
+                  <CalcIcon size={14} className="text-theme-primary" />
                 </button>
 
                 {showCalculator && (
@@ -189,37 +205,12 @@ export default function EditTransaction({ transaction, accounts, transactions, c
                 )}
               </div>
             </div>
-
-            {/* Date Input */}
-            <div className="bg-theme-main rounded-xl p-1 flex flex-col justify-center border border-theme-base min-h-[60px]">
-              <label className="text-[9px] font-bold text-theme-muted uppercase tracking-widest mb-1 ml-1 text-center">Дата</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full bg-theme-surface border-none rounded-xl px-2 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main font-bold text-center"
-                />
-              </div>
-            </div>
           </div>
 
-          {/* Row 2: Description and Account */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-1">
-            {/* Description */}
-            <div className="">
-              <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Описание</label>
-              <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Комментарий"
-                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main"
-              />
-            </div>
-
+          {/* Row 2: Account and Description */}
+          <div className="grid grid-cols-5 gap-2 ">
             {/* Account */}
-            <div className="">
+            <div className="col-span-2 flex flex-col gap-0.5 p-2">
               <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Счет</label>
               <AccountSelect 
                 accounts={accounts.filter(a => !a.isArchived || a.id === transaction.accountId)} 
@@ -228,6 +219,18 @@ export default function EditTransaction({ transaction, accounts, transactions, c
                 label="" 
                 transactions={transactions}
                 type={transaction.type}
+              />
+            </div>
+
+            {/* Description */}
+            <div className="col-span-3 flex flex-col gap-0.5">
+              <label className="text-[8px] font-bold text-theme-muted uppercase tracking-widest ml-1">Описание</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Комментарий"
+                rows={2}
+                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-1 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main resize-none"
               />
             </div>
           </div>

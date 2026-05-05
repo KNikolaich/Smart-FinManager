@@ -300,7 +300,7 @@ function SortableGoalCard({
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-[10px] font-bold text-theme-muted uppercase tracking-widest flex items-center gap-1">
                 <Calendar className="w-2.5 h-2.5" />
-                {goal.deadline ? format(new Date(goal.deadline), 'd MMM yyyy', { locale: ru }) : 'Без срока'}
+                {goal.deadline ? format(new Date(goal.deadline), 'dd MMMM yyyy', { locale: ru }) : 'Без срока'}
               </span>
             </div>
           </div>
@@ -579,7 +579,7 @@ export default function Dashboard({
   const groupedTransactions = useMemo(() => {
     const groups: { [key: string]: Transaction[] } = {};
     recentTransactions.forEach(t => {
-      const dateKey = format(new Date(t.createdAt), 'dd.MM.yyyy', { locale: ru });
+      const dateKey = format(new Date(t.createdAt), 'dd MMMM', { locale: ru });
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(t);
     });

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { api } from '../lib/api';
 import { Transaction, Account, Category, TransactionType } from '../types';
-import { X, Check, Calculator as CalcIcon } from 'lucide-react';
+import { X, Check, Calculator as CalcIcon, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import AccountSelect from './AccountSelect';
@@ -114,7 +114,7 @@ export default function AddTransaction({ accounts, transactions, categories, onC
                       }
                     }}
                     className={cn(
-                      "font-bold text-right outline-none bg-transparent text-theme-main focus:ring-0 transition-all pr-1 w-full",
+                      "font-bold text-right rounded-2xl outline-none bg-transparent text-theme-main focus:ring-0 transition-all pr-1 w-full",
                       amount.length > 10 ? "text-lg" : amount.length > 7 ? "text-xl" : "text-2xl"
                     )}
                     placeholder="0"
@@ -129,11 +129,11 @@ export default function AddTransaction({ accounts, transactions, categories, onC
                     e.preventDefault();
                     setShowCalculator(true);
                   }}
-                  className="p-1.5 bg-theme-surface text-theme-muted rounded-lg hover:text-theme-primary transition-all border border-theme-base shadow-sm shrink-0"
+                  className="p-1.5 bg-theme-main text-theme-muted rounded-lg hover:text-theme-primary transition-all border border-theme-base shadow-sm shrink-0"
                   title="Калькулятор"
                   type="button"
                 >
-                  <CalcIcon size={14} />
+                  <CalcIcon size={14} className="text-theme-primary" />
                 </button>
 
                 {showCalculator && (
@@ -161,23 +161,26 @@ export default function AddTransaction({ accounts, transactions, categories, onC
                   onChange={(e) => setDate(e.target.value)}
                   className="w-full bg-theme-surface border-none rounded-xl px-2 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main font-bold text-center"
                 />
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-bold text-theme-main bg-theme-surface rounded-xl">
+                  {format(new Date(date), 'dd MMM')}
+                  <Calendar className="w-4 h-4 text-theme-primary absolute right-3" />
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Row 2: Description and Account */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2">
-            <div className="space-y-1">
+            <div className="flex flex-col gap-0.5">
               <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Описание</label>
-              <input
-                type="text"
+              <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Комментарий"
-                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main"
+                rows={2}
+                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main resize-none"
               />
             </div>
-            <div className="space-y-1">
+            <div className="flex flex-col gap-0.5">
               <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Счет</label>
               <AccountSelect 
                 accounts={activeAccounts} 

@@ -187,7 +187,7 @@ function SortableGoalItem({
                 <div className="flex items-center gap-2 sm:gap-3 mt-0.5 sm:mt-1">
                   <span className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-1">
                     <Calendar className="w-2.5 h-2.5 sm:w-3 h-3" />
-                    {goal.deadline ? format(new Date(goal.deadline), 'd MMM yyyy', { locale: ru }) : 'Без срока'}
+                    {goal.deadline ? format(new Date(goal.deadline), 'dd.MM.yy', { locale: ru }) : 'Без срока'}
                   </span>
                   {goal.isCompleted && (
                     <span className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-1">

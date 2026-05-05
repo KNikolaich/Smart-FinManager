@@ -78,7 +78,7 @@ export default function AccountSelect({ accounts, selectedAccountId, onChange, l
 
   return (
     <div ref={containerRef}>
-      <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">{label}</label>
+      {label && <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1 mb-1 block">{label}</label>}
       <div className="relative">
         <button
           type="button"

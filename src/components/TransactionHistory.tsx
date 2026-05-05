@@ -80,7 +80,7 @@ export default function TransactionHistory({
   const groupedTransactions = useMemo(() => {
     const groups: { [key: string]: Transaction[] } = {};
     filteredTransactions.forEach(t => {
-      const dateKey = format(new Date(t.createdAt), 'dd.MM.yyyy', { locale: ru });
+      const dateKey = format(new Date(t.createdAt), 'dd.MM.yy', { locale: ru });
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(t);
     });
