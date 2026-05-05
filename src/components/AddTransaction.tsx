@@ -98,12 +98,28 @@ export default function AddTransaction({ accounts, transactions, categories, onC
             <button type="button" onClick={() => setType('income')} className={cn("py-0.5 px-1 rounded-md font-bold text-[8px] leading-tight transition-all", type === 'income' ? "bg-theme-primary text-theme-on-primary shadow-sm" : "text-theme-muted")}>Доход</button>
             <button type="button" onClick={() => setType('transfer')} className={cn("py-0.5 px-1 rounded-md font-bold text-[8px] leading-tight transition-all", type === 'transfer' ? "bg-theme-primary text-theme-on-primary shadow-sm" : "text-theme-muted")}>Перевод</button>
           </div>
-          {/* Row 1: Amount and Date */}
-          <div className="grid grid-cols-2 gap-2 p-2">
+          {/* Row 1: Date and Amount */}
+          <div className="grid grid-cols-5 gap-2 p-1">
+            {/* Date Input */}
+            <div className="col-span-2 bg-theme-surface rounded-xl p-1 flex flex-col justify-center border border-theme-base min-h-[40px]">
+              <div className="relative">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full bg-theme-surface border-none rounded-xl px-2 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main font-bold text-center"
+                />
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-bold text-theme-main bg-theme-surface rounded-xl">
+                  {format(new Date(date), 'dd MMM')}
+                  <Calendar className="w-4 h-4 text-theme-primary absolute right-3" />
+                </div>
+              </div>
+            </div>
+
             {/* Amount Input */}
-            <div className="bg-theme-main rounded-2xl p-2 flex flex-col justify-center border border-theme-base min-h-[80px]">
-              <div className="flex items-center justify-between gap-1 group relative">                
-                <div className="flex-1 flex items-center justify-end gap-1">
+            <div className="col-span-3 bg-theme-surface rounded-xl p-1 flex items-center justify-center border border-theme-base min-h-[40px]">
+              <div className="relative flex items-center gap-1 group w-full justify-between">                
+                <div className="flex-1 flex items-center justify-end gap-1 overflow-hidden">
                   <input
                     type="text"
                     value={amount === '' ? '' : Number(amount.replace(/\s/g, '')).toLocaleString('ru-RU').replace(',', '.').split('.')[0]}
@@ -114,7 +130,7 @@ export default function AddTransaction({ accounts, transactions, categories, onC
                       }
                     }}
                     className={cn(
-                      "font-bold text-right rounded-2xl outline-none bg-transparent text-theme-main focus:ring-0 transition-all pr-1 w-full",
+                      "font-bold text-right rounded-2xl outline-none text-theme-muted focus:ring-0 transition-all pr-1 w-full",
                       amount.length > 10 ? "text-lg" : amount.length > 7 ? "text-xl" : "text-2xl"
                     )}
                     placeholder="0"
@@ -129,7 +145,7 @@ export default function AddTransaction({ accounts, transactions, categories, onC
                     e.preventDefault();
                     setShowCalculator(true);
                   }}
-                  className="p-1.5 bg-theme-main text-theme-muted rounded-lg hover:text-theme-primary transition-all border border-theme-base shadow-sm shrink-0"
+                  className="p-1.5 bg-theme-surface text-theme-muted rounded-lg hover:text-theme-primary transition-all border border-theme-base shadow-sm shrink-0"
                   title="Калькулятор"
                   type="button"
                 >
@@ -150,37 +166,12 @@ export default function AddTransaction({ accounts, transactions, categories, onC
                 )}
               </div>
             </div>
-
-            {/* Date Input */}
-            <div className="bg-theme-main rounded-2xl p-2 flex flex-col justify-center border border-theme-base min-h-[80px]">
-              <label className="text-[9px] font-bold text-theme-muted uppercase tracking-widest mb-1 ml-1 text-center">Дата</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full bg-theme-surface border-none rounded-xl px-2 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main font-bold text-center"
-                />
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-bold text-theme-main bg-theme-surface rounded-xl">
-                  {format(new Date(date), 'dd MMM')}
-                  <Calendar className="w-4 h-4 text-theme-primary absolute right-3" />
-                </div>
-              </div>
-            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2">
-            <div className="flex flex-col gap-0.5">
-              <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Описание</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Комментарий"
-                rows={2}
-                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main resize-none"
-              />
-            </div>
-            <div className="flex flex-col gap-0.5">
+          {/* Row 2: Account and Description */}
+          <div className="grid grid-cols-5 gap-2 ">
+            {/* Account */}
+            <div className="col-span-2 flex flex-col gap-0.5 p-2">
               <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Счет</label>
               <AccountSelect 
                 accounts={activeAccounts} 
@@ -191,7 +182,20 @@ export default function AddTransaction({ accounts, transactions, categories, onC
                 type={type}
               />
             </div>
+
+            {/* Description */}
+            <div className="col-span-3 flex flex-col gap-0.5">
+              <label className="text-[8px] font-bold text-theme-muted uppercase tracking-widest ml-1">Описание</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Комментарий"
+                rows={2}
+                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-1 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main resize-none"
+              />
+            </div>
           </div>
+
 
           <div className="space-y-1 p-2">
             <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">

@@ -61,9 +61,10 @@ app.post("/api/auth/register", async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
     }
+    const normalizedEmail = email.toLowerCase().trim();
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
-      data: { email, password: hashedPassword },
+      data: { email: normalizedEmail, password: hashedPassword },
     });
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET);
     res.json({ token, user: { id: user.id, email: user.email } });
@@ -81,7 +82,15 @@ app.post("/api/auth/login", async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
     }
-    const user = await prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await prisma.user.findFirst({ 
+      where: { 
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive'
+        }
+      } 
+    });
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
@@ -597,6 +606,36 @@ app.post("/api/plan-grid/:type", authenticateToken, async (req: any, res) => {
     notifyUser(userId, "data:updated", { type: "plan-grid", planType: type });
     res.json(planGrid.data);
   } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/plan-grid", authenticateToken, async (req: any, res) => {
+  try {
+    const userId = req.user.userId;
+    const data = req.body;
+    
+    // Split the bulk data into parts for compatibility with individual type storage
+    const parts = [
+      { type: 'config', data: data.config },
+      { type: 'cashback', data: data.cashback },
+      { type: 'comment', data: data.comment ? { comment: data.comment } : null },
+      { type: 'now', data: (data.subjects || data.rows) ? { subjects: data.subjects, rows: data.rows, pastRows: data.pastRows } : null }
+    ];
+
+    for (const part of parts) {
+      if (part.data) {
+        await prisma.planGrid.upsert({
+          where: { userId_type: { userId, type: part.type } },
+          update: { data: part.data as any },
+          create: { userId, type: part.type, data: part.data as any }
+        });
+      }
+    }
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Bulk Plan Grid Save Error:", error);
     res.status(500).json({ error: error.message });
   }
 });

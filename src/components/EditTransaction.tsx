@@ -140,7 +140,7 @@ export default function EditTransaction({ transaction, accounts, transactions, c
           {/* Row 1: Date and Amount */}
           <div className="grid grid-cols-5 gap-2 p-1">
             {/* Date Input */}
-            <div className="col-span-2 bg-theme-main rounded-xl p-1 flex flex-col justify-center border border-theme-base min-h-[60px]">
+            <div className="col-span-2 bg-theme-surface rounded-xl p-1 flex flex-col justify-center border border-theme-base min-h-[40px]">
               <div className="relative">
                 <input
                   type="date"
@@ -156,7 +156,7 @@ export default function EditTransaction({ transaction, accounts, transactions, c
             </div>
 
             {/* Amount Input */}
-            <div className="col-span-3 bg-theme-main rounded-xl p-1 flex items-center justify-center border border-theme-base min-h-[60px]">
+            <div className="col-span-3 bg-theme-surface rounded-xl p-1 flex items-center justify-center border border-theme-base min-h-[40px]">
               <div className="relative flex items-center gap-1 group w-full justify-between">
                 <div className="flex-1 flex items-center justify-end gap-1 overflow-hidden">
                   <input
@@ -169,7 +169,7 @@ export default function EditTransaction({ transaction, accounts, transactions, c
                       }
                     }}
                     className={cn(
-                      "font-bold bg-theme-main rounded-xl text-right outline-none bg-transparent text-theme-main focus:ring-0 transition-all pr-1 w-full",
+                      "font-bold bg-theme-surface rounded-xl text-right outline-none bg-transparent text-theme-main focus:ring-0 transition-all pr-1 w-full",
                       amount.length > 7 ? "text-lg" : amount.length > 5 ? "text-xl" : "text-2xl"
                     )}
                     placeholder="0"
@@ -184,7 +184,7 @@ export default function EditTransaction({ transaction, accounts, transactions, c
                     e.preventDefault();
                     setShowCalculator(true);
                   }}
-                  className="p-1.5 bg-theme-main text-theme-muted rounded-lg hover:text-theme-primary transition-all border border-theme-base shadow-sm shrink-0"
+                  className="p-1.5 bg-theme-surface text-theme-muted rounded-lg hover:text-theme-primary transition-all shadow-sm shrink-0"
                   title="Калькулятор"
                   type="button"
                 >
@@ -210,7 +210,7 @@ export default function EditTransaction({ transaction, accounts, transactions, c
           {/* Row 2: Account and Description */}
           <div className="grid grid-cols-5 gap-2 ">
             {/* Account */}
-            <div className="col-span-2 flex flex-col gap-0.5 p-2">
+            <div className="col-span-2 bg-theme-surface flex flex-col gap-0.5 p-2">
               <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Счет</label>
               <AccountSelect 
                 accounts={accounts.filter(a => !a.isArchived || a.id === transaction.accountId)} 
@@ -249,8 +249,8 @@ export default function EditTransaction({ transaction, accounts, transactions, c
                 type={transaction.type}
               />
             ) : (
-              <div className="h-100 rounded-xl flex overflow-hidden bg-theme-main border border-theme-base">
-                <div className="w-1/3 overflow-y-auto no-scrollbar border-r border-theme-base">
+              <div className="min-h-30 h-fill rounded-xl flex overflow-hidden bg-theme-main border border-theme-base">
+                <div className="w-1/3 overflow-y-auto border-r border-theme-base">
                   {categories.filter(c => c.type === transaction.type && !c.parentId).sort((a, b) => {
                     const aOrder = a.sortOrder ?? Infinity;
                     const bOrder = b.sortOrder ?? Infinity;

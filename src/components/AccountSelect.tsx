@@ -83,7 +83,7 @@ export default function AccountSelect({ accounts, selectedAccountId, onChange, l
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-left font-semibold flex items-center justify-between text-theme-main"
+          className="w-full bg-theme-surface border border-theme-base rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-left font-semibold flex items-center justify-between text-theme-main"
         >
           {selectedAccount ? (
             <div className="flex items-center gap-2">
@@ -98,7 +98,7 @@ export default function AccountSelect({ accounts, selectedAccountId, onChange, l
 
         {isOpen && (
           <div className={cn(
-            "absolute z-50 w-full bg-theme-surface border border-theme-base rounded-xl shadow-xl max-h-60 overflow-y-auto no-scrollbar",
+            "absolute z-50 min-w-60 w-full bg-theme-surface border border-theme-base rounded-xl shadow-xl max-h-60 overflow-y-auto no-scrollbar",
             isUpward ? "bottom-full mb-1" : "top-full mt-1"
           )}>
             {sortOrder.map(type => {
