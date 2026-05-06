@@ -76,30 +76,28 @@ export default function AILogs({ userId, onClose }: AILogsProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[120] bg-black/50 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
-      <div className="bg-white w-full max-w-4xl rounded-3xl overflow-hidden flex flex-col max-h-[90vh] shadow-2xl relative">
-        <div className="p-4 sm:p-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-900 text-white relative z-10">
+    <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-xl flex items-center justify-center p-0 lg:p-8">
+      <div className="relative w-full h-full lg:h-auto lg:max-w-5xl bg-theme-main lg:rounded-xl lg:border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden lg:max-h-[85vh]">
+        <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
           <div className="flex items-center gap-3">
-            <div className="bg-theme-primary p-2 rounded-xl">
-              <Terminal className="w-5 h-5" />
-            </div>
+            <Terminal className="w-5 h-5 text-theme-primary" />
             <div>
-              <h2 className="text-lg font-bold">Логи AI</h2>
-              <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold">Последние 100 операций</p>
+              <h3 className="text-sm font-black uppercase tracking-widest text-theme-main">Логи AI</h3>
+              <p className="text-[9px] text-theme-muted uppercase tracking-widest font-bold">Последние 100 операций</p>
             </div>
           </div>
           <div className="flex items-center gap-2 relative z-20">
             <button 
               onClick={fetchLogs}
               disabled={loading}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors disabled:opacity-50"
+              className="p-2 text-theme-muted hover:text-theme-main hover:bg-neutral-100/50 rounded-full transition-colors disabled:opacity-50"
               title="Обновить"
             >
               <RefreshCw className={cn("w-5 h-5", loading && "animate-spin")} />
             </button>
             <button 
               onClick={onClose} 
-              className="p-2 hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+              className="p-2 text-theme-muted hover:text-theme-main hover:bg-neutral-100/50 rounded-full transition-colors cursor-pointer"
               aria-label="Закрыть"
             >
               <X className="w-6 h-6" />
@@ -107,7 +105,7 @@ export default function AILogs({ userId, onClose }: AILogsProps) {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-neutral-50 no-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-4 bg-theme-main no-scrollbar">
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>

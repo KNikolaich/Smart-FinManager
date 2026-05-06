@@ -1,4 +1,4 @@
-import { LogOut, User as UserIcon, Database, Shield, Github, Info, Sparkles, CheckCircle2, Eraser, Trash2, AlertTriangle, Tag, FileDown, FileUp, X, ArrowRightLeft, AlertCircle, Copy, Palette, ArrowUp } from 'lucide-react';
+import { LogOut, User as UserIcon, Database, Shield, Github, Info, Sparkles, CheckCircle2, Eraser, Trash2, AlertTriangle, Tag, FileDown, FileUp, X, ArrowRightLeft, AlertCircle, Copy, Palette, ArrowUp, CreditCard, TrendingUp } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -56,24 +56,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
           />
         )}
         {showCurrencyTable && (
-          <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-6 sm:p-2 bg-black/40 backdrop-blur-sm">
-            <div className="absolute inset-0" onClick={() => setShowCurrencyTable(false)} />
-            <div className="relative w-full max-w-lg bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 max-h-[90vh] flex flex-col">
-              <div className="p-4 border-b border-neutral-100 flex items-center justify-between shrink-0 relative z-10">
-                <h3 className="font-bold">Справочник валют</h3>
-                <button 
-                  onClick={() => setShowCurrencyTable(false)} 
-                  className="p-2 hover:bg-neutral-100 rounded-full transition-colors cursor-pointer relative z-20"
-                  aria-label="Закрыть"
-                >
-                  <X className="w-5 h-5 text-neutral-400" />
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto no-scrollbar">
-                <CurrencyTable />
-              </div>
-            </div>
-          </div>
+          <CurrencyTable onClose={() => setShowCurrencyTable(false)} />
         )}
         
         {showLogModal && (
@@ -145,8 +128,9 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
               onClick={() => setShowAccountManager(true)}
               className="w-full px-6 py-2 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
             >
-              <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-                <Database className="w-5 h-5 text-emerald-600" />
+              <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center relative">
+                <CreditCard className="w-5 h-5 text-emerald-600 relative z-10" />
+                <CreditCard className="w-5 h-5 text-emerald-400 absolute translate-x-1 -translate-y-1 opacity-50" />
               </div>
               <div className="text-left">
                 <p className="font-semibold text-sm">Счета</p>
@@ -159,7 +143,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
               className="w-full px-6 py-2 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
             >
               <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
-                <ArrowUp className="w-5 h-5 text-amber-600" />
+                <TrendingUp className="w-5 h-5 text-amber-600" />
               </div>
               <div className="text-left">
                 <p className="font-semibold text-sm">Баланс</p>
@@ -228,7 +212,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
                           const themes = [
                             'theme-light-green', 'theme-light-blue', 'theme-nordic',
                             'theme-light-orange', 'theme-light-ruby', 'theme-light-violet',
-                            'theme-midnight', 'theme-carbon', 'theme-oled', 'theme-forest-dark', 'theme-purple-night', 'theme-cyber'
+                            'theme-midnight', 'theme-carbon', 'theme-oled', 'theme-forest-dark', 'theme-nocturnal', 'theme-cyber'
                           ];
                           document.body.classList.remove(...themes);
                           document.body.classList.add(theme.id);
@@ -254,7 +238,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
                       { id: 'theme-carbon', color: 'bg-neutral-800', name: 'Уголь' },
                       { id: 'theme-oled', color: 'bg-black', name: 'OLED' },
                       { id: 'theme-forest-dark', color: 'bg-emerald-950', name: 'Тайга' },
-                      { id: 'theme-purple-night', color: 'bg-purple-900', name: 'Неон' },
+                      { id: 'theme-nocturnal', color: 'bg-black', name: 'Хронос' },
                       { id: 'theme-cyber', color: 'bg-cyan-400', name: 'Кибер' },
                     ].map((theme) => (
                       <button
@@ -263,7 +247,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
                           const themes = [
                             'theme-light-green', 'theme-light-blue', 'theme-nordic',
                             'theme-light-orange', 'theme-light-ruby', 'theme-light-violet',
-                            'theme-midnight', 'theme-carbon', 'theme-oled', 'theme-forest-dark', 'theme-purple-night', 'theme-cyber'
+                            'theme-midnight', 'theme-carbon', 'theme-oled', 'theme-forest-dark', 'theme-nocturnal', 'theme-cyber'
                           ];
                           document.body.classList.remove(...themes);
                           document.body.classList.add(theme.id);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../lib/api';
 import { Category, TransactionType } from '../types';
-import { X, Plus, Trash2, Tag, Check, AlertTriangle } from 'lucide-react';
+import { X, Plus, Trash2, Tag, Check, AlertTriangle, ChevronDown } from 'lucide-react';
 
 function cn(...inputs: any[]) {
   return inputs.filter(Boolean).join(' ');
@@ -102,41 +102,32 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-4xl bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
-        {/* Header */}
-        <div className="p-2 sm:p-2 flex items-center justify-between bg-white sticky top-0 z-50 border-b border-neutral-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-theme-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-theme-primary-light flex-shrink-0">
-              <Tag size={20} />
-            </div>
-            <div>
-              <h2 className="text-lg sm:text-xl font-bold">Категории</h2>
-            </div>
-          </div>
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-0 lg:p-8 bg-black/80 backdrop-blur-xl">
+      <div className="relative w-full h-full lg:h-auto lg:max-w-3xl bg-theme-main lg:rounded-xl lg:border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
+        <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
+          <h3 className="text-sm font-black text-theme-main lowercase">{editingCategory ? 'редактировать' : 'новая'}</h3>
           <div className="flex items-center gap-2 relative z-20">
             <button 
               onClick={() => {
                 setEditingCategory(null);
                 setShowFormModal(true);
               }}
-              className="flex items-center gap-2 bg-theme-primary text-white p-2 sm:px-4 sm:py-2 rounded-xl hover:bg-theme-primary-dark transition-all font-bold text-sm shadow-lg shadow-theme-primary-light"
+              className="w-10 h-10 bg-theme-primary text-theme-on-primary rounded-lg flex items-center justify-center shadow-lg shadow-theme-primary/40 hover:scale-105 active:scale-95 transition-all group"
+              title="Добавить категорию"
             >
-              <Plus size={18} />
-              <span className="hidden sm:inline">Добавить</span>
+              <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" strokeWidth={3} />
             </button>
             <button 
               onClick={onClose} 
-              className="p-2 hover:bg-neutral-100 rounded-full transition-colors cursor-pointer relative z-30"
-              aria-label="Закрыть"
+              className="w-10 h-10 flex items-center justify-center rounded-lg bg-theme-surface text-theme-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all border border-theme-base/50"
             >
-              <X className="w-6 h-6 text-neutral-400" />
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
         
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-1 bg-neutral-50/50 no-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 lg:p-10 bg-theme-main no-scrollbar">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-4">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-theme-primary" />
@@ -277,7 +268,7 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
 
       {/* Delete Confirmation */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center p-6 sm:p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[250] flex items-center justify-center p-6 sm:p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white p-6 rounded-3xl shadow-xl max-w-sm w-full text-center animate-in zoom-in duration-200">
             <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 mx-auto mb-4">
               <AlertTriangle size={32} />
@@ -322,18 +313,23 @@ function CategoryForm({ category, categories, onClose, onSuccess, onDelete }: Ca
   const [sortOrder, setSortOrder] = useState<number | undefined>(category?.sortOrder);
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setError('Введите название категории');
+      return;
+    }
     
     setSaving(true);
+    setError(null);
     try {
       const payload = {
-        name,
-        icon,
+        name: name.trim(),
+        icon: icon || (parentId ? categories.find(c => c.id === parentId)?.icon : '💰') || '💰',
         type,
-        parentId,
+        parentId: parentId || null,
         color,
         sortOrder
       };
@@ -343,167 +339,188 @@ function CategoryForm({ category, categories, onClose, onSuccess, onDelete }: Ca
         await api.post('/categories', payload);
       }
       onSuccess();
-    } catch (error) {
-      console.error('Error saving category:', error);
+    } catch (err: any) {
+      console.error('Error saving category:', err);
+      setError(err.message || 'Ошибка при сохранении категории');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-6 sm:p-4 bg-black/50 backdrop-blur-sm">
-      <div className="relative w-full max-w-md bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in slide-in-from-bottom duration-300">
-        <div className="p-6 flex items-center justify-between">
-          <h3 className="text-xl font-bold">{category ? 'Редактировать' : 'Новая категория'}</h3>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
-            <X className="w-6 h-6 text-neutral-400" />
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 lg:p-8 bg-black/80 backdrop-blur-xl">
+      <div className="relative w-full h-full lg:h-auto lg:max-w-4xl bg-theme-main lg:rounded-xl lg:border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
+        <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
+          <h3 className="text-sm font-black uppercase tracking-widest text-theme-main uppercase">{category ? 'Редактировать' : 'Новая'}</h3>
+          <button onClick={onClose} className="p-2 hover:bg-neutral-100/50 rounded-full transition-colors">
+            <X className="w-5 h-5 text-theme-muted" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 flex-1 overflow-y-auto no-scrollbar">
-          <div className="flex flex-row items-center justify-center gap-6">
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowIconPicker(true)}
-                className="w-20 h-20 bg-neutral-50 rounded-3xl flex items-center justify-center text-4xl hover:bg-neutral-100 transition-all hover:border-theme-primary group relative"
-                style={{ border: color && color !== '#000000' ? `3px solid ${color}` : 'none' }}
-              >
-                {icon || (parentId ? categories.find(c => c.id === parentId)?.icon : '💰')}
-                <div className="absolute inset-0 bg-theme-primary/10 opacity-0 group-hover:opacity-100 rounded-3xl transition-opacity flex items-center justify-center">
-                  <Plus className="text-theme-primary-dark w-6 h-6" />
-                </div>
-              </button>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-4">Цвет</label>
-              <div className="flex items-center gap-3 bg-neutral-50 rounded-2xl px-4 py-3.5">
-                <input
-                  type="color"
-                  value={color === '#000000' ? '#e5e5e5' : color}
-                  onChange={(e) => setColor(e.target.value)}
-                  className="w-8 h-8 rounded-lg cursor-pointer border-none bg-transparent"
-                />
-                <button 
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+          <div className="p-6 lg:p-10 space-y-8 flex-1 overflow-y-auto no-scrollbar">
+            {error && (
+              <div className="bg-rose-50 text-rose-500 p-4 rounded-xl text-xs font-bold flex items-center gap-3 animate-in fade-in duration-200">
+                <AlertTriangle size={16} />
+                {error}
+              </div>
+            )}
+            <div className="flex flex-row items-center justify-center gap-6">
+              <div className="relative">
+                <button
                   type="button"
-                  onClick={() => setColor('#000000')}
-                  className={cn(
-                    "text-[10px] font-bold px-2 py-1 rounded-lg transition-all",
-                    color === '#000000' ? "bg-neutral-900 text-white" : "bg-neutral-200 text-neutral-500 hover:bg-neutral-300"
-                  )}
+                  onClick={() => setShowIconPicker(true)}
+                  className="w-8 h-8 bg-theme-surface border border-neutral-100 rounded-lg flex items-center justify-center text-sm hover:bg-theme-surface/50 transition-all hover:border-theme-primary group relative shadow-sm"
+                  style={{ border: color && color !== '#000000' ? `2px solid ${color}` : undefined }}
                 >
-                  Сброс
+                  {icon || (parentId ? categories.find(c => c.id === parentId)?.icon : '💰')}
+                  <div className="absolute inset-0 bg-theme-primary/10 opacity-0 group-hover:opacity-100 rounded-lg transition-opacity flex items-center justify-center">
+                    <Plus className="text-theme-primary w-5 h-5" strokeWidth={3} />
+                  </div>
                 </button>
               </div>
-            </div>
-          </div>
 
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-4">Название</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Например: Продукты"
-                className="w-full bg-neutral-50 rounded-2xl px-5 py-4 outline-none focus:ring-2 ring-theme-primary/20 font-semibold transition-all"
-                autoFocus
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-4">Порядок</label>
-                <input
-                  type="number"
-                  value={sortOrder ?? ''}
-                  onChange={(e) => setSortOrder(e.target.value ? Number(e.target.value) : undefined)}
-                  placeholder="0"
-                  className="w-full bg-neutral-50 rounded-2xl px-5 py-4 outline-none focus:ring-2 ring-theme-primary/20 font-semibold transition-all"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-4">Тип</label>
-                <div className={cn(
-                  "grid grid-cols-2 gap-1 bg-neutral-50 p-1 rounded-2xl h-[56px]",
-                  parentId && "opacity-50 cursor-not-allowed"
-                )}>
-                  <button
+              <div className="space-y-1.5 flex-1 max-w-[180px]">
+                <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Цвет актива</label>
+                <div className="flex items-center gap-2 bg-theme-surface border border-neutral-100 rounded-lg px-2 py-1.5">
+                  <input
+                    type="color"
+                    value={color === '#000000' ? '#e5e5e5' : color}
+                    onChange={(e) => setColor(e.target.value)}
+                    className="w-6 h-6 rounded cursor-pointer border-none bg-transparent"
+                  />
+                  <button 
                     type="button"
-                    onClick={() => !parentId && setType('expense')}
-                    disabled={!!parentId}
-                    className={`py-2 rounded-xl font-bold text-[10px] uppercase transition-all ${
-                      type === 'expense' 
-                        ? 'bg-white text-rose-500 shadow-sm' 
-                        : 'text-neutral-400'
-                    }`}
+                    onClick={() => setColor('#000000')}
+                    className="flex-1 px-2 py-1.5 bg-theme-main border border-neutral-50 text-theme-muted hover:text-theme-main text-[8px] font-black uppercase tracking-widest transition-all rounded"
                   >
-                    Расход
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => !parentId && setType('income')}
-                    disabled={!!parentId}
-                    className={`py-2 rounded-xl font-bold text-[10px] uppercase transition-all ${
-                      type === 'income' 
-                        ? 'bg-white text-theme-primary shadow-sm' 
-                        : 'text-neutral-400'
-                    }`}
-                  >
-                    Доход
+                    Reset
                   </button>
                 </div>
               </div>
             </div>
-            
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-4">Родительская категория</label>
-              <select
-                value={parentId || ''}
-                onChange={(e) => {
-                  const newParentId = e.target.value || undefined;
-                  setParentId(newParentId);
-                  if (newParentId) {
-                    const parent = categories.find(c => c.id === newParentId);
-                    if (parent) setType(parent.type as TransactionType);
-                  }
-                }}
-                className="w-full bg-neutral-50 rounded-2xl px-5 py-4 outline-none focus:ring-2 ring-theme-primary/20 font-semibold transition-all"
-              >
-                <option value="">Нет (верхний уровень)</option>
-                {categories
-                  .filter(c => c.id !== category?.id && !c.parentId && c.type === type)
-                  .map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-              </select>
-              {parentId && (
-                <p className="text-[9px] text-neutral-400 italic ml-4 mt-1">Тип наследуется от родительской категории</p>
-              )}
+
+            <div className="space-y-6">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Название категории</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  placeholder="Например: Продукты"
+                  className="w-full bg-theme-main border border-theme-base rounded-lg px-4 py-3 text-sm font-bold outline-none focus:ring-1 ring-theme-primary/30 transition-all text-theme-main"
+                  autoFocus
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Порядок</label>
+                  <input
+                    type="number"
+                    value={sortOrder ?? ''}
+                    onChange={(e) => setSortOrder(e.target.value ? Number(e.target.value) : undefined)}
+                    placeholder="0"
+                    className="w-full bg-theme-main border border-theme-base rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 ring-theme-primary/30 transition-all text-theme-main"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Тип транзакции</label>
+                  <div className={cn(
+                    "grid grid-cols-2 gap-1 bg-theme-surface border border-neutral-100 p-1 rounded-lg h-[40px]",
+                    parentId && "opacity-50 cursor-not-allowed"
+                  )}>
+                    <button
+                      type="button"
+                      onClick={() => !parentId && setType('expense')}
+                      disabled={!!parentId}
+                      className={`rounded font-black text-[8px] uppercase tracking-widest transition-all ${
+                        type === 'expense' 
+                          ? 'bg-theme-primary text-theme-on-primary shadow-sm' 
+                          : 'text-theme-muted hover:text-theme-main'
+                      }`}
+                    >
+                      Расход
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => !parentId && setType('income')}
+                      disabled={!!parentId}
+                      className={`rounded font-black text-[8px] uppercase tracking-widest transition-all ${
+                        type === 'income' 
+                          ? 'bg-theme-primary text-theme-on-primary shadow-sm' 
+                          : 'text-theme-muted hover:text-theme-main'
+                      }`}
+                    >
+                      Доход
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Родительская категория</label>
+                <div className="relative">
+                  <select
+                    value={parentId || ''}
+                    onChange={(e) => {
+                      const newParentId = e.target.value || undefined;
+                      setParentId(newParentId);
+                      if (newParentId) {
+                        const parent = categories.find(c => c.id === newParentId);
+                        if (parent) {
+                          setType(parent.type as TransactionType);
+                          if (icon === '💰' || !icon) {
+                            setIcon(parent.icon);
+                          }
+                          if (color === '#000000' || color === '#e5e5e5') {
+                            setColor(parent.color);
+                          }
+                        }
+                      }
+                    }}
+                    className="w-full bg-theme-main border border-theme-base rounded-lg px-4 py-3 text-sm font-bold outline-none focus:ring-1 ring-theme-primary/30 transition-all text-theme-main appearance-none"
+                  >
+                    <option value="">Нет (верхний уровень)</option>
+                    {categories
+                      .filter(c => c.id !== category?.id && !c.parentId && c.type === type)
+                      .map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                  </select>
+                  <ChevronDown className="absolute right-4 top-3.5 w-4 h-4 text-theme-muted pointer-events-none" />
+                </div>
+                {parentId && (
+                  <p className="text-[9px] text-theme-primary font-bold italic ml-1 mt-1 uppercase tracking-tighter opacity-70">Тип наследуется от родительской категории</p>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="flex gap-3 pt-2">
+          <div className="p-6 border-t border-neutral-100 flex gap-3 bg-theme-surface/5">
             {category && (
               <button
                 type="button"
                 onClick={() => onDelete(category.id)}
-                className="p-4 bg-rose-50 text-rose-500 rounded-2xl hover:bg-rose-100 transition-colors"
+                className="p-3 text-theme-muted hover:text-rose-500 transition-colors border border-neutral-50 rounded-lg hover:bg-theme-main"
               >
-                <Trash2 size={24} />
+                <Trash2 size={20} />
               </button>
             )}
             <button
               type="submit"
               disabled={saving || !name.trim()}
-              className="flex-1 bg-theme-primary text-white py-4 rounded-2xl font-bold hover:bg-theme-primary-dark transition-all shadow-lg shadow-theme-primary-light disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
+              className="flex-1 bg-theme-primary text-theme-on-primary py-3 rounded-lg font-black uppercase tracking-widest text-[11px] hover:bg-theme-primary-dark transition-all shadow-lg shadow-theme-primary/20 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {saving ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-theme-on-primary/30 border-t-theme-on-primary rounded-full animate-spin" />
               ) : (
                 <>
-                  <Check size={20} />
+                  <Check size={18} strokeWidth={3} />
                   {category ? 'Сохранить изменения' : 'Создать категорию'}
                 </>
               )}
@@ -512,55 +529,58 @@ function CategoryForm({ category, categories, onClose, onSuccess, onDelete }: Ca
         </form>
 
         {showIconPicker && (
-          <div className="absolute inset-0 bg-white z-20 flex flex-col animate-in slide-in-from-bottom duration-300">
-            <div className="p-6 flex items-center justify-between">
-              <h3 className="font-bold">Выберите иконку</h3>
-              <button onClick={() => setShowIconPicker(false)} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
-                <X className="w-6 h-6 text-neutral-400" />
+          <div className="absolute inset-0 bg-theme-main z-20 flex flex-col animate-in fade-in duration-300">
+            <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm">
+              <h3 className="text-sm font-black uppercase tracking-widest text-theme-main">Выберите иконку</h3>
+              <button onClick={() => setShowIconPicker(false)} className="p-2 hover:bg-neutral-100/50 rounded-full transition-colors">
+                <X className="w-5 h-5 text-theme-muted" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
-              <div className="mb-6 space-y-2">
-                <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-1">Своя иконка (эмодзи)</label>
+            <div className="flex-1 overflow-y-auto p-6 lg:p-10 no-scrollbar">
+              <div className="mb-10 space-y-2 max-w-md mx-auto">
+                <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Своя иконка (эмодзи)</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={icon}
                     onChange={(e) => setIcon(e.target.value.slice(0, 2))}
                     placeholder="Введите эмодзи..."
-                    className="flex-1 bg-neutral-50 rounded-2xl px-5 py-4 outline-none focus:ring-2 ring-emerald-500/20 font-semibold transition-all"
+                    className="flex-1 bg-theme-main border border-theme-base rounded-lg px-4 py-3 text-sm font-bold outline-none focus:ring-1 ring-theme-primary/30 text-theme-main"
                   />
                   <button
                     onClick={() => setShowIconPicker(false)}
-                    className="bg-theme-primary text-white px-6 rounded-2xl font-bold hover:bg-theme-primary-dark transition-all shadow-lg shadow-theme-primary-light"
+                    className="px-6 bg-theme-primary text-theme-on-primary rounded-lg font-black uppercase tracking-widest text-[10px]"
                   >
-                    Готово
+                    ОК
                   </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-5 sm:grid-cols-6 gap-4">
+              <div className="grid grid-cols-5 sm:grid-cols-8 lg:grid-cols-10 gap-3">
                 {COMMON_ICONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => {
-                    setIcon(emoji);
-                    setShowIconPicker(false);
-                  }}
-                  className={`aspect-square flex items-center justify-center text-3xl rounded-2xl transition-all hover:scale-110 ${
-                    icon === emoji ? 'bg-theme-primary-light ring-2 ring-theme-primary' : 'bg-neutral-50 hover:bg-neutral-100'
-                  }`}
-                >
-                  {emoji}
-                </button>
-              ))}
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => {
+                      setIcon(emoji);
+                      setShowIconPicker(false);
+                    }}
+                    className={cn(
+                      "aspect-square flex items-center justify-center text-3xl rounded-xl transition-all hover:scale-110 border border-transparent shadow-sm",
+                      icon === emoji 
+                        ? 'bg-theme-primary text-theme-on-primary ring-2 ring-theme-primary ring-offset-2' 
+                        : 'bg-theme-surface hover:bg-theme-surface/50 border-neutral-100'
+                    )}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
 }
 

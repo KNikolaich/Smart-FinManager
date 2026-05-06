@@ -236,7 +236,7 @@ app.post("/api/categories", authenticateToken, async (req: any, res) => {
     const createData: any = { ...data, userId: req.user.userId };
     
     if (parentId) {
-      createData.parent = { connect: { id: parentId } };
+      createData.parentId = parentId;
     }
 
     const category = await prisma.category.create({
@@ -255,9 +255,9 @@ app.put("/api/categories/:id", authenticateToken, async (req: any, res) => {
     const updateData: any = { ...data };
     
     if (parentId === null) {
-      updateData.parent = { disconnect: true };
+      updateData.parentId = null;
     } else if (parentId) {
-      updateData.parent = { connect: { id: parentId } };
+      updateData.parentId = parentId;
     }
 
     const category = await prisma.category.update({
@@ -715,9 +715,14 @@ app.post("/api/currencies/seed", authenticateToken, async (req: any, res) => {
 app.get("/api/currencies/rates/:iso", authenticateToken, async (req: any, res) => {
   try {
     const { iso } = req.params;
-    const response = await axios.get(`https://v6.exchangerate-api.com/v6/10e51cc83f012c14085c363d/latest/${iso}`);
+    const apiKey = process.env.EXCHANGERATE_API_KEY || "10e51cc83f012c14085c363d";
+    const response = await axios.get(`https://v6.exchangerate-api.com/v6/${apiKey}/latest/${iso}`);
     res.json(response.data);
   } catch (error: any) {
+    if (error.response?.status === 429) {
+      console.error("Currency API Rate Limit Exceeded");
+      return res.status(429).json({ error: "Rate limit exceeded for currency updates. Please try again later." });
+    }
     console.error("Error proxying currency rates:", error.message);
     res.status(500).json({ error: "Failed to fetch currency rates" });
   }
