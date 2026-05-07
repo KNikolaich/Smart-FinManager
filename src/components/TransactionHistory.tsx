@@ -123,8 +123,8 @@ export default function TransactionHistory({
   }, [filteredTransactions]);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-1 sm:p-0">
-      <div className="w-full h-full max-w-2xl bg-theme-surface shadow-2xl flex flex-col relative overflow-hidden animate-in slide-in-from-bottom duration-300">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-0 lg:p-8">
+      <div className="w-full h-full lg:h-auto lg:max-h-full max-w-2xl bg-theme-surface shadow-2xl flex flex-col relative overflow-hidden animate-in slide-in-from-bottom duration-300 lg:rounded-2xl">
         <div className="py-4 px-4 border-b border-theme-base flex items-center justify-between shrink-0 relative z-10">
           <h2 className="text-xl font-bold text-theme-main">История операций</h2>
           <div className="flex items-center gap-2">

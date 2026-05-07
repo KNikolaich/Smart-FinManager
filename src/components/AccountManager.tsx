@@ -264,7 +264,7 @@ export default function AccountManager({ accounts, onClose, onRefresh }: Account
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[120] flex items-center justify-center p-0 lg:p-4 animate-in fade-in duration-300">
-      <div className="bg-theme-main w-full h-full lg:h-auto lg:max-w-5xl lg:rounded-xl lg:border border-neutral-100 overflow-hidden flex flex-col shadow-2xl relative shadow-black/50">
+      <div className="bg-theme-main w-full h-full lg:max-h-full lg:max-w-5xl lg:rounded-xl lg:border border-neutral-100 overflow-hidden flex flex-col shadow-2xl relative shadow-black/50">
         
         {/* Header */}
         <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between shrink-0 bg-theme-surface/10 backdrop-blur-sm">
@@ -350,7 +350,7 @@ export default function AccountManager({ accounts, onClose, onRefresh }: Account
         {/* Separate Account Form Modal */}
         {showFormModal && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[200] flex items-center justify-center p-0 lg:p-4 animate-in fade-in duration-200">
-            <div className="bg-theme-main w-full h-full lg:h-auto lg:max-w-xl lg:rounded-xl lg:border border-neutral-100 overflow-hidden flex flex-col shadow-2xl relative">
+            <div className="bg-theme-main w-full h-full lg:max-h-full lg:max-w-xl lg:rounded-xl lg:border border-neutral-100 overflow-hidden flex flex-col shadow-2xl relative">
               <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between shrink-0 bg-theme-surface/10 backdrop-blur-sm">
                 <h3 className="text-sm font-black text-theme-main lowercase">{editingId ? 'редактировать' : 'новый счет'}</h3>
                 <button 

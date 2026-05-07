@@ -103,7 +103,7 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-0 lg:p-8 bg-black/80 backdrop-blur-xl">
-      <div className="relative w-full h-full lg:h-auto lg:max-w-3xl bg-theme-main lg:rounded-xl lg:border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
+      <div className="relative w-full h-full lg:max-h-full lg:max-w-3xl bg-theme-main lg:rounded-xl lg:border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
         <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
           <h3 className="text-sm font-black text-theme-main uppercase">КАТЕГОРИИ</h3>
           <div className="flex items-center gap-2 relative z-20">
@@ -350,7 +350,7 @@ function CategoryForm({ category, categories, onClose, onSuccess, onDelete }: Ca
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 lg:p-8 bg-black/80 backdrop-blur-xl">
-      <div className="relative w-full h-full lg:h-auto lg:max-w-4xl bg-theme-main lg:rounded-xl lg:border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
+      <div className="relative w-full h-full lg:max-h-full lg:max-w-4xl bg-theme-main lg:rounded-xl lg:border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
         <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
           <h3 className="text-sm font-black uppercase tracking-widest text-theme-main uppercase">{category ? 'Изменить' : 'Новая'}</h3>
           <button onClick={onClose} className="p-2 hover:bg-neutral-100/50 rounded-full transition-colors">
