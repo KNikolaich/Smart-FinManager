@@ -109,7 +109,7 @@ export default function Calculator({ initialValue, onConfirm, onCancel }: Calcul
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className="bg-white rounded-3xl p-4 shadow-2xl border border-neutral-100 w-[280px]"
+      className="bg-white rounded-3xl p-4 shadow-2xl border border-neutral-100 w-[300px]"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="mb-4">

@@ -3,7 +3,7 @@ import { Transaction, Category, Account } from '../types';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { X, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy } from 'lucide-react';
-import { ContextMenu } from './ui/ContextMenu';
+import { GenericContextMenu } from './ui/GenericContextMenu';
 import { AnimatePresence } from 'motion/react';
 
 interface TransactionHistoryProps {
@@ -145,53 +145,60 @@ export default function TransactionHistory({
           </div>
         </div>
 
-        {/* Month Selector */}
-        <div className="py-2 px-4 bg-theme-main flex flex-col gap-2 shrink-0">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
-                className="p-1.5 hover:bg-theme-surface rounded-xl transition-all"
-              >
-                <ChevronLeft className="w-4 h-4 text-theme-muted" />
-              </button>
-              <div className="text-center min-w-[100px]">
-                <p className="text-xs font-bold capitalize text-theme-main">{format(selectedMonth, 'LLLL yyyy', { locale: ru })}</p>
-                <div className="flex justify-center gap-3 mt-0.5">
-                  <span className="text-[9px] font-bold text-emerald-500">+{stats.income.toLocaleString()} ₽</span>
-                  <span className="text-[9px] font-bold text-rose-500">-{stats.expense.toLocaleString()} ₽</span>
+        {/* Month Selector & Filters */}
+        <div className="py-3 px-4 bg-theme-main flex flex-col gap-4 shrink-0 border-b border-theme-base/30">
+          <div className="flex flex-col min-[550px]:flex-row min-[550px]:items-center gap-4 justify-between">
+            {/* Top Row / Left Side: Date and Type Filter */}
+            <div className="flex items-center justify-between min-[550px]:justify-start gap-4">
+              <div className="flex items-center gap-1 bg-theme-surface p-1 rounded-xl border border-theme-base">
+                <button 
+                  onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
+                  className="p-1.5 hover:bg-theme-main rounded-lg transition-all"
+                >
+                  <ChevronLeft className="w-4 h-4 text-theme-muted" />
+                </button>
+                <div className="text-center min-w-[90px]">
+                  <p className="text-[10px] font-bold capitalize text-theme-main leading-none">{format(selectedMonth, 'LLLL yyyy', { locale: ru })}</p>
+                  <div className="flex justify-center gap-2 mt-0.5">
+                    <span className="text-[8px] font-bold text-emerald-500">+{stats.income.toLocaleString()}</span>
+                    <span className="text-[8px] font-bold text-rose-500">-{stats.expense.toLocaleString()}</span>
+                  </div>
                 </div>
+                <button 
+                  onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
+                  className="p-1.5 hover:bg-theme-main rounded-lg transition-all"
+                >
+                  <ChevronRight className="w-4 h-4 text-theme-muted" />
+                </button>
               </div>
-              <button 
-                onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
-                className="p-1.5 hover:bg-theme-surface rounded-xl transition-all"
-              >
-                <ChevronRight className="w-4 h-4 text-theme-muted" />
-              </button>
-            </div>
 
-            {/* Search and Type Filter */}
-            <div className="flex-1 min-w-[200px] flex items-center gap-2">
-              <input 
-                type="text" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Поиск..."
-                className="flex-1 p-2 rounded-xl bg-theme-surface border border-theme-base text-xs focus:outline-none focus:ring-2 focus:ring-theme-primary text-theme-main"
-              />
-              <div className="flex bg-theme-main rounded-xl p-0.5 shrink-0 border border-theme-base">
+              {/* Type Filter */}
+              <div className="flex bg-theme-surface rounded-xl p-1 shrink-0 border border-theme-base">
                 {(['all', 'expense', 'income'] as const).map((type) => (
                   <button
                     key={type}
                     onClick={() => setFilterType(type)}
                     className={cn(
-                      "px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all",
-                      filterType === type ? "bg-theme-surface shadow-sm text-theme-main" : "text-theme-muted hover:text-theme-main"
+                      "px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all",
+                      filterType === type ? "bg-theme-main shadow-sm text-theme-main" : "text-theme-muted hover:text-theme-main"
                     )}
                   >
                     {type === 'all' ? 'Все' : type === 'expense' ? 'Расход' : 'Доход'}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Bottom Row / Right Side: Search Bar */}
+            <div className="flex-1">
+              <div className="relative group">
+                <input 
+                  type="text" 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Поиск по описанию или категории..."
+                  className="w-full pl-3 pr-3 py-2 rounded-xl bg-theme-surface border border-theme-base text-[11px] font-medium focus:outline-none focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary transition-all text-theme-main placeholder:text-theme-muted/50"
+                />
               </div>
             </div>
           </div>
@@ -218,6 +225,7 @@ export default function TransactionHistory({
                         onClick={() => onEditTransaction(t)}
                         onContextMenu={(e) => {
                           e.preventDefault();
+                          e.stopPropagation();
                           setContextMenu({ x: e.clientX, y: e.clientY, transaction: t });
                         }}
                         onPointerDown={(e) => {
@@ -279,14 +287,23 @@ export default function TransactionHistory({
           )}
           
           {contextMenu && (
-            <AnimatePresence>
-              <ContextMenu 
-                x={contextMenu.x} 
-                y={contextMenu.y} 
-                onClose={() => setContextMenu(null)}
-                onAction={handleContextMenuAction}
-              />
-            </AnimatePresence>
+            <GenericContextMenu 
+              x={contextMenu.x} 
+              y={contextMenu.y} 
+              onClose={() => setContextMenu(null)}
+              items={[
+                {
+                  label: 'Добавить похожую',
+                  icon: Plus,
+                  onClick: () => handleContextMenuAction('create')
+                },
+                {
+                  label: 'Копировать операцию',
+                  icon: Copy,
+                  onClick: () => handleContextMenuAction('copy')
+                }
+              ]}
+            />
           )}
         </div>
 

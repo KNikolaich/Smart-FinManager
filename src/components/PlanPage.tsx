@@ -33,6 +33,7 @@ import {
   Check,
   Calculator as CalcIcon
 } from 'lucide-react';
+import { GenericContextMenu } from './ui/GenericContextMenu';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '../lib/utils';
@@ -287,6 +288,7 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
 
   const handleContextMenu = (e: React.MouseEvent, rowId: string) => {
     e.preventDefault();
+    e.stopPropagation();
     setContextMenu({ x: e.clientX, y: e.clientY, rowId });
   };
 
@@ -982,16 +984,34 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
       )}
 
       {contextMenu.rowId && (
-        <div 
-          className="fixed bg-white shadow-lg border border-neutral-200 rounded-lg z-50 py-1 min-w-[150px]"
-          style={{ top: contextMenu.y, left: contextMenu.x }}
-          onClick={() => setContextMenu({ x: 0, y: 0, rowId: null })}
-        >
-          <button className="block w-full text-left px-4 py-2 text-xs hover:bg-neutral-100" onClick={() => setRowEditor({ mode: 'addBefore', rowId: contextMenu.rowId, label: '', type: 'month' })}>Добавить до</button>
-          <button className="block w-full text-left px-4 py-2 text-xs hover:bg-neutral-100" onClick={() => setRowEditor({ mode: 'addAfter', rowId: contextMenu.rowId, label: '', type: 'month' })}>Добавить после</button>
-          <button className="block w-full text-left px-4 py-2 text-xs hover:bg-neutral-100 text-neutral-500" onClick={() => handleArchiveRow(contextMenu.rowId!)}>В архив</button>
-          <button className="block w-full text-left px-4 py-2 text-xs hover:bg-rose-50 text-rose-500" onClick={() => setRowToDelete(contextMenu.rowId)}>Удалить</button>
-        </div>
+        <GenericContextMenu 
+          x={contextMenu.x} 
+          y={contextMenu.y} 
+          onClose={() => setContextMenu({ x: 0, y: 0, rowId: null })}
+          items={[
+            {
+              label: 'Добавить до',
+              icon: Plus,
+              onClick: () => setRowEditor({ mode: 'addBefore', rowId: contextMenu.rowId, label: '', type: 'month' })
+            },
+            {
+              label: 'Добавить после',
+              icon: Plus,
+              onClick: () => setRowEditor({ mode: 'addAfter', rowId: contextMenu.rowId, label: '', type: 'month' })
+            },
+            {
+              label: 'В архив',
+              icon: History,
+              onClick: () => handleArchiveRow(contextMenu.rowId!)
+            },
+            {
+              label: 'Удалить',
+              icon: Trash2,
+              variant: 'danger',
+              onClick: () => setRowToDelete(contextMenu.rowId)
+            }
+          ]}
+        />
       )}
 
       {/* Row Editor Modal */}

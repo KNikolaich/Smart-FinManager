@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import { Account, AccountType, Currency } from '../types';
 import { X, Plus, Trash2, Check, Pencil, ChevronDown, GripVertical, Save } from 'lucide-react';
@@ -24,6 +24,7 @@ interface AccountManagerProps {
   accounts: Account[];
   onClose: () => void;
   onRefresh?: () => void;
+  initialEditingId?: string | null;
 }
 
 interface SortableAccountRowProps {
@@ -99,7 +100,7 @@ function SortableAccountRow({ account, onEdit, currencies }: SortableAccountRowP
   );
 }
 
-export default function AccountManager({ accounts, onClose, onRefresh }: AccountManagerProps) {
+export default function AccountManager({ accounts, onClose, onRefresh, initialEditingId }: AccountManagerProps) {
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -117,10 +118,22 @@ export default function AccountManager({ accounts, onClose, onRefresh }: Account
   const [isBalanceEditable, setIsBalanceEditable] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const processedInitialId = useRef<string | null>(null);
 
   useEffect(() => {
     setLocalAccounts(accounts);
-  }, [accounts]);
+    if (initialEditingId) {
+      if (processedInitialId.current !== initialEditingId) {
+        const acc = accounts.find(a => a.id === initialEditingId);
+        if (acc) {
+          startEditing(acc);
+          processedInitialId.current = initialEditingId;
+        }
+      }
+    } else {
+      processedInitialId.current = null;
+    }
+  }, [accounts, initialEditingId]);
 
   const groupedAccounts = useMemo(() => {
     const groups: Record<AccountType, Account[]> = {

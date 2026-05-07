@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
-import { Transaction, Account, Category } from '../types';
-import { X, Trash2, Check, Calculator as CalcIcon, Calendar } from 'lucide-react';
+import { Transaction, Account, Category, TransactionType } from '../types';
+import { X, Trash2, Check, Calculator as CalcIcon, Calendar, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import AccountSelect from './AccountSelect';
+import CategorySelect from './CategorySelect';
 import Calculator from './Calculator';
 
 interface EditTransactionProps {
@@ -22,12 +23,6 @@ export default function EditTransaction({ transaction, accounts, transactions, c
   const [selectedAccountId, setSelectedAccountId] = useState(transaction.accountId);
   const [selectedTargetAccountId, setSelectedTargetAccountId] = useState(transaction.targetAccountId || '');
   const [selectedCategoryId, setSelectedCategoryId] = useState(transaction.categoryId || '');
-  
-  const initialCategory = categories.find(c => c.id === transaction.categoryId);
-  const [activeParentId, setActiveParentId] = useState<string | null>(
-    initialCategory?.parentId || transaction.categoryId || null
-  );
-
   const [date, setDate] = useState(format(new Date(transaction.createdAt), 'yyyy-MM-dd'));
   const [loading, setLoading] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
@@ -89,7 +84,7 @@ export default function EditTransaction({ transaction, accounts, transactions, c
 
   return (
     <div className="fixed inset-0 z-[120] flex items-stretch lg:items-center justify-center p-0 lg:p-8 bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-theme-surface overflow-hidden shadow-2xl flex flex-col relative h-full lg:h-auto lg:max-h-full animate-in slide-in-from-bottom duration-300 lg:rounded-2xl">
+      <div className="w-full max-w-lg bg-theme-surface overflow-hidden shadow-2xl flex flex-col relative h-full lg:h-auto lg:max-h-[90vh] animate-in slide-in-from-bottom duration-300 lg:rounded-2xl">
         {/* Delete Confirmation Overlay */}
         {showDeleteConfirm && (
           <div className="absolute inset-0 z-[130] bg-theme-surface/95 backdrop-blur-sm flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-200">
@@ -117,10 +112,8 @@ export default function EditTransaction({ transaction, accounts, transactions, c
           </div>
         )}
 
-        <div className="px-4 py-1 flex items-center justify-between shrink-0 relative z-10 border-b border-theme-base">
-          <h2 className="text-base font-bold text-theme-main capitalize">
-            {transaction.type === 'income' ? 'Доход' : transaction.type === 'expense' ? 'Расход' : 'Перевод'}
-          </h2>
+        <div className="px-6 py-3 flex items-center justify-between shrink-0 relative z-10 border-b border-theme-base">
+          <h2 className="text-base font-bold text-theme-main">Изменение операции</h2>
           <button 
             onClick={onClose} 
             className="p-1.5 hover:bg-theme-main rounded-full transition-colors relative z-20 cursor-pointer"
@@ -130,208 +123,162 @@ export default function EditTransaction({ transaction, accounts, transactions, c
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-1 space-y-1 no-scrollbar">
-          {error && (
-            <div className="mx-4 mt-2 p-3 bg-rose-500/10 text-rose-600 text-xs font-bold rounded-xl animate-in fade-in slide-in-from-top-2 duration-200 border border-rose-500/20">
-              {error}
-            </div>
-          )}
-          
-          {/* Row 1: Date and Amount */}
-          <div className="grid grid-cols-5 gap-2 p-1">
-            {/* Date Input */}
-            <div className="col-span-2 bg-theme-surface rounded-xl p-1 flex flex-col justify-center border border-theme-base min-h-[40px]">
-              <div className="relative">
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar flex flex-col">
+            {error && (
+              <div className="p-3 bg-rose-500/10 text-rose-600 text-xs font-bold rounded-xl animate-in fade-in slide-in-from-top-2 duration-200 border border-rose-500/20 shrink-0">
+                {error}
+              </div>
+            )}
+            
+            {/* Amount and Date */}
+            <div className="grid grid-cols-5 gap-3 shrink-0">
+               {/* Amount Input */}
+               <div className="col-span-3 bg-theme-main rounded-2xl p-3 flex flex-col border border-theme-base min-h-[60px] justify-center">
+                <div className="flex items-center gap-1 group w-full justify-between">                
+                  <div className="flex-1 flex items-center justify-end gap-1 overflow-hidden">
+                    <input
+                      type="text"
+                      value={amount === '' ? '' : Number(amount.replace(/\s/g, '')).toLocaleString('ru-RU').replace(',', '.').split('.')[0]}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\s/g, '');
+                        if (/^\d*$/.test(val)) {
+                          setAmount(val);
+                        }
+                      }}
+                      className={cn(
+                        "font-bold text-right bg-transparent outline-none text-theme-main focus:ring-0 transition-all pr-1 w-full",
+                        amount.length > 8 ? "text-lg" : amount.length > 5 ? "text-xl" : "text-2xl"
+                      )}
+                      placeholder="0"
+                      autoFocus
+                      inputMode="numeric"
+                    />
+                    <span className="text-theme-muted shrink-0">₽</span>
+                  </div>
+
+                  <button 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowCalculator(true);
+                    }}
+                    className="ml-2 bg-theme-surface text-theme-muted hover:text-theme-primary transition-all shadow-sm shrink-0"
+                    title="Калькулятор"
+                    type="button"
+                  >
+                    <CalcIcon size={18} className="text-theme-primary" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Date Input */}
+              <div className="col-span-2 bg-theme-main rounded-2xl flex flex-col justify-center border border-theme-base overflow-hidden relative group cursor-pointer hover:bg-theme-surface/50 transition-colors h-full">
                 <input
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full bg-theme-surface border-none rounded-xl px-2 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main font-bold text-center"
+                  className="absolute inset-0 opacity-0 cursor-pointer z-20 w-full h-full"
                 />
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-bold text-theme-main bg-theme-surface rounded-xl">
-                  {format(new Date(date), 'dd MMM')}
-                  <Calendar className="w-4 h-4 text-theme-primary absolute right-3" />
+                <div className="text-center group-hover:opacity-80 transition-opacity relative z-10 pointer-events-none p-1">
+                  <p className="text-[10px] font-bold text-theme-muted uppercase tracking-widest leading-none mb-1">Дата</p>
+                  <div className="flex items-center justify-center gap-1">
+                    <p className="text-sm font-black text-theme-main">{format(new Date(date), 'dd MMM')}</p>
+                    <ChevronDown size={12} className="text-theme-muted" />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Amount Input */}
-            <div className="col-span-3 bg-theme-surface rounded-xl p-1 flex items-center justify-center border border-theme-base min-h-[40px]">
-              <div className="relative flex items-center gap-1 group w-full justify-between">
-                <div className="flex-1 flex items-center justify-end gap-1 overflow-hidden">
-                  <input
-                    type="text"
-                    value={amount === '' ? '' : Number(amount.replace(/\s/g, '')).toLocaleString('ru-RU').replace(',', '.').split('.')[0]}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\s/g, '');
-                      if (/^\d*$/.test(val)) {
-                        setAmount(val);
-                      }
-                    }}
-                    className={cn(
-                      "font-bold bg-theme-surface rounded-xl text-right outline-none bg-transparent text-theme-main focus:ring-0 transition-all pr-1 w-full",
-                      amount.length > 7 ? "text-lg" : amount.length > 5 ? "text-xl" : "text-2xl"
-                    )}
-                    placeholder="0"
-                    autoFocus
-                    inputMode="numeric"
+            {/* Account Selection */}
+            <div className="space-y-3 shrink-0">
+              <div className={cn("grid gap-3 transition-all", transaction.type === 'transfer' ? "grid-cols-2" : "grid-cols-1")}>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">{transaction.type === 'transfer' ? 'Откуда' : 'Счет'}</label>
+                  <AccountSelect 
+                    accounts={accounts.filter(a => !a.isArchived || a.id === transaction.accountId)} 
+                    selectedAccountId={selectedAccountId} 
+                    onChange={setSelectedAccountId} 
+                    label="" 
+                    transactions={transactions}
+                    type={transaction.type}
                   />
-                  <span className="text-xl font-bold text-theme-muted shrink-0">₽</span>
                 </div>
-
-                <button 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setShowCalculator(true);
-                  }}
-                  className="p-1.5 bg-theme-surface text-theme-muted rounded-lg hover:text-theme-primary transition-all shadow-sm shrink-0"
-                  title="Калькулятор"
-                  type="button"
-                >
-                  <CalcIcon size={14} className="text-theme-primary" />
-                </button>
-
-                {showCalculator && (
-                  <div className="absolute top-full right-0 mt-4 z-[150]">
-                    <Calculator 
-                      initialValue={amount}
-                      onConfirm={(val) => {
-                        setAmount(val);
-                        setShowCalculator(false);
-                      }}
-                      onCancel={() => setShowCalculator(false)}
+                {transaction.type === 'transfer' && (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Куда</label>
+                    <AccountSelect 
+                      accounts={accounts.filter(a => a.id !== selectedAccountId)} 
+                      selectedAccountId={selectedTargetAccountId} 
+                      onChange={setSelectedTargetAccountId} 
+                      label="" 
+                      transactions={transactions}
+                      type={transaction.type}
                     />
                   </div>
                 )}
               </div>
-            </div>
-          </div>
 
-          {/* Row 2: Account and Description */}
-          <div className="grid grid-cols-5 gap-2 ">
-            {/* Account */}
-            <div className="col-span-2 bg-theme-surface flex flex-col gap-0.5 p-2">
-              <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Счет</label>
-              <AccountSelect 
-                accounts={accounts.filter(a => !a.isArchived || a.id === transaction.accountId)} 
-                selectedAccountId={selectedAccountId} 
-                onChange={setSelectedAccountId} 
-                label="" 
-                transactions={transactions}
-                type={transaction.type}
-              />
+              {transaction.type !== 'transfer' && (
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Категория</label>
+                  <CategorySelect
+                    categories={categories}
+                    selectedCategoryId={selectedCategoryId}
+                    onChange={setSelectedCategoryId}
+                    type={transaction.type}
+                  />
+                </div>
+              )}
             </div>
 
-            {/* Description */}
-            <div className="col-span-3 flex flex-col gap-0.5">
-              <label className="text-[8px] font-bold text-theme-muted uppercase tracking-widest ml-1">Описание</label>
+            {/* Description - Grows to fill space */}
+            <div className="flex-1 flex flex-col min-h-[100px] gap-2">
+              <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1 shrink-0">Описание</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Комментарий"
-                rows={2}
-                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-1 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main resize-none"
+                placeholder="Что изменилось в этой операции?..."
+                className="flex-1 w-full bg-theme-main border border-theme-base rounded-2xl px-5 py-4 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main resize-none font-medium placeholder:text-theme-muted/50"
               />
             </div>
           </div>
-
-          <div className="p-1">
-            <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">
-              {transaction.type === 'transfer' ? 'Счет получатель' : 'Категория'}
-            </label>
-            {transaction.type === 'transfer' ? (
-              <AccountSelect 
-                accounts={accounts.filter(a => a.id !== selectedAccountId)} 
-                selectedAccountId={selectedTargetAccountId} 
-                onChange={setSelectedTargetAccountId} 
-                label="" 
-                transactions={transactions}
-                type={transaction.type}
-              />
-            ) : (
-              <div className="min-h-30 h-fill rounded-xl flex overflow-hidden bg-theme-main border border-theme-base">
-                <div className="w-1/3 overflow-y-auto border-r border-theme-base">
-                  {categories.filter(c => c.type === transaction.type && !c.parentId).sort((a, b) => {
-                    const aOrder = a.sortOrder ?? Infinity;
-                    const bOrder = b.sortOrder ?? Infinity;
-                    if (aOrder !== bOrder) return aOrder - bOrder;
-                    return (a.name || '').localeCompare(b.name || '');
-                  }).map(cat => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => {
-                        setActiveParentId(cat.id);
-                        setSelectedCategoryId(cat.id);
-                      }}
-                      className={cn(
-                        "w-full text-left px-2 py-1.5 text-[11px] font-bold transition-all flex items-center gap-2",
-                        activeParentId === cat.id
-                          ? "bg-theme-surface text-theme-primary shadow-sm"
-                          : "text-theme-muted hover:bg-theme-primary/5"
-                      )}
-                    >
-                      <span className="text-base">{cat.icon}</span>
-                      <span className="truncate">{cat.name}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="w-2/3 overflow-y-auto no-scrollbar bg-theme-surface p-1">
-                  <div className="grid grid-cols-2 gap-1">
-                    {categories
-                      .filter(c => c.type === transaction.type && c.parentId === activeParentId)
-                      .sort((a, b) => {
-                        const aOrder = a.sortOrder ?? Infinity;
-                        const bOrder = b.sortOrder ?? Infinity;
-                        if (aOrder !== bOrder) return aOrder - bOrder;
-                        return (a.name || '').localeCompare(b.name || '');
-                      })
-                      .map(sub => (
-                        <button
-                          key={sub.id}
-                          type="button"
-                          onClick={() => setSelectedCategoryId(sub.id)}
-                          className={cn(
-                            "w-full text-left px-2 py-1.5 rounded-lg text-[11px] font-medium transition-all border border-transparent border-b-theme-base/20",
-                            selectedCategoryId === sub.id
-                              ? "bg-theme-primary/10 border-theme-primary text-theme-primary font-bold"
-                              : "text-theme-muted hover:bg-theme-main"
-                          )}
-                        >
-                          {sub.name}
-                        </button>
-                      ))}
-                  </div>
-                  {categories.filter(c => c.type === transaction.type && c.parentId === activeParentId).length === 0 && (
-                    <div className="p-4 text-center text-[10px] text-theme-muted italic">
-                      Нет подкатегорий
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
-        <div className="p-4 flex gap-2 shrink-0 border-t border-theme-base">
+        <div className="p-4 flex gap-3 shrink-0 border-t border-theme-base bg-theme-surface/80 backdrop-blur-md">
           <button
             onClick={() => setShowDeleteConfirm(true)}
             disabled={loading}
-            className="w-12 h-12 flex items-center justify-center bg-rose-500/10 text-rose-600 rounded-xl hover:bg-rose-500/20 transition-colors shrink-0"
+            className="w-14 h-14 flex items-center justify-center bg-rose-500/10 text-rose-600 rounded-2xl hover:bg-rose-500/20 transition-colors shrink-0 border border-rose-500/20"
             title="Удалить"
           >
-            <Trash2 className="w-5 h-5" />
+            <Trash2 className="w-6 h-6" />
           </button>
           <button
             onClick={handleUpdate}
-            disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 bg-theme-primary text-theme-on-primary font-bold py-3 rounded-xl shadow-md shadow-theme-primary/20 hover:bg-theme-primary-dark transition-all active:scale-95 disabled:opacity-50"
+            disabled={loading || !amount || (transaction.type !== 'transfer' && !selectedCategoryId)}
+            className="flex-1 flex items-center justify-center gap-2 bg-theme-primary text-theme-on-primary font-black uppercase tracking-wider py-4 rounded-2xl shadow-lg shadow-theme-primary/20 hover:bg-theme-primary-dark transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
           >
-            {loading ? <div className="w-5 h-5 border-2 border-theme-on-primary/30 border-t-theme-on-primary rounded-full animate-spin" /> : <Check className="w-5 h-5" />}
+            {loading ? <div className="w-6 h-6 border-3 border-theme-on-primary/30 border-t-theme-on-primary rounded-full animate-spin" /> : <Check className="w-6 h-6" />}
             Сохранить
           </button>
         </div>
       </div>
+
+      {showCalculator && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowCalculator(false)}>
+          <div className="scale-125 lg:scale-150 transform-gpu" onClick={(e) => e.stopPropagation()}>
+            <Calculator 
+              initialValue={amount}
+              onConfirm={(val) => {
+                setAmount(val);
+                setShowCalculator(false);
+              }}
+              onCancel={() => setShowCalculator(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

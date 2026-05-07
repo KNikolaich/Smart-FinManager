@@ -37,6 +37,9 @@ import { cn } from './lib/utils';
 import { RobotIcon } from './components/icons/RobotIcon';
 import { ToastContainer, ToastType } from './components/ui/Toast';
 
+import { GenericContextMenu } from './components/ui/GenericContextMenu';
+import type { ContextMenuItem } from './components/ui/GenericContextMenu';
+
 export default function App() {
   const [toasts, setToasts] = useState<{ id: string; message: string; type: ToastType }[]>([]);
   
@@ -315,6 +318,99 @@ export default function App() {
     localStorage.removeItem('token');
     setUser(null);
   };
+
+  const [globalContextMenu, setGlobalContextMenu] = useState<{ x: number, y: number, items: any[] } | null>(null);
+
+  useEffect(() => {
+    const handleGlobalContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      
+      const target = e.target as HTMLElement;
+      const isInput = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+
+      if (isInput) {
+        const input = target as HTMLInputElement | HTMLTextAreaElement;
+        const hasSelection = input.selectionStart !== input.selectionEnd;
+        
+        const items = [
+          { 
+            label: 'Выделить всё', 
+            icon: Wallet, // Generic icon or none
+            onClick: () => {
+              input.focus();
+              input.select();
+            }
+          },
+          { 
+            label: 'Копировать', 
+            divider: true,
+            onClick: async () => {
+              const text = input.value.substring(input.selectionStart || 0, input.selectionEnd || 0);
+              if (text) await navigator.clipboard.writeText(text);
+            }
+          },
+          { 
+            label: 'Вырезать', 
+            onClick: async () => {
+              const start = input.selectionStart || 0;
+              const end = input.selectionEnd || 0;
+              const text = input.value.substring(start, end);
+              if (text) {
+                await navigator.clipboard.writeText(text);
+                const newValue = input.value.substring(0, start) + input.value.substring(end);
+                // We need to trigger the react change event if possible, but for now just raw update
+                input.value = newValue;
+                const event = new Event('input', { bubbles: true });
+                input.dispatchEvent(event);
+              }
+            }
+          },
+          { 
+            label: 'Вставить', 
+            onClick: async () => {
+              try {
+                const text = await navigator.clipboard.readText();
+                const start = input.selectionStart || 0;
+                const end = input.selectionEnd || 0;
+                const newValue = input.value.substring(0, start) + text + input.value.substring(end);
+                input.value = newValue;
+                const event = new Event('input', { bubbles: true });
+                input.dispatchEvent(event);
+                const newPos = start + text.length;
+                input.setSelectionRange(newPos, newPos);
+              } catch (err) {
+                console.error('Failed to read clipboard:', err);
+              }
+            }
+          },
+          { 
+            label: 'Удалить', 
+            variant: 'danger',
+            onClick: () => {
+              const start = input.selectionStart || 0;
+              const end = input.selectionEnd || 0;
+              if (start !== end) {
+                const newValue = input.value.substring(0, start) + input.value.substring(end);
+                input.value = newValue;
+                const event = new Event('input', { bubbles: true });
+                input.dispatchEvent(event);
+                input.setSelectionRange(start, start);
+              }
+            }
+          }
+        ];
+        
+        setGlobalContextMenu({ x: e.clientX, y: e.clientY, items });
+      } else {
+        // Find if we are clicking on an account card or something that should have a menu
+        // This will be handled by individual components mostly, 
+        // but we need to ensure the global prevention doesn't break them.
+      }
+    };
+
+    window.addEventListener('contextmenu', handleGlobalContextMenu);
+    return () => window.removeEventListener('contextmenu', handleGlobalContextMenu);
+  }, []);
 
   if (loading) {
     return (
@@ -609,6 +705,15 @@ export default function App() {
           <AILogs 
             userId={user.id}
             onClose={() => setShowAILogs(false)}
+          />
+        )}
+        
+        {globalContextMenu && (
+          <GenericContextMenu 
+            x={globalContextMenu.x}
+            y={globalContextMenu.y}
+            items={globalContextMenu.items}
+            onClose={() => setGlobalContextMenu(null)}
           />
         )}
     </div>

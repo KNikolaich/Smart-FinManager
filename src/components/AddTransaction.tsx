@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import { Transaction, Account, Category, TransactionType } from '../types';
-import { X, Check, Calculator as CalcIcon, Calendar } from 'lucide-react';
+import { X, Check, Calculator as CalcIcon, Calendar, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import AccountSelect from './AccountSelect';
+import CategorySelect from './CategorySelect';
 import Calculator from './Calculator';
 
 interface AddTransactionProps {
@@ -27,18 +28,23 @@ export default function AddTransaction({ accounts, transactions, categories, onC
   const [selectedAccountId, setSelectedAccountId] = useState(initialData?.accountId || accounts.find(a => !a.isArchived)?.id || accounts[0]?.id || '');
   const [selectedTargetAccountId, setSelectedTargetAccountId] = useState(initialData?.targetAccountId || accounts.find(a => !a.isArchived && a.id !== initialData?.accountId)?.id || accounts[1]?.id || accounts[0]?.id || '');
   const [selectedCategoryId, setSelectedCategoryId] = useState(initialData?.categoryId || '');
-  const [activeParentId, setActiveParentId] = useState<string | null>(() => {
-    if (!initialData?.categoryId) return null;
-    const cat = categories.find(c => c.id === initialData.categoryId);
-    if (!cat) return null;
-    // If it's a subcategory, return its parent, otherwise return itself
-    return cat.parentId || cat.id;
-  });
   const [description, setDescription] = useState(initialData?.description || '');
   const [date, setDate] = useState(initialData?.createdAt ? format(new Date(initialData.createdAt), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
   const [loading, setLoading] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const activeAccounts = accounts.filter(a => !a.isArchived);
+
+  const prevType = useRef<TransactionType>(type);
+
+  // Reset category when switching between income/expense
+  useEffect(() => {
+    // Only reset category if type actually changed from the previous state
+    // and it's not the initial mount
+    if (prevType.current !== type) {
+      setSelectedCategoryId('');
+      prevType.current = type;
+    }
+  }, [type]);
 
   const handleSubmit = async () => {
     if (!amount || isNaN(Number(amount))) return;
@@ -89,7 +95,7 @@ export default function AddTransaction({ accounts, transactions, categories, onC
 
   return (
     <div className="fixed inset-0 z-[120] flex items-stretch lg:items-center justify-center p-0 lg:p-8 bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-theme-surface overflow-hidden shadow-2xl flex flex-col relative h-full lg:h-auto lg:max-h-full animate-in slide-in-from-bottom duration-300 lg:rounded-2xl">
+      <div className="w-full max-w-lg bg-theme-surface overflow-hidden shadow-2xl flex flex-col relative h-full lg:h-auto lg:max-h-[90vh] animate-in slide-in-from-bottom duration-300 lg:rounded-2xl">
         <div className="px-6 py-3 flex items-center justify-between shrink-0 relative z-10 border-b border-theme-base">
           <h2 className="text-base font-bold text-theme-main">Новая операция</h2>
           <button 
@@ -101,170 +107,159 @@ export default function AddTransaction({ accounts, transactions, categories, onC
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-1 space-y-1 no-scrollbar">
-          <div className="flex flex-col gap-0.5 shrink-0 bg-theme-surface p-0.5 rounded-lg border border-theme-base">
-            <button type="button" onClick={() => setType('expense')} className={cn("py-0.5 px-1 rounded-md font-bold text-[8px] leading-tight transition-all", type === 'expense' ? "bg-theme-primary text-theme-on-primary shadow-sm" : "text-theme-muted")}>Расход</button>
-            <button type="button" onClick={() => setType('income')} className={cn("py-0.5 px-1 rounded-md font-bold text-[8px] leading-tight transition-all", type === 'income' ? "bg-theme-primary text-theme-on-primary shadow-sm" : "text-theme-muted")}>Доход</button>
-            <button type="button" onClick={() => setType('transfer')} className={cn("py-0.5 px-1 rounded-md font-bold text-[8px] leading-tight transition-all", type === 'transfer' ? "bg-theme-primary text-theme-on-primary shadow-sm" : "text-theme-muted")}>Перевод</button>
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex flex-col gap-0.5 shrink-0 bg-theme-surface p-1.5 border-b border-theme-base">
+            <div className="flex gap-1 bg-theme-main p-1 rounded-xl">
+              <button type="button" onClick={() => setType('expense')} className={cn("flex-1 py-1 px-3 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all", type === 'expense' ? "bg-theme-surface shadow-sm text-theme-primary" : "text-theme-muted")}>Расход</button>
+              <button type="button" onClick={() => setType('income')} className={cn("flex-1 py-1 px-3 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all", type === 'income' ? "bg-theme-surface shadow-sm text-theme-primary" : "text-theme-muted")}>Доход</button>
+              <button type="button" onClick={() => setType('transfer')} className={cn("flex-1 py-1 px-3 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all", type === 'transfer' ? "bg-theme-surface shadow-sm text-theme-primary" : "text-theme-muted")}>Перевод</button>
+            </div>
           </div>
-          {/* Row 1: Date and Amount */}
-          <div className="grid grid-cols-5 gap-2 p-1">
-            {/* Date Input */}
-            <div className="col-span-2 bg-theme-surface rounded-xl p-1 flex flex-col justify-center border border-theme-base min-h-[40px]">
-              <div className="relative">
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar flex flex-col">
+            {/* Amount and Date */}
+            <div className="grid grid-cols-5 gap-3 shrink-0">
+               {/* Amount Input */}
+               <div className="col-span-3 bg-theme-main rounded-2xl p-3 flex flex-col border border-theme-base min-h-[60px] justify-center">
+                <div className="flex items-center gap-1 group w-full justify-between">                
+                  <div className="flex-1 flex items-center justify-end gap-1 overflow-hidden">
+                    <input
+                      type="text"
+                      value={amount === '' ? '' : Number(amount.replace(/\s/g, '')).toLocaleString('ru-RU').replace(',', '.').split('.')[0]}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\s/g, '');
+                        if (/^\d*$/.test(val)) {
+                          setAmount(val);
+                        }
+                      }}
+                      className={cn(
+                        "font-bold text-right bg-transparent outline-none text-theme-main focus:ring-0 transition-all pr-1 w-full",
+                        amount.length > 8 ? "text-lg" : amount.length > 5 ? "text-xl" : "text-2xl"
+                      )}
+                      placeholder="0"
+                      autoFocus
+                      inputMode="numeric"
+                    />
+                    <span className="text-theme-muted shrink-0">₽</span>
+                  </div>
+
+                  <button 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowCalculator(true);
+                    }}
+                    className="ml-2 bg-theme-surface text-theme-muted hover:text-theme-primary transition-all shadow-sm shrink-0"
+                    title="Калькулятор"
+                    type="button"
+                  >
+                    <CalcIcon size={18} className="text-theme-primary" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Date Input */}
+              <div className="col-span-2 bg-theme-main rounded-2xl flex flex-col justify-center border border-theme-base overflow-hidden relative group cursor-pointer hover:bg-theme-surface/50 transition-colors h-full">
                 <input
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full bg-theme-surface border-none rounded-xl px-2 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main font-bold text-center"
+                  className="absolute inset-0 opacity-0 cursor-pointer z-20 w-full h-full"
                 />
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-bold text-theme-main bg-theme-surface rounded-xl">
-                  {format(new Date(date), 'dd MMM')}
-                  <Calendar className="w-4 h-4 text-theme-primary absolute right-3" />
+                <div className="text-center group-hover:opacity-80 transition-opacity relative z-10 pointer-events-none p-1">
+                  <p className="text-[10px] font-bold text-theme-muted uppercase tracking-widest leading-none mb-1">Дата</p>
+                  <div className="flex items-center justify-center gap-1">
+                    <p className="text-sm font-black text-theme-main">{format(new Date(date), 'dd MMM')}</p>
+                    <ChevronDown size={12} className="text-theme-muted" />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Amount Input */}
-            <div className="col-span-3 bg-theme-surface rounded-xl p-1 flex items-center justify-center border border-theme-base min-h-[40px]">
-              <div className="relative flex items-center gap-1 group w-full justify-between">                
-                <div className="flex-1 flex items-center justify-end gap-1 overflow-hidden">
-                  <input
-                    type="text"
-                    value={amount === '' ? '' : Number(amount.replace(/\s/g, '')).toLocaleString('ru-RU').replace(',', '.').split('.')[0]}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\s/g, '');
-                      if (/^\d*$/.test(val)) {
-                        setAmount(val);
-                      }
-                    }}
-                    className={cn(
-                      "font-bold text-right rounded-2xl outline-none text-theme-muted focus:ring-0 transition-all pr-1 w-full",
-                      amount.length > 10 ? "text-lg" : amount.length > 7 ? "text-xl" : "text-2xl"
-                    )}
-                    placeholder="0"
-                    autoFocus
-                    inputMode="numeric"
+            {/* Account Selection */}
+            <div className="space-y-3 shrink-0">
+              <div className={cn("grid gap-3 transition-all", type === 'transfer' ? "grid-cols-2" : "grid-cols-1")}>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">{type === 'transfer' ? 'Откуда' : 'Счет'}</label>
+                  <AccountSelect 
+                    accounts={activeAccounts} 
+                    selectedAccountId={selectedAccountId} 
+                    onChange={setSelectedAccountId} 
+                    label="" 
+                    transactions={transactions}
+                    type={type}
                   />
-                  <span className="text-xl font-bold text-theme-muted shrink-0">₽</span>
                 </div>
-
-                <button 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setShowCalculator(true);
-                  }}
-                  className="p-1.5 bg-theme-surface text-theme-muted rounded-lg hover:text-theme-primary transition-all border border-theme-base shadow-sm shrink-0"
-                  title="Калькулятор"
-                  type="button"
-                >
-                  <CalcIcon size={14} className="text-theme-primary" />
-                </button>
-
-                {showCalculator && (
-                  <div className="absolute top-full right-0 mt-4 z-[150]">
-                    <Calculator 
-                      initialValue={amount}
-                      onConfirm={(val) => {
-                        setAmount(val);
-                        setShowCalculator(false);
-                      }}
-                      onCancel={() => setShowCalculator(false)}
+                {type === 'transfer' && (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Куда</label>
+                    <AccountSelect 
+                      accounts={activeAccounts.filter(a => a.id !== selectedAccountId)} 
+                      selectedAccountId={selectedTargetAccountId} 
+                      onChange={setSelectedTargetAccountId} 
+                      label="" 
+                      transactions={transactions}
+                      type={type}
                     />
                   </div>
                 )}
               </div>
-            </div>
-          </div>
 
-          {/* Row 2: Account and Description */}
-          <div className="grid grid-cols-5 gap-2 ">
-            {/* Account */}
-            <div className="col-span-2 flex flex-col gap-0.5 p-2">
-              <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Счет</label>
-              <AccountSelect 
-                accounts={activeAccounts} 
-                selectedAccountId={selectedAccountId} 
-                onChange={setSelectedAccountId} 
-                label="" 
-                transactions={transactions}
-                type={type}
-              />
+              {type !== 'transfer' && (
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">Категория</label>
+                  <CategorySelect
+                    categories={categories}
+                    selectedCategoryId={selectedCategoryId}
+                    onChange={setSelectedCategoryId}
+                    type={type}
+                  />
+                </div>
+              )}
             </div>
 
-            {/* Description */}
-            <div className="col-span-3 flex flex-col gap-0.5">
-              <label className="text-[8px] font-bold text-theme-muted uppercase tracking-widest ml-1">Описание</label>
+            {/* Description - Grows to fill space */}
+            <div className="flex-1 flex flex-col min-h-[100px] gap-2">
+              <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1 shrink-0">Описание</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Комментарий"
-                rows={2}
-                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-1 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main resize-none"
+                placeholder="Что купили или за что оплатили?..."
+                className="flex-1 w-full bg-theme-main border border-theme-base rounded-2xl px-5 py-4 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main resize-none font-medium placeholder:text-theme-muted/50"
               />
             </div>
           </div>
-
-
-          <div className="space-y-1 p-2">
-            <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1">
-              {type === 'transfer' ? 'Счет получатель' : 'Категория'}
-            </label>
-            {type === 'transfer' ? (
-              <AccountSelect 
-                accounts={activeAccounts.filter(a => a.id !== selectedAccountId)} 
-                selectedAccountId={selectedTargetAccountId} 
-                onChange={setSelectedTargetAccountId} 
-                label="" 
-                transactions={transactions}
-                type={type}
-              />
-            ) : (
-              <div className="h-100 rounded-xl flex overflow-hidden bg-theme-main border border-theme-base">
-                <div className="w-1/3 overflow-y-auto no-scrollbar border-r border-theme-base">
-                  {categories.filter(c => c.type === type && !c.parentId).sort((a, b) => {
-                    const aOrder = a.sortOrder ?? Infinity;
-                    const bOrder = b.sortOrder ?? Infinity;
-                    if (aOrder !== bOrder) return aOrder - bOrder;
-                    return (a.name || '').localeCompare(b.name || '');
-                  }).map(cat => (
-                    <button key={cat.id} type="button" onClick={() => { setActiveParentId(cat.id); setSelectedCategoryId(cat.id); }} className={cn("w-full text-left px-2 py-2 text-[11px] font-bold transition-all flex items-center gap-2", activeParentId === cat.id ? "bg-theme-surface text-theme-primary shadow-sm" : "text-theme-muted hover:bg-theme-primary/5")}>
-                      <span className="text-base">{cat.icon}</span>
-                      <span className="truncate">{cat.name}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="w-2/3 overflow-y-auto no-scrollbar bg-theme-surface p-1">
-                  <div className="grid grid-cols-2 gap-1">
-                    {categories.filter(c => c.type === type && c.parentId === activeParentId).sort((a, b) => {
-                      const aOrder = a.sortOrder ?? Infinity;
-                      const bOrder = b.sortOrder ?? Infinity;
-                      if (aOrder !== bOrder) return aOrder - bOrder;
-                      return (a.name || '').localeCompare(b.name || '');
-                    }).map(sub => (
-                      <button key={sub.id} type="button" onClick={() => setSelectedCategoryId(sub.id)} className={cn("w-full text-left px-2 py-1.5 rounded-lg text-[11px] font-medium transition-all border", selectedCategoryId === sub.id ? "bg-theme-primary/10 border-theme-primary text-theme-primary font-bold" : "text-theme-muted border-transparent hover:bg-theme-main")}>{sub.name}</button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
-        <div className="p-4 flex gap-2 shrink-0 border-t border-theme-base">
-          <button onClick={onComplete} className="w-12 h-12 flex items-center justify-center bg-theme-main text-theme-muted rounded-xl hover:bg-theme-base transition-colors shrink-0">
-            <X className="w-5 h-5" />
+        <div className="p-4 flex gap-3 shrink-0 border-t border-theme-base bg-theme-surface/80 backdrop-blur-md">
+          <button onClick={onComplete} className="w-14 h-14 flex items-center justify-center bg-theme-main text-theme-muted rounded-2xl hover:bg-theme-base transition-colors shrink-0 border border-theme-base">
+            <X className="w-6 h-6" />
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading || !amount || (type !== 'transfer' && !selectedCategoryId)}
-            className="flex-1 flex items-center justify-center gap-2 bg-theme-primary text-theme-on-primary font-bold py-3 rounded-xl shadow-md shadow-theme-primary/20 hover:bg-theme-primary-dark transition-all active:scale-95 disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-2 bg-theme-primary text-theme-on-primary font-black uppercase tracking-wider py-4 rounded-2xl shadow-lg shadow-theme-primary/20 hover:bg-theme-primary-dark transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
           >
-            {loading ? <div className="w-5 h-5 border-2 border-theme-on-primary/30 border-t-theme-on-primary rounded-full animate-spin" /> : <Check className="w-5 h-5" />}
+            {loading ? <div className="w-6 h-6 border-3 border-theme-on-primary/30 border-t-theme-on-primary rounded-full animate-spin" /> : <Check className="w-6 h-6" />}
             Сохранить
           </button>
         </div>
       </div>
+
+      {showCalculator && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowCalculator(false)}>
+          <div className="scale-125 lg:scale-150 transform-gpu" onClick={(e) => e.stopPropagation()}>
+            <Calculator 
+              initialValue={amount}
+              onConfirm={(val) => {
+                setAmount(val);
+                setShowCalculator(false);
+              }}
+              onCancel={() => setShowCalculator(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

@@ -9,7 +9,7 @@ import ReactMarkdown from 'react-markdown';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import AccountManager from './AccountManager';
 import GoalManager from './GoalManager';
-import { ContextMenu } from './ui/ContextMenu';
+import { GenericContextMenu } from './ui/GenericContextMenu';
 import { cn } from '../lib/utils';
 import { api } from '../lib/api';
 import {
@@ -383,11 +383,13 @@ export default function Dashboard({
   onEditTransaction,
 }: DashboardProps) {
   const [showAccountManager, setShowAccountManager] = useState(false);
+  const [initialEditingAccountId, setInitialEditingAccountId] = useState<string | null>(null);
   const [showGoalManager, setShowGoalManager] = useState(!!initialGoalData);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   const [showCompletedGoals, setShowCompletedGoals] = useState(false);
   
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, transaction: Transaction } | null>(null);
+  const [accountContextMenu, setAccountContextMenu] = useState<{ x: number, y: number, account: Account } | null>(null);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const sensors = useSensors(
@@ -770,6 +772,11 @@ export default function Dashboard({
                   onClick={() => {
                     if (onOpenTransactionHistory) onOpenTransactionHistory(account.id);
                   }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setAccountContextMenu({ x: e.clientX, y: e.clientY, account });
+                  }}
                   className={cn(
                     "min-w-[100px] flex-shrink-0 bg-theme-surface p-3 rounded-2xl border transition-all duration-300 snap-start relative cursor-pointer group shadow-sm",
                     isNegative 
@@ -809,8 +816,30 @@ export default function Dashboard({
       {showAccountManager && (
         <AccountManager 
           accounts={accounts} 
-          onClose={() => setShowAccountManager(false)} 
+          onClose={() => {
+            setShowAccountManager(false);
+            setInitialEditingAccountId(null);
+          }} 
           onRefresh={onRefresh}
+          initialEditingId={initialEditingAccountId}
+        />
+      )}
+
+      {accountContextMenu && (
+        <GenericContextMenu 
+          x={accountContextMenu.x}
+          y={accountContextMenu.y}
+          onClose={() => setAccountContextMenu(null)}
+          items={[
+            {
+              label: 'Изменить счет',
+              icon: Edit2,
+              onClick: () => {
+                setInitialEditingAccountId(accountContextMenu.account.id);
+                setShowAccountManager(true);
+              }
+            }
+          ]}
         />
       )}
 
@@ -863,6 +892,7 @@ export default function Dashboard({
                         }}
                         onContextMenu={(e) => {
                           e.preventDefault();
+                          e.stopPropagation();
                           setContextMenu({ x: e.clientX, y: e.clientY, transaction: t });
                         }}
                         onPointerDown={(e) => {
@@ -959,7 +989,7 @@ export default function Dashboard({
                 className="flex items-center gap-1 text-theme-primary font-medium hover:bg-theme-primary/10 px-2 py-1 rounded-lg transition-colors"
               >
                 <Plus size={14} />
-                Добавить
+                Добавить цель
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-3">
@@ -1009,14 +1039,23 @@ export default function Dashboard({
       )}
 
       {contextMenu && (
-        <AnimatePresence>
-          <ContextMenu 
-            x={contextMenu.x} 
-            y={contextMenu.y} 
-            onClose={() => setContextMenu(null)}
-            onAction={handleContextMenuAction}
-          />
-        </AnimatePresence>
+        <GenericContextMenu 
+          x={contextMenu.x} 
+          y={contextMenu.y} 
+          onClose={() => setContextMenu(null)}
+          items={[
+            {
+              label: 'Добавить похожую',
+              icon: Plus,
+              onClick: () => handleContextMenuAction('create')
+            },
+            {
+              label: 'Копировать операцию',
+              icon: Copy,
+              onClick: () => handleContextMenuAction('copy')
+            }
+          ]}
+        />
       )}
 
       {/* Bottom Bar Spacer */}
