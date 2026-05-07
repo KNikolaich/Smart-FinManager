@@ -20,13 +20,22 @@ interface AddTransactionProps {
 
 export default function AddTransaction({ accounts, transactions, categories, onComplete, onAdd, onOptimisticAdd, userId, initialData }: AddTransactionProps) {
   const [type, setType] = useState<TransactionType>(initialData?.type || 'expense');
-  const [amount, setAmount] = useState(initialData?.amount?.toString() || '');
-  const [selectedAccountId, setSelectedAccountId] = useState(initialData?.accountId || accounts[0]?.id || '');
-  const [selectedTargetAccountId, setSelectedTargetAccountId] = useState(initialData?.targetAccountId || accounts[1]?.id || accounts[0]?.id || '');
+  const [amount, setAmount] = useState(() => {
+    if (initialData?.amount === undefined || initialData?.amount === null) return '';
+    return String(initialData.amount);
+  });
+  const [selectedAccountId, setSelectedAccountId] = useState(initialData?.accountId || accounts.find(a => !a.isArchived)?.id || accounts[0]?.id || '');
+  const [selectedTargetAccountId, setSelectedTargetAccountId] = useState(initialData?.targetAccountId || accounts.find(a => !a.isArchived && a.id !== initialData?.accountId)?.id || accounts[1]?.id || accounts[0]?.id || '');
   const [selectedCategoryId, setSelectedCategoryId] = useState(initialData?.categoryId || '');
-  const [activeParentId, setActiveParentId] = useState<string | null>(initialData?.categoryId ? categories.find(c => c.id === initialData.categoryId)?.parentId || null : null);
+  const [activeParentId, setActiveParentId] = useState<string | null>(() => {
+    if (!initialData?.categoryId) return null;
+    const cat = categories.find(c => c.id === initialData.categoryId);
+    if (!cat) return null;
+    // If it's a subcategory, return its parent, otherwise return itself
+    return cat.parentId || cat.id;
+  });
   const [description, setDescription] = useState(initialData?.description || '');
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [date, setDate] = useState(initialData?.createdAt ? format(new Date(initialData.createdAt), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
   const [loading, setLoading] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const activeAccounts = accounts.filter(a => !a.isArchived);

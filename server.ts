@@ -107,6 +107,25 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
+// --- COMBINED DATA ENDPOINT ---
+app.get("/api/initial-data", authenticateToken, async (req: any, res) => {
+  try {
+    const userId = req.user.userId;
+    const [accounts, transactions, goals, categories, currencies, balanceHistory] = await Promise.all([
+      prisma.account.findMany({ where: { userId } }),
+      prisma.transaction.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 100 }),
+      prisma.goal.findMany({ where: { userId }, orderBy: { sortOrder: 'asc' } }),
+      prisma.category.findMany({ where: { userId } }),
+      prisma.currency.findMany(),
+      prisma.balanceHistory.findMany({ where: { userId }, orderBy: { month: 'desc' } }),
+    ]);
+
+    res.json({ accounts, transactions, goals, categories, currencies, balanceHistory });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
@@ -1225,7 +1244,7 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = path.join(process.cwd(), 'build');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));

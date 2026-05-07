@@ -6,10 +6,10 @@
   "scripts": {
     "dev": "tsx server.ts",
     "postinstall": "prisma generate",
-    "build": "vite build && prisma generate",
+    "build": "vite build",
     "start": "node server.ts",
     "preview": "vite preview",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf build",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

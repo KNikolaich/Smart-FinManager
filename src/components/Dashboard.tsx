@@ -1,6 +1,6 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { Account, Transaction, Goal, Category, AccountType, Currency, BalanceHistory } from '../types';
-import { Wallet, TrendingUp, TrendingDown, Target, ChevronRight, CreditCard, Landmark, GripVertical, Check, Save, Trash2, Calendar, Edit2, Plus } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Target, ChevronRight, CreditCard, Landmark, GripVertical, Check, Save, Trash2, Calendar, Edit2, Plus, Copy } from 'lucide-react';
 import { CoinStack } from './CustomIcons';
 import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -9,6 +9,7 @@ import ReactMarkdown from 'react-markdown';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import AccountManager from './AccountManager';
 import GoalManager from './GoalManager';
+import { ContextMenu } from './ui/ContextMenu';
 import { cn } from '../lib/utils';
 import { api } from '../lib/api';
 import {
@@ -359,7 +360,7 @@ interface DashboardProps {
   onRefresh?: () => void;
   onNavigateToAnalytics?: (options?: any) => void;
   onOpenTransactionHistory?: (filterProps?: any) => void;
-  onOpenAddTransaction?: () => void;
+  onOpenAddTransaction?: (initialData?: any) => void;
   onEditTransaction?: (t: Transaction) => void;
 }
 
@@ -385,6 +386,9 @@ export default function Dashboard({
   const [showGoalManager, setShowGoalManager] = useState(!!initialGoalData);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   const [showCompletedGoals, setShowCompletedGoals] = useState(false);
+  
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, transaction: Transaction } | null>(null);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -615,6 +619,29 @@ export default function Dashboard({
     }
   }, [balanceHistory, totalBalance]);
 
+  const handleContextMenuAction = (action: 'create' | 'copy') => {
+    if (!contextMenu) return;
+
+    if (action === 'create') {
+      // In Dashboard, "Create" just opens the default form at current time
+      onOpenAddTransaction?.({ 
+        createdAt: new Date().toISOString() 
+      });
+    } else if (action === 'copy') {
+      // Copy all data but set time to now
+      const t = contextMenu.transaction;
+      onOpenAddTransaction?.({
+        type: t.type,
+        amount: t.amount,
+        accountId: t.accountId,
+        categoryId: t.categoryId,
+        description: t.description,
+        targetAccountId: t.targetAccountId,
+        createdAt: new Date().toISOString()
+      });
+    }
+  };
+
   return (
     <div className="pt-[10px] pb-[8px] px-1.5 sm:px-2 space-y-6">
       {/* Total Balance Card */}
@@ -834,7 +861,24 @@ export default function Dashboard({
                         onClick={() => {
                           if (onEditTransaction) onEditTransaction(t);
                         }}
-                        className="hover:bg-theme-primary/5 active:bg-theme-primary/10 transition-colors cursor-pointer"
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setContextMenu({ x: e.clientX, y: e.clientY, transaction: t });
+                        }}
+                        onPointerDown={(e) => {
+                          const x = e.clientX;
+                          const y = e.clientY;
+                          longPressTimer.current = setTimeout(() => {
+                            setContextMenu({ x, y, transaction: t });
+                          }, 600);
+                        }}
+                        onPointerUp={() => {
+                          if (longPressTimer.current) clearTimeout(longPressTimer.current);
+                        }}
+                        onPointerMove={() => {
+                          if (longPressTimer.current) clearTimeout(longPressTimer.current);
+                        }}
+                        className="hover:bg-theme-primary/5 active:bg-theme-primary/10 transition-colors cursor-pointer select-none"
                       >
                         <td className="pl-4 pr-2 py-1.5 align-top">
                           <div className="flex items-start gap-2">
@@ -963,6 +1007,18 @@ export default function Dashboard({
           onRefresh={onRefresh}
         />
       )}
+
+      {contextMenu && (
+        <AnimatePresence>
+          <ContextMenu 
+            x={contextMenu.x} 
+            y={contextMenu.y} 
+            onClose={() => setContextMenu(null)}
+            onAction={handleContextMenuAction}
+          />
+        </AnimatePresence>
+      )}
+
       {/* Bottom Bar Spacer */}
       <div className="h-10 lg:hidden shrink-0" />
 

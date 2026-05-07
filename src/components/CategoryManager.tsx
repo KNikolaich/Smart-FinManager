@@ -105,21 +105,22 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-0 lg:p-8 bg-black/80 backdrop-blur-xl">
       <div className="relative w-full h-full lg:h-auto lg:max-w-3xl bg-theme-main lg:rounded-xl lg:border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
         <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
-          <h3 className="text-sm font-black text-theme-main lowercase">{editingCategory ? 'редактировать' : 'новая'}</h3>
+          <h3 className="text-sm font-black text-theme-main uppercase">КАТЕГОРИИ</h3>
           <div className="flex items-center gap-2 relative z-20">
             <button 
               onClick={() => {
                 setEditingCategory(null);
                 setShowFormModal(true);
               }}
-              className="w-10 h-10 bg-theme-primary text-theme-on-primary rounded-lg flex items-center justify-center shadow-lg shadow-theme-primary/40 hover:scale-105 active:scale-95 transition-all group"
+              className="p-2 bg-sky-500 text-white rounded-xl shadow-lg hover:bg-sky-600 transition-all active:scale-95 cursor-pointer flex items-center justify-center"
               title="Добавить категорию"
             >
-              <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" strokeWidth={3} />
+              <Plus className="w-5 h-5" />
             </button>
             <button 
               onClick={onClose} 
-              className="w-10 h-10 flex items-center justify-center rounded-lg bg-theme-surface text-theme-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all border border-theme-base/50"
+              className="p-2 border border-orange-400 text-orange-400 bg-white rounded-xl hover:bg-orange-50 transition-colors relative z-20 cursor-pointer flex items-center justify-center"
+              aria-label="Закрыть"
             >
               <X className="w-5 h-5" />
             </button>
@@ -127,7 +128,7 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
         </div>
         
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-10 bg-theme-main no-scrollbar">
+        <div className="flex-1 overflow-y-auto p-2 lg:p-6 bg-theme-main no-scrollbar">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-4">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-theme-primary" />
@@ -136,7 +137,7 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Expenses Column */}
-              <div className="space-y-4">
+              <div className="space-y-1">
                 <div className="flex items-center justify-between px-2">
                   <h3 className="font-bold text-rose-500 flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-rose-500" />
@@ -146,7 +147,7 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
                     {groupedExpenseCategories.length} категорий
                   </span>
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-1">
                   {groupedExpenseCategories.length === 0 ? (
                     <div className="text-center py-8 text-neutral-400 text-sm italic bg-white rounded-2xl">Нет категорий расходов</div>
                   ) : (
@@ -192,7 +193,7 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
               </div>
 
               {/* Income Column */}
-              <div className="space-y-4">
+              <div className="space-y-1">
                 <div className="flex items-center justify-between px-2">
                   <h3 className="font-bold text-emerald-500 flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -202,7 +203,7 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
                     {groupedIncomeCategories.length} категорий
                   </span>
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-1">
                   {groupedIncomeCategories.length === 0 ? (
                     <div className="text-center py-8 text-neutral-400 text-sm italic bg-white rounded-2xl">Нет категорий доходов</div>
                   ) : (
@@ -351,7 +352,7 @@ function CategoryForm({ category, categories, onClose, onSuccess, onDelete }: Ca
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 lg:p-8 bg-black/80 backdrop-blur-xl">
       <div className="relative w-full h-full lg:h-auto lg:max-w-4xl bg-theme-main lg:rounded-xl lg:border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
         <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
-          <h3 className="text-sm font-black uppercase tracking-widest text-theme-main uppercase">{category ? 'Редактировать' : 'Новая'}</h3>
+          <h3 className="text-sm font-black uppercase tracking-widest text-theme-main uppercase">{category ? 'Изменить' : 'Новая'}</h3>
           <button onClick={onClose} className="p-2 hover:bg-neutral-100/50 rounded-full transition-colors">
             <X className="w-5 h-5 text-theme-muted" />
           </button>
@@ -365,36 +366,50 @@ function CategoryForm({ category, categories, onClose, onSuccess, onDelete }: Ca
                 {error}
               </div>
             )}
-            <div className="flex flex-row items-center justify-center gap-6">
-              <div className="relative">
+            <div className="flex flex-row items-center justify-center gap-8">
+              <div className="flex flex-col items-center gap-1.5">
+                <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest">Иконка</label>
                 <button
                   type="button"
                   onClick={() => setShowIconPicker(true)}
-                  className="w-8 h-8 bg-theme-surface border border-neutral-100 rounded-lg flex items-center justify-center text-sm hover:bg-theme-surface/50 transition-all hover:border-theme-primary group relative shadow-sm"
-                  style={{ border: color && color !== '#000000' ? `2px solid ${color}` : undefined }}
+                  className="w-16 h-16 bg-theme-surface border border-neutral-100 rounded-lg flex items-center justify-center text-4xl hover:bg-theme-surface/50 transition-all hover:border-theme-primary group relative shadow-sm"
                 >
                   {icon || (parentId ? categories.find(c => c.id === parentId)?.icon : '💰')}
                   <div className="absolute inset-0 bg-theme-primary/10 opacity-0 group-hover:opacity-100 rounded-lg transition-opacity flex items-center justify-center">
-                    <Plus className="text-theme-primary w-5 h-5" strokeWidth={3} />
+                    <Plus className="text-theme-primary w-8 h-8" strokeWidth={3} />
                   </div>
                 </button>
               </div>
 
-              <div className="space-y-1.5 flex-1 max-w-[180px]">
-                <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Цвет актива</label>
-                <div className="flex items-center gap-2 bg-theme-surface border border-neutral-100 rounded-lg px-2 py-1.5">
-                  <input
-                    type="color"
-                    value={color === '#000000' ? '#e5e5e5' : color}
-                    onChange={(e) => setColor(e.target.value)}
-                    className="w-6 h-6 rounded cursor-pointer border-none bg-transparent"
-                  />
-                  <button 
+              <div className="space-y-1.5 flex flex-col items-center">
+                <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest">Тип категории</label>
+                <div className={cn(
+                  "grid grid-cols-2 gap-1 bg-theme-surface border border-neutral-100 p-1 rounded-lg h-16 w-48",
+                  parentId && "opacity-50 cursor-not-allowed"
+                )}>
+                  <button
                     type="button"
-                    onClick={() => setColor('#000000')}
-                    className="flex-1 px-2 py-1.5 bg-theme-main border border-neutral-50 text-theme-muted hover:text-theme-main text-[8px] font-black uppercase tracking-widest transition-all rounded"
+                    onClick={() => !parentId && setType('expense')}
+                    disabled={!!parentId}
+                    className={`rounded font-black text-[10px] uppercase tracking-widest transition-all ${
+                      type === 'expense' 
+                        ? 'bg-rose-500 text-white shadow-sm' 
+                        : 'text-theme-muted hover:text-rose-500'
+                    }`}
                   >
-                    Reset
+                    Расход
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => !parentId && setType('income')}
+                    disabled={!!parentId}
+                    className={`rounded font-black text-[10px] uppercase tracking-widest transition-all ${
+                      type === 'income' 
+                        ? 'bg-emerald-500 text-white shadow-sm' 
+                        : 'text-theme-muted hover:text-emerald-500'
+                    }`}
+                  >
+                    Доход
                   </button>
                 </div>
               </div>
@@ -402,7 +417,7 @@ function CategoryForm({ category, categories, onClose, onSuccess, onDelete }: Ca
 
             <div className="space-y-6">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Название категории</label>
+                <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Название</label>
                 <input
                   type="text"
                   value={name}
@@ -425,45 +440,28 @@ function CategoryForm({ category, categories, onClose, onSuccess, onDelete }: Ca
                     value={sortOrder ?? ''}
                     onChange={(e) => setSortOrder(e.target.value ? Number(e.target.value) : undefined)}
                     placeholder="0"
-                    className="w-full bg-theme-main border border-theme-base rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 ring-theme-primary/30 transition-all text-theme-main"
+                    className="w-full bg-theme-main border border-theme-base rounded-lg px-4 py-3 text-sm font-bold outline-none focus:ring-1 ring-theme-primary/30 transition-all text-theme-main"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Тип транзакции</label>
-                  <div className={cn(
-                    "grid grid-cols-2 gap-1 bg-theme-surface border border-neutral-100 p-1 rounded-lg h-[40px]",
-                    parentId && "opacity-50 cursor-not-allowed"
-                  )}>
-                    <button
-                      type="button"
-                      onClick={() => !parentId && setType('expense')}
-                      disabled={!!parentId}
-                      className={`rounded font-black text-[8px] uppercase tracking-widest transition-all ${
-                        type === 'expense' 
-                          ? 'bg-theme-primary text-theme-on-primary shadow-sm' 
-                          : 'text-theme-muted hover:text-theme-main'
-                      }`}
-                    >
-                      Расход
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => !parentId && setType('income')}
-                      disabled={!!parentId}
-                      className={`rounded font-black text-[8px] uppercase tracking-widest transition-all ${
-                        type === 'income' 
-                          ? 'bg-theme-primary text-theme-on-primary shadow-sm' 
-                          : 'text-theme-muted hover:text-theme-main'
-                      }`}
-                    >
-                      Доход
-                    </button>
+                  <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Цвет</label>
+                  <div className="flex items-center gap-3 bg-theme-surface border border-neutral-100 rounded-lg px-4 py-[11px]">
+                    <div 
+                      className="w-5 h-5 rounded-full border border-neutral-200 shadow-sm"
+                      style={{ backgroundColor: color === '#000000' ? '#e5e5e5' : color }}
+                    />
+                    <input
+                      type="color"
+                      value={color === '#000000' ? '#e5e5e5' : color}
+                      onChange={(e) => setColor(e.target.value)}
+                      className="flex-1 h-6 cursor-pointer border-none bg-transparent"
+                    />
                   </div>
                 </div>
               </div>
               
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Родительская категория</label>
+                <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Принадлежит группе</label>
                 <div className="relative">
                   <select
                     value={parentId || ''}
@@ -521,7 +519,7 @@ function CategoryForm({ category, categories, onClose, onSuccess, onDelete }: Ca
               ) : (
                 <>
                   <Check size={18} strokeWidth={3} />
-                  {category ? 'Сохранить изменения' : 'Создать категорию'}
+                  {category ? 'Сохранить' : 'Создать'}
                 </>
               )}
             </button>

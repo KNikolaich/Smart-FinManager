@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { Transaction, Category, Account } from '../types';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { X, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy } from 'lucide-react';
+import { ContextMenu } from './ui/ContextMenu';
+import { AnimatePresence } from 'motion/react';
 
 interface TransactionHistoryProps {
   transactions: Transaction[];
@@ -10,6 +12,7 @@ interface TransactionHistoryProps {
   accounts: Account[];
   onClose: () => void;
   onEditTransaction: (transaction: Transaction) => void;
+  onOpenAddTransaction: (initialData?: any) => void;
   initialAccountId?: string;
   initialCategoryId?: string;
   initialType?: 'all' | 'income' | 'expense';
@@ -21,6 +24,7 @@ export default function TransactionHistory({
   accounts, 
   onClose, 
   onEditTransaction, 
+  onOpenAddTransaction,
   initialAccountId, 
   initialCategoryId,
   initialType = 'all'
@@ -32,6 +36,9 @@ export default function TransactionHistory({
   const [filterAccountId, setFilterAccountId] = useState<string | 'all'>(initialAccountId || 'all');
   const [showFilter, setShowFilter] = useState(false);
   const [showAccountFilter, setShowAccountFilter] = useState(false);
+
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, transaction: Transaction } | null>(null);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const monthTransactions = useMemo(() => {
     const start = startOfMonth(selectedMonth);
@@ -77,6 +84,34 @@ export default function TransactionHistory({
     return { income, expense, total: income - expense };
   }, [filteredTransactions]);
 
+  const handleAddNewByFilter = () => {
+    onOpenAddTransaction?.({
+      type: filterType === 'all' ? 'expense' : filterType,
+      accountId: filterAccountId === 'all' ? (accounts.length > 0 ? accounts[0].id : '') : filterAccountId,
+      categoryId: filterCategoryId === 'all' ? '' : filterCategoryId,
+      createdAt: new Date().toISOString()
+    });
+  };
+
+  const handleContextMenuAction = (action: 'create' | 'copy') => {
+    if (!contextMenu) return;
+
+    if (action === 'create') {
+      handleAddNewByFilter();
+    } else if (action === 'copy') {
+      const t = contextMenu.transaction;
+      onOpenAddTransaction?.({
+        type: t.type,
+        amount: t.amount,
+        accountId: t.accountId,
+        categoryId: t.categoryId,
+        description: t.description,
+        targetAccountId: t.targetAccountId,
+        createdAt: new Date().toISOString()
+      });
+    }
+  };
+
   const groupedTransactions = useMemo(() => {
     const groups: { [key: string]: Transaction[] } = {};
     filteredTransactions.forEach(t => {
@@ -92,13 +127,22 @@ export default function TransactionHistory({
       <div className="w-full h-full max-w-2xl bg-theme-surface shadow-2xl flex flex-col relative overflow-hidden animate-in slide-in-from-bottom duration-300">
         <div className="py-4 px-4 border-b border-theme-base flex items-center justify-between shrink-0 relative z-10">
           <h2 className="text-xl font-bold text-theme-main">История операций</h2>
-          <button 
-            onClick={onClose} 
-            className="p-2 hover:bg-theme-main rounded-full transition-colors relative z-20 cursor-pointer"
-            aria-label="Закрыть"
-          >
-            <X className="w-6 h-6 text-theme-muted" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={handleAddNewByFilter}
+              className="p-2 bg-sky-500 text-white rounded-xl shadow-lg hover:bg-sky-600 transition-all active:scale-95 cursor-pointer flex items-center justify-center"
+              aria-label="Добавить новую"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={onClose} 
+              className="p-2 border border-orange-400 text-orange-400 bg-white rounded-xl hover:bg-orange-50 transition-colors relative z-20 cursor-pointer flex items-center justify-center"
+              aria-label="Закрыть"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Month Selector */}
@@ -172,7 +216,24 @@ export default function TransactionHistory({
                       <tr 
                         key={t.id} 
                         onClick={() => onEditTransaction(t)}
-                        className="hover:bg-theme-primary/5 active:bg-theme-primary/10 transition-colors cursor-pointer"
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setContextMenu({ x: e.clientX, y: e.clientY, transaction: t });
+                        }}
+                        onPointerDown={(e) => {
+                          const x = e.clientX;
+                          const y = e.clientY;
+                          longPressTimer.current = setTimeout(() => {
+                            setContextMenu({ x, y, transaction: t });
+                          }, 600);
+                        }}
+                        onPointerUp={() => {
+                          if (longPressTimer.current) clearTimeout(longPressTimer.current);
+                        }}
+                        onPointerMove={() => {
+                          if (longPressTimer.current) clearTimeout(longPressTimer.current);
+                        }}
+                        className="hover:bg-theme-primary/5 active:bg-theme-primary/10 transition-colors cursor-pointer select-none"
                       >
                         <td className="pl-4 pr-2 py-1.5 align-top">
                           <div className="flex items-start gap-2">
@@ -215,6 +276,17 @@ export default function TransactionHistory({
             <div className="flex flex-col items-center justify-center py-20 text-theme-muted italic">
               <p className="text-sm">В этом месяце операций не было</p>
             </div>
+          )}
+          
+          {contextMenu && (
+            <AnimatePresence>
+              <ContextMenu 
+                x={contextMenu.x} 
+                y={contextMenu.y} 
+                onClose={() => setContextMenu(null)}
+                onAction={handleContextMenuAction}
+              />
+            </AnimatePresence>
           )}
         </div>
 

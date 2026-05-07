@@ -199,23 +199,34 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isRefreshingRef = useRef(false);
+
   const refreshData = useCallback(async () => {
-    if (!user) return;
+    if (!user || isRefreshingRef.current) return;
+    
+    // Clear any pending refresh
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+    }
+
+    isRefreshingRef.current = true;
     try {
-      const [accs, trans, gls, cats, currs, bhist] = await Promise.all([
-        api.get<Account[]>('/accounts'),
-        api.get<Transaction[]>('/transactions'),
-        api.get<Goal[]>('/goals'),
-        api.get<Category[]>('/categories'),
-        api.get<Currency[]>('/currencies'),
-        api.get<BalanceHistory[]>('/balance-history'),
-      ]);
-      setAccounts(accs);
-      setTransactions(trans);
-      setGoals(gls);
-      setCategories(cats);
-      setCurrencies(currs);
-      setBalanceHistory(bhist);
+      const data = await api.get<{
+        accounts: Account[];
+        transactions: Transaction[];
+        goals: Goal[];
+        categories: Category[];
+        currencies: Currency[];
+        balanceHistory: BalanceHistory[];
+      }>('/initial-data');
+      
+      setAccounts(data.accounts);
+      setTransactions(data.transactions);
+      setGoals(data.goals);
+      setCategories(data.categories);
+      setCurrencies(data.currencies);
+      setBalanceHistory(data.balanceHistory);
       
       // Load plans from localStorage
       const savedPlans = localStorage.getItem('ai_temporary_plans');
@@ -224,11 +235,16 @@ export default function App() {
       }
     } catch (error: any) {
       console.error('Error fetching data:', error);
-      if (error.message.includes('Rate exceeded')) {
+      if (error.message.includes('Rate exceeded') || error.status === 429) {
         addToast('Превышен лимит запросов. Пожалуйста, подождите немного.', 'error');
       } else {
         addToast('Ошибка при загрузке данных', 'error');
       }
+    } finally {
+      // Throttle the next possible refresh to at least 1 second later
+      setTimeout(() => {
+        isRefreshingRef.current = false;
+      }, 1000);
     }
   }, [user]);
 
@@ -346,7 +362,10 @@ export default function App() {
               }
               setShowTransactionHistory(true);
             }}
-            onOpenAddTransaction={() => setShowAddTransaction(true)}
+            onOpenAddTransaction={(data) => {
+              setInitialTransactionData(data);
+              setShowAddTransaction(true);
+            }}
             onEditTransaction={setEditingTransaction}
           />
         );
@@ -540,6 +559,10 @@ export default function App() {
             onEditTransaction={(t) => {
               setEditingTransaction(t);
             }}
+            onOpenAddTransaction={(data) => {
+              setInitialTransactionData(data);
+              setShowAddTransaction(true);
+            }}
             initialAccountId={transactionHistoryFilter.accountId}
             initialCategoryId={transactionHistoryFilter.categoryId}
             initialType={transactionHistoryFilter.type}
@@ -549,6 +572,7 @@ export default function App() {
         {/* Add Transaction Modal */}
         {(showAddTransaction || initialTransactionData) && (
           <AddTransaction 
+            key={initialTransactionData ? `copy-${initialTransactionData.createdAt}-${initialTransactionData.amount}` : 'new'}
             onComplete={() => { setShowAddTransaction(false); setInitialTransactionData(null); }}
             onAdd={refreshData}
             onOptimisticAdd={optimisticAddTransaction}
