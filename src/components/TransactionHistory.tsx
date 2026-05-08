@@ -5,6 +5,8 @@ import { ru } from 'date-fns/locale';
 import { X, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy } from 'lucide-react';
 import { GenericContextMenu } from './ui/GenericContextMenu';
 import { AnimatePresence } from 'motion/react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface TransactionHistoryProps {
   transactions: Transaction[];
@@ -247,9 +249,13 @@ export default function TransactionHistory({
                           <div className="flex items-start gap-2">
                             <span className="text-lg shrink-0">{t.type === 'transfer' ? '🔄' : (category?.icon || parentCategory?.icon || '💰')}</span>
                             <div className="min-w-0">
-                              <p className="text-xs font-bold text-theme-main truncate">{t.description || category?.name || (t.type === 'transfer' ? 'Перевод' : 'Без описания')}</p>
+                              <div className="text-xs font-bold text-theme-main markdown-body prose-sm">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                  {t.description || category?.name || (t.type === 'transfer' ? 'Перевод' : 'Без описания')}
+                                </ReactMarkdown>
+                              </div>
                               <p 
-                                className="text-[10px] font-medium truncate"
+                                className="text-[10px] font-medium truncate mt-1"
                                 style={{ color: account?.color && account.color !== '#000000' ? account.color : 'var(--text-muted)' }}
                               >
                                 {account?.name || 'Счет'}

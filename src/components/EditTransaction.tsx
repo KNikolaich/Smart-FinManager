@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { Transaction, Account, Category, TransactionType } from '../types';
-import { X, Trash2, Check, Calculator as CalcIcon, Calendar, ChevronDown } from 'lucide-react';
+import { X, Trash2, Check, Calculator as CalcIcon, Calendar, ChevronDown, Eye, Edit2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import AccountSelect from './AccountSelect';
 import CategorySelect from './CategorySelect';
 import Calculator from './Calculator';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface EditTransactionProps {
   transaction: Transaction;
@@ -27,6 +29,7 @@ export default function EditTransaction({ transaction, accounts, transactions, c
   const [loading, setLoading] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleUpdate = async () => {
@@ -233,13 +236,29 @@ export default function EditTransaction({ transaction, accounts, transactions, c
 
             {/* Description - Grows to fill space */}
             <div className="flex-1 flex flex-col min-h-[100px] gap-2">
-              <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1 shrink-0">Описание</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Что изменилось в этой операции?..."
-                className="flex-1 w-full bg-theme-main border border-theme-base rounded-2xl px-5 py-4 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main resize-none font-medium placeholder:text-theme-muted/50"
-              />
+              <div className="flex items-center justify-between ml-1 shrink-0">
+                <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">Описание</label>
+                <button 
+                  onClick={() => setShowPreview(!showPreview)}
+                  className="flex items-center gap-1 text-[10px] font-bold text-theme-primary uppercase tracking-widest hover:opacity-80 transition-opacity"
+                >
+                  {showPreview ? <Edit2 size={10} /> : <Eye size={10} />}
+                  {showPreview ? 'Редактировать' : 'Предпросмотр'}
+                </button>
+              </div>
+              
+              {showPreview ? (
+                <div className="flex-1 w-full bg-theme-main border border-theme-base rounded-2xl px-5 py-4 text-sm text-theme-main overflow-y-auto markdown-body prose-sm">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{description}</ReactMarkdown>
+                </div>
+              ) : (
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Что изменилось в этой операции?..."
+                  className="flex-1 w-full bg-theme-main border border-theme-base rounded-2xl px-5 py-4 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main resize-none font-medium placeholder:text-theme-muted/50"
+                />
+              )}
             </div>
           </div>
         </div>

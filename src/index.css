@@ -243,3 +243,36 @@ table td { border-color: var(--border-color); }
 .markdown-body hr {
   @apply my-6 border-neutral-100;
 }
+
+/* Markdown Table Styles */
+.markdown-body table {
+  @apply w-full border-collapse mb-4 mt-2 overflow-hidden rounded-xl border bg-white shadow-sm;
+  border-color: var(--border-color);
+}
+.markdown-body thead {
+  background-color: rgba(var(--primary), 0.05); /* Fallback */
+}
+.theme-midnight .markdown-body thead, .theme-carbon .markdown-body thead, .theme-oled .markdown-body thead { 
+  background-color: rgba(255, 255, 255, 0.05);
+}
+.markdown-body thead {
+  background-color: var(--bg-main);
+  opacity: 0.8;
+}
+.markdown-body th {
+  @apply py-3 px-4 text-left text-[10px] font-bold uppercase tracking-widest border-b;
+  color: var(--text-muted);
+  border-color: var(--border-color);
+}
+.markdown-body td {
+  @apply py-2.5 px-4 text-xs font-medium border-b last:border-0;
+  color: var(--text-main);
+  border-color: var(--border-color);
+}
+.markdown-body tr:last-child td {
+  @apply border-0;
+}
+.markdown-body tr:hover td {
+  background-color: var(--bg-main);
+  opacity: 0.9;
+}

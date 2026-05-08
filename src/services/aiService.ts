@@ -55,25 +55,37 @@ export const processUserMessage = async (
   text: string, 
   accounts: Account[], 
   categories: Category[],
-  imageData?: string[]
+  imageData?: string[],
+  recentTransactions?: Transaction[]
 ): Promise<AIResponse> => {
   const mainAccounts = accounts.filter(a => a.showOnDashboard && !a.isArchived);
   
   const systemInstruction = `Ты — мудрый и дружелюбный финансовый ассистент, как понимающий старший товарищ. Твоя цель — помогать пользователю управлять деньгами легко и без стресса. Говори по-дружески, но конкретно.
   
   Твой тон: теплый, поддерживающий, уверенный. Ты не просто бот, ты — наставник, который уже все сделал за пользователя.
-
+ 
   IMAGE ANALYSIS:
-  - If the user provides an image (receipt, QR code, screenshot), analyze it carefully. 
+  - If the user provides one or more images (receipt, QR code, screenshot), analyze them TOGETHER as parts of a single receipt/document. 
+  - If the images are NOT a receipt, QR code with payment info, or financial screenshot, set intent to "unknown" and message to "Чек не распознан".
   - Extract: Amount, date, vendor/description, and possible category.
+  - IMPORTANT: Round the total "amount" UP to the nearest whole integer (ruble) using ceiling (e.g., 123.01 becomes 124, 500.00 stays 500). We do not use cents/kopeks.
+  - If it is a receipt, the "description" field in "data" MUST contain a Markdown table with columns: "Товар", "Кол-во", "Цена".
+  - IMPORTANT: Ensure there is a blank line before any Markdown table in both "message" and "description" fields.
+  - If an MCC code is detected on the receipt, append it to the end of the "description" like this: "\nMCC: [code]".
+  - Your "message" MUST also include this Markdown table and MCC code if it's a receipt analysis, followed by your friendly confirmation.
   - If the receipt is for multiple things, use the total or summarize as one transaction unless asked otherwise.
   
+  DUPLICATE PREVENTION:
+  - Compare the extracted receipt data with the "Recent Transactions" provided in the USER PROMPT.
+  - If a transaction with the SAME amount (rounded), SAME vendor/description, and NEARBY date (within the last few days) already exists, set intent to "unknown" and inform the user that this receipt seems to already have been processed.
+  
   REFERENCE DATA:
-  Accounts: ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name })))}
-  Categories: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name, type: c.type })))}
+  Accounts: (See USER PROMPT)
+  Categories: (See USER PROMPT)
+  Recent Transactions: (See USER PROMPT)
   
   IMPORTANT: 
-  - If the user mentions an account or category by name, you MUST find its corresponding "id" from the REFERENCE DATA above and use that "id" in the data object.
+  - If the user mentions an account or category by name, you MUST find its corresponding "id" from the REFERENCE DATA and use that "id" in the data object.
   - EVERY value you mention in your "message" (amount, account name, category name, goal name) MUST be present in the "data" object.
   - If you cannot find a matching ID for an account or category mentioned by the user, set intent to "unknown" and ask for clarification.
   - You MUST return the intent and data even if some parameters are missing, as long as you have identified the intent and at least ONE parameter.
@@ -107,7 +119,14 @@ export const processUserMessage = async (
   - message: string (a concise, friendly, and supportive response in Russian confirming the fact that the action was taken)
   `;
 
-  const userPrompt = `User message: "${text}"\nCurrent date: ${new Date().toISOString()}\n\nREFERENCE DATA:\nAccounts: ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name })))} \nCategories: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name, type: c.type })))}`;
+  const userPrompt = `User message: "${text}"
+Current date: ${new Date().toISOString()}
+
+REFERENCE DATA:
+- Accounts: ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name })))}
+- Categories: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name, type: c.type })))}
+- Recent Transactions: ${JSON.stringify((recentTransactions || []).slice(0, 15).map(t => ({ amount: Math.ceil(t.amount), description: t.description, date: t.createdAt })))}
+  (Check these to avoid duplicates!)`;
 
   try {
     const responseText = await callAI(systemInstruction, userPrompt, "json_object", imageData);

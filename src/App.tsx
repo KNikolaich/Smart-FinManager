@@ -504,6 +504,10 @@ export default function App() {
             }}
             onRefresh={refreshData}
             onResult={handleAIResult}
+            onOpenAddTransaction={(data) => {
+              setInitialTransactionData(data);
+              setShowAddTransaction(true);
+            }}
             showToast={addToast}
           />
         );
