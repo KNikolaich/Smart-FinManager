@@ -22,40 +22,36 @@ export default function CategorySelect({ categories, selectedCategoryId, onChang
     ? categories.find(c => c.id === selectedCategory.parentId) 
     : null;
 
-  const filteredCategories = useMemo(() => {
-    // Only show categories that match the type
+  // Group by parent for display with search logic
+  const groupedCategories = useMemo(() => {
+    const query = searchQuery.toLowerCase();
     const typeCategories = categories.filter(c => c.type === type);
     
-    // Sort logic
-    const sorted = [...typeCategories].sort((a, b) => {
-      const aOrder = a.sortOrder ?? Infinity;
-      const bOrder = b.sortOrder ?? Infinity;
-      if (aOrder !== bOrder) return aOrder - bOrder;
-      return (a.name || '').localeCompare(b.name || '');
-    });
+    const parents = typeCategories.filter(c => !c.parentId);
+    const children = typeCategories.filter(c => c.parentId);
 
-    if (!searchQuery) return sorted;
+    return parents
+      .map(parent => {
+        const parentMatches = parent.name.toLowerCase().includes(query);
+        const matchedChildren = children.filter(child => 
+          child.parentId === parent.id && 
+          (child.name.toLowerCase().includes(query) || parentMatches)
+        );
 
-    const query = searchQuery.toLowerCase();
-    return sorted.filter(c => {
-      const nameMatch = c.name.toLowerCase().includes(query);
-      const parentMatch = c.parentId 
-        ? categories.find(p => p.id === c.parentId)?.name.toLowerCase().includes(query) 
-        : false;
-      return nameMatch || parentMatch;
-    });
+        return {
+          parent,
+          children: matchedChildren,
+          isVisible: parentMatches || matchedChildren.length > 0
+        };
+      })
+      .filter(group => group.isVisible)
+      .sort((a, b) => {
+        const aOrder = a.parent.sortOrder ?? Infinity;
+        const bOrder = b.parent.sortOrder ?? Infinity;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return a.parent.name.localeCompare(b.parent.name);
+      });
   }, [categories, type, searchQuery]);
-
-  // Group by parent for display
-  const groupedCategories = useMemo(() => {
-    const parents = filteredCategories.filter(c => !c.parentId);
-    const children = filteredCategories.filter(c => c.parentId);
-
-    return parents.map(parent => ({
-      parent,
-      children: children.filter(child => child.parentId === parent.id)
-    })).filter(group => group.parent.name.toLowerCase().includes(searchQuery.toLowerCase()) || group.children.length > 0);
-  }, [filteredCategories, searchQuery]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -111,7 +107,6 @@ export default function CategorySelect({ categories, selectedCategoryId, onChang
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Поиск категории..."
                   className="w-full bg-theme-main border border-theme-base rounded-xl pl-8 pr-8 py-1.5 text-xs outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main"
-                  autoFocus
                 />
                 {searchQuery && (
                   <button
