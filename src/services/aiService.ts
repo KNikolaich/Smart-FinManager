@@ -16,18 +16,36 @@ const logAIInteraction = async (userId: string, request: any, response: any) => 
     await api.post('/ai-logs', {
       request,
       response,
-      provider: 'deepseek'
+      provider: 'openai'
     });
   } catch (error) {
     console.error('Error logging AI interaction:', error);
   }
 };
 
-const callAI = async (systemInstruction: string, userPrompt: string, responseFormat?: "json_object") => {
-    const response = await api.post<{ content: string }>("/ai/deepseek", {
+const callAI = async (systemInstruction: string, userPrompt: string, responseFormat?: "json_object", imageData?: string[]) => {
+  const messages: any[] = [];
+  
+  if (imageData && imageData.length > 0) {
+    const content: any[] = [{ type: "text", text: userPrompt }];
+    imageData.forEach(base64 => {
+      content.push({
+        type: "image_url",
+        image_url: {
+          url: base64.startsWith('data:') ? base64 : `data:image/jpeg;base64,${base64}`
+        }
+      });
+    });
+    messages.push({ role: "user", content });
+  } else {
+    messages.push({ role: "user", content: userPrompt });
+  }
+
+  const response = await api.post<{ content: string }>("/ai/openai", {
     systemInstruction,
-    userPrompt,
-    responseFormat
+    messages,
+    responseFormat,
+    model: imageData && imageData.length > 0 ? "gpt-4o" : "gpt-4o-mini"
   });
   return response.content;
 };
@@ -36,7 +54,8 @@ export const processUserMessage = async (
   userId: string,
   text: string, 
   accounts: Account[], 
-  categories: Category[]
+  categories: Category[],
+  imageData?: string[]
 ): Promise<AIResponse> => {
   const mainAccounts = accounts.filter(a => a.showOnDashboard && !a.isArchived);
   
@@ -44,6 +63,11 @@ export const processUserMessage = async (
   
   Твой тон: теплый, поддерживающий, уверенный. Ты не просто бот, ты — наставник, который уже все сделал за пользователя.
 
+  IMAGE ANALYSIS:
+  - If the user provides an image (receipt, QR code, screenshot), analyze it carefully. 
+  - Extract: Amount, date, vendor/description, and possible category.
+  - If the receipt is for multiple things, use the total or summarize as one transaction unless asked otherwise.
+  
   REFERENCE DATA:
   Accounts: ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name })))}
   Categories: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name, type: c.type })))}
@@ -86,7 +110,7 @@ export const processUserMessage = async (
   const userPrompt = `User message: "${text}"\nCurrent date: ${new Date().toISOString()}\n\nREFERENCE DATA:\nAccounts: ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name })))} \nCategories: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name, type: c.type })))}`;
 
   try {
-    const responseText = await callAI(systemInstruction, userPrompt, "json_object");
+    const responseText = await callAI(systemInstruction, userPrompt, "json_object", imageData);
     const result = JSON.parse(responseText || "{}") as AIResponse;
 
     // Ensure message is a string to avoid React rendering errors
@@ -94,11 +118,11 @@ export const processUserMessage = async (
       result.message = JSON.stringify(result.message);
     }
 
-    await logAIInteraction(userId, { systemInstruction, userPrompt }, result);
+    await logAIInteraction(userId, { systemInstruction, userPrompt, hasImages: !!imageData?.length }, result);
 
     return result;
   } catch (error) {
-    console.error("DeepSeek Error:", error);
+    console.error("OpenAI Error:", error);
     return {
       intent: 'unknown',
       data: {},
@@ -132,7 +156,7 @@ export const getFinancialAdvice = async (
     await logAIInteraction(userId, { systemInstruction, userPrompt }, { text: advice });
     return advice;
   } catch (error) {
-    console.error("DeepSeek Advice Error:", error);
+    console.error("OpenAI Advice Error:", error);
     return "Извините, не удалось получить финансовый совет в данный момент.";
   }
 };

@@ -1057,15 +1057,20 @@ app.get("/api/chat-history", authenticateToken, async (req: any, res) => {
       where: { userId: req.user.userId },
       orderBy: { createdAt: "asc" },
     });
-    res.json(history);
+    const parsedHistory = history.map((m: any) => ({
+      ...m,
+      actionData: m.actionData ? JSON.parse(m.actionData) : null
+    }));
+    res.json(parsedHistory);
   } catch (error) {
+    console.error("Fetch chat history error:", error);
     res.status(500).json({ error: "Failed to fetch chat history" });
   }
 });
 
 app.post("/api/chat-history", authenticateToken, async (req: any, res) => {
   try {
-    const { role, content, type, actionType, actionData } = req.body;
+    const { role, content, type, actionType, actionData, attachments } = req.body;
     const message = await prisma.chatMessage.create({
       data: {
         userId: req.user.userId,
@@ -1074,10 +1079,12 @@ app.post("/api/chat-history", authenticateToken, async (req: any, res) => {
         type,
         actionType,
         actionData: actionData ? JSON.stringify(actionData) : null,
+        attachments: attachments || null,
       },
     });
     res.json(message);
   } catch (error) {
+    console.error("Save chat message error:", error);
     res.status(500).json({ error: "Failed to save message" });
   }
 });
@@ -1171,6 +1178,59 @@ app.post("/api/ai-logs", authenticateToken, async (req: any, res) => {
 });
 
 // AI Proxy Routes
+app.post("/api/ai/openai", authenticateToken, async (req: any, res) => {
+  try {
+    const { systemInstruction, userPrompt, messages, responseFormat, model = "gpt-4o" } = req.body;
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+    if (!OPENAI_API_KEY) {
+      console.error("OPENAI_API_KEY is missing in server environment");
+      return res.status(500).json({ error: "OpenAI API key is not configured on the server." });
+    }
+
+    const openaiMessages: any[] = [];
+    
+    if (systemInstruction) {
+      openaiMessages.push({ role: "system", content: systemInstruction });
+    }
+
+    if (messages && Array.isArray(messages)) {
+      openaiMessages.push(...messages);
+    } else if (userPrompt) {
+      openaiMessages.push({ role: "user", content: userPrompt });
+    }
+
+    const payload: any = {
+      model: model,
+      messages: openaiMessages,
+      temperature: 0.7
+    };
+
+    if (responseFormat === "json_object") {
+      payload.response_format = { type: "json_object" };
+    }
+
+    const response = await axios.post(
+      "https://api.openai.com/v1/chat/completions",
+      payload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${OPENAI_API_KEY}`
+        }
+      }
+    );
+
+    res.json({ content: response.data.choices[0].message.content });
+  } catch (error: any) {
+    console.error("OpenAI Proxy Error:", error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({ 
+      error: "Failed to call OpenAI API",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
 app.post("/api/ai/deepseek", authenticateToken, async (req: any, res) => {
   try {
     const { systemInstruction, userPrompt, responseFormat } = req.body;

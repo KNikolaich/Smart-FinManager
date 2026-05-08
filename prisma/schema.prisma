@@ -145,6 +145,7 @@ model ChatMessage {
   type       String?
   actionType String?
   actionData String?
+  attachments Json?
   createdAt  DateTime @default(now())
 
   @@map("chat_messages")

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useVoiceInput } from '../hooks/useVoiceInput';
-import { Send, User, Sparkles, Loader2, PlusCircle, Target, PieChart, Calendar, Eraser } from 'lucide-react';
+import { Send, User, Sparkles, Loader2, PlusCircle, Target, PieChart, Calendar, Eraser, Paperclip, X as CloseIcon, Mic, MicOff, Image as ImageIcon } from 'lucide-react';
 import { RobotIcon } from './icons/RobotIcon';
 import { processUserMessage, getFinancialAdvice } from '../services/aiService';
 import { api } from '../lib/api';
@@ -30,32 +30,61 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [attachments, setAttachments] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const { startListening } = useVoiceInput();
+  const { isRecording, startListening, stopListening } = useVoiceInput();
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach(file => {
+      if (file.size > 5 * 1024 * 1024) {
+        if (showToast) showToast('Файл слишком большой (макс 5мб)', 'error');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        setAttachments(prev => [...prev, base64]);
+      };
+      reader.readAsDataURL(file);
+    });
+    
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const onVoiceInput = (onStart?: () => void, onEnd?: () => void) => {
+    if (onStart) onStart();
+    startListening(
+      async (text) => {
+        // Final result
+        await handleSend(text);
+        if (onEnd) onEnd();
+      },
+      (error) => {
+        if (onEnd) onEnd();
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: '❌ **Ошибка распознавания голоса.**'
+        }]);
+      },
+      (interimText) => {
+        // Interim result
+        setInput(interimText);
+      }
+    );
+  };
 
   useImperativeHandle(ref, () => ({
-    handleVoiceInput: (onStart?: () => void, onEnd?: () => void) => {
-      if (onStart) onStart();
-      startListening(
-        async (text) => {
-          // Final result
-          await handleSend(text);
-          if (onEnd) onEnd();
-        },
-        (error) => {
-          if (onEnd) onEnd();
-          setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: '❌ **Ошибка распознавания голоса.**'
-          }]);
-        },
-        (interimText) => {
-          // Interim result
-          setInput(interimText);
-        }
-      );
-    }
+    handleVoiceInput: onVoiceInput
   }));
 
   useEffect(() => {
@@ -98,20 +127,23 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
 
   const handleSend = async (textOverride?: string) => {
     const text = textOverride || input;
-    if (!text.trim() || loading) return;
-
-    const userMessage: Omit<Message, 'id'> = {
-      role: 'user',
-      content: text
-    };
+    if ((!text.trim() && attachments.length === 0) || loading) return;
 
     if (!textOverride) setInput('');
+    const currentAttachments = [...attachments];
+    const userMessage: Omit<Message, 'id'> = {
+      role: 'user',
+      content: text,
+      attachments: currentAttachments
+    };
+    
+    setAttachments([]);
     setLoading(true);
 
     await saveMessage(userMessage);
 
     try {
-      const result = await processUserMessage(userId, text, accounts, categories);
+      const result = await processUserMessage(userId, text, accounts, categories, currentAttachments);
       
       if (onResult) onResult(result);
       
@@ -131,15 +163,15 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
       } else if (['transaction', 'goal', 'plan'].includes(result.intent)) {
         assistantMessage = {
           role: 'assistant',
-          content: result.message
-        };
-      } else {
-        assistantMessage = {
-          role: 'assistant',
           content: result.message,
           type: 'action',
           actionType: result.intent as any,
           actionData: result.data
+        };
+      } else {
+        assistantMessage = {
+          role: 'assistant',
+          content: result.message
         };
       }
 
@@ -391,6 +423,13 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
                     {typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}
                   </ReactMarkdown>
                 </div>
+                {m.attachments && m.attachments.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {m.attachments.map((base64, i) => (
+                      <img key={i} src={base64} alt="attachment" className="w-16 h-16 sm:w-24 sm:h-24 object-cover rounded-lg border border-theme-base/20" />
+                    ))}
+                  </div>
+                )}
               </div>
               
               {m.type === 'action' && (
@@ -441,26 +480,71 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
             </button>
           ))}
         </div>
-        <div className="relative flex gap-1.5 sm:gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Напиши мне..."
-            className="flex-1 bg-neutral-50 border border-neutral-100 rounded-xl sm:rounded-2xl px-3 py-2 sm:px-4 sm:py-4 text-base sm:text-sm outline-none focus:border-emerald-500 transition-all"
+
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {attachments.map((base64, index) => (
+              <div key={index} className="relative group w-16 h-16 sm:w-20 sm:h-20">
+                <img src={base64} alt="attachment" className="w-full h-full object-cover rounded-lg border border-neutral-200" />
+                <button 
+                  onClick={() => removeAttachment(index)}
+                  className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <CloseIcon size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="relative flex gap-1.5 sm:gap-2 items-end">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            className="hidden" 
+            accept="image/*" 
+            multiple 
           />
+          
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-10 h-10 sm:w-12 sm:h-12 bg-neutral-100 text-neutral-500 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-neutral-200 transition-all active:scale-95 shrink-0"
+          >
+            <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+
+          <div className="flex-1 relative">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              placeholder="Напиши мне или прикрепи фото..."
+              rows={1}
+              className="w-full bg-neutral-50 border border-neutral-100 rounded-xl sm:rounded-2xl px-3 py-2 sm:px-4 sm:py-3.5 text-base sm:text-sm outline-none focus:border-emerald-500 transition-all resize-none max-h-32"
+            />
+          </div>
+
           <div className="flex gap-1.5 sm:gap-2 shrink-0">
             <button
-              onClick={clearChat}
-              title="Очистить чат"
-              className="w-10 h-10 sm:w-12 sm:h-12 bg-neutral-100 text-neutral-500 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-neutral-200 transition-all active:scale-95"
+              onClick={isRecording ? stopListening : () => onVoiceInput()}
+              className={cn(
+                "w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center transition-all active:scale-95",
+                isRecording ? "bg-red-500 text-white animate-pulse" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+              )}
+              title={isRecording ? "Остановить запись" : "Голосовой ввод"}
             >
-              <Eraser className="w-4 h-4 sm:w-5 sm:h-5" />
+              {isRecording ? <MicOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Mic className="w-4 h-4 sm:w-5 sm:h-5" />}
             </button>
+
             <button
               onClick={() => handleSend()}
-              disabled={!input.trim() || loading}
+              disabled={(!input.trim() && attachments.length === 0) || loading}
               className="w-10 h-10 sm:w-12 sm:h-12 bg-theme-primary text-white rounded-lg sm:rounded-xl flex items-center justify-center disabled:opacity-50 transition-all active:scale-95"
             >
               <Send className="w-4 h-4 sm:w-5 sm:h-5" />

@@ -182,6 +182,7 @@ export interface Message {
   type?: 'text' | 'action' | 'suggestion';
   actionType?: 'transaction' | 'goal' | 'plan';
   actionData?: any;
+  attachments?: string[];
 }
 
 export enum OperationType {
