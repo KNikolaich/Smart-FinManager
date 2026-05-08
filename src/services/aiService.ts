@@ -140,8 +140,22 @@ REFERENCE DATA:
     await logAIInteraction(userId, { systemInstruction, userPrompt, hasImages: !!imageData?.length }, result);
 
     return result;
-  } catch (error) {
+  } catch (error: any) {
     console.error("OpenAI Error:", error);
+    
+    // Check for specific region error
+    const errorData = error.response?.data?.error || error.error || {};
+    const errorMessage = errorData.message || error.message || "";
+    const errorCode = errorData.code || "";
+
+    if (errorCode === 'unsupported_country_region_territory' || errorMessage.includes('supported')) {
+      return {
+        intent: 'unknown',
+        data: { error_code: 'REGION_NOT_SUPPORTED' },
+        message: "К сожалению, ваш регион временно не поддерживается AI-сервисом. Попробуйте использовать VPN."
+      };
+    }
+
     return {
       intent: 'unknown',
       data: {},

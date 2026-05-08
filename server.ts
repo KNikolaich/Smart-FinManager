@@ -42,11 +42,13 @@ const authenticateToken = (req: any, res: any, next: any) => {
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
+    console.warn(`[Auth] Missing token for ${req.method} ${req.path}`);
     return res.status(401).json({ error: "Unauthorized" });
   }
 
   jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
     if (err) {
+      console.error(`[Auth] Token verification failed: ${err.message}`);
       return res.status(403).json({ error: "Forbidden" });
     }
     req.user = user;
@@ -1063,8 +1065,14 @@ app.get("/api/chat-history", authenticateToken, async (req: any, res) => {
       actionData: m.actionData ? JSON.parse(m.actionData) : null
     }));
     res.json(parsedHistory);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Fetch chat history error:", error);
+    // If it's a prisma error about missing table, point that out
+    if (error.code === 'P2021' || error.message?.includes('does not exist')) {
+      return res.status(500).json({ 
+        error: "Database table 'chat_messages' not found. Please run 'npx prisma db push' on your server." 
+      });
+    }
     res.status(500).json({ error: "Failed to fetch chat history" });
   }
 });

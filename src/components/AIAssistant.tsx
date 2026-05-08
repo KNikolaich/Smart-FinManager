@@ -305,6 +305,10 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
     try {
       const result = await processUserMessage(userId, text, accounts, categories, currentAttachments, transactions);
       
+      if (result.data?.error_code === 'REGION_NOT_SUPPORTED') {
+        if (showToast) showToast('⚠️ Регион не поддерживается! Используйте VPN или смените локацию.', 'error');
+      }
+
       let assistantMessage: Omit<Message, 'id'>;
 
       if (result.intent === 'advice') {
