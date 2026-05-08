@@ -486,7 +486,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
 
       {/* Input Area */}
       <div className="p-3 sm:p-4 bg-white border-t border-neutral-100 shrink-0">
-        <div className="flex gap-1.5 sm:gap-2 mb-2 sm:mb-4 overflow-x-auto no-scrollbar pb-1">
+        <div className="flex gap-1.5 sm:gap-2 mb-3 overflow-x-auto no-scrollbar pb-1">
           {quickActions.map((action, i) => (
             <button 
               key={i}
@@ -499,40 +499,8 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
           ))}
         </div>
 
-        {attachments.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3">
-            {attachments.map((base64, index) => (
-              <div key={index} className="relative group w-16 h-16 sm:w-20 sm:h-20">
-                <img src={base64} alt="attachment" className="w-full h-full object-cover rounded-lg border border-neutral-200" />
-                <button 
-                  onClick={() => removeAttachment(index)}
-                  className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <CloseIcon size={12} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="relative flex gap-1.5 sm:gap-2 items-end">
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleFileUpload} 
-            className="hidden" 
-            accept="image/*" 
-            multiple 
-          />
-          
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-10 h-10 sm:w-12 sm:h-12 bg-neutral-100 text-neutral-500 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-neutral-200 transition-all active:scale-95 shrink-0"
-          >
-            <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
-
-          <div className="flex-1 relative">
+        <div className="flex flex-col gap-3">
+          <div className="relative">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -548,25 +516,66 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
             />
           </div>
 
-          <div className="flex gap-1.5 sm:gap-2 shrink-0">
-            <button
-              onClick={isRecording ? stopListening : () => onVoiceInput()}
-              className={cn(
-                "w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center transition-all active:scale-95",
-                isRecording ? "bg-red-500 text-white animate-pulse" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
-              )}
-              title={isRecording ? "Остановить запись" : "Голосовой ввод"}
-            >
-              {isRecording ? <MicOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Mic className="w-4 h-4 sm:w-5 sm:h-5" />}
-            </button>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1">
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileUpload} 
+                className="hidden" 
+                accept="image/*" 
+                multiple 
+              />
+              
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-10 h-10 sm:w-11 sm:h-11 bg-neutral-100 text-neutral-500 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-neutral-200 transition-all active:scale-95 shrink-0"
+                title="Прикрепить фото"
+              >
+                <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
 
-            <button
-              onClick={() => handleSend()}
-              disabled={(!input.trim() && attachments.length === 0) || loading}
-              className="w-10 h-10 sm:w-12 sm:h-12 bg-theme-primary text-white rounded-lg sm:rounded-xl flex items-center justify-center disabled:opacity-50 transition-all active:scale-95"
-            >
-              <Send className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
+              {attachments.map((base64, index) => (
+                <div key={index} className="relative group w-10 h-10 sm:w-11 sm:h-11 shrink-0">
+                  <img src={base64} alt="attachment" className="w-full h-full object-cover rounded-lg border border-neutral-200" />
+                  <button 
+                    onClick={() => removeAttachment(index)}
+                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-md flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+                  >
+                    <CloseIcon size={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <button
+                onClick={clearChat}
+                className="w-10 h-10 sm:w-11 sm:h-11 bg-neutral-50 text-neutral-400 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-neutral-100 transition-all active:scale-95"
+                title="Очистить чат"
+              >
+                <Eraser className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+
+              <button
+                onClick={isRecording ? stopListening : () => onVoiceInput()}
+                className={cn(
+                  "w-10 h-10 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center transition-all active:scale-95",
+                  isRecording ? "bg-red-500 text-white animate-pulse" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+                )}
+                title={isRecording ? "Остановить запись" : "Голосовой ввод"}
+              >
+                {isRecording ? <MicOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Mic className="w-4 h-4 sm:w-5 sm:h-5" />}
+              </button>
+
+              <button
+                onClick={() => handleSend()}
+                disabled={(!input.trim() && attachments.length === 0) || loading}
+                className="w-10 h-10 sm:w-11 sm:h-11 bg-theme-primary text-white rounded-lg sm:rounded-xl flex items-center justify-center disabled:opacity-50 transition-all active:scale-95 shadow-sm shadow-theme-primary/20"
+              >
+                {loading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <Send className="w-4 h-4 sm:w-5 sm:h-5" />}
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -8,7 +8,7 @@ export interface AIResponse {
   message: string;
 }
 
-const logAIInteraction = async (userId: string, request: any, response: any) => {
+const logAIInteraction = async (userId: string, request: any, response: any, provider: string = 'openai') => {
   if (!userId) {
     return;
   }
@@ -16,7 +16,7 @@ const logAIInteraction = async (userId: string, request: any, response: any) => 
     await api.post('/ai-logs', {
       request,
       response,
-      provider: 'openai'
+      provider
     });
   } catch (error) {
     console.error('Error logging AI interaction:', error);
@@ -25,10 +25,11 @@ const logAIInteraction = async (userId: string, request: any, response: any) => 
 
 const callAI = async (systemInstruction: string, userPrompt: string, responseFormat?: "json_object", imageData?: string[]) => {
   const messages: any[] = [];
+  const hasImages = imageData && imageData.length > 0;
   
-  if (imageData && imageData.length > 0) {
+  if (hasImages) {
     const content: any[] = [{ type: "text", text: userPrompt }];
-    imageData.forEach(base64 => {
+    imageData!.forEach(base64 => {
       content.push({
         type: "image_url",
         image_url: {
@@ -41,11 +42,14 @@ const callAI = async (systemInstruction: string, userPrompt: string, responseFor
     messages.push({ role: "user", content: userPrompt });
   }
 
-  const response = await api.post<{ content: string }>("/ai/openai", {
+  const endpoint = hasImages ? "/ai/openai" : "/ai/deepseek";
+  const model = hasImages ? "gpt-4o" : "deepseek-chat";
+
+  const response = await api.post<{ content: string }>(endpoint, {
     systemInstruction,
     messages,
     responseFormat,
-    model: imageData && imageData.length > 0 ? "gpt-4o" : "gpt-4o-mini"
+    model
   });
   return response.content;
 };
@@ -137,7 +141,7 @@ REFERENCE DATA:
       result.message = JSON.stringify(result.message);
     }
 
-    await logAIInteraction(userId, { systemInstruction, userPrompt, hasImages: !!imageData?.length }, result);
+    await logAIInteraction(userId, { systemInstruction, userPrompt, hasImages: !!imageData?.length }, result, imageData?.length ? 'openai' : 'deepseek');
 
     return result;
   } catch (error: any) {
@@ -186,7 +190,7 @@ export const getFinancialAdvice = async (
 
   try {
     const advice = await callAI(systemInstruction, userPrompt);
-    await logAIInteraction(userId, { systemInstruction, userPrompt }, { text: advice });
+    await logAIInteraction(userId, { systemInstruction, userPrompt }, { text: advice }, 'deepseek');
     return advice;
   } catch (error) {
     console.error("OpenAI Advice Error:", error);
