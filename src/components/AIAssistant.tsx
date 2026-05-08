@@ -232,6 +232,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
         }
         if (onRefresh) onRefresh();
         if (silent && showToast) showToast('Операция добавлена', 'success');
+        return true;
       } else if (type === 'goal') {
         const name = data.name || data.title;
         const targetAmount = Number(data.targetAmount || data.amount);
