@@ -102,7 +102,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
           {
             id: 'welcome',
             role: 'assistant',
-            content: 'Привет, друг! Я твой финансовый наставник. Расскажи, как прошел день? Могу записать твои расходы, помочь поставить цель или прикинуть план на месяц. Просто скажи — я всё сделаю!'
+            content: 'Приветствую! Я финансовый помощник. Расскажи, как прошел день? Могу записать твои расходы, помочь поставить цель или прикинуть план на месяц. Просто скажи — я всё сделаю!'
           }
         ]);
       } else {
@@ -385,8 +385,8 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
 
   const quickActions = [   
     { label: 'Анализ бюджета', icon: PieChart, text: 'Проанализируй мой бюджет и дай советы, учитывай, что цели я веду в тысячах рублей. ' },
-    { label: 'Создать цель', icon: Target, text: 'Хочу накопить [сумма] на [цель накопления] к лету' },
-    { label: 'Получил доход', icon: PlusCircle, text: 'Добавь доход на сумму [сумма] рублей на [название] Дебетовую карту' },
+    { label: 'Создать цель', icon: Target, text: 'Хочу накопить 50000 на мопед к лету' },
+    { label: 'Получил доход', icon: PlusCircle, text: 'Добавь доход 500 рублей с фриланса на Дебетовую карту' },
   ];
 
   const clearChat = async () => {

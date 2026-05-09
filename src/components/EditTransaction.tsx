@@ -29,7 +29,7 @@ export default function EditTransaction({ transaction, accounts, transactions, c
   const [loading, setLoading] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const [showPreview, setShowPreview] = useState(!!transaction.description);
   const [error, setError] = useState<string | null>(null);
 
   const handleUpdate = async () => {

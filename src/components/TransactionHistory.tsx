@@ -7,6 +7,7 @@ import { GenericContextMenu } from './ui/GenericContextMenu';
 import { AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { cn, getTransactionDisplayTitle } from '../lib/utils';
 
 interface TransactionHistoryProps {
   transactions: Transaction[];
@@ -251,7 +252,7 @@ export default function TransactionHistory({
                             <div className="min-w-0">
                               <div className="text-xs font-bold text-theme-main markdown-body prose-sm">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                  {t.description || category?.name || (t.type === 'transfer' ? 'Перевод' : 'Без описания')}
+                                  {getTransactionDisplayTitle(t.description, category?.name, t.type)}
                                 </ReactMarkdown>
                               </div>
                               <p 
@@ -323,8 +324,4 @@ export default function TransactionHistory({
       </div>
     </div>
   );
-}
-
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
 }

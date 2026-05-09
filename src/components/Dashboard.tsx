@@ -10,7 +10,7 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import AccountManager from './AccountManager';
 import GoalManager from './GoalManager';
 import { GenericContextMenu } from './ui/GenericContextMenu';
-import { cn } from '../lib/utils';
+import { cn, getTransactionDisplayTitle } from '../lib/utils';
 import { api } from '../lib/api';
 import {
   DndContext, 
@@ -914,7 +914,7 @@ export default function Dashboard({
                           <div className="flex items-start gap-2">
                             <span className="text-lg shrink-0">{t.type === 'transfer' ? '🔄' : (category?.icon || parentCategory?.icon || '💰')}</span>
                             <div className="min-w-0">
-                              <p className="text-xs font-bold text-theme-main truncate">{t.description || category?.name || (t.type === 'transfer' ? 'Перевод' : 'Без описания')}</p>
+                              <p className="text-xs font-bold text-theme-main truncate">{getTransactionDisplayTitle(t.description, category?.name, t.type)}</p>
                               <p 
                                 className="text-[10px] font-medium truncate"
                                 style={{ color: account?.color && account.color !== '#000000' ? account.color : 'var(--text-muted)' }}

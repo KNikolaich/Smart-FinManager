@@ -34,7 +34,7 @@ export default function AddTransaction({ accounts, transactions, categories, onC
   const [date, setDate] = useState(initialData?.createdAt ? format(new Date(initialData.createdAt), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
   const [loading, setLoading] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const [showPreview, setShowPreview] = useState(!!initialData?.description);
   const activeAccounts = accounts.filter(a => !a.isArchived);
 
   const prevType = useRef<TransactionType>(type);

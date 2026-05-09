@@ -24,34 +24,64 @@ const logAIInteraction = async (userId: string, request: any, response: any, pro
 };
 
 const callAI = async (systemInstruction: string, userPrompt: string, responseFormat?: "json_object", imageData?: string[]) => {
-  const messages: any[] = [];
   const hasImages = imageData && imageData.length > 0;
   
   if (hasImages) {
-    const content: any[] = [{ type: "text", text: userPrompt }];
-    imageData!.forEach(base64 => {
-      content.push({
-        type: "image_url",
-        image_url: {
-          url: base64.startsWith('data:') ? base64 : `data:image/jpeg;base64,${base64}`
-        }
+    // Stage 1: OpenAI (GPT-4o) specifically for OCR/Vision extraction
+    // Since DeepSeek API doesn't support images yet, we extract the data first.
+    const ocrMessages = [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Extract all financial information, text, items, store names, QR data, and totals from these images. Provide it as clear text." },
+          ...imageData!.map(base64 => ({
+            type: "image_url" as const,
+            image_url: {
+              url: base64.startsWith('data:') ? base64 : `data:image/jpeg;base64,${base64}`
+            }
+          }))
+        ]
+      }
+    ];
+
+    try {
+      const ocrResult = await api.post<{ content: string }>("/ai/openai", {
+        systemInstruction: "You are a professional OCR assistant for financial documents.",
+        messages: ocrMessages,
+        model: "gpt-4o"
       });
-    });
-    messages.push({ role: "user", content });
+
+      const extractedText = ocrResult.content;
+
+      // Stage 2: DeepSeek-Chat for the actual business logic / recognition
+      const deepseekMessages = [
+        { role: "user", content: `${userPrompt}\n\n[EXTRACTED TEXT FROM IMAGES FOR LOGIC]:\n${extractedText}` }
+      ];
+
+      const response = await api.post<{ content: string }>("/ai/deepseek", {
+        systemInstruction,
+        messages: deepseekMessages,
+        responseFormat,
+        model: "deepseek-chat"
+      });
+
+      return response.content;
+    } catch (error) {
+      console.error("OCR + DeepSeek Error Flow:", error);
+      throw error;
+    }
   } else {
-    messages.push({ role: "user", content: userPrompt });
+    // Standard text-only call via DeepSeek
+    const messages = [{ role: "user", content: userPrompt }];
+
+    const response = await api.post<{ content: string }>("/ai/deepseek", {
+      systemInstruction,
+      messages,
+      responseFormat,
+      model: "deepseek-chat"
+    });
+    return response.content;
   }
-
-  const endpoint = hasImages ? "/ai/openai" : "/ai/deepseek";
-  const model = hasImages ? "gpt-4o" : "deepseek-chat";
-
-  const response = await api.post<{ content: string }>(endpoint, {
-    systemInstruction,
-    messages,
-    responseFormat,
-    model
-  });
-  return response.content;
 };
 
 export const processUserMessage = async (
@@ -75,7 +105,7 @@ export const processUserMessage = async (
   - IMPORTANT: Round the total "amount" UP to the nearest whole integer (ruble) using ceiling (e.g., 123.01 becomes 124, 500.00 stays 500). We do not use cents/kopeks.
   - If it is a receipt, the "description" field in "data" MUST contain a Markdown table with columns: "Товар", "Кол-во", "Цена".
   - IMPORTANT: Ensure there is a blank line before any Markdown table in both "message" and "description" fields.
-  - If an MCC code is detected on the receipt, append it to the end of the "description" like this: "\nMCC: [code]".
+  - If an MCC code is detected on the receipt, append it to the end of the "description" like this: "\\nMCC: [code]".
   - Your "message" MUST also include this Markdown table and MCC code if it's a receipt analysis, followed by your friendly confirmation.
   - If the receipt is for multiple things, use the total or summarize as one transaction unless asked otherwise.
   
@@ -116,6 +146,9 @@ export const processUserMessage = async (
       - targetAccountId: string (required for transfers)
       - categoryId: string (required)
       - description: string (optional)
+  - goal:
+      - name: string (required)
+      - targetAmount: number (required)
   
   Return a JSON object with:
   - intent: string (one of: transaction, goal, plan, advice, unknown)
@@ -141,7 +174,7 @@ REFERENCE DATA:
       result.message = JSON.stringify(result.message);
     }
 
-    await logAIInteraction(userId, { systemInstruction, userPrompt, hasImages: !!imageData?.length }, result, imageData?.length ? 'openai' : 'deepseek');
+    await logAIInteraction(userId, { systemInstruction, userPrompt, hasImages: !!imageData?.length }, result, 'deepseek');
 
     return result;
   } catch (error: any) {
