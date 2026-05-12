@@ -22,7 +22,9 @@ export default function InteractiveMarkdown({ content, onUpdate, className }: In
     checkboxes.forEach((cb, index) => {
       // Remove disabled attribute to make it interactive as per browser defaults
       // but we'll preventDefault to handle it our way
-      cb.removeAttribute('disabled');
+      const checkbox = cb as HTMLInputElement;
+      checkbox.removeAttribute('disabled');
+      checkbox.style.cursor = 'pointer';
       
       const handleClick = (e: Event) => {
         e.preventDefault();
@@ -35,8 +37,8 @@ export default function InteractiveMarkdown({ content, onUpdate, className }: In
         }
       };
 
-      cb.addEventListener('click', handleClick);
-      handlers.push(() => cb.removeEventListener('click', handleClick));
+      checkbox.addEventListener('click', handleClick);
+      handlers.push(() => checkbox.removeEventListener('click', handleClick));
     });
 
     return () => {

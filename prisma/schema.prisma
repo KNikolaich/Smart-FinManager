@@ -14,6 +14,7 @@ model User {
   id        String   @id @default(uuid())
   email     String   @unique
   password  String
+  encryptedPassword String?
   displayName String?
   photoURL    String?
   role      String   @default("user")
@@ -67,7 +68,7 @@ model Category {
   createdAt DateTime @default(now())
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent       Category?     @relation("CategoryToSubcategory", fields: [parentId], references: [id])
+  parent       Category?     @relation("CategoryToSubcategory", fields: [parentId], references: [id], onDelete: Cascade)
   children     Category[]    @relation("CategoryToSubcategory")
   transactions Transaction[]
 
@@ -87,9 +88,9 @@ model Transaction {
   createdAt       DateTime @default(now())
 
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  account       Account   @relation("AccountTransactions", fields: [accountId], references: [id])
-  targetAccount Account?  @relation("TargetAccountTransactions", fields: [targetAccountId], references: [id])
-  category      Category? @relation(fields: [categoryId], references: [id])
+  account       Account   @relation("AccountTransactions", fields: [accountId], references: [id], onDelete: Cascade)
+  targetAccount Account?  @relation("TargetAccountTransactions", fields: [targetAccountId], references: [id], onDelete: Cascade)
+  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@map("transactions")
 }
@@ -139,7 +140,7 @@ model Currency {
 model ChatMessage {
   id         String   @id @default(uuid())
   userId     String
-  user       User     @relation(fields: [userId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   role       String
   content    String
   type       String?

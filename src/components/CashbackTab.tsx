@@ -220,13 +220,13 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
                 <button
                   onClick={() => setActiveMonthId(m.id)}
                   className={cn(
-                    "px-3 py-4 text-[10px] font-bold transition-all capitalize [writing-mode:vertical-rl] rotate-180 whitespace-nowrap border-b border-neutral-200 w-10",
+                    "px-3 py-4 text-[11px] font-bold transition-all capitalize [writing-mode:vertical-rl] rotate-180 whitespace-nowrap border-b border-neutral-200 w-10 text-center",
                     activeMonthId === m.id 
                       ? (isGreyTheme ? "bg-neutral-200 text-neutral-900 shadow-inner" : "bg-purple-100 text-purple-900 shadow-inner")
                       : "bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
                   )}
                 >
-                  {m.label} {m.id.split('-')[0].slice(2)}
+                  {m.label}
                 </button>
                 {isPast && isEditorMode && (
                   <button
@@ -258,49 +258,38 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
       {/* Cashback Table Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header with Actions */}
-        <div className="px-4 py-2 bg-white border-b border-neutral-100 flex items-center justify-between shrink-0">
+        <div className="px-4 py-2 bg-white border-b border-neutral-100 flex items-center justify-between shrink-0 h-12">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-bold text-neutral-900 capitalize">{activeMonth?.label}</h2>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {isEditorMode && activeMonth && activeMonth.entries.length === 0 && (
               <button 
                 onClick={handleCopyFromPrevious}
-                className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
+                className="flex items-center gap-1.5 px-2 py-1.5 h-8 text-[10px] font-bold text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
                 title="Скопировать с предыдущего"
               >
-                <Copy size={12} />
-                <span className="hidden sm:inline">Скопировать с предыдущего</span>
+                <Copy size={14} />
+                <span className="hidden md:inline">Копировать</span>
               </button>
             )}
 
-            {/* Filter Section */}
+            {/* Filter Section (Funnel) */}
             <div className="relative">
-              <div className="flex items-center bg-neutral-100 rounded-lg overflow-hidden h-8">
-                <button 
-                  onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                  className={cn(
-                    "flex items-center gap-1.5 px-2 h-full text-[10px] font-bold transition-colors",
-                    filterCategoryId ? "text-purple-600 bg-purple-50" : "text-neutral-500 hover:bg-neutral-200"
-                  )}
-                >
-                  <Filter size={14} className={filterCategoryId ? "fill-purple-600" : ""} />
-                  <span className="hidden sm:inline">Фильтр</span>
-                  {filterCategoryId && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                  )}
-                </button>
-                {filterCategoryId && (
-                  <button 
-                    onClick={() => setFilterCategoryId(null)}
-                    className="p-1 px-1.5 h-full text-neutral-400 hover:text-neutral-600 hover:bg-neutral-200 transition-colors"
-                    title="Сбросить фильтр"
-                  >
-                    <X size={12} />
-                  </button>
+              <button 
+                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                className={cn(
+                  "p-2 h-8 rounded-lg flex items-center gap-1.5 text-[10px] font-bold transition-all",
+                  filterCategoryId 
+                    ? "bg-purple-100 text-purple-600 shadow-sm" 
+                    : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
                 )}
-              </div>
+                title="Фильтр по категориям"
+              >
+                <Filter size={16} className={filterCategoryId ? "fill-purple-600" : ""} />
+                {filterCategoryId && <span className="hidden sm:inline">Отфильтровано</span>}
+              </button>
 
               {showFilterDropdown && (
                 <>

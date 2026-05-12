@@ -33,9 +33,9 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
     seeding, seedProgress, success, clearing, showClearConfirm, setShowClearConfirm,
     showClearTransactionsConfirm, setShowClearTransactionsConfirm, showSeedConfirm, setShowSeedConfirm,
     password, setPassword, exporting, importing, importProgress, importLogs, showLogModal, setShowLogModal,
-    importResult, fileInputRef, handleImportClick, handleFileChange, seedInitialData, clearAllData,
+    importResult, fileInputRef, handleImportClick, handleFileChange, seedInitialData, deleteAccount,
     clearTransactionsOnly, exportData, copyLogsToClipboard
-  } = useDataManagement(user, onRefresh);
+  } = useDataManagement(user, onRefresh, onLogout);
 
   return (
     <div className="p-1.5 sm:p-2 lg:p-2 space-y-8">

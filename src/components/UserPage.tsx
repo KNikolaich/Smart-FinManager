@@ -24,10 +24,10 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
 
   const {
     seeding, showSeedConfirm, setShowSeedConfirm, password, setPassword, seedInitialData,
-    showClearConfirm, setShowClearConfirm, clearAllData, showClearTransactionsConfirm,
+    showClearConfirm, setShowClearConfirm, deleteAccount, showClearTransactionsConfirm,
     setShowClearTransactionsConfirm, clearTransactionsOnly, exporting, exportData,
     fileInputRef, handleImportClick, handleFileChange, clearing
-  } = useDataManagement(user, onRefresh);
+  } = useDataManagement(user, onRefresh, onLogout);
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -134,8 +134,8 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
                 <FileDown className="w-5 h-5 text-sky-500" />
               </div>
               <div className="text-left">
-                <p className="font-semibold text-sm text-theme-main">Экспорт данных</p>
-                <p className="text-xs text-theme-muted">Скачать резервную копию (Excel)</p>
+                <p className="font-semibold text-sm text-theme-main">Резервная копия</p>
+                <p className="text-xs text-theme-muted">Экспорт всех данных в один JSON</p>
               </div>
             </button>
 
@@ -143,13 +143,13 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
               onClick={handleImportClick}
               className="w-full px-6 py-4 flex items-center gap-4 hover:bg-theme-main transition-colors border-b border-theme-base"
             >
-              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx,.xls" />
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
               <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center">
                 <FileUp className="w-5 h-5 text-indigo-500" />
               </div>
               <div className="text-left">
-                <p className="font-semibold text-sm text-theme-main">Импорт данных</p>
-                <p className="text-xs text-theme-muted">Загрузить данные из Excel</p>
+                <p className="font-semibold text-sm text-theme-main">Восстановление данных</p>
+                <p className="text-xs text-theme-muted">Импорт из JSON архива</p>
               </div>
             </button>
 
@@ -171,11 +171,11 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
               className="w-full px-6 py-4 flex items-center gap-4 hover:bg-theme-main transition-colors"
             >
               <div className="w-10 h-10 bg-rose-500/10 rounded-xl flex items-center justify-center">
-                <Eraser className="w-5 h-5 text-rose-500" />
+                <Trash2 className="w-5 h-5 text-rose-500" />
               </div>
               <div className="text-left">
-                <p className="font-semibold text-sm text-theme-main">Стереть все данные</p>
-                <p className="text-xs text-rose-500 font-medium">Полная очистка аккаунта</p>
+                <p className="font-semibold text-sm text-theme-main">Удалить аккаунт</p>
+                <p className="text-xs text-rose-500 font-medium">Полное удаление данных и профиля</p>
               </div>
             </button>
           </div>
@@ -261,18 +261,18 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
               <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertTriangle className="w-8 h-8 text-rose-500" />
               </div>
-              <h3 className="text-xl font-bold text-theme-main mb-2">Очистить абсолютно всё?</h3>
-              <p className="text-theme-muted mb-8 text-sm">Все ваши счета, операции, категории и цели будут удалены навсегда. Это действие необратимо.</p>
+              <h3 className="text-xl font-bold text-theme-main mb-2">Удалить аккаунт?</h3>
+              <p className="text-theme-muted mb-8 text-sm">Ваш профиль, все счета, операции и цели будут удалены навсегда. Это действие необратимо и ваш аккаунт будет уничтожен.</p>
               <input
                 type="password"
-                placeholder="Введите пароль"
+                placeholder="Введите пароль для подтверждения"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-theme-main p-4 rounded-2xl mb-4 text-center border border-theme-base outline-none focus:ring-2 ring-theme-primary/20 text-theme-main"
               />
               <div className="flex flex-col w-full gap-3">
                 <button
-                  onClick={clearAllData}
+                  onClick={deleteAccount}
                   disabled={clearing}
                   className="w-full bg-rose-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
@@ -281,7 +281,7 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
                   ) : (
                     <Trash2 className="w-5 h-5" />
                   )}
-                  Да, удалить все данные
+                  Да, удалить аккаунт навсегда
                 </button>
                 <button
                   onClick={() => { setShowClearConfirm(false); setPassword(''); }}

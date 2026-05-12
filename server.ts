@@ -5,6 +5,8 @@ import dotenv from "dotenv";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import axios from "axios";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
 import { PrismaClient } from "@prisma/client";
 import { createServer as createHttpServer } from "http";
 import { Server } from "socket.io";
@@ -23,6 +25,38 @@ const io = new Server(httpServer, {
 });
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
+// AES-256-CBC require 32 bytes key
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || "your-32-character-secret-key-123"; 
+const IV_LENGTH = 16; // For AES, this is always 16
+
+function encrypt(text: string) {
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY.padEnd(32).substring(0, 32)), iv);
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return iv.toString('hex') + ':' + encrypted.toString('hex');
+}
+
+function decrypt(text: string) {
+  const textParts = text.split(':');
+  const iv = Buffer.from(textParts.shift()!, 'hex');
+  const encryptedText = Buffer.from(textParts.join(':'), 'hex');
+  const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY.padEnd(32).substring(0, 32)), iv);
+  let decrypted = decipher.update(encryptedText);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString();
+}
+
+// Mailer setup
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || "smtp.example.com",
+  port: Number(process.env.SMTP_PORT) || 587,
+  secure: process.env.SMTP_PORT === "465",
+  auth: {
+    user: process.env.SMTP_USER || "user@example.com",
+    pass: process.env.SMTP_PASS || "pass",
+  },
+});
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -66,8 +100,13 @@ app.post("/api/auth/register", async (req, res) => {
     }
     const normalizedEmail = email.toLowerCase().trim();
     const hashedPassword = await bcrypt.hash(password, 10);
+    const encryptedPass = encrypt(password);
     const user = await prisma.user.create({
-      data: { email: normalizedEmail, password: hashedPassword },
+      data: { 
+        email: normalizedEmail, 
+        password: hashedPassword,
+        encryptedPassword: encryptedPass
+      },
     });
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET);
     res.json({ token, user: { id: user.id, email: user.email } });
@@ -97,6 +136,15 @@ app.post("/api/auth/login", async (req, res) => {
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
+
+    // Save encrypted password if it's missing (for older accounts)
+    if (!user.encryptedPassword) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { encryptedPassword: encrypt(password) }
+      });
+    }
+
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET);
     res.json({ token, user: { id: user.id, email: user.email, settings: user.settings } });
   } catch (error: any) {
@@ -188,6 +236,69 @@ app.post("/api/auth/verify-password", authenticateToken, async (req: any, res) =
     }
     res.json({ success: true });
   } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/auth/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+
+    if (!user) {
+      // For security, don't reveal that user doesn't exist, 
+      // but in this specific app request, let's be helpful
+      return res.status(404).json({ error: "Пользователь с таким email не найден" });
+    }
+
+    if (!user.encryptedPassword) {
+      return res.status(400).json({ error: "Для этого пользователя восстановление пароля недоступно (старый аккаунт). Пожалуйста, свяжитесь с поддержкой." });
+    }
+
+    let decryptedPass: string;
+    try {
+      decryptedPass = decrypt(user.encryptedPassword);
+    } catch (decryptError) {
+      console.error("Decryption error:", decryptError);
+      return res.status(500).json({ error: "Ошибка при расшифровке пароля. Возможно, ключ шифрования был изменен." });
+    }
+
+    try {
+      // If we have real SMTP credentials, send email. 
+      // Otherwise, just log it and simulate success for the demo.
+      const hasSMTP = process.env.SMTP_USER && process.env.SMTP_USER !== "user@example.com";
+
+      if (hasSMTP) {
+        await transporter.sendMail({
+          from: process.env.SMTP_FROM || `"Finance App" <${process.env.SMTP_USER}>`,
+          to: user.email,
+          subject: "Восстановление пароля",
+          text: `Здравствуйте! Ваш пароль: ${decryptedPass}`,
+          html: `<p>Здравствуйте!</p><p>Ваш пароль: <b>${decryptedPass}</b></p>`,
+        });
+        console.log(`[Auth] Password sent to ${user.email}`);
+      } else {
+        console.log(`[Auth] STUB: Password for ${user.email} is ${decryptedPass} (SMTP not configured)`);
+      }
+
+      res.json({ success: true, message: "Пароль отправлен на вашу почту" });
+    } catch (mailError: any) {
+      console.error("Mail delivery error:", mailError);
+      let errorMsg = "Ошибка при отправке письма.";
+      if (mailError.message.includes("Application-specific password required")) {
+        errorMsg = "Ошибка SMTP: Требуется пароль приложения. Пожалуйста, создайте App Password в настройках Google.";
+      } else if (mailError.message.includes("Invalid login")) {
+        errorMsg = "Ошибка SMTP: Неверный логин или пароль для почтового сервера.";
+      }
+      res.status(500).json({ error: errorMsg });
+    }
+  } catch (error: any) {
+    console.error("Forgot Password Error:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -801,19 +912,38 @@ app.delete("/api/balance-history/:id", authenticateToken, async (req: any, res) 
   }
 });
 
-// Clear Data
-app.delete("/api/data/clear", authenticateToken, async (req: any, res) => {
+// Account Deletion
+app.get("/api/user/profile", authenticateToken, async (req: any, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        photoURL: true,
+        role: true,
+        settings: true,
+        createdAt: true
+      }
+    });
+    res.json(user);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/api/user/delete-account", authenticateToken, async (req: any, res) => {
   try {
     const userId = req.user.userId;
-    await prisma.$transaction([
-      prisma.transaction.deleteMany({ where: { userId } }),
-      prisma.account.deleteMany({ where: { userId } }),
-      prisma.category.deleteMany({ where: { userId } }),
-      prisma.goal.deleteMany({ where: { userId } }),
-      prisma.planGrid.deleteMany({ where: { userId } }),
-    ]);
+    // With onDelete: Cascade set up in the schema, deleting the user 
+    // will automatically wipe all associated data in other tables.
+    await prisma.user.delete({
+      where: { id: userId }
+    });
     res.json({ success: true });
   } catch (error: any) {
+    console.error("Delete Account Error:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -827,6 +957,9 @@ app.delete("/api/data/clear-transactions", authenticateToken, async (req: any, r
         where: { userId },
         data: { balance: 0 }
       }),
+      prisma.aiLog.deleteMany({ where: { userId } }),
+      prisma.balanceHistory.deleteMany({ where: { userId } }),
+      prisma.chatMessage.deleteMany({ where: { userId } }),
     ]);
     res.json({ success: true });
   } catch (error: any) {
@@ -838,7 +971,7 @@ app.delete("/api/data/clear-transactions", authenticateToken, async (req: any, r
 
 app.post("/api/import/batch", authenticateToken, async (req: any, res) => {
   try {
-    const { accounts, categories, transactions, goals } = req.body;
+    const { accounts, categories, transactions, goals, plan_grids, profile } = req.body;
     const userId = req.user.userId;
 
     const createdAccounts: Record<string, string> = {};
@@ -852,7 +985,8 @@ app.post("/api/import/batch", authenticateToken, async (req: any, res) => {
     // 1. Import Accounts
     if (accounts && accounts.length > 0) {
       for (const acc of accounts) {
-        const { id, uid, currencyUid, ...data } = acc;
+        // Remove relations like user, transactions, etc.
+        const { id, uid, currencyUid, user, transactions, ...accountData } = acc;
         
         // Handle currency
         let currencyCode = 'RUB';
@@ -870,8 +1004,8 @@ app.post("/api/import/batch", authenticateToken, async (req: any, res) => {
         // Ensure account exists or update it
         const created = await prisma.account.upsert({
           where: { id: id },
-          update: { ...data, uid: String(uid || id), userId, currency: currencyCode },
-          create: { ...data, id: id, uid: String(uid || id), userId, currency: currencyCode }
+          update: { ...accountData, uid: String(uid || id), userId, currency: currencyCode },
+          create: { ...accountData, id: id, uid: String(uid || id), userId, currency: currencyCode }
         });
         if (id) createdAccounts[String(id)] = created.id;
         validAccountIds.add(created.id);
@@ -905,25 +1039,26 @@ app.post("/api/import/batch", authenticateToken, async (req: any, res) => {
       };
 
       for (const cat of categories) {
-        const { id, parentId, ...data } = cat;
+        // Remove relations from data like children, user, etc.
+        const { id, parentId, children, user, ...catData } = cat;
         
         // Apply icon if not already set
-        if (!data.icon) {
-          const icon = iconMap[data.name];
+        if (!catData.icon) {
+          const icon = iconMap[catData.name];
           if (icon) {
-            data.icon = icon;
+            catData.icon = icon;
           }
         }
 
         const created = await prisma.category.upsert({
           where: { id: id },
           update: { 
-            ...data, 
+            ...catData, 
             userId,
             parentId: parentId && createdCategories[parentId] ? createdCategories[parentId] : null
           },
           create: { 
-            ...data, 
+            ...catData, 
             id: id,
             userId,
             parentId: parentId && createdCategories[parentId] ? createdCategories[parentId] : null
@@ -936,16 +1071,16 @@ app.post("/api/import/batch", authenticateToken, async (req: any, res) => {
     // 3. Import Goals
     if (goals && goals.length > 0) {
       for (const goal of goals) {
-        const { id, deadline, ...data } = goal;
+        const { id, deadline, user, ...goalData } = goal;
         const created = await prisma.goal.upsert({
           where: { id: id },
           update: { 
-            ...data,
+            ...goalData,
             deadline: deadline ? new Date(deadline) : null,
             userId
           },
           create: { 
-            ...data,
+            ...goalData,
             id: id,
             deadline: deadline ? new Date(deadline) : null,
             userId
@@ -958,7 +1093,11 @@ app.post("/api/import/batch", authenticateToken, async (req: any, res) => {
     // 4. Import Transactions
     if (transactions && transactions.length > 0) {
       for (const trans of transactions) {
-        const { accountId, targetAccountId, categoryId, subcategoryId, amount, createdAt, ...data } = trans;
+        const { 
+          accountId, targetAccountId, categoryId, subcategoryId, amount, createdAt, 
+          account, targetAccount, category, subcategory, user, 
+          ...transData 
+        } = trans;
         
         // Map IDs if they were provided in the import
         let mappedAccountId = createdAccounts[accountId] || accountId;
@@ -996,9 +1135,9 @@ app.post("/api/import/batch", authenticateToken, async (req: any, res) => {
           console.error(`Target Account ID ${mappedTargetAccountId} not found. Skipping transaction.`);
           continue;
         }
-
+        
         const { id, ...transactionData } = {
-          ...data,
+          ...transData,
           userId,
           accountId: mappedAccountId,
           targetAccountId: mappedTargetAccountId,
@@ -1021,17 +1160,17 @@ app.post("/api/import/batch", authenticateToken, async (req: any, res) => {
         }
 
         // Update balances
-        if (data.type === 'expense') {
+        if (transData.type === 'expense') {
           await prisma.account.update({
             where: { id: mappedAccountId },
             data: { balance: { decrement: Number(amount) } }
           });
-        } else if (data.type === 'income') {
+        } else if (transData.type === 'income') {
           await prisma.account.update({
             where: { id: mappedAccountId },
             data: { balance: { increment: Number(amount) } }
           });
-        } else if (data.type === 'transfer' && mappedTargetAccountId) {
+        } else if (transData.type === 'transfer' && mappedTargetAccountId) {
           await prisma.account.update({
             where: { id: mappedAccountId },
             data: { balance: { decrement: Number(amount) } }
@@ -1041,6 +1180,33 @@ app.post("/api/import/batch", authenticateToken, async (req: any, res) => {
             data: { balance: { increment: Number(amount) } }
           });
         }
+      }
+    }
+
+    // 5. Import Plan Grids
+    if (plan_grids && plan_grids.length > 0) {
+      for (const plan of plan_grids) {
+        const { id, userId: planUserId, ...data } = plan;
+        await prisma.planGrid.upsert({
+          where: { userId_type: { userId, type: data.type } },
+          update: { data: data.data || {} },
+          create: { userId, type: data.type, data: data.data || {} }
+        });
+      }
+    }
+
+    // 6. Import Profile (Settings)
+    if (profile && profile.length > 0) {
+      const userProfile = profile[0];
+      if (userProfile.settings) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { 
+            settings: userProfile.settings,
+            displayName: userProfile.displayName || undefined,
+            photoURL: userProfile.photoURL || undefined
+          }
+        });
       }
     }
 

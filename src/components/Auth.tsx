@@ -12,7 +12,26 @@ export default function Auth({ onAuth }: AuthProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Введите email для восстановления пароля');
+      return;
+    }
+    setError('');
+    setSuccess('');
+    setLoading(true);
+    try {
+      const response = await api.post<{ message: string }>('/auth/forgot-password', { email });
+      setSuccess(response.message);
+    } catch (err: any) {
+      setError(err.message || 'Ошибка при восстановлении пароля');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +103,13 @@ export default function Auth({ onAuth }: AuthProps) {
             </div>
           )}
 
+          {success && (
+            <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center gap-3 text-emerald-500 text-sm">
+              <div className="w-5 h-5 shrink-0 bg-emerald-500 rounded-full flex items-center justify-center text-white text-[10px]">✓</div>
+              <p>{success}</p>
+            </div>
+          )}
+
           <div className="space-y-1">
             <label className="text-xs font-bold text-theme-muted uppercase tracking-wider ml-1">Email</label>
             <div className="relative">
@@ -100,7 +126,18 @@ export default function Auth({ onAuth }: AuthProps) {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-theme-muted uppercase tracking-wider ml-1">Пароль</label>
+            <div className="flex items-center justify-between ml-1">
+              <label className="text-xs font-bold text-theme-muted uppercase tracking-wider">Пароль</label>
+              {isLogin && (
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-[10px] font-bold text-theme-primary hover:underline"
+                >
+                  Забыли пароль?
+                </button>
+              )}
+            </div>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-theme-muted" />
               <input

@@ -5,7 +5,7 @@ import { api } from '../lib/api';
 import * as XLSX from 'xlsx';
 import { UserProfile } from '../types';
 
-export function useDataManagement(user: UserProfile, onRefresh: () => void) {
+export function useDataManagement(user: UserProfile, onRefresh: () => void, onLogout: () => void) {
   const [seeding, setSeeding] = useState(false);
   const [seedProgress, setSeedProgress] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -95,16 +95,15 @@ export function useDataManagement(user: UserProfile, onRefresh: () => void) {
     }
   };
 
-  const clearAllData = async () => {
+  const deleteAccount = async () => {
     if (!(await verifyPassword())) return;
     setClearing(true);
     try {
-      await api.delete('/data/clear');
-      onRefresh();
-      setShowClearConfirm(false);
-      setPassword('');
+      await api.delete('/user/delete-account');
+      onLogout();
     } catch (error) {
-      console.error('Clear error:', error);
+      console.error('Delete account error:', error);
+      alert('Ошибка при удалении аккаунта');
     } finally {
       setClearing(false);
     }
@@ -128,47 +127,29 @@ export function useDataManagement(user: UserProfile, onRefresh: () => void) {
   const exportData = async () => {
     setExporting(true);
     try {
-      const workbook = XLSX.utils.book_new();
-
       const collections = [
         { name: 'transactions', endpoint: '/transactions' },
         { name: 'accounts', endpoint: '/accounts' },
         { name: 'categories', endpoint: '/categories' },
-        { name: 'goals', endpoint: '/goals' }
+        { name: 'goals', endpoint: '/goals' },
+        { name: 'plan_grids', endpoint: '/plan-grids' },
+        { name: 'profile', endpoint: '/user/profile' }
       ];
       
-      let hasData = false;
+      const backupData: Record<string, any> = {
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        userId: user.id
+      };
       
-      // Export plans as CSV
-      try {
-        const plansData = await api.get<any>('/plan-grids');
-        if (plansData && Array.isArray(plansData)) {
-          let csvContent = "id,userId,type,data,updatedAt\n";
-          for (const plan of plansData) {
-            const dataStr = JSON.stringify(plan.data).replace(/"/g, '""');
-            csvContent += `${plan.id},${plan.userId},${plan.type},"${dataStr}",${plan.updatedAt}\n`;
-          }
-          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.setAttribute('href', url);
-          link.setAttribute('download', `plans_${new Date().toISOString().split('T')[0]}.csv`);
-          link.click();
-          hasData = true;
-        }
-      } catch (err) {
-        console.error(`Error exporting plans:`, err);
-      }
+      let hasData = false;
       
       for (const col of collections) {
         try {
           const data = await api.get<any>(col.endpoint);
-          const exportData = Array.isArray(data) ? data : [];
-          if (exportData && exportData.length > 0) {
-            const worksheet = XLSX.utils.json_to_sheet(exportData);
-            XLSX.utils.book_append_sheet(workbook, worksheet, col.name);
-            hasData = true;
-          }
+          backupData[col.name] = data;
+          if (Array.isArray(data) && data.length > 0) hasData = true;
+          else if (data && !Array.isArray(data)) hasData = true;
         } catch (err) {
           console.error(`Error exporting ${col.name}:`, err);
         }
@@ -180,9 +161,15 @@ export function useDataManagement(user: UserProfile, onRefresh: () => void) {
       }
 
       const date = new Date().toISOString().split('T')[0];
-      const fileName = `backupAiFinAssistant_${date}.xlsx`;
+      const fileName = `backupAiFinAssistant_${date}.json`;
       
-      XLSX.writeFile(workbook, fileName);
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Export error:', error);
       alert('Произошла ошибка при экспорте данных');
@@ -201,7 +188,7 @@ export function useDataManagement(user: UserProfile, onRefresh: () => void) {
     seeding, seedProgress, success, clearing, showClearConfirm, setShowClearConfirm,
     showClearTransactionsConfirm, setShowClearTransactionsConfirm, showSeedConfirm, setShowSeedConfirm,
     password, setPassword, exporting, importing, importProgress, importLogs, showLogModal, setShowLogModal,
-    importResult, fileInputRef, handleImportClick, handleFileChange, seedInitialData, clearAllData,
+    importResult, fileInputRef, handleImportClick, handleFileChange, seedInitialData, deleteAccount,
     clearTransactionsOnly, exportData, copyLogsToClipboard
   };
 }

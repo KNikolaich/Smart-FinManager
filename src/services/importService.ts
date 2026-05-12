@@ -38,6 +38,61 @@ const importFromJSON = async (
     const text = await file.text();
     const data = JSON.parse(text);
 
+    // Check if this is our standard backup format
+    const isStandardBackup = data.accounts || data.categories || data.transactions;
+
+    if (isStandardBackup) {
+      if (onLog) onLog('Обнаружен стандартный JSON архив. Загрузка...');
+      
+      const collections = ['accounts', 'categories', 'goals', 'plan_grids', 'profile'];
+      
+      // Sort categories: parents first
+      if (data.categories && Array.isArray(data.categories)) {
+        data.categories.sort((a: any, b: any) => {
+          const aParent = a.parentId || null;
+          const bParent = b.parentId || null;
+          if (aParent === null && bParent !== null) return -1;
+          if (aParent !== null && bParent === null) return 1;
+          return 0;
+        });
+      }
+
+      // Step 1: Batch import basic entities
+      if (onLog) onLog('Импорт базовых сущностей (счета, категории)...');
+      await api.post('/import/batch', {
+        accounts: data.accounts || [],
+        categories: data.categories || [],
+        goals: data.goals || [],
+        plan_grids: data.plan_grids || [],
+        profile: Array.isArray(data.profile) ? data.profile : (data.profile ? [data.profile] : []),
+        transactions: []
+      });
+
+      // Step 2: Batch import transactions in chunks
+      let importedCount = 0;
+      if (data.transactions && Array.isArray(data.transactions) && data.transactions.length > 0) {
+        const transactions = data.transactions;
+        const chunkSize = 100;
+        for (let i = 0; i < transactions.length; i += chunkSize) {
+          if (signal?.aborted) throw new Error('Import cancelled');
+          const chunk = transactions.slice(i, i + chunkSize);
+          await api.post('/import/batch', {
+            accounts: [],
+            categories: [],
+            transactions: chunk
+          });
+          await delay(300);
+          importedCount += chunk.length;
+          if (onProgress) onProgress(Math.round(((i + chunk.length) / transactions.length) * 100));
+          if (onLog) onLog(`Импортировано ${importedCount} операций...`);
+        }
+      }
+
+      if (onLog) onLog('Импорт из JSON архива успешно завершен!');
+      return { success: true, count: importedCount, errors: [] };
+    }
+
+    // --- Legacy JSON Format Support ---
     let importedCount = 0;
     const errors: string[] = [];
     
@@ -226,14 +281,30 @@ const importFromExcel = async (
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array', codepage: 65001 });
         
-        const collections = ['accounts', 'categories', 'transactions', 'goals', 'budgets'];
+        const collections = ['accounts', 'categories', 'transactions', 'goals', 'budgets', 'plan_grids', 'profile'];
         const importData: Record<string, any[]> = {};
 
         // 1. Читаем все листы
         for (const sheetName of workbook.SheetNames) {
           if (collections.includes(sheetName)) {
             const worksheet = workbook.Sheets[sheetName];
-            importData[sheetName] = XLSX.utils.sheet_to_json(worksheet);
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+            
+            // Parse stringified JSON back to objects
+            importData[sheetName] = (jsonData as any[]).map(row => {
+              const processedRow = { ...row };
+              Object.keys(processedRow).forEach(key => {
+                const val = processedRow[key];
+                if (typeof val === 'string' && (val.startsWith('{') || val.startsWith('['))) {
+                  try {
+                    processedRow[key] = JSON.parse(val);
+                  } catch (e) {
+                    // Ignore parse errors, keep as string
+                  }
+                }
+              });
+              return processedRow;
+            });
           }
         }
         
@@ -256,6 +327,8 @@ const importFromExcel = async (
           accounts: importData.accounts || [],
           categories: importData.categories || [],
           goals: importData.goals || [],
+          plan_grids: importData.plan_grids || [],
+          profile: importData.profile || [],
           transactions: []
         });
 
