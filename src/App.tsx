@@ -466,7 +466,7 @@ export default function App() {
           />
         );
       case 'plan':
-        return <PlanPage accounts={accounts} categories={categories} onRefresh={refreshData} />;
+        return <PlanPage accounts={accounts} categories={categories} user={user} onRefresh={refreshData} />;
       case 'analytics':
         return (
           <Analytics 

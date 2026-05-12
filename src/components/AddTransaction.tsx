@@ -7,8 +7,7 @@ import { cn } from '../lib/utils';
 import AccountSelect from './AccountSelect';
 import CategorySelect from './CategorySelect';
 import Calculator from './Calculator';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import InteractiveMarkdown from './ui/InteractiveMarkdown';
 
 interface AddTransactionProps {
   accounts: Account[];
@@ -235,7 +234,7 @@ export default function AddTransaction({ accounts, transactions, categories, onC
               
               {showPreview ? (
                 <div className="flex-1 w-full bg-theme-main border border-theme-base rounded-2xl px-5 py-4 text-sm text-theme-main overflow-y-auto markdown-body prose-sm">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{description}</ReactMarkdown>
+                  <InteractiveMarkdown content={description} onUpdate={setDescription} />
                 </div>
               ) : (
                 <textarea

@@ -8,8 +8,10 @@ import {
   Account, 
   Category,
   PlanConfig,
-  CashbackCategory
+  CashbackCategory,
+  UserProfile
 } from '../types';
+import { io } from 'socket.io-client';
 import { 
   History, 
   Settings as SettingsIcon, 
@@ -34,8 +36,7 @@ import {
   Calculator as CalcIcon
 } from 'lucide-react';
 import { GenericContextMenu } from './ui/GenericContextMenu';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import InteractiveMarkdown from './ui/InteractiveMarkdown';
 import { cn } from '../lib/utils';
 import CashbackTab from './CashbackTab';
 import Calculator from './Calculator';
@@ -43,6 +44,7 @@ import Calculator from './Calculator';
 interface PlanPageProps {
   accounts: Account[];
   categories: Category[];
+  user: UserProfile | null;
   onRefresh?: () => void;
 }
 
@@ -104,10 +106,10 @@ const DEFAULT_CASHBACK_CATEGORIES: CashbackCategory[] = [
   { id: '35', name: 'Красота', color: '#4b0082' },
 ];
 
-export default function PlanPage({ accounts, categories, onRefresh }: PlanPageProps) {
+export default function PlanPage({ accounts, categories, user, onRefresh }: PlanPageProps) {
   const [activeTab, setActiveTab] = useState<TabType>('now');
   const [planData, setPlanData] = useState<PlanData | null>(null);
-  const [loadedTabs, setLoadedTabs] = useState<Set<TabType>>(new Set(['config']));
+  const [loadedTabs, setLoadedTabs] = useState<Set<TabType>>(new Set());
   const [editingCell, setEditingCell] = useState<{ rowId: string, subjectId: string } | null>(null);
   const [cellEditValue, setCellEditValue] = useState<PlanCell | null>(null);
   const [editingSubject, setEditingSubject] = useState<PlanSubject | null>(null);
@@ -223,6 +225,33 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
       loadData(activeTab);
     }
   }, [activeTab, loadedTabs]);
+
+  // Real-time sync via socket
+  useEffect(() => {
+    if (user) {
+      const socket = io(window.location.origin);
+      
+      socket.on('connect', () => {
+        socket.emit('join', user.id);
+      });
+
+      socket.on('data:updated', (data: any) => {
+        if (data.type === 'plan-grid') {
+          const updatedType = data.planType as TabType;
+          // Clear the tab from loadedTabs to force a re-fetch
+          setLoadedTabs(prev => {
+            const next = new Set(prev);
+            next.delete(updatedType);
+            return next;
+          });
+        }
+      });
+
+      return () => {
+        socket.disconnect();
+      };
+    }
+  }, [user]);
 
   const savePlanData = async (newData: PlanData, type: TabType) => {
     setPlanData(newData);
@@ -787,7 +816,10 @@ export default function PlanPage({ accounts, categories, onRefresh }: PlanPagePr
                 />
               ) : (
                 <div className="w-full h-full p-8 bg-white border border-neutral-100 rounded-[32px] overflow-auto markdown-body shadow-sm no-scrollbar">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{planData.comment}</ReactMarkdown>
+                  <InteractiveMarkdown 
+                    content={planData.comment} 
+                    onUpdate={(newContent) => savePlanData({ ...planData, comment: newContent }, 'comment')} 
+                  />
                 </div>
               )}
             </div>

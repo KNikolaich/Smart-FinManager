@@ -5,7 +5,7 @@ import { CoinStack } from './CustomIcons';
 import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
-import ReactMarkdown from 'react-markdown';
+import InteractiveMarkdown from './ui/InteractiveMarkdown';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import AccountManager from './AccountManager';
 import GoalManager from './GoalManager';
@@ -320,7 +320,10 @@ function SortableGoalCard({
 
         {goal.description && (
           <div className="mb-3 p-2 bg-theme-main rounded-xl text-[10px] text-theme-muted overflow-hidden line-clamp-2 markdown-body">
-            <ReactMarkdown>{goal.description}</ReactMarkdown>
+            <InteractiveMarkdown 
+              content={goal.description} 
+              onUpdate={(newDesc) => onSave(goal.id, { description: newDesc })} 
+            />
           </div>
         )}
 

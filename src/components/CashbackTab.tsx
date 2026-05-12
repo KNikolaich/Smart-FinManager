@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { PlanData, CashbackEntry, CashbackCategory, Account, CashbackMonth } from '../types';
-import { Pencil, Plus, Trash2, Check, X, Copy, Save } from 'lucide-react';
+import { Pencil, Plus, Trash2, Check, X, Copy, Save, Filter } from 'lucide-react';
 import { cn } from '../lib/utils';
 import CashbackCategoryManager from './CashbackCategoryManager';
 
@@ -16,6 +16,8 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showAssetSelector, setShowAssetSelector] = useState(false);
   const [monthToDelete, setMonthToDelete] = useState<string | null>(null);
+  const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
   const cashbackData = useMemo(() => {
     const data = planData.cashback || { categories: [], months: [] };
@@ -47,6 +49,8 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
       const found = cashbackData.months.find(m => m.id === currentId);
       setActiveMonthId(found ? found.id : cashbackData.months[0].id);
     }
+    // Reset filter when month changes
+    setFilterCategoryId(null);
   }, [cashbackData.months, activeMonthId]);
 
   const activeMonth = useMemo(() => {
@@ -59,12 +63,22 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
 
   const groupedEntries = useMemo(() => {
     if (!activeMonth) return {};
-    return activeMonth.entries.reduce((acc, entry) => {
+    let filteredEntries = activeMonth.entries;
+    if (filterCategoryId) {
+      filteredEntries = filteredEntries.filter(e => e.categoryId === filterCategoryId);
+    }
+    return filteredEntries.reduce((acc, entry) => {
       if (!acc[entry.assetId]) acc[entry.assetId] = [];
       acc[entry.assetId].push(entry);
       return acc;
     }, {} as Record<string, CashbackEntry[]>);
-  }, [activeMonth]);
+  }, [activeMonth, filterCategoryId]);
+
+  const categoriesInActiveMonth = useMemo(() => {
+    if (!activeMonth) return [];
+    const ids = new Set(activeMonth.entries.map(e => e.categoryId));
+    return cashbackData.categories.filter(c => ids.has(c.id));
+  }, [activeMonth, cashbackData.categories]);
 
   const isGreyTheme = document.body.classList.contains('theme-grey');
   const editorButtonClass = cn(
@@ -239,45 +253,132 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
             <Plus size={18} />
           </button>
         </div>
-        
-        {/* Toolbar */}
-        <div className="flex flex-col items-center p-2 gap-2 mt-auto border-t border-neutral-200 sticky bottom-0 bg-neutral-50">
-          {isEditorMode && (
-            <button
-              onClick={() => setShowCategoryManager(true)}
-              className="p-2 bg-neutral-100 text-neutral-500 rounded-xl hover:bg-neutral-200"
-              title="Управление категориями"
-            >
-              <Plus size={18} />
-            </button>
-          )}
-          <button
-            onClick={() => setIsEditorMode(!isEditorMode)}
-            className={editorButtonClass}
-            title={isEditorMode ? "Сохранить" : "Редактировать"}
-          >
-            {isEditorMode ? <Save size={18} /> : <Pencil size={18} />}
-          </button>
-        </div>
       </div>
 
       {/* Cashback Table Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Header with Copy Action */}
-        <div className="px-4 py-2 bg-white border-b border-neutral-100 flex items-center justify-between">
+        {/* Header with Actions */}
+        <div className="px-4 py-2 bg-white border-b border-neutral-100 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-bold text-neutral-900 capitalize">{activeMonth?.label}</h2>
-            <span className="text-[12px] font-mono text-neutral-400">{activeMonth?.id}</span>
           </div>
-          {isEditorMode && activeMonth && activeMonth.entries.length === 0 && (
-            <button 
-              onClick={handleCopyFromPrevious}
-              className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
+          
+          <div className="flex items-center gap-2">
+            {isEditorMode && activeMonth && activeMonth.entries.length === 0 && (
+              <button 
+                onClick={handleCopyFromPrevious}
+                className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
+                title="Скопировать с предыдущего"
+              >
+                <Copy size={12} />
+                <span className="hidden sm:inline">Скопировать с предыдущего</span>
+              </button>
+            )}
+
+            {/* Filter Section */}
+            <div className="relative">
+              <div className="flex items-center bg-neutral-100 rounded-lg overflow-hidden h-8">
+                <button 
+                  onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2 h-full text-[10px] font-bold transition-colors",
+                    filterCategoryId ? "text-purple-600 bg-purple-50" : "text-neutral-500 hover:bg-neutral-200"
+                  )}
+                >
+                  <Filter size={14} className={filterCategoryId ? "fill-purple-600" : ""} />
+                  <span className="hidden sm:inline">Фильтр</span>
+                  {filterCategoryId && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                  )}
+                </button>
+                {filterCategoryId && (
+                  <button 
+                    onClick={() => setFilterCategoryId(null)}
+                    className="p-1 px-1.5 h-full text-neutral-400 hover:text-neutral-600 hover:bg-neutral-200 transition-colors"
+                    title="Сбросить фильтр"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+
+              {showFilterDropdown && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowFilterDropdown(false)} />
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-neutral-100 p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="text-[10px] font-bold text-neutral-400 uppercase px-2 py-1 mb-1">Категории в этом месяце</div>
+                    <div className="max-h-60 overflow-y-auto no-scrollbar space-y-0.5">
+                      {categoriesInActiveMonth.length === 0 ? (
+                        <div className="px-2 py-3 text-center text-[10px] text-neutral-400 italic">Нет категорий</div>
+                      ) : (
+                        categoriesInActiveMonth.map(c => (
+                          <button
+                            key={c.id}
+                            onClick={() => {
+                              setFilterCategoryId(c.id);
+                              setShowFilterDropdown(false);
+                            }}
+                            className={cn(
+                              "w-full flex items-center gap-2 p-2 rounded-lg text-left text-xs font-medium transition-colors",
+                              filterCategoryId === c.id ? "bg-purple-50 text-purple-700" : "hover:bg-neutral-50 text-neutral-600"
+                            )}
+                          >
+                            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+                            <span className="truncate">{c.name}</span>
+                            {filterCategoryId === c.id && <Check size={12} className="ml-auto" />}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                    {filterCategoryId && (
+                      <button 
+                        onClick={() => {
+                          setFilterCategoryId(null);
+                          setShowFilterDropdown(false);
+                        }}
+                        className="w-full mt-1 p-2 text-center text-[10px] font-bold text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border-t border-neutral-100"
+                      >
+                        Сбросить
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {isEditorMode && (
+              <button
+                onClick={() => setShowCategoryManager(true)}
+                className="p-2 bg-neutral-100 text-neutral-500 rounded-lg hover:bg-neutral-200 h-8 flex items-center justify-center"
+                title="Управление категориями"
+              >
+                <Plus size={18} />
+              </button>
+            )}
+            
+            <button
+              onClick={() => setIsEditorMode(!isEditorMode)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 h-8 rounded-lg text-[10px] font-bold transition-all",
+                isEditorMode 
+                  ? (isGreyTheme ? "bg-neutral-600 text-white" : "bg-purple-500 text-white shadow-lg shadow-purple-100")
+                  : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+              )}
+              title={isEditorMode ? "Сохранить" : "Редактировать"}
             >
-              <Copy size={12} />
-              Скопировать с предыдущего
+              {isEditorMode ? (
+                <>
+                  <Save size={14} />
+                  <span className="hidden sm:inline">Сохранить</span>
+                </>
+              ) : (
+                <>
+                  <Pencil size={14} />
+                  <span className="hidden sm:inline">Редактировать</span>
+                </>
+              )}
             </button>
-          )}
+          </div>
         </div>
 
         {/* Table */}
