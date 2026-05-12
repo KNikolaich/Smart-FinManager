@@ -284,14 +284,31 @@ const importFromExcel = async (
         const collections = ['accounts', 'categories', 'transactions', 'goals', 'budgets', 'plan_grids', 'profile'];
         const importData: Record<string, any[]> = {};
 
-        // 1. Читаем все листы
+        // 1. Читаем листы
         for (const sheetName of workbook.SheetNames) {
+          let targetCollection = '';
+          
           if (collections.includes(sheetName)) {
+            targetCollection = sheetName;
+          } else if (workbook.SheetNames.length === 1) {
+            // If only one sheet (common for CSV), try to guess by headers
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            if (jsonData.length > 0) {
+              const headers = (jsonData[0] as string[]).map(h => String(h).toLowerCase());
+              if (headers.includes('data') && headers.includes('type')) targetCollection = 'plan_grids';
+              else if (headers.includes('amount') && (headers.includes('accountid') || headers.includes('account'))) targetCollection = 'transactions';
+              else if (headers.includes('balance') && headers.includes('currency')) targetCollection = 'accounts';
+              else if (headers.includes('color') && headers.includes('icon')) targetCollection = 'categories';
+            }
+          }
+
+          if (targetCollection) {
             const worksheet = workbook.Sheets[sheetName];
             const jsonData = XLSX.utils.sheet_to_json(worksheet);
             
             // Parse stringified JSON back to objects
-            importData[sheetName] = (jsonData as any[]).map(row => {
+            const processedRows = (jsonData as any[]).map(row => {
               const processedRow = { ...row };
               Object.keys(processedRow).forEach(key => {
                 const val = processedRow[key];
@@ -305,6 +322,9 @@ const importFromExcel = async (
               });
               return processedRow;
             });
+
+            if (!importData[targetCollection]) importData[targetCollection] = [];
+            importData[targetCollection].push(...processedRows);
           }
         }
         

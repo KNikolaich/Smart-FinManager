@@ -125,15 +125,20 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(400).json({ error: "Email and password are required" });
     }
     const normalizedEmail = email.toLowerCase().trim();
-    const user = await prisma.user.findFirst({ 
-      where: { 
-        email: {
-          equals: normalizedEmail,
-          mode: 'insensitive'
-        }
-      } 
+    console.log(`[Auth] Login attempt for: ${normalizedEmail}`);
+
+    const user = await prisma.user.findUnique({ 
+      where: { email: normalizedEmail } 
     });
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+
+    if (!user) {
+      console.warn(`[Auth] Login failed: User not found (${normalizedEmail})`);
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      console.warn(`[Auth] Login failed: Password mismatch for ${normalizedEmail}`);
       return res.status(401).json({ error: "Invalid credentials" });
     }
 

@@ -143,7 +143,7 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
               onClick={handleImportClick}
               className="w-full px-6 py-4 flex items-center gap-4 hover:bg-theme-main transition-colors border-b border-theme-base"
             >
-              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json,.xlsx,.xls,.csv" />
               <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center">
                 <FileUp className="w-5 h-5 text-indigo-500" />
               </div>
