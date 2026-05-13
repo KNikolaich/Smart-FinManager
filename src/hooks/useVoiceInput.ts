@@ -20,7 +20,7 @@ export const useVoiceInput = () => {
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
     recognition.lang = 'ru-RU';
-    recognition.continuous = true;
+    recognition.continuous = false;
     recognition.interimResults = true;
     transcriptRef.current = '';
     hasCalledResultRef.current = false;

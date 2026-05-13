@@ -6,7 +6,7 @@ import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from
 import { ru } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import InteractiveMarkdown from './ui/InteractiveMarkdown';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import AccountManager from './AccountManager';
 import GoalManager from './GoalManager';
 import { GenericContextMenu } from './ui/GenericContextMenu';
@@ -666,9 +666,9 @@ export default function Dashboard({
               })}
               className="bg-theme-surface rounded-2xl p-2 text-theme-main border border-theme-base shadow-soft cursor-pointer group relative overflow-hidden"
             >
-              <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-1 items-center">
-                {/* Left Side: Balance and Stats */}
-                <div>
+              <div className="relative z-10 flex flex-col sm:flex-row items-center gap-6">
+                {/* Left Side: Stats (Max Width 400px) */}
+                <div className="w-full sm:max-w-[400px] flex-shrink-0">
                   <div className="mb-0 grid grid-cols-2 gap-1 px-2">
                     <div className="pt-0 pb-0 pr-0 text-center">
                       <p className="text-theme-muted text-[10px] sm:text-xs font-bold uppercase tracking-wider">Общий баланс</p>
@@ -720,19 +720,40 @@ export default function Dashboard({
                 </div>
 
                 {/* Right Side: Dynamics Chart (Hidden on mobile) */}
-                <div className="hidden sm:block h-[100px] w-[100%] items-right">
-                  <ResponsiveContainer width="80%" height="80%">
-                    <BarChart data={balanceTrend}>
-                      <XAxis 
-                        dataKey="name" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 600 }} 
-                      />
-                      <YAxis hide />
-                      <Bar dataKey="balance" fill="var(--primary)" radius={[4, 4, 0, 0]} barSize={12} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="hidden sm:flex flex-1 items-center h-[100px] w-full min-w-0">
+                  <div className="flex-1 h-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={balanceTrend} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <XAxis
+                          dataKey="name"
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fontSize: 9, fill: 'var(--text-muted)' }}
+                        />
+                        <YAxis
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fontSize: 9, fill: 'var(--text-muted)' }}
+                          tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                          domain={['auto', 'auto']}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="balance" 
+                          stroke="var(--primary)" 
+                          strokeWidth={2}
+                          fillOpacity={1} 
+                          fill="url(#colorBalance)" 
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </div>
               

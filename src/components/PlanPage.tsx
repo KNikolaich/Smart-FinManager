@@ -117,7 +117,25 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
   const [showAddSubject, setShowAddSubject] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState('');
   const [isEditingComment, setIsEditingComment] = useState(false);
-  
+  const [localComment, setLocalComment] = useState('');
+
+  // Update local comment when planData changes initially
+  useEffect(() => {
+    if (planData?.comment !== undefined) {
+      setLocalComment(planData.comment);
+    }
+  }, [planData?.comment]);
+
+  // Debounced save
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (planData && localComment !== planData.comment) {
+        savePlanData({ ...planData, comment: localComment }, 'comment');
+      }
+    }, 500);
+
+    return () => clearTimeout(handler);
+  }, [localComment]);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, rowId: string | null }>({ x: 0, y: 0, rowId: null });
   const [rowEditor, setRowEditor] = useState<{ mode: 'addBefore' | 'addAfter' | null, rowId: string | null, label: string, type: 'month' | 'min' | 'year' | 'past' }>({ mode: null, rowId: null, label: '', type: 'month' });
   const [rowToDelete, setRowToDelete] = useState<string | null>(null);
@@ -680,7 +698,7 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
                       const before = text.substring(0, start);
                       const after = text.substring(end);
                       const selected = text.substring(start, end);
-                      savePlanData({ ...planData, comment: before + `**${selected}**` + after }, 'comment');
+                      setLocalComment(before + `**${selected}**` + after);
                     }}
                     className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                     title="Жирный"
@@ -696,7 +714,7 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
                       const before = text.substring(0, start);
                       const after = text.substring(end);
                       const selected = text.substring(start, end);
-                      savePlanData({ ...planData, comment: before + `*${selected}*` + after }, 'comment');
+                      setLocalComment(before + `*${selected}*` + after);
                     }}
                     className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                     title="Курсив"
@@ -712,7 +730,7 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
                       const before = text.substring(0, start);
                       const after = text.substring(end);
                       const selected = text.substring(start, end);
-                      savePlanData({ ...planData, comment: before + `~~${selected}~~` + after }, 'comment');
+                      setLocalComment(before + `~~${selected}~~` + after);
                     }}
                     className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                     title="Зачеркнутый"
@@ -728,7 +746,7 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
                       const before = text.substring(0, start);
                       const after = text.substring(end);
                       const selected = text.substring(start, end);
-                      savePlanData({ ...planData, comment: before + `\n# ${selected}` + after }, 'comment');
+                      setLocalComment(before + `\n# ${selected}` + after);
                     }}
                     className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                     title="Заголовок"
@@ -744,7 +762,7 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
                       const before = text.substring(0, start);
                       const after = text.substring(end);
                       const selected = text.substring(start, end);
-                      savePlanData({ ...planData, comment: before + `\n## ${selected}` + after }, 'comment');
+                      setLocalComment(before + `\n## ${selected}` + after);
                     }}
                     className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                     title="Заголок 2"
@@ -760,7 +778,7 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
                       const before = text.substring(0, start);
                       const after = text.substring(end);
                       const selected = text.substring(start, end);
-                      savePlanData({ ...planData, comment: before + `\n### ${selected}` + after }, 'comment');
+                      setLocalComment(before + `\n### ${selected}` + after);
                     }}
                     className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                     title="Заголок 3"
@@ -776,7 +794,7 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
                       const before = text.substring(0, start);
                       const after = text.substring(end);
                       const selected = text.substring(start, end);
-                      savePlanData({ ...planData, comment: before + `\n- [ ] ${selected}` + after }, 'comment');
+                      setLocalComment(before + `\n- [ ] ${selected}` + after);
                     }}
                     className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                     title="Список задач"
@@ -793,7 +811,7 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
                       const after = text.substring(end);
                       const selected = text.substring(start, end);
                       // PlainText - just inserted as is if wrapped, or maybe just inserted
-                      savePlanData({ ...planData, comment: before + selected + after }, 'comment');
+                      setLocalComment(before + selected + after);
                     }}
                     className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                     title="Обычный текст"
@@ -808,8 +826,8 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
               {isEditingComment ? (
                 <textarea 
                   id="comment-editor"
-                  value={planData.comment}
-                  onChange={(e) => savePlanData({ ...planData, comment: e.target.value }, 'comment')}
+                  value={localComment}
+                  onChange={(e) => setLocalComment(e.target.value)}
                   className="w-full h-full p-6 bg-neutral-50 border border-neutral-100 rounded-[32px] focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm resize-none shadow-inner no-scrollbar"
                   placeholder="Введите текст в формате Markdown..."
                   autoFocus
