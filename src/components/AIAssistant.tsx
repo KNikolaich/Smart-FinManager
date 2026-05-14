@@ -38,29 +38,53 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
   const chatEndRef = useRef<HTMLDivElement>(null);
   const { isRecording, startListening, stopListening } = useVoiceInput();
 
-  const capturePhoto = async () => {
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+  const [stream, setStream] = useState<MediaStream | null>(null);
+
+  const startStream = async (deviceId?: string) => {
+    if (stream) stream.getTracks().forEach(track => track.stop());
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
-      const video = document.createElement('video');
-      video.srcObject = stream;
-      video.play();
-      
-      // Wait for stream to be ready
-      await new Promise(resolve => video.onloadedmetadata = resolve);
-      
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d')?.drawImage(video, 0, 0);
-      const base64 = canvas.toDataURL('image/jpeg', 0.5); // Medium quality
-      setAttachments(prev => [...prev, base64]);
-      
-      stream.getTracks().forEach(track => track.stop());
-      video.remove();
-      canvas.remove();
+      const constraints = {
+        video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'user' }
+      };
+      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+      if (videoRef.current) videoRef.current.srcObject = newStream;
+      setStream(newStream);
     } catch (err) {
       console.error('Error accessing camera:', err);
       if (showToast) showToast('Не удалось получить доступ к камере', 'error');
+    }
+  };
+
+  useEffect(() => {
+    if (isCapturing) {
+      navigator.mediaDevices.enumerateDevices().then(devices => {
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        setCameraDevices(videoDevices);
+        if (videoDevices.length > 0) {
+          setSelectedDeviceId(videoDevices[0].deviceId);
+          startStream(videoDevices[0].deviceId);
+        }
+      });
+    } else {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        setStream(null);
+      }
+    }
+  }, [isCapturing]);
+
+  const capturePhoto = () => {
+    if (videoRef.current && stream) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0);
+      const base64 = canvas.toDataURL('image/jpeg', 0.5);
+      setAttachments(prev => [...prev, base64]);
+      setIsCapturing(false);
     }
   };
 
@@ -539,7 +563,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
               <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button
-              onClick={capturePhoto}
+              onClick={() => setIsCapturing(true)}
               className="w-8 h-8 sm:w-11 sm:h-11 bg-neutral-100 text-neutral-500 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-neutral-200 transition-all active:scale-95 shrink-0"
               title="Сделать фото"
             >
@@ -612,6 +636,22 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
           </div>
         )}
       </div>
+      {isCapturing && (
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col">
+          <div className="flex-1 relative">
+            <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+          </div>
+          <div className="p-4 bg-black flex items-center justify-between gap-4">
+            <button onClick={() => setIsCapturing(false)} className="text-white text-sm font-medium">Отмена</button>
+            <button onClick={capturePhoto} className="w-16 h-16 rounded-full bg-white border-4 border-neutral-300 hover:bg-neutral-100 transition-all active:scale-95" />
+            {cameraDevices.length > 1 ? (
+              <select onChange={(e) => startStream(e.target.value)} value={selectedDeviceId} className="bg-transparent text-white text-sm">
+                {cameraDevices.map(d => <option key={d.deviceId} value={d.deviceId} className="text-black">{d.label || 'Камера'}</option>)}
+              </select>
+            ) : <div className="w-12"></div>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
