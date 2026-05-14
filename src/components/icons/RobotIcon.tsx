@@ -5,13 +5,17 @@ import React from 'react';
 
 export const RobotIcon = ({ 
   className = "w-5 h-5", 
-  active = false 
+  active = false,
+  faceColor,
+  featureColor
 }: { 
   className?: string; 
   active?: boolean;
+  faceColor?: string;
+  featureColor?: string;
 }) => {
-  const faceFill = active ? "rgba(0, 0, 0, 0.2)" : "rgba(255, 255, 255, 0.95)";
-  const featureColor = active ? "white" : "currentColor";
+  const fColor = faceColor || "rgba(255, 255, 255, 0.95)";
+  const fFeatureColor = featureColor || "currentColor";
 
   return (
     <svg 
@@ -35,18 +39,18 @@ export const RobotIcon = ({
       <rect x="88" y="22" width="4" height="20" rx="2" fill="currentColor" opacity={active ? "0.8" : "1"} />
       
       {/* Face Area */}
-      <rect x="22" y="28" width="56" height="34" rx="17" fill={faceFill} />
+      <rect x="22" y="28" width="56" height="34" rx="17" fill={fColor} />
       
       {/* Smiling Eyes */}
       <path 
         d="M32 45C32 41 40 41 40 45" 
-        stroke={featureColor} 
+        stroke={fFeatureColor} 
         strokeWidth="6" 
         strokeLinecap="round" 
       />
       <path 
         d="M60 45C60 41 68 41 68 45" 
-        stroke={featureColor} 
+        stroke={fFeatureColor} 
         strokeWidth="6" 
         strokeLinecap="round" 
       />
@@ -54,7 +58,7 @@ export const RobotIcon = ({
       {/* Smile */}
       <path 
         d="M47 55C47 58 53 58 53 55" 
-        stroke={featureColor} 
+        stroke={fFeatureColor} 
         strokeWidth="4" 
         strokeLinecap="round" 
       />

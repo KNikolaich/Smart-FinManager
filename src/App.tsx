@@ -617,11 +617,11 @@ export default function App() {
               className={cn(
                 "w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all z-50",
                 activeTab === 'ai' 
-                  ? "bg-theme-primary text-theme-on-primary shadow-theme-primary-light" 
+                  ? "bg-theme-primary-light text-theme-primary shadow-theme-primary-light" 
                   : "bg-theme-surface border border-theme-base text-theme-primary shadow-soft"
               )}
             >
-              <RobotIcon className="w-11 h-11" active={activeTab === 'ai'} />
+              <RobotIcon className="w-11 h-11" active={activeTab === 'ai'}  />
             </motion.button>
           </div>
 
