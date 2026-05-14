@@ -393,24 +393,28 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
       // Auto-action logic
       if (savedMsg?.id) {
         if (result.intent === 'transaction') {
-          const success = await confirmAction(savedMsg.id, 'transaction', result.data, true);
-          if (success) {
-            // Update message to remove buttons
-            const currentContent = typeof assistantMessage.content === 'string' ? assistantMessage.content : JSON.stringify(assistantMessage.content);
-            await api.put(`/chat-history/${savedMsg.id}`, {
-              type: 'text',
-              content: currentContent + '\n\n✅ **Операция добавлена.**'
-            });
-            fetchHistory();
-          } else {
-            // Data incomplete - open form
-            if (onOpenAddTransaction) {
-              onOpenAddTransaction({
-                ...result.data,
-                createdAt: new Date().toISOString()
+          const isReceipt = currentAttachments.length > 0;
+          if (!isReceipt) {
+            const success = await confirmAction(savedMsg.id, 'transaction', result.data, true);
+            if (success) {
+              // Update message to remove buttons
+              const currentContent = typeof assistantMessage.content === 'string' ? assistantMessage.content : JSON.stringify(assistantMessage.content);
+              await api.put(`/chat-history/${savedMsg.id}`, {
+                type: 'text',
+                content: currentContent + '\n\n✅ **Операция добавлена.**'
               });
+              fetchHistory();
+            } else {
+              // Data incomplete - open form
+              if (onOpenAddTransaction) {
+                onOpenAddTransaction({
+                  ...result.data,
+                  createdAt: new Date().toISOString()
+                });
+              }
             }
           }
+          // If isReceipt is true, do nothing automatically; buttons are already present for manual confirmation
         } else if (result.intent === 'goal') {
           // Open goal manager form
           const success = await confirmAction(savedMsg.id, 'goal', result.data, true);
