@@ -71,7 +71,7 @@ app.use((req, res, next) => {
 });
 
 // Auth Middleware
-const authenticateToken = (req: any, res: any, next: any) => {
+const authenticateToken = async (req: any, res: any, next: any) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -80,14 +80,31 @@ const authenticateToken = (req: any, res: any, next: any) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
-    if (err) {
-      console.error(`[Auth] Token verification failed: ${err.message}`);
-      return res.status(403).json({ error: "Forbidden" });
+  try {
+    const decoded: any = jwt.verify(token, JWT_SECRET);
+    const user = await prisma.user.findUnique({ 
+      where: { id: decoded.userId } 
+    });
+
+    if (!user) {
+      console.warn(`[Auth] User not found during token verification: ${decoded.userId}`);
+      return res.status(401).json({ error: "User not found" });
     }
-    req.user = user;
+
+    req.user = { userId: user.id, email: user.email, role: user.role };
     next();
-  });
+  } catch (err: any) {
+    console.error(`[Auth] Token verification failed: ${err.message}`);
+    return res.status(403).json({ error: "Forbidden" });
+  }
+};
+
+const requireAdmin = (req: any, res: any, next: any) => {
+  if (req.user && req.user.role === 'admin') {
+    next();
+  } else {
+    res.status(403).json({ error: "Admin role required" });
+  }
 };
 
 // --- AUTH ROUTES ---
@@ -101,15 +118,21 @@ app.post("/api/auth/register", async (req, res) => {
     const normalizedEmail = email.toLowerCase().trim();
     const hashedPassword = await bcrypt.hash(password, 10);
     const encryptedPass = encrypt(password);
+
+    // Make the first user an admin
+    const userCount = await prisma.user.count();
+    const role = userCount === 0 ? 'admin' : 'user';
+
     const user = await prisma.user.create({
       data: { 
         email: normalizedEmail, 
         password: hashedPassword,
-        encryptedPassword: encryptedPass
+        encryptedPassword: encryptedPass,
+        role
       },
     });
-    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET);
-    res.json({ token, user: { id: user.id, email: user.email } });
+    const token = jwt.sign({ userId: user.id, email: user.email, role: user.role }, JWT_SECRET);
+    res.json({ token, user: { id: user.id, email: user.email, role: user.role } });
   } catch (error: any) {
     if (error.code === 'P2002') {
       return res.status(400).json({ error: "Email already exists" });
@@ -150,8 +173,8 @@ app.post("/api/auth/login", async (req, res) => {
       });
     }
 
-    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET);
-    res.json({ token, user: { id: user.id, email: user.email, settings: user.settings } });
+    const token = jwt.sign({ userId: user.id, email: user.email, role: user.role }, JWT_SECRET);
+    res.json({ token, user: { id: user.id, email: user.email, role: user.role, settings: user.settings } });
   } catch (error: any) {
     console.error("Login Error:", error);
     if (error.message.includes("could not write init file") || error.message.includes("Error querying the database")) {
@@ -213,7 +236,7 @@ app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
       console.error("Failed to take balance snapshot:", snapshotError);
     }
 
-    res.json({ id: user.id, email: user.email, displayName: user.displayName, photoURL: user.photoURL, settings: user.settings });
+    res.json({ id: user.id, email: user.email, displayName: user.displayName, photoURL: user.photoURL, role: user.role, settings: user.settings });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -226,7 +249,7 @@ app.put("/api/auth/me", authenticateToken, async (req: any, res) => {
       where: { id: req.user.userId },
       data: { displayName, photoURL },
     });
-    res.json({ id: user.id, email: user.email, displayName: user.displayName, photoURL: user.photoURL, settings: user.settings });
+    res.json({ id: user.id, email: user.email, displayName: user.displayName, photoURL: user.photoURL, role: user.role, settings: user.settings });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -307,6 +330,8 @@ app.post("/api/auth/forgot-password", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// --- ADMIN ROUTES REMOVED FROM HERE AND MOVED INTO startServer ---
 
 // --- DATA ROUTES ---
 
@@ -788,7 +813,7 @@ app.get("/api/currencies", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.post("/api/currencies", authenticateToken, async (req: any, res) => {
+app.post("/api/currencies", authenticateToken, requireAdmin, async (req: any, res) => {
   try {
     const currency = await prisma.currency.create({ data: req.body });
     res.json(currency);
@@ -797,7 +822,7 @@ app.post("/api/currencies", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.put("/api/currencies/:id", authenticateToken, async (req: any, res) => {
+app.put("/api/currencies/:id", authenticateToken, requireAdmin, async (req: any, res) => {
   try {
     const { id, ...data } = req.body;
     const currency = await prisma.currency.upsert({
@@ -812,7 +837,7 @@ app.put("/api/currencies/:id", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.delete("/api/currencies/:id", authenticateToken, async (req: any, res) => {
+app.delete("/api/currencies/:id", authenticateToken, requireAdmin, async (req: any, res) => {
   try {
     await prisma.currency.delete({ where: { id: req.params.id } });
     res.json({ success: true });
@@ -821,7 +846,7 @@ app.delete("/api/currencies/:id", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.post("/api/currencies/seed", authenticateToken, async (req: any, res) => {
+app.post("/api/currencies/seed", authenticateToken, requireAdmin, async (req: any, res) => {
   try {
     const count = await prisma.currency.count();
     if (count > 0) {
@@ -1480,6 +1505,105 @@ const notifyUser = (userId: string, event: string, data: any) => {
 };
 
 async function startServer() {
+  // Ensure at least one admin exists if users exist
+  try {
+    const adminExists = await prisma.user.findFirst({ where: { role: 'admin' } });
+    if (!adminExists) {
+      const firstUser = await prisma.user.findFirst({ orderBy: { createdAt: 'asc' } });
+      if (firstUser) {
+        await prisma.user.update({
+          where: { id: firstUser.id },
+          data: { role: 'admin' }
+        });
+        console.log(`[Admin] Elevated user ${firstUser.email} to admin (no admin found)`);
+      }
+    }
+  } catch (err) {
+    console.warn("[Admin] Failed to check/elevate admin status:", err);
+  }
+
+  // --- ADMIN ROUTES ---
+  app.get("/api/admin/users", authenticateToken, requireAdmin, async (req: any, res) => {
+    try {
+      const users = await prisma.user.findMany({
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          email: true,
+          displayName: true,
+          role: true,
+          createdAt: true,
+        }
+      });
+      res.json(users);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/admin/users/:id", authenticateToken, requireAdmin, async (req: any, res) => {
+    try {
+      await prisma.user.delete({
+        where: { id: req.params.id }
+      });
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/admin/users/:id/send-password", authenticateToken, requireAdmin, async (req: any, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ error: "Email is required" });
+
+      const targetUser = await prisma.user.findUnique({
+        where: { id: req.params.id },
+        select: { encryptedPassword: true, email: true, displayName: true }
+      });
+
+      if (!targetUser) return res.status(404).json({ error: "User not found" });
+
+      const decryptedPassword = decrypt(targetUser.encryptedPassword);
+
+      try {
+        await transporter.sendMail({
+          from: `"FinAssistant Admin" <${process.env.SMTP_USER}>`,
+          to: email,
+          subject: "Ваш пароль",
+          text: `Здравствуйте! По запросу администратора отправляем ваши учетные данные.\n\nПользователь: ${targetUser.displayName || targetUser.email}\nПароль: ${decryptedPassword}\n\nПожалуйста, смените пароль после входа в систему.`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+              <h2 style="color: #333;">Ваш пароль</h2>
+              <p>Здравствуйте!</p>
+              <p>По запросу администратора отправляем ваши учетные данные:</p>
+              <div style="background: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <p style="margin: 5px 0;"><strong>Пользователь:</strong> ${targetUser.displayName || targetUser.email}</p>
+                <p style="margin: 5px 0;"><strong>Пароль:</strong> <code style="font-size: 1.2em; color: #d32f2f;">${decryptedPassword}</code></p>
+              </div>
+              <p style="color: #666; font-size: 0.9em;">Пожалуйста, смените пароль в настройках профиля после входа в систему.</p>
+              <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+              <p style="color: #999; font-size: 0.8em; text-align: center;">Это автоматическое сообщение, отвечать на него не нужно.</p>
+            </div>
+          `
+        });
+        res.json({ success: true, message: "Password sent successfully" });
+      } catch (mailError: any) {
+        console.error("Mail delivery error (Admin):", mailError);
+        let errorMsg = "Ошибка при отправке письма.";
+        if (mailError.message.includes("Application-specific password required")) {
+          errorMsg = "Ошибка SMTP: Требуется пароль приложения. Пожалуйста, создайте App Password в настройках Google.";
+        } else if (mailError.message.includes("Invalid login")) {
+          errorMsg = "Ошибка SMTP: Неверный логин или пароль для почтового сервера.";
+        }
+        res.status(500).json({ error: errorMsg });
+      }
+    } catch (error: any) {
+      console.error("Send password error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Catch-all for API routes to avoid falling through to SPA fallback
   app.all("/api/*", (req, res) => {
     res.status(404).json({ error: `API endpoint not found: ${req.method} ${req.path}` });

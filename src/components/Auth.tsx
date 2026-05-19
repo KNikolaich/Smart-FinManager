@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { api } from '../lib/api';
 import { LogIn, UserPlus, Mail, Lock, AlertCircle } from 'lucide-react';
 import { UserProfile } from '../types';
@@ -14,6 +14,7 @@ export default function Auth({ onAuth }: AuthProps) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   const handleForgotPassword = async () => {
     if (!email) {
@@ -30,6 +31,13 @@ export default function Auth({ onAuth }: AuthProps) {
       setError(err.message || 'Ошибка при восстановлении пароля');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEmailKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      passwordRef.current?.focus();
     }
   };
 
@@ -119,6 +127,7 @@ export default function Auth({ onAuth }: AuthProps) {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={handleEmailKeyDown}
                 className="w-full bg-theme-main border border-theme-base rounded-2xl pl-12 pr-4 py-3.5 outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main"
                 placeholder="your@email.com"
               />
@@ -126,23 +135,13 @@ export default function Auth({ onAuth }: AuthProps) {
           </div>
 
           <div className="space-y-1">
-            <div className="flex items-center justify-between ml-1">
-              <label className="text-xs font-bold text-theme-muted uppercase tracking-wider">Пароль</label>
-              {isLogin && (
-                <button
-                  type="button"
-                  onClick={handleForgotPassword}
-                  className="text-[10px] font-bold text-theme-primary hover:underline"
-                >
-                  Забыли пароль?
-                </button>
-              )}
-            </div>
+            <label className="text-xs font-bold text-theme-muted uppercase tracking-wider ml-1">Пароль</label>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-theme-muted" />
               <input
                 type="password"
                 required
+                ref={passwordRef}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-theme-main border border-theme-base rounded-2xl pl-12 pr-4 py-3.5 outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main"
@@ -160,13 +159,23 @@ export default function Auth({ onAuth }: AuthProps) {
           </button>
         </form>
 
-        <div className="mt-8 text-center">
+        <div className="mt-8 text-center space-y-3">
           <button
             onClick={() => setIsLogin(!isLogin)}
-            className="text-theme-muted text-sm hover:text-theme-primary transition-colors font-medium"
+            className="text-theme-muted text-sm hover:text-theme-primary transition-colors font-medium block w-full"
           >
             {isLogin ? 'Нет аккаунта? Зарегистрируйтесь' : 'Уже есть аккаунт? Войдите'}
           </button>
+          
+          {isLogin && (
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="text-[10px] font-bold text-theme-primary hover:underline"
+            >
+              Забыли пароль?
+            </button>
+          )}
         </div>
       </div>
     </div>

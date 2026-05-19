@@ -6,6 +6,7 @@ import CategoryManager from './CategoryManager';
 import AccountManager from './AccountManager';
 import BalanceManager from './BalanceManager';
 import { CurrencyTable } from './CurrencyTable';
+import { UserManager } from './UserManager';
 import { useDataManagement } from '../hooks/useDataManagement';
 import { APP_VERSION } from '../version';
 
@@ -28,13 +29,15 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
   const [showAccountManager, setShowAccountManager] = useState(false);
   const [showCurrencyTable, setShowCurrencyTable] = useState(false);
   const [showBalanceManager, setShowBalanceManager] = useState(false);
+  const [showUserManager, setShowUserManager] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('theme') || 'theme-light-blue');
+  const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('theme') || 'theme-nordic');
 
   const themes = [
     { type: 'Светлые', items: [
-      { id: 'theme-light-blue', palette: ['bg-blue-200', 'bg-blue-300', 'bg-blue-400', 'bg-blue-500', 'bg-blue-600'], name: 'Лазурь' },
+      { id: 'theme-bw', palette: ['bg-white', 'bg-neutral-200', 'bg-neutral-400', 'bg-neutral-900', 'bg-black'], name: 'ЧБ' },
       { id: 'theme-nordic', palette: ['bg-sky-100', 'bg-sky-200', 'bg-sky-300', 'bg-sky-400', 'bg-sky-500'], name: 'Нордик' },
+      { id: 'theme-light-blue', palette: ['bg-blue-200', 'bg-blue-300', 'bg-blue-400', 'bg-blue-500', 'bg-blue-600'], name: 'Лазурь' },
       { id: 'theme-light-orange', palette: ['bg-orange-100', 'bg-orange-200', 'bg-orange-300', 'bg-orange-400', 'bg-orange-500'], name: 'Пустыня' },
       { id: 'theme-light-ruby', palette: ['bg-rose-200', 'bg-rose-300', 'bg-rose-400', 'bg-rose-500', 'bg-rose-600'], name: 'Рубин' },
       { id: 'theme-light-violet', palette: ['bg-violet-200', 'bg-violet-300', 'bg-violet-400', 'bg-violet-500', 'bg-violet-600'], name: 'Фиалка' },
@@ -88,6 +91,9 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
         )}
         {showCurrencyTable && (
           <CurrencyTable onClose={() => setShowCurrencyTable(false)} />
+        )}
+        {showUserManager && (
+          <UserManager onClose={() => setShowUserManager(false)} />
         )}
         
         {showLogModal && (
@@ -194,6 +200,21 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
                 <p className="text-xs text-neutral-400">Справочник доступных валют</p>
               </div>
             </button>
+
+            {user.role === 'admin' && (
+              <button 
+                onClick={() => setShowUserManager(true)}
+                className="w-full px-6 py-2 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
+              >
+                <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center">
+                  <UserIcon className="w-5 h-5 text-rose-600" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-sm">Пользователи</p>
+                  <p className="text-xs text-neutral-400">Управление всеми пользователями системы</p>
+                </div>
+              </button>
+            )}
 
             <button 
               onClick={onShowLogs}

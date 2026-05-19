@@ -27,9 +27,13 @@ const handleAuthError = async (res: Response, endpoint: string) => {
       }
     }
     
-    // For other endpoints, it's a real session expiration
-    localStorage.removeItem('token');
-    throw new Error('Session expired. Please log in again.');
+    // For 401, it's a real session expiration
+    if (res.status === 401) {
+      localStorage.removeItem('token');
+      throw new Error('Session expired. Please log in again.');
+    }
+
+    // For 403, we just let it fall through to handleResponse which will throw the actual 403 error
   }
 };
 

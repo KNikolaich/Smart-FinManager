@@ -252,7 +252,7 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') || 'theme-light-green';
+    const savedTheme = localStorage.getItem('theme') || 'theme-nordic';
     document.body.classList.add(savedTheme);
   }, []);
 

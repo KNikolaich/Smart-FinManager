@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { currencyService } from '../services/currencyService';
-import { Currency } from '../types';
+import { Currency, UserProfile } from '../types';
 import { Plus, Trash2, X, Check, AlertTriangle } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const [currencies, setCurrencies] = useState<Currency[]>([]);
@@ -11,6 +12,7 @@ export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) =
   const [editingCurrency, setEditingCurrency] = useState<Currency | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [updatingRates, setUpdatingRates] = useState(false);
+  const [user, setUser] = useState<UserProfile | null>(null);
 
   const fetchCurrencies = async () => {
     try {
@@ -24,9 +26,22 @@ export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) =
   };
 
   useEffect(() => {
-    currencyService.seedDefaultCurrencies();
+    const fetchUserAndSeed = async () => {
+      try {
+        const userData = await api.get<UserProfile>('/auth/me');
+        setUser(userData);
+        if (userData.role === 'admin') {
+          await currencyService.seedDefaultCurrencies();
+        }
+      } catch (err) {
+        console.error('Error fetching user for role check or seeding:', err);
+      }
+    };
+    fetchUserAndSeed();
     fetchCurrencies();
   }, []);
+
+  const isAdmin = user?.role === 'admin';
 
   const handleUpdateRates = async () => {
     setUpdatingRates(true);
@@ -72,23 +87,27 @@ export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) =
         <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
           <h3 className="text-sm font-black uppercase tracking-widest text-theme-main">Справочник валют</h3>
           <div className="flex items-center gap-2 relative z-20">
-            <button 
-              onClick={handleUpdateRates}
-              disabled={updatingRates}
-              className="px-3 py-1 bg-theme-surface border border-neutral-100 text-theme-muted hover:text-theme-main rounded-lg font-black uppercase tracking-widest text-[8px] transition-all disabled:opacity-50"
-            >
-              {updatingRates ? '...' : 'Обновить'}
-            </button>
-            <button 
-              onClick={() => {
-                setEditingCurrency(null);
-                setShowFormModal(true);
-              }}
-              className="w-10 h-10 bg-theme-primary text-theme-on-primary rounded-lg flex items-center justify-center shadow-lg shadow-theme-primary/40 hover:scale-105 active:scale-95 transition-all group"
-              title="Добавить валюту"
-            >
-              <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" strokeWidth={3} />
-            </button>
+            {isAdmin && (
+              <>
+                <button 
+                  onClick={handleUpdateRates}
+                  disabled={updatingRates}
+                  className="px-3 py-1 bg-theme-surface border border-neutral-100 text-theme-muted hover:text-theme-main rounded-lg font-black uppercase tracking-widest text-[8px] transition-all disabled:opacity-50"
+                >
+                  {updatingRates ? '...' : 'Обновить'}
+                </button>
+                <button 
+                  onClick={() => {
+                    setEditingCurrency(null);
+                    setShowFormModal(true);
+                  }}
+                  className="w-10 h-10 bg-theme-primary text-theme-on-primary rounded-lg flex items-center justify-center shadow-lg shadow-theme-primary/40 hover:scale-105 active:scale-95 transition-all group"
+                  title="Добавить валюту"
+                >
+                  <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" strokeWidth={3} />
+                </button>
+              </>
+            )}
             {onClose && (
               <button 
                 onClick={onClose} 
@@ -115,8 +134,16 @@ export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) =
                 {currencies.map((cur) => (
                   <tr 
                     key={cur.id} 
-                    className="hover:bg-theme-surface/30 transition-colors cursor-pointer group"
-                    onClick={() => { setEditingCurrency(cur); setShowFormModal(true); }}
+                    className={cn(
+                      "transition-colors tabular-nums",
+                      isAdmin ? "hover:bg-theme-surface/30 cursor-pointer" : ""
+                    )}
+                    onClick={() => { 
+                      if (isAdmin) {
+                        setEditingCurrency(cur); 
+                        setShowFormModal(true);
+                      }
+                    }}
                   >
                     <td className="px-6 py-4 border-r border-neutral-50/50 font-bold text-sm text-theme-main">{cur.name}</td>
                     <td className="px-4 py-4 border-r border-neutral-50/50 font-mono text-xs text-theme-muted">{cur.iso}</td>
