@@ -556,13 +556,6 @@ export default function App() {
     <div className="h-[100dvh] bg-theme-main flex flex-col landscape:flex-row-reverse overflow-hidden">
       {/* Header - Hidden in landscape to save space, or transformed */}
       <header className="relative px-6 h-16 md:h-20 flex items-center justify-between bg-theme-surface/80 backdrop-blur-md border-b border-theme-base shrink-0 z-50 sticky top-0 transition-all landscape:hidden">
-        {!isOnline && (
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none z-10">
-            <span className="text-[10px] text-theme-muted font-bold uppercase tracking-widest mt-0.5">
-              Оффлайн режим
-            </span>
-          </div>
-        )}
         <div 
           className="flex items-center gap-4 cursor-pointer group"
           onClick={() => {
@@ -588,6 +581,11 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {!isOnline && (
+            <span className="text-[10px] text-theme-muted font-bold uppercase tracking-widest mr-2 select-none animate-pulse">
+              Оффлайн
+            </span>
+          )}
           <motion.button 
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}

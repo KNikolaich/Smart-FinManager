@@ -339,7 +339,46 @@ export const api = {
 
   async post<T>(endpoint: string, data: any): Promise<T> {
     const isOffline = !navigator.onLine;
-    const isAuth = endpoint.includes('/auth/login') || endpoint.includes('/auth/register') || endpoint.includes('/auth/verify-password');
+
+    if (isOffline) {
+      if (endpoint === '/auth/login') {
+        const savedUserRaw = localStorage.getItem('last_logged_in_user');
+        if (savedUserRaw) {
+          try {
+            const savedUser = JSON.parse(savedUserRaw);
+            if (data && data.email && savedUser.email && typeof data.email === 'string' && data.email.toLowerCase().trim() === savedUser.email.toLowerCase().trim()) {
+              return {
+                token: localStorage.getItem('token') || 'offline-token-placeholder',
+                user: savedUser
+              } as any as T;
+            } else {
+              throw new Error(`В оффлайн-режиме можно войти только в последний активный аккаунт: ${savedUser.email}`);
+            }
+          } catch (e: any) {
+            if (e.message && e.message.includes('последний активный аккаунт')) {
+              throw e;
+            }
+            throw new Error('Данный пользователь не был авторизован ранее на этом устройстве.');
+          }
+        } else {
+          throw new Error('Оффлайн-режим. На устройстве нет сохраненного аккаунта. Пожалуйста, подключитесь к сети.');
+        }
+      }
+
+      if (endpoint === '/auth/register') {
+        throw new Error('Регистрация нового аккаунта недоступна в оффлайн-режиме. Пожалуйста, подключитесь к сети.');
+      }
+
+      if (endpoint === '/auth/forgot-password') {
+        throw new Error('Восстановление пароля недоступно в оффлайн-режиме. Пожалуйста, подключитесь к сети.');
+      }
+
+      if (endpoint === '/auth/verify-password') {
+        throw new Error('Подтверждение пароля недоступно в оффлайн-режиме.');
+      }
+    }
+
+    const isAuth = endpoint.includes('/auth/login') || endpoint.includes('/auth/register') || endpoint.includes('/auth/verify-password') || endpoint.includes('/auth/forgot-password');
 
     if (isOffline && !isAuth) {
       const queueItem = {
@@ -370,21 +409,59 @@ export const api = {
       return result;
     } catch (error: any) {
       const isNetworkError = !navigator.onLine || error.message === 'Failed to fetch' || error.status === 0 || error.message?.includes('NetworkError');
-      if (isNetworkError && !isAuth) {
-        const queueItem = {
-          id: Math.random().toString(36).substring(2, 9),
-          method: 'POST',
-          endpoint,
-          data,
-          timestamp: Date.now()
-        };
-        const queue = JSON.parse(localStorage.getItem('api_offline_queue') || '[]');
-        queue.push(queueItem);
-        localStorage.setItem('api_offline_queue', JSON.stringify(queue));
+      if (isNetworkError) {
+        if (endpoint === '/auth/login') {
+          const savedUserRaw = localStorage.getItem('last_logged_in_user');
+          if (savedUserRaw) {
+            try {
+              const savedUser = JSON.parse(savedUserRaw);
+              if (data && data.email && savedUser.email && typeof data.email === 'string' && data.email.toLowerCase().trim() === savedUser.email.toLowerCase().trim()) {
+                return {
+                  token: localStorage.getItem('token') || 'offline-token-placeholder',
+                  user: savedUser
+                } as any as T;
+              } else {
+                throw new Error(`В оффлайн-режиме можно войти только в последний активный аккаунт: ${savedUser.email}`);
+              }
+            } catch (e: any) {
+              if (e.message && e.message.includes('последний активный аккаунт')) {
+                throw e;
+              }
+              throw new Error('Данный пользователь не был авторизован ранее на этом устройстве.');
+            }
+          } else {
+            throw new Error('Оффлайн-режим. На устройстве нет сохраненного аккаунта. Пожалуйста, подключитесь к сети.');
+          }
+        }
 
-        applyMutationToCache('POST', endpoint, data);
-        const mockResponse: any = { id: 'offline_' + Math.random().toString(36).substring(2, 9), ...data };
-        return mockResponse as T;
+        if (endpoint === '/auth/register') {
+          throw new Error('Регистрация нового аккаунта недоступна в оффлайн-режиме. Пожалуйста, подключитесь к сети.');
+        }
+
+        if (endpoint === '/auth/forgot-password') {
+          throw new Error('Восстановление пароля недоступно в оффлайн-режиме. Пожалуйста, подключитесь к сети.');
+        }
+
+        if (endpoint === '/auth/verify-password') {
+          throw new Error('Подтверждение пароля недоступно в оффлайн-режиме.');
+        }
+
+        if (!isAuth) {
+          const queueItem = {
+            id: Math.random().toString(36).substring(2, 9),
+            method: 'POST',
+            endpoint,
+            data,
+            timestamp: Date.now()
+          };
+          const queue = JSON.parse(localStorage.getItem('api_offline_queue') || '[]');
+          queue.push(queueItem);
+          localStorage.setItem('api_offline_queue', JSON.stringify(queue));
+
+          applyMutationToCache('POST', endpoint, data);
+          const mockResponse: any = { id: 'offline_' + Math.random().toString(36).substring(2, 9), ...data };
+          return mockResponse as T;
+        }
       }
       throw error;
     }
