@@ -50,6 +50,7 @@ export default function Auth({ onAuth }: AuthProps) {
       const endpoint = isLogin ? '/auth/login' : '/auth/register';
       const data = await api.post<{ token: string; user: UserProfile }>(endpoint, { email, password });
       localStorage.setItem('token', data.token);
+      localStorage.setItem('last_logged_in_user', JSON.stringify(data.user));
       onAuth(data.user);
     } catch (err: any) {
       console.error('Auth error:', err);

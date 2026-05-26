@@ -15,7 +15,7 @@ import {
   Wallet,
   Loader2
 } from 'lucide-react';
-import { api } from './lib/api';
+import { api, syncOfflineQueue } from './lib/api';
 import { processUserMessage } from './services/aiService';
 import { Account, Transaction, Goal, Category, Plan, Currency, BalanceHistory, UserProfile } from './types';
 
@@ -78,15 +78,6 @@ export default function App() {
   const socketRef = useRef<any>(null);
   const { isRecording, startListening, stopListening } = useVoiceInput();
   
-  useNetworkStatus((status) => {
-    if (status === 'offline') {
-      addToast('Вы перешли в оффлайн режим', 'error');
-    } else {
-      addToast('Соединение восстановлено', 'success');
-      refreshData();
-    }
-  });
-
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -251,6 +242,32 @@ export default function App() {
     }
   }, [user]);
 
+  const isOnline = useNetworkStatus(useCallback((status) => {
+    if (status === 'offline') {
+      addToast('Вы перешли в оффлайн режим', 'error');
+    } else {
+      addToast('Соединение восстановлено', 'success');
+      syncOfflineQueue().then((synced) => {
+        if (synced) {
+          addToast('Синхронизация данных завершена успешно', 'success');
+        }
+        refreshData();
+      });
+    }
+  }, [addToast, refreshData]));
+
+  // Auto-sync on startup if online
+  useEffect(() => {
+    if (user && navigator.onLine) {
+      syncOfflineQueue().then((synced) => {
+        if (synced) {
+          addToast('Синхронизация данных завершена успешно', 'success');
+          refreshData();
+        }
+      });
+    }
+  }, [user, addToast, refreshData]);
+
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'theme-nordic';
     document.body.classList.add(savedTheme);
@@ -271,16 +288,35 @@ export default function App() {
         try {
           const userData = await api.get<UserProfile>('/auth/me');
           setUser(userData);
-        } catch (error) {
+          localStorage.setItem('last_logged_in_user', JSON.stringify(userData));
+        } catch (error: any) {
           console.error('Auth check error:', error);
-          localStorage.removeItem('token');
-          setUser(null);
+          const isNetworkError = !navigator.onLine || error.message === 'Failed to fetch' || error.status === 0 || error.message?.includes('NetworkError');
+          if (isNetworkError) {
+            const savedUser = localStorage.getItem('last_logged_in_user');
+            if (savedUser) {
+              try {
+                const parsedUser = JSON.parse(savedUser);
+                setUser(parsedUser);
+                addToast('Оффлайн-режим: выполнен вход в последний рабочий аккаунт', 'info');
+              } catch (e) {
+                localStorage.removeItem('token');
+                setUser(null);
+              }
+            } else {
+              localStorage.removeItem('token');
+              setUser(null);
+            }
+          } else {
+            localStorage.removeItem('token');
+            setUser(null);
+          }
         }
       }
       setLoading(false);
     };
     checkAuth();
-  }, []);
+  }, [addToast]);
 
   useEffect(() => {
     if (user) {
@@ -519,7 +555,14 @@ export default function App() {
   return (
     <div className="h-[100dvh] bg-theme-main flex flex-col landscape:flex-row-reverse overflow-hidden">
       {/* Header - Hidden in landscape to save space, or transformed */}
-      <header className="px-6 h-16 md:h-20 flex items-center justify-between bg-theme-surface/80 backdrop-blur-md border-b border-theme-base shrink-0 z-50 sticky top-0 transition-all landscape:hidden">
+      <header className="relative px-6 h-16 md:h-20 flex items-center justify-between bg-theme-surface/80 backdrop-blur-md border-b border-theme-base shrink-0 z-50 sticky top-0 transition-all landscape:hidden">
+        {!isOnline && (
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none z-10">
+            <span className="text-[10px] text-theme-muted font-bold uppercase tracking-widest mt-0.5">
+              Оффлайн режим
+            </span>
+          </div>
+        )}
         <div 
           className="flex items-center gap-4 cursor-pointer group"
           onClick={() => {

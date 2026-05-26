@@ -10,7 +10,6 @@ const getHeaders = () => {
 
 const handleAuthError = async (res: Response, endpoint: string) => {
   if (res.status === 401 || res.status === 403) {
-    // If we're on login or register, it's just a normal error (invalid credentials)
     if (endpoint.includes('/auth/login') || endpoint.includes('/auth/register')) {
       const text = await res.text();
       try {
@@ -27,13 +26,10 @@ const handleAuthError = async (res: Response, endpoint: string) => {
       }
     }
     
-    // For 401, it's a real session expiration
     if (res.status === 401) {
       localStorage.removeItem('token');
       throw new Error('Session expired. Please log in again.');
     }
-
-    // For 403, we just let it fall through to handleResponse which will throw the actual 403 error
   }
 };
 
@@ -64,13 +60,218 @@ const handleResponse = async (res: Response) => {
   return text as any;
 };
 
+// Modifies local caches when offline to keep the UI immediately up-to-date
+function applyMutationToCache(method: string, endpoint: string, data: any) {
+  try {
+    if (endpoint.startsWith('/plan-grid/')) {
+      const type = endpoint.replace('/plan-grid/', '');
+      localStorage.setItem(`api_cache_/plan-grid/${type}`, JSON.stringify(data));
+      return;
+    }
+
+    const cacheKey = 'api_cache_/initial-data';
+    const rawCache = localStorage.getItem(cacheKey);
+    if (!rawCache) return;
+
+    let cache: any = null;
+    try {
+      cache = JSON.parse(rawCache);
+    } catch (e) {
+      console.error('Failed to parse cache /initial-data:', e);
+      return;
+    }
+
+    if (endpoint === '/transactions') {
+      if (method === 'POST') {
+        const tr = {
+          id: data.id || 'offline_tr_' + Math.random().toString(36).substring(2, 9),
+          amount: Number(data.amount),
+          description: data.description || '',
+          accountId: data.accountId,
+          targetAccountId: data.targetAccountId || null,
+          categoryId: data.categoryId || null,
+          createdAt: data.createdAt || new Date().toISOString(),
+          type: data.type,
+        };
+        if (!cache.transactions) cache.transactions = [];
+        cache.transactions.unshift(tr);
+
+        // Adjust balance
+        if (cache.accounts) {
+          const amount = Number(data.amount);
+          if (data.type === 'income') {
+            const acc = cache.accounts.find((a: any) => a.id === data.accountId);
+            if (acc) acc.balance = Number(acc.balance) + amount;
+          } else if (data.type === 'expense') {
+            const acc = cache.accounts.find((a: any) => a.id === data.accountId);
+            if (acc) acc.balance = Number(acc.balance) - amount;
+          } else if (data.type === 'transfer') {
+            const srcAcc = cache.accounts.find((a: any) => a.id === data.accountId);
+            if (srcAcc) srcAcc.balance = Number(srcAcc.balance) - amount;
+            const dstAcc = cache.accounts.find((a: any) => a.id === data.targetAccountId);
+            if (dstAcc) dstAcc.balance = Number(dstAcc.balance) + amount;
+          }
+        }
+      }
+    } else if (endpoint.startsWith('/transactions/')) {
+      const id = endpoint.split('/').pop();
+      if (method === 'PUT') {
+        const index = cache.transactions?.findIndex((t: any) => t.id === id);
+        if (index !== -1 && index !== undefined) {
+          const oldTr = cache.transactions[index];
+          const newTr = { ...oldTr, ...data };
+          cache.transactions[index] = newTr;
+
+          if (cache.accounts) {
+            // Revert old transaction balances
+            const oldAmount = Number(oldTr.amount);
+            if (oldTr.type === 'income') {
+              const acc = cache.accounts.find((a: any) => a.id === oldTr.accountId);
+              if (acc) acc.balance = Number(acc.balance) - oldAmount;
+            } else if (oldTr.type === 'expense') {
+              const acc = cache.accounts.find((a: any) => a.id === oldTr.accountId);
+              if (acc) acc.balance = Number(acc.balance) + oldAmount;
+            } else if (oldTr.type === 'transfer') {
+              const srcAcc = cache.accounts.find((a: any) => a.id === oldTr.accountId);
+              if (srcAcc) srcAcc.balance = Number(srcAcc.balance) + oldAmount;
+              const dstAcc = cache.accounts.find((a: any) => a.id === oldTr.targetAccountId);
+              if (dstAcc) dstAcc.balance = Number(dstAcc.balance) - oldAmount;
+            }
+
+            // Apply new transaction balances
+            const newAmount = Number(newTr.amount);
+            if (newTr.type === 'income') {
+              const acc = cache.accounts.find((a: any) => a.id === newTr.accountId);
+              if (acc) acc.balance = Number(acc.balance) + newAmount;
+            } else if (newTr.type === 'expense') {
+              const acc = cache.accounts.find((a: any) => a.id === newTr.accountId);
+              if (acc) acc.balance = Number(acc.balance) - newAmount;
+            } else if (newTr.type === 'transfer') {
+              const srcAcc = cache.accounts.find((a: any) => a.id === newTr.accountId);
+              if (srcAcc) srcAcc.balance = Number(srcAcc.balance) - newAmount;
+              const dstAcc = cache.accounts.find((a: any) => a.id === newTr.targetAccountId);
+              if (dstAcc) dstAcc.balance = Number(dstAcc.balance) + newAmount;
+            }
+          }
+        }
+      } else if (method === 'DELETE') {
+        const index = cache.transactions?.findIndex((t: any) => t.id === id);
+        if (index !== -1 && index !== undefined) {
+          const oldTr = cache.transactions[index];
+          cache.transactions.splice(index, 1);
+
+          if (cache.accounts) {
+            const oldAmount = Number(oldTr.amount);
+            if (oldTr.type === 'income') {
+              const acc = cache.accounts.find((a: any) => a.id === oldTr.accountId);
+              if (acc) acc.balance = Number(acc.balance) - oldAmount;
+            } else if (oldTr.type === 'expense') {
+              const acc = cache.accounts.find((a: any) => a.id === oldTr.accountId);
+              if (acc) acc.balance = Number(acc.balance) + oldAmount;
+            } else if (oldTr.type === 'transfer') {
+              const srcAcc = cache.accounts.find((a: any) => a.id === oldTr.accountId);
+              if (srcAcc) srcAcc.balance = Number(srcAcc.balance) + oldAmount;
+              const dstAcc = cache.accounts.find((a: any) => a.id === oldTr.targetAccountId);
+              if (dstAcc) dstAcc.balance = Number(dstAcc.balance) - oldAmount;
+            }
+          }
+        }
+      }
+    } else if (endpoint === '/accounts') {
+      if (method === 'POST') {
+        const acc = {
+          id: data.id || 'offline_acc_' + Math.random().toString(36).substring(2, 9),
+          name: data.name,
+          balance: Number(data.balance || 0),
+          currencyId: data.currencyId,
+          color: data.color || '#3b82f6',
+          icon: data.icon || 'Wallet',
+          isActive: data.isActive !== undefined ? data.isActive : true,
+        };
+        if (!cache.accounts) cache.accounts = [];
+        cache.accounts.push(acc);
+      }
+    } else if (endpoint.startsWith('/accounts/')) {
+      const id = endpoint.split('/').pop();
+      if (method === 'PUT') {
+        const acc = cache.accounts?.find((a: any) => a.id === id);
+        if (acc) Object.assign(acc, data);
+      } else if (method === 'DELETE') {
+        cache.accounts = cache.accounts?.filter((a: any) => a.id !== id);
+      }
+    } else if (endpoint === '/categories') {
+      if (method === 'POST') {
+        const cat = {
+          id: data.id || 'offline_cat_' + Math.random().toString(36).substring(2, 9),
+          name: data.name,
+          type: data.type,
+          color: data.color,
+          icon: data.icon,
+          parentId: data.parentId || null,
+          limit: data.limit !== undefined ? Number(data.limit) : null,
+        };
+        if (!cache.categories) cache.categories = [];
+        cache.categories.push(cat);
+      }
+    } else if (endpoint.startsWith('/categories/')) {
+      const id = endpoint.split('/').pop();
+      if (method === 'PUT') {
+        const cat = cache.categories?.find((c: any) => c.id === id);
+        if (cat) Object.assign(cat, data);
+      } else if (method === 'DELETE') {
+        cache.categories = cache.categories?.filter((c: any) => c.id !== id);
+      }
+    } else if (endpoint === '/goals') {
+      if (method === 'POST') {
+        const goal = {
+          id: data.id || 'offline_goal_' + Math.random().toString(36).substring(2, 9),
+          name: data.name,
+          targetAmount: Number(data.targetAmount),
+          currentAmount: Number(data.currentAmount || 0),
+          deadline: data.deadline || null,
+          color: data.color || '#3b82f6',
+          icon: data.icon || 'Target',
+          sortOrder: data.sortOrder || 0,
+        };
+        if (!cache.goals) cache.goals = [];
+        cache.goals.push(goal);
+      }
+    } else if (endpoint.startsWith('/goals/')) {
+      const id = endpoint.split('/').pop();
+      if (method === 'PUT') {
+        const goal = cache.goals?.find((g: any) => g.id === id);
+        if (goal) Object.assign(goal, data);
+      } else if (method === 'DELETE') {
+        cache.goals = cache.goals?.filter((g: any) => g.id !== id);
+      }
+    } else if (endpoint === '/balance-history') {
+      if (method === 'POST') {
+        const bh = {
+          id: data.id || 'offline_bh_' + Math.random().toString(36).substring(2, 9),
+          ...data,
+        };
+        if (!cache.balanceHistory) cache.balanceHistory = [];
+        cache.balanceHistory.push(bh);
+      }
+    } else if (endpoint.startsWith('/balance-history/')) {
+      const id = endpoint.split('/').pop();
+      if (method === 'PUT') {
+        const bh = cache.balanceHistory?.find((b: any) => b.id === id);
+        if (bh) Object.assign(bh, data);
+      } else if (method === 'DELETE') {
+        cache.balanceHistory = cache.balanceHistory?.filter((b: any) => b.id !== id);
+      }
+    }
+
+    localStorage.setItem(cacheKey, JSON.stringify(cache));
+  } catch (error) {
+    console.error('Failed to apply mutation locally to cache:', error);
+  }
+}
+
 export const api = {
-  async get<T>(endpoint: string): Promise<T> {
-    const res = await fetch(`${API_URL}${endpoint}`, { headers: getHeaders() });
-    await handleAuthError(res, endpoint);
-    return handleResponse(res);
-  },
-  async post<T>(endpoint: string, data: any): Promise<T> {
+  // Direct, unintercepted methods used exclusively for synchronization logic
+  async postDirect<T>(endpoint: string, data: any): Promise<T> {
     const res = await fetch(`${API_URL}${endpoint}`, {
       method: 'POST',
       headers: getHeaders(),
@@ -79,7 +280,8 @@ export const api = {
     await handleAuthError(res, endpoint);
     return handleResponse(res);
   },
-  async put<T>(endpoint: string, data: any): Promise<T> {
+  
+  async putDirect<T>(endpoint: string, data: any): Promise<T> {
     const res = await fetch(`${API_URL}${endpoint}`, {
       method: 'PUT',
       headers: getHeaders(),
@@ -88,7 +290,8 @@ export const api = {
     await handleAuthError(res, endpoint);
     return handleResponse(res);
   },
-  async delete<T>(endpoint: string): Promise<T> {
+
+  async deleteDirect<T>(endpoint: string): Promise<T> {
     const res = await fetch(`${API_URL}${endpoint}`, {
       method: 'DELETE',
       headers: getHeaders(),
@@ -96,4 +299,250 @@ export const api = {
     await handleAuthError(res, endpoint);
     return handleResponse(res);
   },
+
+  async get<T>(endpoint: string): Promise<T> {
+    // If we're strictly offline, immediately return any local cached copy
+    if (!navigator.onLine) {
+      const cached = localStorage.getItem(`api_cache_${endpoint}`);
+      if (cached) {
+        try {
+          return JSON.parse(cached) as T;
+        } catch (e) {
+          console.error(`Failed to parse cache for ${endpoint}:`, e);
+        }
+      }
+      throw new Error('Оффлайн режим. Данные отсутствуют в кэше.');
+    }
+
+    try {
+      const res = await fetch(`${API_URL}${endpoint}`, { headers: getHeaders() });
+      await handleAuthError(res, endpoint);
+      const data = await handleResponse(res);
+      
+      // Cache response for future offline accesses
+      if (!endpoint.includes('/auth/login') && !endpoint.includes('/auth/register') && !endpoint.includes('/auth/verify-password')) {
+        localStorage.setItem(`api_cache_${endpoint}`, JSON.stringify(data));
+      }
+      return data;
+    } catch (error: any) {
+      console.error(`Fetch GET failed for ${endpoint}:`, error);
+      // Fallback to local storage in case of any network/server failure
+      const cached = localStorage.getItem(`api_cache_${endpoint}`);
+      if (cached) {
+        try {
+          return JSON.parse(cached) as T;
+        } catch (e) {}
+      }
+      throw error;
+    }
+  },
+
+  async post<T>(endpoint: string, data: any): Promise<T> {
+    const isOffline = !navigator.onLine;
+    const isAuth = endpoint.includes('/auth/login') || endpoint.includes('/auth/register') || endpoint.includes('/auth/verify-password');
+
+    if (isOffline && !isAuth) {
+      const queueItem = {
+        id: Math.random().toString(36).substring(2, 9),
+        method: 'POST',
+        endpoint,
+        data,
+        timestamp: Date.now()
+      };
+      const queue = JSON.parse(localStorage.getItem('api_offline_queue') || '[]');
+      queue.push(queueItem);
+      localStorage.setItem('api_offline_queue', JSON.stringify(queue));
+
+      applyMutationToCache('POST', endpoint, data);
+
+      const mockResponse: any = { id: 'offline_' + Math.random().toString(36).substring(2, 9), ...data };
+      return mockResponse as T;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(data),
+      });
+      await handleAuthError(res, endpoint);
+      const result = await handleResponse(res);
+      return result;
+    } catch (error: any) {
+      const isNetworkError = !navigator.onLine || error.message === 'Failed to fetch' || error.status === 0 || error.message?.includes('NetworkError');
+      if (isNetworkError && !isAuth) {
+        const queueItem = {
+          id: Math.random().toString(36).substring(2, 9),
+          method: 'POST',
+          endpoint,
+          data,
+          timestamp: Date.now()
+        };
+        const queue = JSON.parse(localStorage.getItem('api_offline_queue') || '[]');
+        queue.push(queueItem);
+        localStorage.setItem('api_offline_queue', JSON.stringify(queue));
+
+        applyMutationToCache('POST', endpoint, data);
+        const mockResponse: any = { id: 'offline_' + Math.random().toString(36).substring(2, 9), ...data };
+        return mockResponse as T;
+      }
+      throw error;
+    }
+  },
+
+  async put<T>(endpoint: string, data: any): Promise<T> {
+    const isOffline = !navigator.onLine;
+    if (isOffline) {
+      const queueItem = {
+        id: Math.random().toString(36).substring(2, 9),
+        method: 'PUT',
+        endpoint,
+        data,
+        timestamp: Date.now()
+      };
+      const queue = JSON.parse(localStorage.getItem('api_offline_queue') || '[]');
+      queue.push(queueItem);
+      localStorage.setItem('api_offline_queue', JSON.stringify(queue));
+
+      applyMutationToCache('PUT', endpoint, data);
+
+      const mockResponse: any = { success: true, ...data };
+      return mockResponse as T;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}${endpoint}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(data),
+      });
+      await handleAuthError(res, endpoint);
+      return handleResponse(res);
+    } catch (error: any) {
+      const isNetworkError = !navigator.onLine || error.message === 'Failed to fetch' || error.status === 0 || error.message?.includes('NetworkError');
+      if (isNetworkError) {
+        const queueItem = {
+          id: Math.random().toString(36).substring(2, 9),
+          method: 'PUT',
+          endpoint,
+          data,
+          timestamp: Date.now()
+        };
+        const queue = JSON.parse(localStorage.getItem('api_offline_queue') || '[]');
+        queue.push(queueItem);
+        localStorage.setItem('api_offline_queue', JSON.stringify(queue));
+
+        applyMutationToCache('PUT', endpoint, data);
+        const mockResponse: any = { success: true, ...data };
+        return mockResponse as T;
+      }
+      throw error;
+    }
+  },
+
+  async delete<T>(endpoint: string): Promise<T> {
+    const isOffline = !navigator.onLine;
+    if (isOffline) {
+      const queueItem = {
+        id: Math.random().toString(36).substring(2, 9),
+        method: 'DELETE',
+        endpoint,
+        data: null,
+        timestamp: Date.now()
+      };
+      const queue = JSON.parse(localStorage.getItem('api_offline_queue') || '[]');
+      queue.push(queueItem);
+      localStorage.setItem('api_offline_queue', JSON.stringify(queue));
+
+      applyMutationToCache('DELETE', endpoint, null);
+
+      const mockResponse: any = { success: true };
+      return mockResponse as T;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}${endpoint}`, {
+        method: 'DELETE',
+        headers: getHeaders(),
+      });
+      await handleAuthError(res, endpoint);
+      return handleResponse(res);
+    } catch (error: any) {
+      const isNetworkError = !navigator.onLine || error.message === 'Failed to fetch' || error.status === 0 || error.message?.includes('NetworkError');
+      if (isNetworkError) {
+        const queueItem = {
+          id: Math.random().toString(36).substring(2, 9),
+          method: 'DELETE',
+          endpoint,
+          data: null,
+          timestamp: Date.now()
+        };
+        const queue = JSON.parse(localStorage.getItem('api_offline_queue') || '[]');
+        queue.push(queueItem);
+        localStorage.setItem('api_offline_queue', JSON.stringify(queue));
+
+        applyMutationToCache('DELETE', endpoint, null);
+        const mockResponse: any = { success: true };
+        return mockResponse as T;
+      }
+      throw error;
+    }
+  },
 };
+
+// Sequentially uploads offline cached actions when network is restored
+export async function syncOfflineQueue(): Promise<boolean> {
+  const queueKey = 'api_offline_queue';
+  const rawQueue = localStorage.getItem(queueKey);
+  if (!rawQueue) return false;
+  
+  let queue: any[] = [];
+  try {
+    queue = JSON.parse(rawQueue);
+  } catch (e) {
+    console.error('Failed to parse offline queue:', e);
+    return false;
+  }
+  
+  if (queue.length === 0) return false;
+  
+  console.log('Syncing offline queue of size:', queue.length);
+  
+  const remaining: any[] = [...queue];
+  
+  for (const item of queue) {
+    try {
+      if (item.method === 'POST') {
+        if (item.endpoint.startsWith('/plan-grid/')) {
+          // Special case for plan pages being overwrites
+          await api.postDirect(item.endpoint, item.data);
+        } else {
+          await api.postDirect(item.endpoint, item.data);
+        }
+      } else if (item.method === 'PUT') {
+        await api.putDirect(item.endpoint, item.data);
+      } else if (item.method === 'DELETE') {
+        await api.deleteDirect(item.endpoint);
+      }
+      
+      // Successfully synced, remove from queue
+      remaining.shift();
+      localStorage.setItem(queueKey, JSON.stringify(remaining));
+    } catch (err: any) {
+      console.error('Failed to sync queue item:', item, err);
+      // Check if it's a network issue (retry later)
+      const isNetworkError = !navigator.onLine || err.message === 'Failed to fetch' || err.status === 0 || err.message?.includes('NetworkError');
+      if (isNetworkError) {
+        return false;
+      }
+      
+      // If indeed some client error (e.g., duplicated entry, bad request, already deleted, 400 bad request),
+      // we discard this specific item so the sync queue doesn't lock forever.
+      remaining.shift();
+      localStorage.setItem(queueKey, JSON.stringify(remaining));
+    }
+  }
+  
+  localStorage.removeItem(queueKey);
+  return true;
+}
