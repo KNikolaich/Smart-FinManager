@@ -155,6 +155,11 @@ export interface PlanData {
   comment: string;
   updatedAt: string;
   cashback?: CashbackData;
+  credit?: {
+    amount: number;
+    rate: number;
+    term: number;
+  };
 }
 
 export interface BalanceHistory {

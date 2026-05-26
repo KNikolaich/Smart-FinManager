@@ -40,6 +40,7 @@ import InteractiveMarkdown from './ui/InteractiveMarkdown';
 import { cn } from '../lib/utils';
 import CashbackTab from './CashbackTab';
 import Calculator from './Calculator';
+import CreditTab from './CreditTab';
 
 interface PlanPageProps {
   accounts: Account[];
@@ -48,7 +49,7 @@ interface PlanPageProps {
   onRefresh?: () => void;
 }
 
-type TabType = 'now' | 'past' | 'config' | 'comment' | 'cashback';
+type TabType = 'now' | 'past' | 'config' | 'comment' | 'cashback' | 'credit';
 
 const MONTHS = [
   'январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 
@@ -190,6 +191,8 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
               newData.cashback = data;
             } else if (type === 'comment') {
               newData.comment = typeof data === 'string' ? data : (data.comment || '');
+            } else if (type === 'credit') {
+              (newData as any).credit = data;
             }
             return newData;
           });
@@ -279,6 +282,7 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
       else if (type === 'config') dataToSave = newData.config;
       else if (type === 'cashback') dataToSave = newData.cashback;
       else if (type === 'comment') dataToSave = { comment: newData.comment };
+      else if (type === 'credit') dataToSave = (newData as any).credit;
       
       await api.post(`/plan-grid/${type}`, dataToSave);
     } catch (error) {
@@ -495,6 +499,17 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
           <span>Заметки</span>
         </button>
         <button
+          onClick={() => setActiveTab('credit')}
+          className={cn(
+            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            activeTab === 'credit' 
+              ? "bg-sky-500 text-white border-sky-500 translate-y-[1px]" 
+              : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
+          )}
+        >
+          <span>Кредит</span>
+        </button>
+        <button
           onClick={() => setActiveTab('past')}
           className={cn(
             "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
@@ -510,6 +525,8 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
       <div className="bg-white p-0 border-none shadow-none overflow-hidden flex-1 flex flex-col">
         {activeTab === 'cashback' ? (
           <CashbackTab planData={planData} accounts={accounts} onSave={handleSaveCashback} />
+        ) : activeTab === 'credit' ? (
+          <CreditTab planData={planData} onSave={(newData) => savePlanData(newData, 'credit')} />
         ) : activeTab === 'now' || activeTab === 'past' ? (
           <div className="w-full flex-1 overflow-y-auto overflow-x-auto no-scrollbar">
             <table className="w-full border-collapse">
