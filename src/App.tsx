@@ -66,7 +66,10 @@ export default function App() {
   const [transactionHistoryFilter, setTransactionHistoryFilter] = useState<{ 
     categoryId?: string, 
     accountId?: string,
-    type?: 'all' | 'income' | 'expense'
+    type?: 'all' | 'income' | 'expense',
+    startDate?: string,
+    endDate?: string,
+    selectedMonth?: Date
   }>({});
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [initialTransactionData, setInitialTransactionData] = useState<any | null>(null);
@@ -515,9 +518,14 @@ export default function App() {
             initialFilterType={analyticsOptions.filterType}
             initialSelectedMonth={analyticsOptions.selectedMonth}
             initialPeriodRange={analyticsOptions.periodRange}
-            onNavigateToHistory={(categoryName) => {
+            onNavigateToHistory={(categoryName, dateFilter) => {
               const category = categories.find(c => c.name === categoryName);
-              setTransactionHistoryFilter({ categoryId: category?.id });
+              setTransactionHistoryFilter({ 
+                categoryId: category?.id,
+                startDate: dateFilter?.startDate,
+                endDate: dateFilter?.endDate,
+                selectedMonth: dateFilter?.selectedMonth
+              });
               setShowTransactionHistory(true);
             }}
           />
@@ -707,6 +715,9 @@ export default function App() {
             initialAccountId={transactionHistoryFilter.accountId}
             initialCategoryId={transactionHistoryFilter.categoryId}
             initialType={transactionHistoryFilter.type}
+            initialStartDate={transactionHistoryFilter.startDate}
+            initialEndDate={transactionHistoryFilter.endDate}
+            initialSelectedMonth={transactionHistoryFilter.selectedMonth}
           />
         )}
 

@@ -11,7 +11,14 @@ interface AnalyticsProps {
   accounts: Account[];
   currencies: Currency[];
   balanceHistory: BalanceHistory[];
-  onNavigateToHistory?: (categoryName: string) => void;
+  onNavigateToHistory?: (
+    categoryName: string, 
+    dateFilter?: {
+      startDate?: string;
+      endDate?: string;
+      selectedMonth?: Date;
+    }
+  ) => void;
   initialType?: 'expense' | 'income';
   initialFilterType?: DateFilterType;
   initialSelectedMonth?: Date;
@@ -46,6 +53,25 @@ export default function Analytics({
   const [selectedMonth, setSelectedMonth] = useState(initialSelectedMonth);
   
   const [periodRange, setPeriodRange] = useState(initialPeriodRange);
+
+  const handleCategoryClick = (categoryName: string) => {
+    if (!onNavigateToHistory) return;
+    
+    if (filterType === 'month') {
+      onNavigateToHistory(categoryName, {
+        selectedMonth,
+        startDate: '',
+        endDate: ''
+      });
+    } else if (filterType === 'period') {
+      onNavigateToHistory(categoryName, {
+        startDate: format(periodRange.start, 'yyyy-MM-dd'),
+        endDate: format(periodRange.end, 'yyyy-MM-dd')
+      });
+    } else {
+      onNavigateToHistory(categoryName);
+    }
+  };
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
@@ -266,6 +292,31 @@ export default function Analytics({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
         {/* Pie Chart */}
         <section className="bg-theme-surface p-3 rounded-3xl border border-theme-base shadow-sm flex flex-col">
+          <style>{`
+            .recharts-sector, 
+            .recharts-pie-sector, 
+            .recharts-sector:focus, 
+            .recharts-pie-sector:focus,
+            path.recharts-sector {
+              outline: none !important;
+              -webkit-tap-highlight-color: transparent;
+            }
+            
+            .recharts-pie-sector {
+              transition: stroke 0.15s ease, stroke-width 0.15s ease, opacity 0.15s ease;
+              cursor: pointer;
+            }
+            
+            .recharts-pie-sector:hover {
+              stroke: var(--theme-primary, #3b82f6) !important;
+              stroke-width: 3px !important;
+              opacity: 0.92;
+            }
+
+            .recharts-pie-sector:active {
+              opacity: 0.8;
+            }
+          `}</style>
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-bold text-lg text-theme-main">
               {activeType === 'expense' ? 'Расходы' : 'Доходы'} по категориям
@@ -292,9 +343,20 @@ export default function Analytics({
                     dataKey="value"
                     animationBegin={0}
                     animationDuration={800}
+                    onClick={(data) => {
+                      if (data && data.name) {
+                        handleCategoryClick(data.name);
+                      }
+                    }}
                   >
                     {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={entry.color} 
+                        stroke="none" 
+                        className="cursor-pointer hover:opacity-80 transition-opacity focus:outline-none outline-none"
+                        style={{ outline: 'none' }}
+                      />
                     ))}
                   </Pie>
                   <Tooltip 
@@ -319,9 +381,7 @@ export default function Analytics({
               {chartData.map((item, i) => (
                 <div 
                   key={i} 
-                  onClick={() => {
-                    if (onNavigateToHistory) onNavigateToHistory(item.name);
-                  }}
+                  onClick={() => handleCategoryClick(item.name)}
                   className="flex items-center gap-3 group cursor-pointer hover:bg-theme-primary/5 p-2 rounded-xl transition-colors"
                 >
                   <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />

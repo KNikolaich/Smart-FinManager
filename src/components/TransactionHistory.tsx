@@ -1,8 +1,8 @@
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { Transaction, Category, Account } from '../types';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { X, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy, ChevronDown, Search } from 'lucide-react';
 import { GenericContextMenu } from './ui/GenericContextMenu';
 import { AnimatePresence } from 'motion/react';
 import { SimpleMarkdown } from './ui/InteractiveMarkdown';
@@ -18,6 +18,9 @@ interface TransactionHistoryProps {
   initialAccountId?: string;
   initialCategoryId?: string;
   initialType?: 'all' | 'income' | 'expense';
+  initialStartDate?: string;
+  initialEndDate?: string;
+  initialSelectedMonth?: Date;
 }
 
 export default function TransactionHistory({ 
@@ -29,16 +32,76 @@ export default function TransactionHistory({
   onOpenAddTransaction,
   initialAccountId, 
   initialCategoryId,
-  initialType = 'all'
+  initialType = 'all',
+  initialStartDate,
+  initialEndDate,
+  initialSelectedMonth
 }: TransactionHistoryProps) {
-  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [selectedMonth, setSelectedMonth] = useState(initialSelectedMonth || new Date());
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>(initialType);
   const [filterCategoryId, setFilterCategoryId] = useState<string | 'all'>(initialCategoryId || 'all');
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>(initialAccountId && initialAccountId !== 'all' ? [initialAccountId] : []);
-  const [customStartDate, setCustomStartDate] = useState<string>('');
-  const [customEndDate, setCustomEndDate] = useState<string>('');
+  const [customStartDate, setCustomStartDate] = useState<string>(initialStartDate || '');
+  const [customEndDate, setCustomEndDate] = useState<string>(initialEndDate || '');
   const [isFunnelOpen, setIsFunnelOpen] = useState(false);
+
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [categorySearchQuery, setCategorySearchQuery] = useState('');
+  const categorySelectRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (categorySelectRef.current && !categorySelectRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedCategory = useMemo(() => {
+    return categories.find(c => c.id === filterCategoryId);
+  }, [categories, filterCategoryId]);
+
+  const parentCategory = useMemo(() => {
+    return selectedCategory?.parentId 
+      ? categories.find(c => c.id === selectedCategory.parentId) 
+      : null;
+  }, [categories, selectedCategory]);
+
+  const filteredCategoriesToChoose = useMemo(() => {
+    const query = categorySearchQuery.toLowerCase();
+    const typedCategories = categories.filter(c => {
+      if (filterType === 'all') return true;
+      return c.type === filterType;
+    });
+
+    const parents = typedCategories.filter(c => !c.parentId);
+    const children = typedCategories.filter(c => c.parentId);
+
+    return parents
+      .map(parent => {
+        const parentMatches = parent.name.toLowerCase().includes(query);
+        const matchedChildren = children.filter(child => 
+          child.parentId === parent.id && 
+          (child.name.toLowerCase().includes(query) || parentMatches)
+        );
+
+        return {
+          parent,
+          children: matchedChildren,
+          isVisible: parentMatches || matchedChildren.length > 0
+        };
+      })
+      .filter(group => group.isVisible)
+      .sort((a, b) => {
+        const aOrder = a.parent.sortOrder ?? Infinity;
+        const bOrder = b.parent.sortOrder ?? Infinity;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return a.parent.name.localeCompare(b.parent.name);
+      });
+  }, [categories, filterType, categorySearchQuery]);
 
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, transaction: Transaction } | null>(null);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
@@ -227,7 +290,7 @@ export default function TransactionHistory({
                 onClick={() => setIsFunnelOpen(!isFunnelOpen)}
                 className={cn(
                   "p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center shrink-0 w-9 h-9",
-                  isFunnelOpen || selectedAccountIds.length > 0 || customStartDate || customEndDate
+                  isFunnelOpen || selectedAccountIds.length > 0 || customStartDate || customEndDate || filterCategoryId !== 'all'
                     ? "bg-theme-primary text-theme-on-primary border-theme-primary hover:bg-theme-primary/95" 
                     : "bg-theme-surface text-theme-muted border-theme-base hover:text-theme-main"
                 )}
@@ -275,6 +338,141 @@ export default function TransactionHistory({
                   </div>
                 </div>
 
+                {/* Category Filter */}
+                <div className="relative animate-in fade-in duration-200" ref={categorySelectRef}>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-theme-muted block mb-2">Фильтр по категориям</label>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                    className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-2 text-xs outline-none focus:ring-2 ring-theme-primary/20 transition-all text-left font-semibold flex items-center justify-between text-theme-main shadow-sm cursor-pointer"
+                  >
+                    {selectedCategory ? (
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <span className="text-sm shrink-0">{selectedCategory.icon || (parentCategory?.icon)}</span>
+                        <div className="flex flex-row items-baseline gap-1.5 leading-tight overflow-hidden">
+                          <span className="truncate">{selectedCategory.name}</span>
+                          {parentCategory && (
+                            <span className="text-[9px] text-theme-muted truncate whitespace-nowrap">({parentCategory.name})</span>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-theme-muted">Все категории</span>
+                    )}
+                    <ChevronDown className={cn("w-3.5 h-3.5 text-theme-muted transition-transform shrink-0 ml-2", isCategoryDropdownOpen && "rotate-180")} />
+                  </button>
+
+                  <AnimatePresence>
+                    {isCategoryDropdownOpen && (
+                      <div
+                        className="absolute z-[110] top-full mt-2 left-0 right-0 bg-theme-surface border border-theme-base rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[300px] animate-in fade-in slide-in-from-top-1 duration-150"
+                      >
+                        {/* Search Input */}
+                        <div className="p-2 border-b border-theme-base sticky top-0 bg-theme-surface/85 backdrop-blur-sm z-10">
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-theme-muted" />
+                            <input
+                              type="text"
+                              value={categorySearchQuery}
+                              onChange={(e) => setCategorySearchQuery(e.target.value)}
+                              placeholder="Поиск категории..."
+                              className="w-full bg-theme-main border border-theme-base rounded-xl pl-8 pr-8 py-1.5 text-[11px] outline-none focus:ring-2 ring-theme-primary/20 transition-all text-theme-main"
+                            />
+                            {categorySearchQuery && (
+                              <button
+                                onClick={() => setCategorySearchQuery('')}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 hover:bg-theme-main rounded-full transition-colors cursor-pointer flex items-center justify-center w-5 h-5"
+                              >
+                                <X className="w-3 h-3 text-theme-muted" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* List */}
+                        <div className="overflow-y-auto p-1.5 no-scrollbar max-h-52">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFilterCategoryId('all');
+                              setIsCategoryDropdownOpen(false);
+                              setCategorySearchQuery('');
+                            }}
+                            className={cn(
+                              "w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all mb-1 cursor-pointer",
+                              filterCategoryId === 'all' 
+                                ? "bg-theme-primary/10 text-theme-primary font-bold" 
+                                : "text-theme-main hover:bg-theme-main"
+                            )}
+                          >
+                            <span>📂</span>
+                            <span>Все категории</span>
+                          </button>
+
+                          {filteredCategoriesToChoose.length === 0 ? (
+                            <div className="py-4 text-center text-theme-muted text-xs italic">
+                              Категории не найдены
+                            </div>
+                          ) : (
+                            filteredCategoriesToChoose.map(({ parent, children }) => {
+                              const isParentSelected = filterCategoryId === parent.id;
+                              return (
+                                <div key={parent.id} className="mb-1 last:mb-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setFilterCategoryId(parent.id);
+                                      setIsCategoryDropdownOpen(false);
+                                      setCategorySearchQuery('');
+                                    }}
+                                    className={cn(
+                                      "w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center gap-2 transition-all cursor-pointer",
+                                      isParentSelected 
+                                        ? "bg-theme-primary/10 text-theme-primary font-bold" 
+                                        : "text-theme-main hover:bg-theme-main font-semibold"
+                                    )}
+                                  >
+                                    <span className="text-base shrink-0">{parent.icon}</span>
+                                    <span>{parent.name}</span>
+                                  </button>
+                                  
+                                  {children.length > 0 && (
+                                    <div className="ml-4 mt-0.5 grid grid-cols-1 gap-0.5 border-l border-theme-base/50 pl-2">
+                                      {children.map(child => {
+                                        const isChildSelected = filterCategoryId === child.id;
+                                        return (
+                                          <button
+                                            key={child.id}
+                                            type="button"
+                                            onClick={() => {
+                                              setFilterCategoryId(child.id);
+                                              setIsCategoryDropdownOpen(false);
+                                              setCategorySearchQuery('');
+                                            }}
+                                            className={cn(
+                                              "w-full text-left px-3 py-1 rounded-md text-[11px] flex items-center gap-2 transition-all cursor-pointer",
+                                              isChildSelected 
+                                                ? "bg-theme-primary/10 text-theme-primary font-bold border-l-2 border-theme-primary" 
+                                                : "text-theme-muted hover:bg-theme-main hover:text-theme-main font-medium"
+                                            )}
+                                          >
+                                            <span className="truncate">{child.name}</span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
                 {/* Date Range Filter */}
                 <div className="grid grid-cols-2 gap-3 pb-1">
                   <div>
@@ -298,13 +496,14 @@ export default function TransactionHistory({
                 </div>
 
                 {/* Reset filters button if any is active */}
-                {(selectedAccountIds.length > 0 || customStartDate || customEndDate) && (
+                {(selectedAccountIds.length > 0 || customStartDate || customEndDate || filterCategoryId !== 'all') && (
                   <div className="flex justify-end pt-1">
                     <button
                       onClick={() => {
                         setSelectedAccountIds([]);
                         setCustomStartDate('');
                         setCustomEndDate('');
+                        setFilterCategoryId('all');
                       }}
                       className="text-[9px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 transition-colors flex items-center gap-1 cursor-pointer"
                     >
@@ -324,11 +523,25 @@ export default function TransactionHistory({
             const groupExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
             return (
               <div key={dateKey}>
-                <div className="px-4 py-2 bg-theme-primary/5 backdrop-blur-md text-[10px] font-bold text-theme-primary uppercase tracking-widest sticky top-0 z-20 border-y border-theme-base/50 flex items-center justify-between">
-                  <span>{dateKey}</span>
-                  <div className="flex items-center gap-2 font-mono">
-                    {groupIncome > 0 && <span className="text-emerald-500">+{groupIncome.toLocaleString()} ₽</span>}
-                    {groupExpense > 0 && <span className="text-rose-500">-{groupExpense.toLocaleString()} ₽</span>}
+                <div className="py-2 bg-theme-primary/5 backdrop-blur-md sticky top-0 z-20 border-y border-theme-base/50 flex items-center">
+                  <div className="w-1/2 pl-4 pr-2 text-[10px] font-bold text-theme-primary uppercase tracking-widest">
+                    <span>{dateKey}</span>
+                  </div>
+                  <div className="w-1/2 px-4 flex items-center justify-between text-[11px] font-bold">
+                    {groupIncome > 0 ? (
+                      <span className="text-emerald-500 font-sans">
+                        +{groupIncome.toLocaleString()} ₽
+                      </span>
+                    ) : (
+                      <span />
+                    )}
+                    {groupExpense > 0 ? (
+                      <span className="text-rose-500 font-sans">
+                        -{groupExpense.toLocaleString()} ₽
+                      </span>
+                    ) : (
+                      <span />
+                    )}
                   </div>
                 </div>
                 <table className="w-full text-left border-collapse table-fixed">
