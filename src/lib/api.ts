@@ -1,7 +1,65 @@
 const API_URL = '/api';
 
+export const safeStorage = {
+  getItem(key: string): string | null {
+    try {
+      return localStorage.getItem(key);
+    } catch (e) {
+      console.warn('localStorage getItem failed:', e);
+      return null;
+    }
+  },
+  setItem(key: string, value: string): void {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {
+      console.warn('localStorage setItem failed:', e);
+    }
+  },
+  removeItem(key: string): void {
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {
+      console.warn('localStorage removeItem failed:', e);
+    }
+  }
+};
+
+export const checkIfNetworkError = (error: any): boolean => {
+  if (!navigator.onLine) return true;
+  if (!error) return false;
+  
+  const msg = (error.message || '').toLowerCase();
+  
+  // Standard network failure terms across Safari (e.g. Load failed), Chrome, Firefox
+  if (
+    msg === 'failed to fetch' ||
+    msg === 'load failed' ||
+    msg.includes('failed to fetch') ||
+    msg.includes('load failed') ||
+    msg.includes('networkerror') ||
+    msg.includes('network error') ||
+    msg.includes('connection refused') ||
+    msg.includes('timeout') ||
+    msg.includes('aborted')
+  ) {
+    return true;
+  }
+  
+  if (error.status === 0 || error.status === 502 || error.status === 503 || error.status === 504) {
+    return true;
+  }
+  
+  // Any fetch TypeError is generally a network/CORS boundary issue
+  if (error instanceof TypeError || error.name === 'TypeError') {
+    return true;
+  }
+  
+  return false;
+};
+
 const getHeaders = () => {
-  const token = localStorage.getItem('token');
+  const token = safeStorage.getItem('token');
   return {
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -27,7 +85,7 @@ const handleAuthError = async (res: Response, endpoint: string) => {
     }
     
     if (res.status === 401) {
-      localStorage.removeItem('token');
+      safeStorage.removeItem('token');
       throw new Error('Session expired. Please log in again.');
     }
   }
@@ -65,12 +123,12 @@ function applyMutationToCache(method: string, endpoint: string, data: any) {
   try {
     if (endpoint.startsWith('/plan-grid/')) {
       const type = endpoint.replace('/plan-grid/', '');
-      localStorage.setItem(`api_cache_/plan-grid/${type}`, JSON.stringify(data));
+      safeStorage.setItem(`api_cache_/plan-grid/${type}`, JSON.stringify(data));
       return;
     }
 
     const cacheKey = 'api_cache_/initial-data';
-    const rawCache = localStorage.getItem(cacheKey);
+    const rawCache = safeStorage.getItem(cacheKey);
     if (!rawCache) return;
 
     let cache: any = null;
@@ -263,7 +321,7 @@ function applyMutationToCache(method: string, endpoint: string, data: any) {
       }
     }
 
-    localStorage.setItem(cacheKey, JSON.stringify(cache));
+    safeStorage.setItem(cacheKey, JSON.stringify(cache));
   } catch (error) {
     console.error('Failed to apply mutation locally to cache:', error);
   }
@@ -303,7 +361,7 @@ export const api = {
   async get<T>(endpoint: string): Promise<T> {
     // If we're strictly offline, immediately return any local cached copy
     if (!navigator.onLine) {
-      const cached = localStorage.getItem(`api_cache_${endpoint}`);
+      const cached = safeStorage.getItem(`api_cache_${endpoint}`);
       if (cached) {
         try {
           return JSON.parse(cached) as T;
@@ -321,13 +379,13 @@ export const api = {
       
       // Cache response for future offline accesses
       if (!endpoint.includes('/auth/login') && !endpoint.includes('/auth/register') && !endpoint.includes('/auth/verify-password')) {
-        localStorage.setItem(`api_cache_${endpoint}`, JSON.stringify(data));
+        safeStorage.setItem(`api_cache_${endpoint}`, JSON.stringify(data));
       }
       return data;
     } catch (error: any) {
       console.error(`Fetch GET failed for ${endpoint}:`, error);
       // Fallback to local storage in case of any network/server failure
-      const cached = localStorage.getItem(`api_cache_${endpoint}`);
+      const cached = safeStorage.getItem(`api_cache_${endpoint}`);
       if (cached) {
         try {
           return JSON.parse(cached) as T;
@@ -342,13 +400,13 @@ export const api = {
 
     if (isOffline) {
       if (endpoint === '/auth/login') {
-        const savedUserRaw = localStorage.getItem('last_logged_in_user');
+        const savedUserRaw = safeStorage.getItem('last_logged_in_user');
         if (savedUserRaw) {
           try {
             const savedUser = JSON.parse(savedUserRaw);
             if (data && data.email && savedUser.email && typeof data.email === 'string' && data.email.toLowerCase().trim() === savedUser.email.toLowerCase().trim()) {
               return {
-                token: localStorage.getItem('token') || 'offline-token-placeholder',
+                token: safeStorage.getItem('token') || 'offline-token-placeholder',
                 user: savedUser
               } as any as T;
             } else {
@@ -388,9 +446,9 @@ export const api = {
         data,
         timestamp: Date.now()
       };
-      const queue = JSON.parse(localStorage.getItem('api_offline_queue') || '[]');
+      const queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
       queue.push(queueItem);
-      localStorage.setItem('api_offline_queue', JSON.stringify(queue));
+      safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
 
       applyMutationToCache('POST', endpoint, data);
 
@@ -408,16 +466,16 @@ export const api = {
       const result = await handleResponse(res);
       return result;
     } catch (error: any) {
-      const isNetworkError = !navigator.onLine || error.message === 'Failed to fetch' || error.status === 0 || error.message?.includes('NetworkError');
+      const isNetworkError = checkIfNetworkError(error);
       if (isNetworkError) {
         if (endpoint === '/auth/login') {
-          const savedUserRaw = localStorage.getItem('last_logged_in_user');
+          const savedUserRaw = safeStorage.getItem('last_logged_in_user');
           if (savedUserRaw) {
             try {
               const savedUser = JSON.parse(savedUserRaw);
               if (data && data.email && savedUser.email && typeof data.email === 'string' && data.email.toLowerCase().trim() === savedUser.email.toLowerCase().trim()) {
                 return {
-                  token: localStorage.getItem('token') || 'offline-token-placeholder',
+                  token: safeStorage.getItem('token') || 'offline-token-placeholder',
                   user: savedUser
                 } as any as T;
               } else {
@@ -454,9 +512,9 @@ export const api = {
             data,
             timestamp: Date.now()
           };
-          const queue = JSON.parse(localStorage.getItem('api_offline_queue') || '[]');
+          const queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
           queue.push(queueItem);
-          localStorage.setItem('api_offline_queue', JSON.stringify(queue));
+          safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
 
           applyMutationToCache('POST', endpoint, data);
           const mockResponse: any = { id: 'offline_' + Math.random().toString(36).substring(2, 9), ...data };
@@ -477,9 +535,9 @@ export const api = {
         data,
         timestamp: Date.now()
       };
-      const queue = JSON.parse(localStorage.getItem('api_offline_queue') || '[]');
+      const queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
       queue.push(queueItem);
-      localStorage.setItem('api_offline_queue', JSON.stringify(queue));
+      safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
 
       applyMutationToCache('PUT', endpoint, data);
 
@@ -496,7 +554,7 @@ export const api = {
       await handleAuthError(res, endpoint);
       return handleResponse(res);
     } catch (error: any) {
-      const isNetworkError = !navigator.onLine || error.message === 'Failed to fetch' || error.status === 0 || error.message?.includes('NetworkError');
+      const isNetworkError = checkIfNetworkError(error);
       if (isNetworkError) {
         const queueItem = {
           id: Math.random().toString(36).substring(2, 9),
@@ -505,9 +563,9 @@ export const api = {
           data,
           timestamp: Date.now()
         };
-        const queue = JSON.parse(localStorage.getItem('api_offline_queue') || '[]');
+        const queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
         queue.push(queueItem);
-        localStorage.setItem('api_offline_queue', JSON.stringify(queue));
+        safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
 
         applyMutationToCache('PUT', endpoint, data);
         const mockResponse: any = { success: true, ...data };
@@ -527,9 +585,9 @@ export const api = {
         data: null,
         timestamp: Date.now()
       };
-      const queue = JSON.parse(localStorage.getItem('api_offline_queue') || '[]');
+      const queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
       queue.push(queueItem);
-      localStorage.setItem('api_offline_queue', JSON.stringify(queue));
+      safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
 
       applyMutationToCache('DELETE', endpoint, null);
 
@@ -545,7 +603,7 @@ export const api = {
       await handleAuthError(res, endpoint);
       return handleResponse(res);
     } catch (error: any) {
-      const isNetworkError = !navigator.onLine || error.message === 'Failed to fetch' || error.status === 0 || error.message?.includes('NetworkError');
+      const isNetworkError = checkIfNetworkError(error);
       if (isNetworkError) {
         const queueItem = {
           id: Math.random().toString(36).substring(2, 9),
@@ -554,9 +612,9 @@ export const api = {
           data: null,
           timestamp: Date.now()
         };
-        const queue = JSON.parse(localStorage.getItem('api_offline_queue') || '[]');
+        const queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
         queue.push(queueItem);
-        localStorage.setItem('api_offline_queue', JSON.stringify(queue));
+        safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
 
         applyMutationToCache('DELETE', endpoint, null);
         const mockResponse: any = { success: true };
@@ -570,7 +628,7 @@ export const api = {
 // Sequentially uploads offline cached actions when network is restored
 export async function syncOfflineQueue(): Promise<boolean> {
   const queueKey = 'api_offline_queue';
-  const rawQueue = localStorage.getItem(queueKey);
+  const rawQueue = safeStorage.getItem(queueKey);
   if (!rawQueue) return false;
   
   let queue: any[] = [];
@@ -604,11 +662,11 @@ export async function syncOfflineQueue(): Promise<boolean> {
       
       // Successfully synced, remove from queue
       remaining.shift();
-      localStorage.setItem(queueKey, JSON.stringify(remaining));
+      safeStorage.setItem(queueKey, JSON.stringify(remaining));
     } catch (err: any) {
       console.error('Failed to sync queue item:', item, err);
       // Check if it's a network issue (retry later)
-      const isNetworkError = !navigator.onLine || err.message === 'Failed to fetch' || err.status === 0 || err.message?.includes('NetworkError');
+      const isNetworkError = checkIfNetworkError(err);
       if (isNetworkError) {
         return false;
       }
@@ -616,10 +674,10 @@ export async function syncOfflineQueue(): Promise<boolean> {
       // If indeed some client error (e.g., duplicated entry, bad request, already deleted, 400 bad request),
       // we discard this specific item so the sync queue doesn't lock forever.
       remaining.shift();
-      localStorage.setItem(queueKey, JSON.stringify(remaining));
+      safeStorage.setItem(queueKey, JSON.stringify(remaining));
     }
   }
   
-  localStorage.removeItem(queueKey);
+  safeStorage.removeItem(queueKey);
   return true;
 }

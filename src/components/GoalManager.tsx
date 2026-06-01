@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { api } from '../lib/api';
 import { Goal } from '../types';
 import { X, Plus, Trash2, Check, Calendar, Edit2, Target, TrendingUp, Save, GripVertical } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { SimpleMarkdown } from './ui/InteractiveMarkdown';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import {
@@ -226,7 +226,7 @@ function SortableGoalItem({
           {goal.description && (
             <div className="mb-3 sm:mb-4 p-3 sm:p-4 bg-neutral-50 rounded-xl sm:rounded-2xl">
               <div className="markdown-body text-neutral-600 text-[10px] sm:text-xs leading-relaxed">
-                <ReactMarkdown>{goal.description}</ReactMarkdown>
+                <SimpleMarkdown content={goal.description} />
               </div>
             </div>
           )}

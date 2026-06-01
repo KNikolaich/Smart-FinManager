@@ -5,8 +5,7 @@ import { ru } from 'date-fns/locale';
 import { X, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy } from 'lucide-react';
 import { GenericContextMenu } from './ui/GenericContextMenu';
 import { AnimatePresence } from 'motion/react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { SimpleMarkdown } from './ui/InteractiveMarkdown';
 import { cn, getTransactionDisplayTitle } from '../lib/utils';
 
 interface TransactionHistoryProps {
@@ -369,9 +368,9 @@ export default function TransactionHistory({
                               <span className="text-lg shrink-0">{t.type === 'transfer' ? '🔄' : (category?.icon || parentCategory?.icon || '💰')}</span>
                               <div className="min-w-0">
                                 <div className="text-xs font-bold text-theme-main markdown-body prose-sm">
-                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                    {getTransactionDisplayTitle(t.description, category?.name, t.type)}
-                                  </ReactMarkdown>
+                                  <SimpleMarkdown 
+                                    content={getTransactionDisplayTitle(t.description, category?.name, t.type)} 
+                                  />
                                 </div>
                                 <p 
                                   className="text-[10px] font-medium truncate mt-1"

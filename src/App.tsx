@@ -15,7 +15,7 @@ import {
   Wallet,
   Loader2
 } from 'lucide-react';
-import { api, syncOfflineQueue } from './lib/api';
+import { api, syncOfflineQueue, safeStorage, checkIfNetworkError } from './lib/api';
 import { processUserMessage } from './services/aiService';
 import { Account, Transaction, Goal, Category, Plan, Currency, BalanceHistory, UserProfile } from './types';
 
@@ -70,7 +70,7 @@ export default function App() {
   }>({});
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [initialTransactionData, setInitialTransactionData] = useState<any | null>(null);
-  const [addMode, setAddMode] = useState<'text' | 'voice'>(() => (localStorage.getItem('addMode') as 'text' | 'voice') || 'text');
+  const [addMode, setAddMode] = useState<'text' | 'voice'>(() => (safeStorage.getItem('addMode') as 'text' | 'voice') || 'text');
   const [showAILogs, setShowAILogs] = useState(false);
   const [showUserPage, setShowUserPage] = useState(false);
   const [isProcessingAI, setIsProcessingAI] = useState(false);
@@ -81,7 +81,7 @@ export default function App() {
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    localStorage.setItem('addMode', addMode);
+    safeStorage.setItem('addMode', addMode);
   }, [addMode]);
 
   const handleMouseDown = () => {
@@ -176,7 +176,7 @@ export default function App() {
     setTransactions(prev => [transaction, ...prev]);
   };
   const [showTotalBalance, setShowTotalBalance] = useState(() => {
-    const saved = localStorage.getItem('showTotalBalance');
+    const saved = safeStorage.getItem('showTotalBalance');
     return saved !== null ? JSON.parse(saved) : true;
   });
   const [initialGoalData, setInitialGoalData] = useState<{ name?: string; targetAmount?: number; deadline?: string } | undefined>(undefined);
@@ -189,7 +189,7 @@ export default function App() {
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [balanceHistory, setBalanceHistory] = useState<BalanceHistory[]>([]);
   const [plans, setPlans] = useState<Plan[]>(() => {
-    const saved = localStorage.getItem('ai_temporary_plans');
+    const saved = safeStorage.getItem('ai_temporary_plans');
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -222,8 +222,8 @@ export default function App() {
       setCurrencies(data.currencies);
       setBalanceHistory(data.balanceHistory);
       
-      // Load plans from localStorage
-      const savedPlans = localStorage.getItem('ai_temporary_plans');
+      // Load plans from safeStorage
+      const savedPlans = safeStorage.getItem('ai_temporary_plans');
       if (savedPlans) {
         setPlans(JSON.parse(savedPlans));
       }
@@ -269,46 +269,46 @@ export default function App() {
   }, [user, addToast, refreshData]);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') || 'theme-nordic';
+    const savedTheme = safeStorage.getItem('theme') || 'theme-nordic';
     document.body.classList.add(savedTheme);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('showTotalBalance', JSON.stringify(showTotalBalance));
+    safeStorage.setItem('showTotalBalance', JSON.stringify(showTotalBalance));
   }, [showTotalBalance]);
 
   useEffect(() => {
-    localStorage.setItem('ai_temporary_plans', JSON.stringify(plans));
+    safeStorage.setItem('ai_temporary_plans', JSON.stringify(plans));
   }, [plans]);
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('token');
+      const token = safeStorage.getItem('token');
       if (token) {
         try {
           const userData = await api.get<UserProfile>('/auth/me');
           setUser(userData);
-          localStorage.setItem('last_logged_in_user', JSON.stringify(userData));
+          safeStorage.setItem('last_logged_in_user', JSON.stringify(userData));
         } catch (error: any) {
           console.error('Auth check error:', error);
-          const isNetworkError = !navigator.onLine || error.message === 'Failed to fetch' || error.status === 0 || error.message?.includes('NetworkError');
+          const isNetworkError = checkIfNetworkError(error);
           if (isNetworkError) {
-            const savedUser = localStorage.getItem('last_logged_in_user');
+            const savedUser = safeStorage.getItem('last_logged_in_user');
             if (savedUser) {
               try {
                 const parsedUser = JSON.parse(savedUser);
                 setUser(parsedUser);
                 addToast('Оффлайн-режим: выполнен вход в последний рабочий аккаунт', 'info');
               } catch (e) {
-                localStorage.removeItem('token');
+                safeStorage.removeItem('token');
                 setUser(null);
               }
             } else {
-              localStorage.removeItem('token');
+              safeStorage.removeItem('token');
               setUser(null);
             }
           } else {
-            localStorage.removeItem('token');
+            safeStorage.removeItem('token');
             setUser(null);
           }
         }
@@ -351,7 +351,7 @@ export default function App() {
   }, [user, refreshData]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    safeStorage.removeItem('token');
     setUser(null);
   };
 

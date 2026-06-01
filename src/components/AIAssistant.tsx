@@ -6,8 +6,7 @@ import { RobotIcon } from './icons/RobotIcon';
 import { processUserMessage, getFinancialAdvice } from '../services/aiService';
 import { api } from '../lib/api';
 import { Account, Category, Transaction, Goal, Plan, Message } from '../types';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { SimpleMarkdown } from './ui/InteractiveMarkdown';
 import { cn } from '../lib/utils';
 
 interface AIAssistantProps {
@@ -499,9 +498,9 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
                 m.role === 'assistant' ? "bg-white text-neutral-800 rounded-tl-none" : "bg-theme-primary text-white rounded-tr-none"
               )}>
                 <div className="markdown-body text-[12px] sm:text-sm">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}
-                  </ReactMarkdown>
+                  <SimpleMarkdown 
+                    content={typeof m.content === 'string' ? m.content : JSON.stringify(m.content)} 
+                  />
                 </div>
                 {m.attachments && m.attachments.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">

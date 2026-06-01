@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { api } from '../lib/api';
+import { api, safeStorage } from '../lib/api';
 import { LogIn, UserPlus, Mail, Lock, AlertCircle } from 'lucide-react';
 import { UserProfile } from '../types';
 
@@ -49,8 +49,8 @@ export default function Auth({ onAuth }: AuthProps) {
     try {
       const endpoint = isLogin ? '/auth/login' : '/auth/register';
       const data = await api.post<{ token: string; user: UserProfile }>(endpoint, { email, password });
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('last_logged_in_user', JSON.stringify(data.user));
+      safeStorage.setItem('token', data.token);
+      safeStorage.setItem('last_logged_in_user', JSON.stringify(data.user));
       onAuth(data.user);
     } catch (err: any) {
       console.error('Auth error:', err);

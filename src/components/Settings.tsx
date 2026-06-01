@@ -9,6 +9,7 @@ import { CurrencyTable } from './CurrencyTable';
 import { UserManager } from './UserManager';
 import { useDataManagement } from '../hooks/useDataManagement';
 import { APP_VERSION } from '../version';
+import { safeStorage } from '../lib/api';
 
 import { UserProfile, Account } from '../types';
 
@@ -31,7 +32,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
   const [showBalanceManager, setShowBalanceManager] = useState(false);
   const [showUserManager, setShowUserManager] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('theme') || 'theme-nordic');
+  const [currentTheme, setCurrentTheme] = useState(safeStorage.getItem('theme') || 'theme-nordic');
 
   const themes = [
     { type: 'Светлые', items: [
@@ -59,7 +60,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
     const allThemeIds = themes.flatMap(g => g.items).map(t => t.id);
     document.body.classList.remove(...allThemeIds);
     document.body.classList.add(themeId);
-    localStorage.setItem('theme', themeId);
+    safeStorage.setItem('theme', themeId);
     setCurrentTheme(themeId);
     setDropdownOpen(false);
   };
