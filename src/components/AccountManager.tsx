@@ -1,24 +1,10 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import { Account, AccountType, Currency } from '../types';
-import { X, Plus, Trash2, Check, Pencil, ChevronDown, GripVertical, Save } from 'lucide-react';
+import { X, Plus, Trash2, Check, Pencil, ChevronDown, Save } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { currencyService } from '../services/currencyService';
 import { getAccountIcon } from '../lib/accountUtils';
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 
 interface AccountManagerProps {
   accounts: Account[];
@@ -27,76 +13,65 @@ interface AccountManagerProps {
   initialEditingId?: string | null;
 }
 
-interface SortableAccountRowProps {
+interface AccountCardProps {
   account: Account;
   onEdit: (acc: Account) => void;
-  currencies: Currency[];
+  currencySymbol: string;
 }
 
-function SortableAccountRow({ account, onEdit, currencies }: SortableAccountRowProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging
-  } = useSortable({ id: account.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 20 : 0,
-    opacity: isDragging ? 0.5 : 1
-  };
+function AccountCard({ account, onEdit, currencySymbol }: AccountCardProps) {
+  const isNegative = account.balance < 0;
+  const hasColor = account.color && account.color !== '#000000';
 
   return (
-    <tr 
-      ref={setNodeRef}
-      style={style}
+    <div 
       onClick={() => onEdit(account)}
-      className="group transition-all border-b border-neutral-50 hover:bg-theme-surface/40 cursor-pointer min-h-[32px]"
+      className={cn(
+        "bg-theme-surface/75 p-2 sm:p-3 rounded-xl sm:rounded-2xl border transition-all duration-300 relative cursor-pointer group shadow-sm hover:shadow-md hover:scale-[1.02] flex flex-col justify-between min-h-[76px] sm:min-h-[92px] select-none",
+        isNegative 
+          ? "border-rose-500/30 hover:shadow-rose-500/10 hover:bg-rose-500/5 hover:-translate-y-0.5" 
+          : "border-theme-base hover:shadow-theme-primary/10 hover:bg-theme-primary/5 hover:-translate-y-0.5"
+      )}
     >
-      <td className="py-1 px-3">
-        <div className="flex items-center gap-2 py-0.5">
-          <button 
-            className="cursor-grab active:cursor-grabbing text-theme-muted/20 hover:text-theme-primary transition-colors h-5 w-3 flex items-center justify-center rounded"
-            {...attributes}
-            {...listeners}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <GripVertical className="w-3 h-3" />
-          </button>
+      {/* Name and color dot */}
+      <div className="min-w-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5 sm:mb-1">
           <div 
-            className="w-2 h-2 rounded-full shrink-0" 
-            style={{ backgroundColor: account.color || '#ccc' }}
+            className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shrink-0 shadow-sm" 
+            style={hasColor ? { backgroundColor: account.color } : { backgroundColor: 'var(--color-theme-primary)' }}
           />
-          <span className="font-bold text-[13px] text-theme-main leading-tight break-words max-w-[200px]">
+          <p className="text-theme-muted group-hover:text-theme-main text-[8.5px] sm:text-[10px] font-bold uppercase tracking-wider truncate transition-colors leading-tight">
             {account.name}
-          </span>
+          </p>
         </div>
-      </td>
-      <td className="py-1 px-3 hidden sm:table-cell">
-        <div className="flex items-center gap-1 text-theme-muted/60 uppercase text-[8px] font-black tracking-tighter">
-          {account.type === 'card' ? 'Карта' : account.type === 'bank' ? 'Банк' : account.type === 'cash' ? 'Нал' : 'Кредит'}
-        </div>
-      </td>
-      <td className="py-1 px-3 text-center hidden sm:table-cell">
-        <div className="flex items-center justify-center gap-1.5 font-mono text-[8px] font-black uppercase text-theme-muted/40">
-          {account.showOnDashboard && <div className="w-1 h-1 rounded-full bg-theme-primary" title="На главном" />}
-          {account.showInTotals && <div className="w-1 h-1 rounded-full bg-green-500" title="В итогах" />}
-        </div>
-      </td>
-      <td className="py-1 px-3 text-center">
-        {account.isArchived && <span className="text-[7px] font-black bg-theme-muted/10 text-theme-muted px-1 rounded uppercase tracking-tighter">Архив</span>}
-        {!account.isArchived && <span className="text-[7px] font-black text-theme-primary/40 uppercase tracking-tighter">Активен</span>}
-      </td>
-      <td className="py-1 px-3 text-right">
-        <span className="font-mono text-sm font-black text-theme-primary italic">
-          {account.balance.toLocaleString()} {currencies.find(c => c.id === account.currencyId)?.symbol || account.currency}
+        
+        <p className={cn("font-black text-[12px] sm:text-[14px] italic truncate tracking-tight leading-none", isNegative ? "text-rose-500" : "text-theme-primary")}>
+          {account.balance.toLocaleString()}
+        </p>
+      </div>
+
+      {/* Visibility dots and status at the bottom */}
+      <div className="mt-1.5 pt-1 border-t border-theme-base/5 flex items-center justify-between">
+        <span className="font-mono text-[8px] sm:text-[9.5px] font-black text-theme-muted/70 tracking-tight">
+          {currencySymbol}
         </span>
-      </td>
-    </tr>
+        
+        {account.isArchived ? (
+          <span className="text-[6.5px] sm:text-[7.5px] font-black uppercase bg-neutral-100 dark:bg-neutral-800 text-neutral-500 px-1 py-0.5 rounded tracking-wide shadow-sm">
+            архив
+          </span>
+        ) : (
+          <div className="flex items-center gap-1">
+            {account.showOnDashboard && (
+              <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-theme-primary shadow-sm" title="На главном" />
+            )}
+            {account.showInTotals && (
+              <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-green-500 shadow-sm" title="В итогах" />
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -149,15 +124,6 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
     });
     return groups;
   }, [localAccounts]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        delay: 200,
-        tolerance: 5,
-      },
-    })
-  );
 
   useEffect(() => {
     currencyService.getCurrencies().then(setCurrencies);
@@ -228,39 +194,6 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
     }
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeId = active.id as string;
-    const overContainerId = over.data.current?.sortable?.containerId || over.id;
-
-    const activeAccount = localAccounts.find(a => a.id === activeId);
-    if (!activeAccount) return;
-
-    let targetType: AccountType = activeAccount.type;
-    if (['card', 'credit', 'cash', 'bank'].includes(overContainerId)) {
-      targetType = overContainerId as AccountType;
-    }
-
-    if (activeAccount.type !== targetType) {
-      const updatedAccount = { ...activeAccount, type: targetType };
-      
-      setLocalAccounts(prev => prev.map(a => a.id === activeId ? updatedAccount : a));
-
-      try {
-        await api.put(`/accounts/${activeId}`, {
-          ...activeAccount,
-          type: targetType
-        });
-        onRefresh?.();
-      } catch (error) {
-        console.error('Error updating account type via DND:', error);
-        onRefresh?.();
-      }
-    }
-  };
-
   const startEditing = (acc: Account) => {
     setEditingId(acc.id);
     setName(acc.name);
@@ -281,9 +214,9 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
         
         {/* Header */}
         <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between shrink-0 bg-theme-surface/10 backdrop-blur-sm">
-          <h3 className="text-sm font-black text-theme-main lowercase">счета</h3>
+          <h3 className="text-2xl font-black text-theme-main uppercase tracking-widest drop-shadow-[0_2px_4px_rgba(0,0,0,0.15)] [text-shadow:_0_2px_10px_rgba(0,0,0,0.12)]">счета</h3>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <button 
               onClick={() => {
                 setEditingId(null);
@@ -291,7 +224,7 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
                 setName('');
                 setShowFormModal(true);
               }}
-              className="p-2 bg-sky-500 text-white rounded-xl shadow-lg hover:bg-sky-600 transition-all active:scale-95 cursor-pointer flex items-center justify-center"
+              className="p-2 bg-sky-500 text-white rounded-xl shadow-lg shadow-sky-500/10 hover:bg-sky-600 transition-all active:scale-95 cursor-pointer flex items-center justify-center h-10 w-10"
               title="Добавить счет"
             >
               <Plus className="w-5 h-5" />
@@ -299,7 +232,7 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
 
             <button 
               onClick={onClose} 
-              className="p-2 border border-orange-400 text-orange-400 bg-white rounded-xl hover:bg-orange-50 transition-colors relative z-20 cursor-pointer flex items-center justify-center"
+              className="p-2 border border-orange-400 text-orange-400 bg-white rounded-xl hover:bg-orange-50 transition-all relative z-20 cursor-pointer flex items-center justify-center shadow-[0_4px_12px_rgba(251,146,60,0.25)] hover:shadow-[0_6px_16px_rgba(251,146,60,0.35)] active:scale-95 h-10 w-10"
               aria-label="Закрыть"
             >
               <X className="w-5 h-5" />
@@ -308,55 +241,43 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
         </div>
 
         <div className="flex-1 overflow-y-auto no-scrollbar pb-6">
-          <div className="p-3 lg:p-6">
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <div className="space-y-4">
-                {(['card', 'cash', 'bank', 'credit'] as AccountType[]).map(groupType => (
-                  <div key={groupType} className="overflow-hidden bg-theme-surface/10 rounded-lg border border-neutral-100 shadow-sm shadow-black/5">
-                    <table className="w-full text-left border-collapse table-fixed">
-                      <thead>
-                        <tr className="bg-theme-surface/50 border-b border-neutral-50">
-                          <th className="py-2 px-3 text-[10px] font-black uppercase tracking-[0.2em] text-theme-primary italic w-[40%]">
-                            <div className="flex items-center gap-2">
-                              {getAccountIcon(groupType, "w-3 h-3")}
-                              {groupType === 'card' ? 'Банковские карты' : groupType === 'bank' ? 'Расчетные счета' : groupType === 'cash' ? 'Наличные' : 'Кредиты'}
-                            </div>
-                          </th>
-                          <th className="py-2 px-3 text-[8px] font-black uppercase tracking-[0.2em] text-theme-muted hidden sm:table-cell w-[15%] text-center">Тип</th>
-                          <th className="py-2 px-3 text-[8px] font-black uppercase tracking-[0.2em] text-theme-muted text-center hidden sm:table-cell w-[10%]">Экран</th>
-                          <th className="py-2 px-3 text-[8px] font-black uppercase tracking-[0.2em] text-theme-muted text-center w-[10%]">Статус</th>
-                          <th className="py-2 px-3 text-[9px] font-black uppercase tracking-[0.2em] text-theme-muted text-right w-[25%] pr-4 italic">Остаток</th>
-                        </tr>
-                      </thead>
-                      <SortableContext 
-                        items={groupedAccounts[groupType].map(a => a.id)}
-                        strategy={verticalListSortingStrategy}
-                        id={groupType}
-                      >
-                        <tbody>
-                          {groupedAccounts[groupType].length > 0 ? (
-                            groupedAccounts[groupType].map(acc => (
-                              <SortableAccountRow 
-                                key={acc.id} 
-                                account={acc} 
-                                onEdit={startEditing}
-                                currencies={currencies}
-                              />
-                            ))
-                          ) : (
-                            <tr>
-                              <td colSpan={5} className="py-6 text-center text-[8px] font-black uppercase tracking-[0.3em] text-theme-muted/20 italic">
-                                [ empty_sector ]
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </SortableContext>
-                    </table>
+          <div className="p-4 lg:p-6">
+            <div className="space-y-8">
+              {(['card', 'cash', 'bank', 'credit'] as AccountType[]).map(groupType => (
+                <div key={groupType} className="space-y-4">
+                  {/* Group Heading */}
+                  <div className="flex items-center gap-2 px-1 py-1 bg-theme-surface/30 rounded-lg border border-neutral-50 shadow-sm inline-flex">
+                    <div className="w-5 h-5 flex items-center justify-center text-theme-primary/80">
+                      {getAccountIcon(groupType, "w-4 h-4")}
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-theme-primary italic pr-2">
+                      {groupType === 'card' ? 'Банковские карты' : groupType === 'bank' ? 'Расчетные счета' : groupType === 'cash' ? 'Наличные' : 'Кредиты'}
+                    </span>
                   </div>
-                ))}
-              </div>
-            </DndContext>
+                  
+                  {/* Cards Grid */}
+                  <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1.5 sm:gap-4">
+                    {groupedAccounts[groupType].length > 0 ? (
+                      groupedAccounts[groupType].map(acc => {
+                        const currencySymbol = currencies.find(c => c.id === acc.currencyId)?.symbol || acc.currency;
+                        return (
+                          <AccountCard 
+                            key={acc.id} 
+                            account={acc} 
+                            onEdit={startEditing}
+                            currencySymbol={currencySymbol}
+                          />
+                        );
+                      })
+                    ) : (
+                      <div className="col-span-full py-8 text-center bg-theme-surface/5 rounded-xl border border-dashed border-theme-base/30 text-[8px] font-black uppercase tracking-[0.3em] text-theme-muted/20 italic">
+                        [ пустая категория ]
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -365,10 +286,13 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
           <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[200] flex items-center justify-center p-0 lg:p-4 animate-in fade-in duration-200">
             <div className="bg-theme-main w-full h-full lg:max-h-full lg:max-w-xl lg:rounded-xl lg:border border-neutral-100 overflow-hidden flex flex-col shadow-2xl relative">
               <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between shrink-0 bg-theme-surface/10 backdrop-blur-sm">
-                <h3 className="text-sm font-black text-theme-main lowercase">{editingId ? 'редактировать' : 'новый счет'}</h3>
+                <h3 className="text-sm font-black text-theme-main uppercase tracking-widest drop-shadow-[0_1px_2px_rgba(0,0,0,0.15)] [text-shadow:_0_2px_8px_rgba(0,0,0,0.1)]">
+                  {editingId ? 'редактировать' : 'новый счет'}
+                </h3>
                 <button 
                   onClick={resetForm} 
-                  className="w-10 h-10 flex items-center justify-center rounded-lg bg-theme-surface text-theme-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all border border-theme-base/50"
+                  type="button"
+                  className="w-10 h-10 flex items-center justify-center rounded-lg bg-theme-surface text-theme-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all border border-theme-base/50 shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:shadow-[0_6px_16px_rgba(0,0,0,0.15)] active:scale-95"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -510,7 +434,7 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
                           <button 
                             type="button"
                             onClick={() => setConfirmDeleteId(editingId)} 
-                            className="w-12 h-12 flex items-center justify-center rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all border border-rose-100"
+                            className="w-12 h-12 flex items-center justify-center rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all border border-rose-100 shadow-[0_4px_12px_rgba(239,68,68,0.15)] hover:shadow-[0_6px_16px_rgba(239,68,68,0.25)] active:scale-95"
                             title="Удалить счет"
                           >
                             <Trash2 size={20} />

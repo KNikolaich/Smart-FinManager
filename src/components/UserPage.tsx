@@ -183,7 +183,7 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
 
         <button 
           onClick={() => setShowLogoutConfirm(true)}
-          className="w-full bg-rose-500/10 text-rose-500 font-bold py-4 rounded-3xl flex items-center justify-center gap-2 hover:bg-rose-500/20 transition-all active:scale-95"
+          className="w-full bg-rose-500/10 text-rose-500 font-bold py-4 rounded-3xl flex items-center justify-center gap-2 hover:bg-rose-500/20 transition-all active:scale-95 shadow-[0_4px_14px_rgba(239,68,68,0.15)] hover:shadow-[0_6px_20px_rgba(239,68,68,0.25)]"
         >
           <LogOut className="w-5 h-5" />
           Выйти из аккаунта

@@ -776,7 +776,7 @@ export default function Dashboard({
             onClick={() => setShowAccountManager(true)}
             className="group flex items-center gap-2"
           >
-            <h3 className="font-bold text-lg text-theme-main group-hover:text-theme-primary transition-colors">Счета</h3>
+            <h3 className="font-bold text-lg text-theme-main group-hover:text-theme-primary transition-colors" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.15)' }}>Счета</h3>
             <ChevronRight className="w-4 h-4 text-theme-muted group-hover:text-theme-primary transition-all group-hover:translate-x-1" />
           </button>
         </div>
@@ -876,14 +876,14 @@ export default function Dashboard({
             }}
             className="group flex items-center gap-2"
           >
-            <h3 className="font-bold text-lg text-theme-main group-hover:text-theme-primary transition-colors">Операции</h3>
+            <h3 className="font-bold text-lg text-theme-main group-hover:text-theme-primary transition-colors" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.15)' }}>Операции</h3>
             <ChevronRight className="w-4 h-4 text-theme-muted group-hover:text-theme-primary transition-all group-hover:translate-x-1" />
           </button>
           <button 
             onClick={() => {
               if (onOpenAddTransaction) onOpenAddTransaction();
             }}
-            className="flex items-center justify-center w-8 h-8 bg-theme-primary/10 text-theme-primary rounded-full hover:bg-theme-primary/20 transition-all font-bold"
+            className="flex items-center justify-center w-8 h-8 bg-theme-primary/10 border-2 border-theme-primary text-theme-primary rounded-full hover:bg-theme-primary hover:text-theme-on-primary shadow-md shadow-theme-primary/20 active:scale-95 transition-all font-bold"
             title="Добавить операцию"
           >
             <Plus size={18} strokeWidth={3} />
@@ -990,31 +990,33 @@ export default function Dashboard({
             className="overflow-hidden"
           >
             <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg text-theme-main" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.15)' }}>Цели</h3>
               <div className="flex items-center gap-4">
-                <h3 className="font-bold text-lg text-theme-main">Цели</h3>
-                <label className="flex items-center gap-2 cursor-pointer group">
+                <label className="flex items-center gap-2 cursor-pointer group select-none">
+                  <span className="text-[10px] font-bold text-theme-muted uppercase tracking-widest leading-none">Завершенные</span>
                   <div 
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowCompletedGoals(!showCompletedGoals);
                     }}
                     className={cn(
-                      "w-4 h-4 rounded border transition-all flex items-center justify-center",
-                      showCompletedGoals ? "bg-theme-primary border-theme-primary" : "border-theme-base group-hover:border-theme-primary"
+                      "w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center shadow-md",
+                      showCompletedGoals 
+                        ? "bg-theme-primary border-theme-primary text-white ring-2 ring-theme-primary/20" 
+                        : "border-theme-muted/50 bg-theme-surface group-hover:border-theme-primary"
                     )}
                   >
-                    {showCompletedGoals && <Check className="w-3 h-3 text-white" />}
+                    {showCompletedGoals && <Check className="w-3.5 h-3.5 stroke-[3] text-white" />}
                   </div>
-                  <span className="text-[10px] font-bold text-theme-muted uppercase tracking-widest leading-none">Завершенные</span>
                 </label>
+                <button 
+                  onClick={() => setShowGoalManager(true)} 
+                  className="flex items-center justify-center w-8 h-8 bg-theme-primary/10 border-2 border-theme-primary text-theme-primary rounded-full hover:bg-theme-primary hover:text-theme-on-primary shadow-md shadow-theme-primary/20 active:scale-95 transition-all font-bold"
+                  title="Добавить цель"
+                >
+                  <Plus size={18} strokeWidth={3} />
+                </button>
               </div>
-              <button 
-                onClick={() => setShowGoalManager(true)} 
-                className="flex items-center gap-1 text-theme-primary font-medium hover:bg-theme-primary/10 px-2 py-1 rounded-lg transition-colors"
-              >
-                <Plus size={14} />
-                Добавить цель
-              </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-3">
               <DndContext
