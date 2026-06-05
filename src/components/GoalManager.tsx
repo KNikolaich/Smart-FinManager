@@ -283,12 +283,16 @@ export default function GoalManager({ goals, userId, onClose, onRefresh, initial
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[120] flex items-end sm:items-center justify-center p-1 sm:p-4">
-      <div className="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] overflow-hidden flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 relative">
-        <div className="p-6 flex items-center justify-between shrink-0 border-b border-neutral-100">
-          <h2 className="text-xl font-bold">Новая цель</h2>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
-            <X className="w-6 h-6 text-neutral-400" />
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[120] flex items-center justify-center">
+      <div className="bg-white w-full h-full sm:h-auto sm:max-w-lg sm:rounded-[32px] overflow-hidden flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 relative">
+        <div className="p-6 flex items-center justify-between shrink-0 border-b border-theme-base">
+          <h2 className="text-xl font-black uppercase text-theme-main drop-shadow-sm">Новая цель</h2>
+          <button 
+            onClick={onClose} 
+            className="p-2.5 bg-theme-main/50 border border-theme-base text-theme-main rounded-xl shadow-md hover:bg-theme-main transition-all cursor-pointer flex items-center justify-center active:scale-95 h-10 w-10"
+            aria-label="Закрыть"
+          >
+            <X className="w-5 h-5" />
           </button>
         </div>
 

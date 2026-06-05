@@ -96,7 +96,7 @@ export default function BalanceManager({ onClose, onRefresh }: BalanceManagerPro
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-0 lg:p-8 bg-black/80 backdrop-blur-xl">
       <div className="relative w-full h-full lg:h-auto lg:max-w-3xl bg-theme-main lg:rounded-xl lg:border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
         <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
-          <h3 className="text-sm font-black uppercase tracking-widest text-theme-main">История баланса</h3>
+          <h3 className="text-sm font-black uppercase tracking-widest text-theme-main drop-shadow-sm">История баланса</h3>
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setIsAdding(true)}
@@ -107,7 +107,8 @@ export default function BalanceManager({ onClose, onRefresh }: BalanceManagerPro
             </button>
             <button 
               onClick={onClose} 
-              className="w-10 h-10 flex items-center justify-center rounded-lg bg-theme-surface text-theme-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all border border-theme-base/50"
+              className="p-2.5 bg-theme-main/50 border border-theme-base text-theme-main rounded-xl shadow-md hover:bg-theme-main transition-all relative z-20 cursor-pointer flex items-center justify-center active:scale-95 h-10 w-10"
+              aria-label="Закрыть"
             >
               <X className="w-5 h-5" />
             </button>

@@ -85,7 +85,7 @@ export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) =
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-0 lg:p-8 bg-black/80 backdrop-blur-xl">
       <div className="relative w-full h-full lg:h-auto lg:max-w-4xl bg-theme-main lg:rounded-xl lg:border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
         <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
-          <h3 className="text-sm font-black uppercase tracking-widest text-theme-main">Справочник валют</h3>
+          <h3 className="text-sm font-black uppercase text-theme-main drop-shadow-sm">ВАЛЮТЫ</h3>
           <div className="flex items-center gap-2 relative z-20">
             {isAdmin && (
               <>
@@ -111,7 +111,7 @@ export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) =
             {onClose && (
               <button 
                 onClick={onClose} 
-                className="w-10 h-10 flex items-center justify-center rounded-lg bg-theme-surface text-theme-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all border border-theme-base/50"
+                className="p-2.5 bg-theme-main/50 border border-theme-base text-theme-main rounded-xl shadow-md hover:bg-theme-main transition-all relative z-20 cursor-pointer flex items-center justify-center active:scale-95 h-10 w-10"
                 title="Закрыть"
               >
                 <X className="w-5 h-5" />
@@ -124,10 +124,8 @@ export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) =
             <table className="w-full text-left border-collapse table-fixed">
               <thead>
                 <tr className="bg-theme-surface/50 border-b border-neutral-50 text-[10px] font-black text-theme-muted uppercase tracking-tighter">
-                  <th className="px-6 py-3 border-r border-neutral-50/50">Наименование</th>
-                  <th className="px-4 py-3 border-r border-neutral-50/50">ISO</th>
-                  <th className="px-4 py-3 border-r border-neutral-50/50">Курс</th>
-                  <th className="px-4 py-3 text-center">Символ</th>
+                  <th className="px-6 py-3 border-r border-neutral-50/50">Наименование (ISO/Символ)</th>
+                  <th className="px-4 py-3">Курс</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-50 bg-white">
@@ -145,12 +143,13 @@ export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) =
                       }
                     }}
                   >
-                    <td className="px-6 py-4 border-r border-neutral-50/50 font-bold text-sm text-theme-main">{cur.name}</td>
-                    <td className="px-4 py-4 border-r border-neutral-50/50 font-mono text-xs text-theme-muted">{cur.iso}</td>
-                    <td className="px-4 py-4 border-r border-neutral-50/50 font-black italic text-theme-primary tabular-nums">
+                    <td className="px-6 py-4 border-r border-neutral-50/50">
+                        <div className="font-bold text-sm text-theme-main truncate">{cur.name}</div>
+                        <div className="font-mono text-xs text-theme-muted truncate">{cur.iso} • {cur.symbol || '-'}</div>
+                    </td>
+                    <td className="px-4 py-4 font-black italic text-theme-primary tabular-nums">
                       {cur.rate?.toFixed(2) || '1.00'}
                     </td>
-                    <td className="px-4 py-4 text-center font-bold text-lg text-theme-main">{cur.symbol || '-'}</td>
                   </tr>
                 ))}
               </tbody>

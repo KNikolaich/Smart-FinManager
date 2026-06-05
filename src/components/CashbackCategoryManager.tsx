@@ -39,17 +39,19 @@ export default function CashbackCategoryManager({ categories, onSave, onClose }:
   };
 
   const isGreyTheme = document.body.classList.contains('theme-grey');
-  const buttonClass = cn(
-    "w-full py-3 rounded-2xl font-bold transition-all",
-    isGreyTheme ? "bg-neutral-500 text-white hover:bg-neutral-600" : "bg-emerald-500 text-white hover:bg-emerald-600"
-  );
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6">
-      <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xl font-bold">Категории кэшбека</h3>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full"><X size={20} /></button>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[120] flex items-center justify-center">
+      <div className="bg-white w-full h-full sm:h-auto sm:max-w-lg sm:rounded-[32px] overflow-hidden flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 relative">
+        <div className="p-6 flex items-center justify-between shrink-0 border-b border-theme-base">
+          <h3 className="text-xl font-black uppercase text-theme-main drop-shadow-sm">Категории кэшбека</h3>
+          <button 
+            onClick={onClose} 
+            className="p-2.5 bg-theme-main/50 border border-theme-base text-theme-main rounded-xl shadow-md hover:bg-theme-main transition-all cursor-pointer flex items-center justify-center active:scale-95 h-10 w-10"
+            aria-label="Закрыть"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
         <div className="space-y-2 max-h-[60vh] overflow-y-auto">
           {localCategories.map(c => (
@@ -68,7 +70,12 @@ export default function CashbackCategoryManager({ categories, onSave, onClose }:
             </button>
           </div>
         </div>
-        <button onClick={() => onSave(localCategories)} className={buttonClass}>Сохранить</button>
+        <button 
+          onClick={() => onSave(localCategories)} 
+          className="w-full py-4 rounded-xl font-black uppercase text-white bg-theme-primary shadow-md hover:shadow-lg transition-all active:scale-95"
+        >
+          Сохранить
+        </button>
       </div>
     </div>
   );

@@ -27,7 +27,7 @@ function AccountCard({ account, onEdit, currencySymbol }: AccountCardProps) {
     <div 
       onClick={() => onEdit(account)}
       className={cn(
-        "bg-theme-surface/75 p-2 sm:p-3 rounded-xl sm:rounded-2xl border transition-all duration-300 relative cursor-pointer group shadow-sm hover:shadow-md hover:scale-[1.02] flex flex-col justify-between min-h-[76px] sm:min-h-[92px] select-none",
+        "bg-theme-surface/75 p-2 sm:p-3 rounded-xl sm:rounded-2xl border transition-all duration-300 relative cursor-pointer group hover:shadow-md hover:scale-[1.02] flex flex-col justify-between min-h-[76px] sm:min-h-[92px] select-none",
         isNegative 
           ? "border-rose-500/30 hover:shadow-rose-500/10 hover:bg-rose-500/5 hover:-translate-y-0.5" 
           : "border-theme-base hover:shadow-theme-primary/10 hover:bg-theme-primary/5 hover:-translate-y-0.5"
@@ -45,30 +45,31 @@ function AccountCard({ account, onEdit, currencySymbol }: AccountCardProps) {
           </p>
         </div>
         
-        <p className={cn("font-black text-[12px] sm:text-[14px] italic truncate tracking-tight leading-none", isNegative ? "text-rose-500" : "text-theme-primary")}>
-          {account.balance.toLocaleString()}
-        </p>
+        <div className="flex items-baseline gap-1 w-full">
+          <p className={cn("font-black text-[16px] sm:text-[18px] italic tracking-tight leading-none", isNegative ? "text-rose-500" : "text-theme-primary")}>
+            {account.balance.toLocaleString()}
+          </p>
+          <span className="ml-auto font-mono text-[10px] sm:text-[12px] font-black text-theme-muted/70 tracking-tight shrink-0">
+            {currencySymbol}
+          </span>
+        </div>
       </div>
 
       {/* Visibility dots and status at the bottom */}
-      <div className="mt-1.5 pt-1 border-t border-theme-base/5 flex items-center justify-between">
-        <span className="font-mono text-[8px] sm:text-[9.5px] font-black text-theme-muted/70 tracking-tight">
-          {currencySymbol}
-        </span>
-        
+      <div className="mt-2 flex items-center justify-center gap-1">
         {account.isArchived ? (
           <span className="text-[6.5px] sm:text-[7.5px] font-black uppercase bg-neutral-100 dark:bg-neutral-800 text-neutral-500 px-1 py-0.5 rounded tracking-wide shadow-sm">
             архив
           </span>
         ) : (
-          <div className="flex items-center gap-1">
+          <>
             {account.showOnDashboard && (
-              <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-theme-primary shadow-sm" title="На главном" />
+              <span className="w-1.5 h-1.5 rounded-full bg-theme-primary shadow-sm" title="На главном" />
             )}
             {account.showInTotals && (
-              <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-green-500 shadow-sm" title="В итогах" />
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-sm" title="В итогах" />
             )}
-          </div>
+          </>
         )}
       </div>
     </div>
@@ -232,7 +233,7 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
 
             <button 
               onClick={onClose} 
-              className="p-2 border border-orange-400 text-orange-400 bg-white rounded-xl hover:bg-orange-50 transition-all relative z-20 cursor-pointer flex items-center justify-center shadow-[0_4px_12px_rgba(251,146,60,0.25)] hover:shadow-[0_6px_16px_rgba(251,146,60,0.35)] active:scale-95 h-10 w-10"
+              className="p-2.5 bg-theme-main/50 border border-theme-base text-theme-main rounded-xl shadow-md hover:bg-theme-main transition-all relative z-20 cursor-pointer flex items-center justify-center active:scale-95 h-10 w-10"
               aria-label="Закрыть"
             >
               <X className="w-5 h-5" />
@@ -246,17 +247,17 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
               {(['card', 'cash', 'bank', 'credit'] as AccountType[]).map(groupType => (
                 <div key={groupType} className="space-y-4">
                   {/* Group Heading */}
-                  <div className="flex items-center gap-2 px-1 py-1 bg-theme-surface/30 rounded-lg border border-neutral-50 shadow-sm inline-flex">
+                  <div className="flex items-center gap-2 border-b border-theme-base pb-2 w-full">
                     <div className="w-5 h-5 flex items-center justify-center text-theme-primary/80">
                       {getAccountIcon(groupType, "w-4 h-4")}
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-theme-primary italic pr-2">
+                    <span className="text-[12px] font-black uppercase tracking-[0.2em] text-theme-main italic">
                       {groupType === 'card' ? 'Банковские карты' : groupType === 'bank' ? 'Расчетные счета' : groupType === 'cash' ? 'Наличные' : 'Кредиты'}
                     </span>
                   </div>
                   
                   {/* Cards Grid */}
-                  <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1.5 sm:gap-4">
+                  <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 gap-1.5 sm:gap-4">
                     {groupedAccounts[groupType].length > 0 ? (
                       groupedAccounts[groupType].map(acc => {
                         const currencySymbol = currencies.find(c => c.id === acc.currencyId)?.symbol || acc.currency;
@@ -292,7 +293,7 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
                 <button 
                   onClick={resetForm} 
                   type="button"
-                  className="w-10 h-10 flex items-center justify-center rounded-lg bg-theme-surface text-theme-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all border border-theme-base/50 shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:shadow-[0_6px_16px_rgba(0,0,0,0.15)] active:scale-95"
+                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-theme-main/50 border border-theme-base text-theme-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all shadow-md active:scale-95"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -418,7 +419,7 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
                             <button 
                               type="button" 
                               onClick={() => handleDelete(editingId)} 
-                              className="px-3 py-2 bg-rose-500 text-white rounded font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 shadow-lg shadow-rose-500/20"
+                              className="px-3 py-2 bg-rose-500 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 shadow-md"
                             >
                               ДА
                             </button>
@@ -434,7 +435,7 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
                           <button 
                             type="button"
                             onClick={() => setConfirmDeleteId(editingId)} 
-                            className="w-12 h-12 flex items-center justify-center rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all border border-rose-100 shadow-[0_4px_12px_rgba(239,68,68,0.15)] hover:shadow-[0_6px_16px_rgba(239,68,68,0.25)] active:scale-95"
+                            className="w-12 h-12 flex items-center justify-center rounded-xl bg-rose-50/50 text-rose-500 hover:bg-rose-50 transition-all border border-rose-100 shadow-md active:scale-95"
                             title="Удалить счет"
                           >
                             <Trash2 size={20} />

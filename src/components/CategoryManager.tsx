@@ -105,21 +105,21 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-0 lg:p-8 bg-black/80 backdrop-blur-xl">
       <div className="relative w-full h-full lg:max-h-full lg:max-w-3xl bg-theme-main lg:rounded-xl lg:border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
         <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
-          <h3 className="text-sm font-black text-theme-main uppercase">КАТЕГОРИИ</h3>
+          <h3 className="text-sm font-black uppercase text-theme-main drop-shadow-sm">КАТЕГОРИИ</h3>
           <div className="flex items-center gap-2 relative z-20">
             <button 
               onClick={() => {
                 setEditingCategory(null);
                 setShowFormModal(true);
               }}
-              className="p-2 bg-sky-500 text-white rounded-xl shadow-lg hover:bg-sky-600 transition-all active:scale-95 cursor-pointer flex items-center justify-center"
+              className="p-2.5 bg-sky-500 text-white rounded-xl shadow-md hover:bg-sky-600 transition-all active:scale-95 cursor-pointer flex items-center justify-center h-10 w-10"
               title="Добавить категорию"
             >
               <Plus className="w-5 h-5" />
             </button>
             <button 
               onClick={onClose} 
-              className="p-2 border border-orange-400 text-orange-400 bg-white rounded-xl hover:bg-orange-50 transition-colors relative z-20 cursor-pointer flex items-center justify-center"
+              className="p-2.5 bg-theme-main/50 border border-theme-base text-theme-main rounded-xl shadow-md hover:bg-theme-main transition-all relative z-20 cursor-pointer flex items-center justify-center active:scale-95 h-10 w-10"
               aria-label="Закрыть"
             >
               <X className="w-5 h-5" />
@@ -352,9 +352,12 @@ function CategoryForm({ category, categories, onClose, onSuccess, onDelete }: Ca
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 lg:p-8 bg-black/80 backdrop-blur-xl">
       <div className="relative w-full h-full lg:max-h-full lg:max-w-4xl bg-theme-main lg:rounded-xl lg:border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
         <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
-          <h3 className="text-sm font-black uppercase tracking-widest text-theme-main uppercase">{category ? 'Изменить' : 'Новая'}</h3>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100/50 rounded-full transition-colors">
-            <X className="w-5 h-5 text-theme-muted" />
+          <h3 className="text-sm font-black uppercase tracking-widest text-theme-main drop-shadow-sm">{category ? 'Изменить' : 'Новая'}</h3>
+          <button 
+            onClick={onClose} 
+            className="p-2.5 bg-theme-main/50 border border-theme-base text-theme-main rounded-xl shadow-md hover:bg-theme-main transition-all cursor-pointer flex items-center justify-center active:scale-95 h-10 w-10"
+          >
+            <X className="w-5 h-5" />
           </button>
         </div>
 

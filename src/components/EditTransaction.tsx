@@ -115,13 +115,15 @@ export default function EditTransaction({ transaction, accounts, transactions, c
         )}
 
         <div className="px-6 py-3 flex items-center justify-between shrink-0 relative z-10 border-b border-theme-base">
-          <h2 className="text-base font-bold text-theme-main">Изменение операции</h2>
+          <h2 className="text-base font-black uppercase text-theme-main drop-shadow-sm">
+            {transaction.type === 'expense' ? 'Расход' : transaction.type === 'income' ? 'Доход' : 'Перевод'}
+          </h2>
           <button 
             onClick={onClose} 
-            className="p-1.5 hover:bg-theme-main rounded-full transition-colors relative z-20 cursor-pointer"
+            className="p-2.5 bg-theme-main/50 border border-theme-base text-theme-main rounded-xl shadow-md hover:bg-theme-main transition-all relative z-20 cursor-pointer"
             aria-label="Закрыть"
           >
-            <X className="w-5 h-5 text-theme-muted" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -266,7 +268,7 @@ export default function EditTransaction({ transaction, accounts, transactions, c
           <button
             onClick={() => setShowDeleteConfirm(true)}
             disabled={loading}
-            className="w-14 h-14 flex items-center justify-center bg-rose-500/10 text-rose-600 rounded-2xl hover:bg-rose-500/20 transition-colors shrink-0 border border-rose-500/20"
+            className="w-14 h-14 flex items-center justify-center bg-rose-50/50 text-rose-500 rounded-xl hover:bg-rose-50 transition-all shrink-0 border border-rose-100 shadow-md active:scale-95"
             title="Удалить"
           >
             <Trash2 className="w-6 h-6" />

@@ -47,24 +47,24 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
   return (
     <div className="fixed inset-0 z-[120] bg-theme-main flex flex-col">
       <div className="p-4 flex items-center justify-between bg-theme-surface border-b border-theme-base relative z-[130]">
-        <h2 className="text-xl font-bold text-theme-main">Профиль</h2>
+        <h2 className="text-xl font-black uppercase text-theme-main drop-shadow-sm">ПРОФИЛЬ</h2>
         <button 
           onClick={onClose} 
-          className="p-2 hover:bg-theme-main rounded-full cursor-pointer relative z-[140]"
+          className="p-2.5 bg-theme-main/50 border border-theme-base text-theme-main rounded-xl shadow-md hover:bg-theme-main transition-all relative z-[140] cursor-pointer flex items-center justify-center active:scale-95 h-10 w-10"
           aria-label="Закрыть"
         >
-          <X className="w-6 h-6 text-theme-muted" />
+          <X className="w-5 h-5" />
         </button>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-6 space-y-8">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {error && (
           <div className="bg-rose-50 text-rose-600 p-4 rounded-2xl text-sm">
             {error}
           </div>
         )}
         {/* Profile Card */}
-        <div className="bg-theme-surface p-6 rounded-3xl border border-theme-base shadow-sm flex items-center gap-4">
+        <div className="pt-0 pl-6 pb-0 flex items-center gap-4">
           <button 
             onClick={() => setIsSelectingIcon(!isSelectingIcon)}
             className="w-16 h-16 bg-theme-primary-light rounded-2xl flex items-center justify-center overflow-hidden text-3xl hover:opacity-80 transition-opacity"
@@ -109,7 +109,7 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
         </div>
 
         {/* Data Management Section */}
-        <section className="space-y-3">
+        <section className="space-y-3 mb-1.5">
           <h4 className="text-xs font-bold text-theme-muted uppercase tracking-widest px-4">Управление данными</h4>
           <div className="bg-theme-surface rounded-3xl border border-theme-base overflow-hidden shadow-sm">
             <button 

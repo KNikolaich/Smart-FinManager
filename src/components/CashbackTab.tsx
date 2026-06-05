@@ -474,9 +474,13 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
         <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[80vh]">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold">Выберите актив</h3>
-              <button onClick={() => setShowAssetSelector(false)} className="p-2 text-neutral-400 hover:bg-neutral-100 rounded-full transition-colors">
-                <X size={20} />
+              <h3 className="text-lg font-black uppercase text-theme-main drop-shadow-sm">Выберите актив</h3>
+              <button 
+                onClick={() => setShowAssetSelector(false)} 
+                className="p-2.5 bg-theme-main/50 border border-theme-base text-theme-main rounded-xl shadow-md hover:bg-theme-main transition-all cursor-pointer flex items-center justify-center active:scale-95 h-10 w-10"
+                aria-label="Закрыть"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-1.5 overflow-y-auto no-scrollbar pr-1">

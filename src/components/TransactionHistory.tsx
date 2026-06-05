@@ -5,7 +5,6 @@ import { ru } from 'date-fns/locale';
 import { X, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy, ChevronDown, Search } from 'lucide-react';
 import { GenericContextMenu } from './ui/GenericContextMenu';
 import { AnimatePresence } from 'motion/react';
-import { SimpleMarkdown } from './ui/InteractiveMarkdown';
 import { cn, getTransactionDisplayTitle } from '../lib/utils';
 
 interface TransactionHistoryProps {
@@ -206,7 +205,7 @@ export default function TransactionHistory({
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-0 lg:p-8">
       <div className="w-full h-full lg:h-auto lg:max-h-full max-w-2xl bg-theme-surface shadow-2xl flex flex-col relative overflow-hidden animate-in slide-in-from-bottom duration-300 lg:rounded-2xl">
         <div className="py-4 px-4 border-b border-theme-base flex items-center justify-between shrink-0 relative z-10">
-          <h2 className="text-xl font-bold text-theme-main">История операций</h2>
+          <h2 className="text-xl font-black uppercase text-theme-main drop-shadow-sm">История</h2>
           <div className="flex items-center gap-2">
             <button 
               onClick={handleAddNewByFilter}
@@ -217,7 +216,7 @@ export default function TransactionHistory({
             </button>
             <button 
               onClick={onClose} 
-              className="p-2 border border-orange-400 text-orange-400 bg-white rounded-xl hover:bg-orange-50 transition-colors relative z-20 cursor-pointer flex items-center justify-center"
+              className="p-2 bg-theme-main/50 border border-theme-base text-theme-main rounded-xl shadow-md hover:bg-theme-main transition-all relative z-20 cursor-pointer flex items-center justify-center active:scale-95"
               aria-label="Закрыть"
             >
               <X className="w-5 h-5" />
@@ -580,13 +579,11 @@ export default function TransactionHistory({
                             <div className="flex items-start gap-2">
                               <span className="text-lg shrink-0">{t.type === 'transfer' ? '🔄' : (category?.icon || parentCategory?.icon || '💰')}</span>
                               <div className="min-w-0">
-                                <div className="text-xs font-bold text-theme-main markdown-body prose-sm">
-                                  <SimpleMarkdown 
-                                    content={getTransactionDisplayTitle(t.description, category?.name, t.type)} 
-                                  />
-                                </div>
+                                <p className="text-xs font-bold text-theme-main truncate">
+                                  {getTransactionDisplayTitle(t.description, category?.name, t.type)}
+                                </p>
                                 <p 
-                                  className="text-[10px] font-medium truncate mt-1"
+                                  className="text-[10px] font-medium truncate"
                                   style={{ color: account?.color && account.color !== '#000000' ? account.color : 'var(--text-muted)' }}
                                 >
                                   {account?.name || 'Счет'}

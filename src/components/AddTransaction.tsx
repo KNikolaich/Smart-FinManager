@@ -102,10 +102,10 @@ export default function AddTransaction({ accounts, transactions, categories, onC
           <h2 className="text-base font-bold text-theme-main">Новая операция</h2>
           <button 
             onClick={onComplete} 
-            className="p-1.5 hover:bg-theme-main rounded-full transition-colors relative z-20 cursor-pointer"
+            className="p-2.5 bg-theme-main/50 border border-theme-base text-theme-main rounded-xl shadow-md hover:bg-theme-main transition-all relative z-20 cursor-pointer"
             aria-label="Закрыть"
           >
-            <X className="w-5 h-5 text-theme-muted" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -249,7 +249,7 @@ export default function AddTransaction({ accounts, transactions, categories, onC
         </div>
 
         <div className="p-4 flex gap-3 shrink-0 border-t border-theme-base bg-theme-surface/80 backdrop-blur-md">
-          <button onClick={onComplete} className="w-14 h-14 flex items-center justify-center bg-theme-main text-theme-muted rounded-2xl hover:bg-theme-base transition-colors shrink-0 border border-theme-base">
+          <button onClick={onComplete} className="w-14 h-14 flex items-center justify-center bg-theme-main border border-theme-base text-theme-main rounded-xl shadow-md hover:bg-theme-main transition-all shrink-0">
             <X className="w-6 h-6" />
           </button>
           <button
