@@ -15,7 +15,7 @@ An AI-powered personal finance management web application. Users can track trans
 ### How it runs
 In development, `tsx server.ts` starts Express which integrates the Vite dev server as middleware — serving both the API and the React SPA on **port 5000**.
 
-In production, the frontend is built with `vite build` (into `dist/`) and Express serves the static files.
+In production, the frontend is built with `vite build` (into `build/`) and Express serves the static files.
 
 ## Key Files
 - `server.ts` — Main Express server with all API routes and Vite middleware integration
@@ -42,6 +42,10 @@ npm run dev       # Start dev server (tsx server.ts) on port 5000
 npm run build     # Build frontend (vite build)
 npx prisma db push  # Sync schema changes to database
 ```
+
+## Setup notes
+- `package.json` has an `overrides` entry pinning `protobufjs` to `^7.4.0` — the version `@google/genai` requests transitively (`^7.5.4`) is blocked by Replit's package security policy (known CVE).
+- `JWT_SECRET` is stored as a shared environment value in `.replit`. Optional AI/SMTP features (`DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, SMTP_*) are unset — those features will no-op/stub until provided.
 
 ## Port Configuration
 - Port **5000** — Main app (frontend + API combined)

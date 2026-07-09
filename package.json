@@ -43,6 +43,9 @@
     "tailwind-merge": "^3.5.0",
     "xlsx": "^0.18.5"
   },
+  "overrides": {
+    "protobufjs": "^7.4.0"
+  },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.14",
     "@types/bcryptjs": "^2.4.6",
