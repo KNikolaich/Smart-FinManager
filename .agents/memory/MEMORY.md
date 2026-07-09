@@ -1,0 +1,1 @@
+- [Auth enumeration responses](auth-enumeration.md) — forgot-password (and similar) endpoints must always return the same generic success payload regardless of account existence/state.

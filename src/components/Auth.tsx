@@ -25,8 +25,8 @@ export default function Auth({ onAuth }: AuthProps) {
     setSuccess('');
     setLoading(true);
     try {
-      const response = await api.post<{ message: string }>('/auth/forgot-password', { email });
-      setSuccess(response.message);
+      await api.post<{ message: string }>('/auth/forgot-password', { email });
+      setSuccess('Если такой email зарегистрирован, письмо с инструкциями отправлено');
     } catch (err: any) {
       setError(err.message || 'Ошибка при восстановлении пароля');
     } finally {

@@ -291,16 +291,16 @@ app.post("/api/auth/forgot-password", async (req, res) => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+    const genericResponse = { success: true, message: "Если такой email зарегистрирован, письмо с инструкциями отправлено" };
+
     const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
-    if (!user) {
-      // For security, don't reveal that user doesn't exist, 
-      // but in this specific app request, let's be helpful
-      return res.status(404).json({ error: "Пользователь с таким email не найден" });
-    }
-
-    if (!user.encryptedPassword) {
-      return res.status(400).json({ error: "Для этого пользователя восстановление пароля недоступно (старый аккаунт). Пожалуйста, свяжитесь с поддержкой." });
+    if (!user || !user.encryptedPassword) {
+      // Don't reveal whether the account exists or lacks a recoverable password.
+      if (user && !user.encryptedPassword) {
+        console.log(`[Auth] Forgot-password requested for ${normalizedEmail}, but account has no recoverable password (old account).`);
+      }
+      return res.json(genericResponse);
     }
 
     let decryptedPass: string;
@@ -308,7 +308,7 @@ app.post("/api/auth/forgot-password", async (req, res) => {
       decryptedPass = decrypt(user.encryptedPassword);
     } catch (decryptError) {
       console.error("Decryption error:", decryptError);
-      return res.status(500).json({ error: "Ошибка при расшифровке пароля. Возможно, ключ шифрования был изменен." });
+      return res.json(genericResponse);
     }
 
     try {
@@ -329,20 +329,14 @@ app.post("/api/auth/forgot-password", async (req, res) => {
         console.log(`[Auth] STUB: Password for ${user.email} is ${decryptedPass} (SMTP not configured)`);
       }
 
-      res.json({ success: true, message: "Пароль отправлен на вашу почту" });
+      res.json(genericResponse);
     } catch (mailError: any) {
       console.error("Mail delivery error:", mailError);
-      let errorMsg = "Ошибка при отправке письма.";
-      if (mailError.message.includes("Application-specific password required")) {
-        errorMsg = "Ошибка SMTP: Требуется пароль приложения. Пожалуйста, создайте App Password в настройках Google.";
-      } else if (mailError.message.includes("Invalid login")) {
-        errorMsg = "Ошибка SMTP: Неверный логин или пароль для почтового сервера.";
-      }
-      res.status(500).json({ error: errorMsg });
+      res.json(genericResponse);
     }
   } catch (error: any) {
     console.error("Forgot Password Error:", error);
-    res.status(500).json({ error: error.message });
+    res.json({ success: true, message: "Если такой email зарегистрирован, письмо с инструкциями отправлено" });
   }
 });
 
