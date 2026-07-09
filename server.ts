@@ -10,6 +10,7 @@ import nodemailer from "nodemailer";
 import { PrismaClient } from "@prisma/client";
 import { createServer as createHttpServer } from "http";
 import { Server } from "socket.io";
+import rateLimit from "express-rate-limit";
 
 dotenv.config();
 
@@ -73,9 +74,38 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Trust only the first hop proxy (Replit's proxy) so req.ip reflects the
+// real client IP from X-Forwarded-For without allowing spoofing from
+// further down an arbitrary chain.
+app.set("trust proxy", 1);
+
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Rate limiting for auth endpoints to mitigate brute-force / credential
+// stuffing / account enumeration attempts.
+const authLimiterMessage = {
+  error: "Too many attempts. Please try again later.",
+};
+
+// Stricter limiter for login and forgot-password: 10 attempts per 15 minutes.
+const strictAuthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: authLimiterMessage,
+});
+
+// Slightly looser limiter for registration: 20 attempts per 15 minutes.
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: authLimiterMessage,
+});
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -124,7 +154,7 @@ const requireAdmin = (req: any, res: any, next: any) => {
 
 // --- AUTH ROUTES ---
 
-app.post("/api/auth/register", async (req, res) => {
+app.post("/api/auth/register", registerLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -156,7 +186,7 @@ app.post("/api/auth/register", async (req, res) => {
   }
 });
 
-app.post("/api/auth/login", async (req, res) => {
+app.post("/api/auth/login", strictAuthLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -283,7 +313,7 @@ app.post("/api/auth/verify-password", authenticateToken, async (req: any, res) =
   }
 });
 
-app.post("/api/auth/forgot-password", async (req, res) => {
+app.post("/api/auth/forgot-password", strictAuthLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) {
