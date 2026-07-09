@@ -638,6 +638,19 @@ export default function App() {
       {/* Navigation Bar */}
       <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 pb-0 h-[54px] shrink-0 z-40 flex items-center justify-center md:relative md:bottom-0 md:left-auto md:translate-x-0 md:max-w-none md:bg-theme-surface md:border-t border-theme-base md:rounded-none landscape:relative landscape:bottom-0 landscape:left-auto landscape:translate-x-0 landscape:w-20 landscape:h-full landscape:px-0 landscape:bg-theme-surface landscape:border-r landscape:border-t-0">
         <div className="w-full bg-theme-surface/90 backdrop-blur-xl border border-theme-base shadow-elegant rounded-3xl flex items-center justify-around h-full px-2 md:bg-transparent md:backdrop-blur-none md:border-none md:shadow-none md:rounded-none landscape:flex-col landscape:py-4 landscape:bg-transparent landscape:backdrop-blur-none">
+          {/* Wallet button - only shown in landscape, where the header is hidden */}
+          <button
+            onClick={() => {
+              if (activeTab !== 'dashboard') {
+                setActiveTab('dashboard');
+              } else {
+                setShowTotalBalance(!showTotalBalance);
+              }
+            }}
+            className="hidden landscape:flex flex-col items-center justify-center w-12 h-10 rounded-[18px] transition-all active:scale-95 text-theme-muted hover:text-theme-primary"
+          >
+            <Wallet size={20} />
+          </button>
            <button 
             onClick={() => setActiveTab('dashboard')}
             className={cn(
@@ -691,6 +704,17 @@ export default function App() {
             )}
           >
             <SettingsIcon size={20} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
+          </button>
+
+          {/* Profile button - only shown in landscape, where the header is hidden */}
+          <button
+            onClick={() => setShowUserPage(true)}
+            className={cn(
+              "hidden landscape:flex flex-col items-center justify-center w-12 h-10 rounded-[18px] transition-all active:scale-95",
+              showUserPage ? "text-theme-primary bg-theme-primary-light/50" : "text-theme-muted hover:text-theme-primary"
+            )}
+          >
+            <UserIcon size={20} strokeWidth={showUserPage ? 2.5 : 2} />
           </button>
         </div>
       </nav>
