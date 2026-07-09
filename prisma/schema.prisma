@@ -178,3 +178,16 @@ model BalanceHistory {
   @@unique([userId, month])
   @@map("balance_history")
 }
+
+// Shared, cross-instance rate-limit counters (used by express-rate-limit's
+// PrismaStore) so limits hold up under a scaled/autoscale deployment with
+// multiple server processes, instead of each process tracking its own
+// in-memory counts.
+model RateLimitHit {
+  key       String   @id
+  points    Int      @default(0)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+  @@map("rate_limit_hits")
+}

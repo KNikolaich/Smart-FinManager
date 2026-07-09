@@ -36,6 +36,7 @@ import {
   chatMessageUpdateSchema,
   aiLogCreateSchema,
 } from "./validation";
+import { PrismaRateLimitStore } from "./server/rateLimitStore";
 
 dotenv.config();
 
@@ -114,6 +115,12 @@ const authLimiterMessage = {
   error: "Too many attempts. Please try again later.",
 };
 
+// Rate-limit counters are backed by Postgres (via Prisma) rather than the
+// default in-memory store: the deployment target is "autoscale", which can
+// run multiple server instances concurrently, and in-memory counters are
+// per-process — attackers could get `limit x instanceCount` attempts by
+// hitting different instances. A shared store keeps the limit accurate
+// regardless of instance count.
 // Stricter limiter for login and forgot-password: 10 attempts per 15 minutes.
 const strictAuthLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -121,6 +128,7 @@ const strictAuthLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: authLimiterMessage,
+  store: new PrismaRateLimitStore(prisma),
 });
 
 // Slightly looser limiter for registration: 20 attempts per 15 minutes.
@@ -130,6 +138,7 @@ const registerLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: authLimiterMessage,
+  store: new PrismaRateLimitStore(prisma),
 });
 
 // Request logging middleware

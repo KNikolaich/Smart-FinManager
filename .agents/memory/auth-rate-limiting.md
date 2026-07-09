@@ -18,3 +18,22 @@ to bypass IP-based limits.
 
 **How to apply:** When adding new unauthenticated, abuse-prone routes, reuse the shared
 limiter configs rather than inventing new ones, and keep `trust proxy` scoped to 1 hop.
+
+## Shared store for autoscale deployments
+
+The deployment target is `autoscale` (multiple server instances can run concurrently).
+`express-rate-limit`'s default `MemoryStore` counts per-process, so with N instances an
+attacker effectively gets `limit * N` attempts by fanning requests across instances.
+
+Fix: a custom `Store` (`server/rateLimitStore.ts`, `PrismaRateLimitStore`) persists hit
+counters in Postgres via the existing Prisma connection (`rate_limit_hits` table), using
+an atomic `INSERT ... ON CONFLICT` upsert so concurrent instances don't race. Both auth
+limiters pass `store: new PrismaRateLimitStore(prisma)`.
+
+**Why:** No new infra (Redis, etc.) was needed since Postgres was already the shared
+resource available to every instance; an atomic upsert avoids the read-then-write race
+a naive get/set store would have under concurrent instances.
+
+**How to apply:** Any new rate limiter added to this app must use the same
+`PrismaRateLimitStore` (or an equivalent shared store) rather than the default in-memory
+store, or it will silently lose effectiveness once multiple instances are running.

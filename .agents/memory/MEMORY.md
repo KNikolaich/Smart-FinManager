@@ -1,2 +1,2 @@
 - [Auth enumeration responses](auth-enumeration.md) — forgot-password (and similar) endpoints must always return the same generic success payload regardless of account existence/state.
-- [Auth rate limiting setup](auth-rate-limiting.md) — login/register/forgot-password use express-rate-limit; trust proxy scoped to 1 hop for real client IP without spoofing risk.
+- [Auth rate limiting setup](auth-rate-limiting.md) — login/register/forgot-password use express-rate-limit; trust proxy scoped to 1 hop for real client IP without spoofing risk; store is Postgres-backed for autoscale deployments, not in-memory.
