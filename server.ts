@@ -11,6 +11,31 @@ import { PrismaClient } from "@prisma/client";
 import { createServer as createHttpServer } from "http";
 import { Server } from "socket.io";
 import rateLimit from "express-rate-limit";
+import {
+  validateBody,
+  registerSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  verifyPasswordSchema,
+  updateProfileSchema,
+  accountCreateSchema,
+  accountUpdateSchema,
+  categoryCreateSchema,
+  categoryUpdateSchema,
+  transactionCreateSchema,
+  transactionUpdateSchema,
+  goalCreateSchema,
+  goalUpdateSchema,
+  planGridDataSchema,
+  planGridBulkSchema,
+  currencyCreateSchema,
+  currencyUpdateSchema,
+  balanceHistoryCreateSchema,
+  balanceHistoryUpdateSchema,
+  chatMessageCreateSchema,
+  chatMessageUpdateSchema,
+  aiLogCreateSchema,
+} from "./validation";
 
 dotenv.config();
 
@@ -154,7 +179,7 @@ const requireAdmin = (req: any, res: any, next: any) => {
 
 // --- AUTH ROUTES ---
 
-app.post("/api/auth/register", registerLimiter, async (req, res) => {
+app.post("/api/auth/register", registerLimiter, validateBody(registerSchema), async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -186,7 +211,7 @@ app.post("/api/auth/register", registerLimiter, async (req, res) => {
   }
 });
 
-app.post("/api/auth/login", strictAuthLimiter, async (req, res) => {
+app.post("/api/auth/login", strictAuthLimiter, validateBody(loginSchema), async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -287,7 +312,7 @@ app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.put("/api/auth/me", authenticateToken, async (req: any, res) => {
+app.put("/api/auth/me", authenticateToken, validateBody(updateProfileSchema), async (req: any, res) => {
   try {
     const { displayName, photoURL } = req.body;
     const user = await prisma.user.update({
@@ -300,7 +325,7 @@ app.put("/api/auth/me", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.post("/api/auth/verify-password", authenticateToken, async (req: any, res) => {
+app.post("/api/auth/verify-password", authenticateToken, validateBody(verifyPasswordSchema), async (req: any, res) => {
   try {
     const { password } = req.body;
     const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
@@ -313,7 +338,7 @@ app.post("/api/auth/verify-password", authenticateToken, async (req: any, res) =
   }
 });
 
-app.post("/api/auth/forgot-password", strictAuthLimiter, async (req, res) => {
+app.post("/api/auth/forgot-password", strictAuthLimiter, validateBody(forgotPasswordSchema), async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) {
@@ -384,7 +409,7 @@ app.get("/api/accounts", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.post("/api/accounts", authenticateToken, async (req: any, res) => {
+app.post("/api/accounts", authenticateToken, validateBody(accountCreateSchema), async (req: any, res) => {
   try {
     const account = await prisma.account.create({
       data: { ...req.body, userId: req.user.userId },
@@ -396,7 +421,7 @@ app.post("/api/accounts", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.put("/api/accounts/:id", authenticateToken, async (req: any, res) => {
+app.put("/api/accounts/:id", authenticateToken, validateBody(accountUpdateSchema), async (req: any, res) => {
   try {
     const account = await prisma.account.update({
       where: { id: req.params.id, userId: req.user.userId },
@@ -432,7 +457,7 @@ app.get("/api/categories", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.post("/api/categories", authenticateToken, async (req: any, res) => {
+app.post("/api/categories", authenticateToken, validateBody(categoryCreateSchema), async (req: any, res) => {
   try {
     const { parentId, ...data } = req.body;
     const createData: any = { ...data, userId: req.user.userId };
@@ -451,7 +476,7 @@ app.post("/api/categories", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.put("/api/categories/:id", authenticateToken, async (req: any, res) => {
+app.put("/api/categories/:id", authenticateToken, validateBody(categoryUpdateSchema), async (req: any, res) => {
   try {
     const { parentId, ...data } = req.body;
     const updateData: any = { ...data };
@@ -496,7 +521,7 @@ app.get("/api/transactions", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.post("/api/transactions", authenticateToken, async (req: any, res) => {
+app.post("/api/transactions", authenticateToken, validateBody(transactionCreateSchema), async (req: any, res) => {
   try {
     const { accountId, targetAccountId, amount, type, categoryId, subcategoryId, description, createdAt } = req.body;
     const numAmount = Number(amount);
@@ -592,7 +617,7 @@ app.delete("/api/transactions/:id", authenticateToken, async (req: any, res) => 
   }
 });
 
-app.put("/api/transactions/:id", authenticateToken, async (req: any, res) => {
+app.put("/api/transactions/:id", authenticateToken, validateBody(transactionUpdateSchema), async (req: any, res) => {
   try {
     const { accountId, targetAccountId, amount, type, categoryId, subcategoryId, description, createdAt } = req.body;
     const numAmount = Number(amount);
@@ -685,7 +710,7 @@ app.get("/api/goals", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.post("/api/goals", authenticateToken, async (req: any, res) => {
+app.post("/api/goals", authenticateToken, validateBody(goalCreateSchema), async (req: any, res) => {
   try {
     const { targetAmount, currentAmount, deadline, ...rest } = req.body;
     const goal = await prisma.goal.create({
@@ -704,7 +729,7 @@ app.post("/api/goals", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.put("/api/goals/:id", authenticateToken, async (req: any, res) => {
+app.put("/api/goals/:id", authenticateToken, validateBody(goalUpdateSchema), async (req: any, res) => {
   try {
     const { targetAmount, currentAmount, deadline, ...rest } = req.body;
     const updateData: any = { ...rest };
@@ -794,7 +819,7 @@ app.get("/api/plan-grid/:type", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.post("/api/plan-grid/:type", authenticateToken, async (req: any, res) => {
+app.post("/api/plan-grid/:type", authenticateToken, validateBody(planGridDataSchema), async (req: any, res) => {
   try {
     const { type } = req.params;
     const userId = req.user.userId;
@@ -812,7 +837,7 @@ app.post("/api/plan-grid/:type", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.post("/api/plan-grid", authenticateToken, async (req: any, res) => {
+app.post("/api/plan-grid", authenticateToken, validateBody(planGridBulkSchema), async (req: any, res) => {
   try {
     const userId = req.user.userId;
     const data = req.body;
@@ -852,7 +877,7 @@ app.get("/api/currencies", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.post("/api/currencies", authenticateToken, requireAdmin, async (req: any, res) => {
+app.post("/api/currencies", authenticateToken, requireAdmin, validateBody(currencyCreateSchema), async (req: any, res) => {
   try {
     const currency = await prisma.currency.create({ data: req.body });
     res.json(currency);
@@ -861,9 +886,9 @@ app.post("/api/currencies", authenticateToken, requireAdmin, async (req: any, re
   }
 });
 
-app.put("/api/currencies/:id", authenticateToken, requireAdmin, async (req: any, res) => {
+app.put("/api/currencies/:id", authenticateToken, requireAdmin, validateBody(currencyUpdateSchema), async (req: any, res) => {
   try {
-    const { id, ...data } = req.body;
+    const data = req.body;
     const currency = await prisma.currency.upsert({
       where: { id: req.params.id },
       update: data,
@@ -949,7 +974,7 @@ app.get("/api/balance-history", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.post("/api/balance-history", authenticateToken, async (req: any, res) => {
+app.post("/api/balance-history", authenticateToken, validateBody(balanceHistoryCreateSchema), async (req: any, res) => {
   try {
     const { month, totalBalance } = req.body;
     const history = await prisma.balanceHistory.upsert({
@@ -963,7 +988,7 @@ app.post("/api/balance-history", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.put("/api/balance-history/:id", authenticateToken, async (req: any, res) => {
+app.put("/api/balance-history/:id", authenticateToken, validateBody(balanceHistoryUpdateSchema), async (req: any, res) => {
   try {
     const { month, totalBalance } = req.body;
     const history = await prisma.balanceHistory.update({
@@ -1318,7 +1343,7 @@ app.get("/api/chat-history", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.post("/api/chat-history", authenticateToken, async (req: any, res) => {
+app.post("/api/chat-history", authenticateToken, validateBody(chatMessageCreateSchema), async (req: any, res) => {
   try {
     const { role, content, type, actionType, actionData, attachments } = req.body;
     const message = await prisma.chatMessage.create({
@@ -1339,7 +1364,7 @@ app.post("/api/chat-history", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.put("/api/chat-history/:id", authenticateToken, async (req: any, res) => {
+app.put("/api/chat-history/:id", authenticateToken, validateBody(chatMessageUpdateSchema), async (req: any, res) => {
   try {
     const { content, type } = req.body;
     const message = await prisma.chatMessage.update({
@@ -1389,7 +1414,7 @@ app.get("/api/ai-logs", authenticateToken, async (req: any, res) => {
   }
 });
 
-app.post("/api/ai-logs", authenticateToken, async (req: any, res) => {
+app.post("/api/ai-logs", authenticateToken, validateBody(aiLogCreateSchema), async (req: any, res) => {
   try {
     const { request: aiRequest, response: aiResponse, provider } = req.body;
     
