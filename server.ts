@@ -24,10 +24,25 @@ const io = new Server(httpServer, {
   }
 });
 
-const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
+const JWT_SECRET = process.env.JWT_SECRET;
 // AES-256-CBC require 32 bytes key
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || "your-32-character-secret-key-123"; 
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 const IV_LENGTH = 16; // For AES, this is always 16
+
+if (!JWT_SECRET) {
+  console.error("FATAL: JWT_SECRET environment variable is not set. Refusing to start.");
+  process.exit(1);
+}
+
+if (!ENCRYPTION_KEY) {
+  console.error("FATAL: ENCRYPTION_KEY environment variable is not set. Refusing to start.");
+  process.exit(1);
+}
+
+if (Buffer.from(ENCRYPTION_KEY).length !== 32) {
+  console.error("FATAL: ENCRYPTION_KEY must be exactly 32 bytes long for AES-256. Refusing to start.");
+  process.exit(1);
+}
 
 function encrypt(text: string) {
   const iv = crypto.randomBytes(IV_LENGTH);
@@ -49,12 +64,12 @@ function decrypt(text: string) {
 
 // Mailer setup
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.example.com",
+  host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT) || 587,
   secure: process.env.SMTP_PORT === "465",
   auth: {
-    user: process.env.SMTP_USER || "user@example.com",
-    pass: process.env.SMTP_PASS || "pass",
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
   },
 });
 
@@ -299,7 +314,7 @@ app.post("/api/auth/forgot-password", async (req, res) => {
     try {
       // If we have real SMTP credentials, send email. 
       // Otherwise, just log it and simulate success for the demo.
-      const hasSMTP = process.env.SMTP_USER && process.env.SMTP_USER !== "user@example.com";
+      const hasSMTP = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 
       if (hasSMTP) {
         await transporter.sendMail({
@@ -878,7 +893,13 @@ app.post("/api/currencies/seed", authenticateToken, requireAdmin, async (req: an
 app.get("/api/currencies/rates/:iso", authenticateToken, async (req: any, res) => {
   try {
     const { iso } = req.params;
-    const apiKey = process.env.EXCHANGERATE_API_KEY || "10e51cc83f012c14085c363d";
+    const apiKey = process.env.EXCHANGERATE_API_KEY;
+
+    if (!apiKey) {
+      console.error("EXCHANGERATE_API_KEY is missing in server environment");
+      return res.status(500).json({ error: "Exchange rate API key is not configured on the server." });
+    }
+
     const response = await axios.get(`https://v6.exchangerate-api.com/v6/${apiKey}/latest/${iso}`);
     res.json(response.data);
   } catch (error: any) {
