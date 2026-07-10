@@ -53,6 +53,7 @@ model Account {
   transactions Transaction[] @relation("AccountTransactions")
   targetTrans  Transaction[] @relation("TargetAccountTransactions")
 
+  @@index([userId])
   @@map("accounts")
 }
 
@@ -72,6 +73,8 @@ model Category {
   children     Category[]    @relation("CategoryToSubcategory")
   transactions Transaction[]
 
+  @@index([userId])
+  @@index([parentId])
   @@map("categories")
 }
 
@@ -92,6 +95,11 @@ model Transaction {
   targetAccount Account?  @relation("TargetAccountTransactions", fields: [targetAccountId], references: [id], onDelete: Cascade)
   category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@index([accountId])
+  @@index([targetAccountId])
+  @@index([categoryId])
   @@map("transactions")
 }
 
@@ -110,6 +118,7 @@ model Goal {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("goals")
 }
 
@@ -149,6 +158,7 @@ model ChatMessage {
   attachments Json?
   createdAt  DateTime @default(now())
 
+  @@index([userId])
   @@map("chat_messages")
 }
 
@@ -162,6 +172,7 @@ model AiLog {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("ai_logs")
 }
 
