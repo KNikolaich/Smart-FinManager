@@ -30,6 +30,12 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       allowedHosts: true,
       hmr: process.env.DISABLE_HMR !== 'true',
+      watch: {
+        // Exclude Replit's own workflow log/state directory: it lives inside the
+        // project root and is continuously appended to by the running dev server's
+        // own stdout, which otherwise causes an infinite watch->reload->more-logs loop.
+        ignored: ['**/.local/**', '**/.agents/**', '**/.git/**'],
+      },
     },
 
     build: {

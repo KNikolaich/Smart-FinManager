@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
 import { api, safeStorage, syncOfflineQueue } from '../lib/api';
+import { queryKeys } from '../lib/queryClient';
 import { Account, Transaction, Goal, Category, Currency, BalanceHistory, Plan, UserProfile } from '../types';
 
 interface UseAppDataParams {
@@ -8,92 +10,83 @@ interface UseAppDataParams {
   addToast: (message: string, type?: 'info' | 'success' | 'error') => void;
 }
 
+interface InitialData {
+  accounts: Account[];
+  transactions: Transaction[];
+  goals: Goal[];
+  categories: Category[];
+  currencies: Currency[];
+  balanceHistory: BalanceHistory[];
+}
+
+const emptyData: InitialData = {
+  accounts: [],
+  transactions: [],
+  goals: [],
+  categories: [],
+  currencies: [],
+  balanceHistory: [],
+};
+
 export function useAppData({ user, addToast }: UseAppDataParams) {
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [dataVersion, setDataVersion] = useState(0);
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [currencies, setCurrencies] = useState<Currency[]>([]);
-  const [balanceHistory, setBalanceHistory] = useState<BalanceHistory[]>([]);
-  const [plans, setPlans] = useState<Plan[]>(() => {
-    const saved = safeStorage.getItem('ai_temporary_plans');
-    return saved ? JSON.parse(saved) : [];
+  const queryClient = useQueryClient();
+  const initialDataKey = queryKeys.initialData(user?.id);
+
+  const {
+    data = emptyData,
+    dataUpdatedAt,
+    refetch,
+  } = useQuery<InitialData>({
+    queryKey: initialDataKey,
+    enabled: !!user,
+    queryFn: async () => {
+      try {
+        return await api.get<InitialData>('/initial-data');
+      } catch (error: any) {
+        console.error('Error fetching data:', error);
+        if (error.message?.includes('Rate exceeded') || error.status === 429) {
+          addToast('Превышен лимит запросов. Пожалуйста, подождите немного.', 'error');
+        } else {
+          addToast('Ошибка при загрузке данных', 'error');
+        }
+        throw error;
+      }
+    },
   });
 
-  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isRefreshingRef = useRef(false);
-  const socketRef = useRef<any>(null);
+  // `dataVersion` preserves the previous "bump a counter on every refresh" contract
+  // that some child components use to force-remount lists (e.g. TransactionHistory).
+  const dataVersion = dataUpdatedAt ?? 0;
 
   const refreshData = useCallback(async () => {
-    if (!user || isRefreshingRef.current) return;
-
-    if (refreshTimeoutRef.current) {
-      clearTimeout(refreshTimeoutRef.current);
-    }
-
-    isRefreshingRef.current = true;
-    try {
-      const data = await api.get<{
-        accounts: Account[];
-        transactions: Transaction[];
-        goals: Goal[];
-        categories: Category[];
-        currencies: Currency[];
-        balanceHistory: BalanceHistory[];
-      }>('/initial-data');
-
-      setAccounts(data.accounts);
-      setTransactions(data.transactions);
-      setGoals(data.goals);
-      setCategories(data.categories);
-      setCurrencies(data.currencies);
-      setBalanceHistory(data.balanceHistory);
-      setDataVersion(v => v + 1);
-
-      const savedPlans = safeStorage.getItem('ai_temporary_plans');
-      if (savedPlans) {
-        setPlans(JSON.parse(savedPlans));
-      }
-    } catch (error: any) {
-      console.error('Error fetching data:', error);
-      if (error.message.includes('Rate exceeded') || error.status === 429) {
-        addToast('Превышен лимит запросов. Пожалуйста, подождите немного.', 'error');
-      } else {
-        addToast('Ошибка при загрузке данных', 'error');
-      }
-    } finally {
-      setTimeout(() => {
-        isRefreshingRef.current = false;
-      }, 1000);
-    }
-  }, [user, addToast]);
+    if (!user) return;
+    await refetch();
+  }, [user, refetch]);
 
   const optimisticAddTransaction = useCallback((transaction: Transaction) => {
-    setTransactions(prev => [transaction, ...prev]);
-  }, []);
+    queryClient.setQueryData<InitialData>(initialDataKey, (prev) =>
+      prev ? { ...prev, transactions: [transaction, ...prev.transactions] } : prev
+    );
+  }, [queryClient, initialDataKey]);
+
+  // AI-drafted plans are ephemeral client-side state (not server data), so they still
+  // live in localStorage rather than the query cache.
+  const plans: Plan[] = (() => {
+    const saved = safeStorage.getItem('ai_temporary_plans');
+    return saved ? JSON.parse(saved) : [];
+  })();
 
   useEffect(() => {
-    safeStorage.setItem('ai_temporary_plans', JSON.stringify(plans));
-  }, [plans]);
-
-  useEffect(() => {
-    if (user) {
-      refreshData();
-    }
-  }, [user, refreshData]);
-
-  // Auto-sync on startup if online
-  useEffect(() => {
+    // Auto-sync on startup if online
     if (user && navigator.onLine) {
       syncOfflineQueue().then((synced) => {
         if (synced) {
           addToast('Синхронизация данных завершена успешно', 'success');
-          refreshData();
+          refetch();
         }
       });
     }
-  }, [user, addToast, refreshData]);
+  }, [user, addToast, refetch]);
 
   useEffect(() => {
     if (user) {
@@ -110,24 +103,22 @@ export function useAppData({ user, addToast }: UseAppDataParams) {
 
       socket.on('data:updated', (data: any) => {
         console.log('Real-time update received:', data);
-        refreshData();
+        queryClient.invalidateQueries({ queryKey: initialDataKey });
       });
-
-      socketRef.current = socket;
 
       return () => {
         socket.disconnect();
       };
     }
-  }, [user, refreshData]);
+  }, [user, queryClient, initialDataKey]);
 
   return {
-    accounts,
-    transactions,
-    goals,
-    categories,
-    currencies,
-    balanceHistory,
+    accounts: data.accounts,
+    transactions: data.transactions,
+    goals: data.goals,
+    categories: data.categories,
+    currencies: data.currencies,
+    balanceHistory: data.balanceHistory,
     dataVersion,
     plans,
     refreshData,

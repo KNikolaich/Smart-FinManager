@@ -19,6 +19,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@google/genai": "^1.29.0",
     "@prisma/client": "^6.0.0",
+    "@tanstack/react-query": "^5.101.2",
     "axios": "^1.14.0",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
