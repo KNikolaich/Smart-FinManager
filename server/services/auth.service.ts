@@ -4,7 +4,29 @@ import { prisma } from "../prisma";
 import { encrypt, decrypt } from "../crypto";
 import { JWT_SECRET_VALUE } from "../config";
 import { transporter } from "../mailer";
-import { isAccountLockedOut, recordAccountLoginFailure, resetAccountLoginFailures } from "../rateLimitStore";
+import { isAccountLockedOut, recordAccountLoginFailure, resetAccountLoginFailures, ACCOUNT_WARNING_THRESHOLD } from "../rateLimitStore";
+
+async function maybeSendAttackWarningEmail(email: string, attempts: number) {
+  if (attempts !== ACCOUNT_WARNING_THRESHOLD) return; // fire once per lockout window
+
+  try {
+    const hasSMTP = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+    if (!hasSMTP) {
+      console.log(`[Auth] STUB: would warn ${email} about ${attempts} repeated failed login attempts (SMTP not configured)`);
+      return;
+    }
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || `"Finance App" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: "Подозрительная активность: вход в ваш аккаунт",
+      text: `Здравствуйте! Мы зафиксировали ${attempts} неудачных попыток входа в ваш аккаунт за последние 15 минут. Если это были не вы, рекомендуем сменить пароль. Если попытки продолжатся, доступ к аккаунту будет временно заблокирован.`,
+      html: `<p>Здравствуйте!</p><p>Мы зафиксировали <b>${attempts}</b> неудачных попыток входа в ваш аккаунт за последние 15 минут.</p><p>Если это были не вы, рекомендуем сменить пароль. Если попытки продолжатся, доступ к аккаунту будет временно заблокирован.</p>`,
+    });
+    console.log(`[Auth] Sent repeated-failed-login warning to ${email}`);
+  } catch (mailError) {
+    console.error("Failed to send login-attack warning email:", mailError);
+  }
+}
 
 export async function registerUser(email: string, password: string) {
   const normalizedEmail = email.toLowerCase().trim();
@@ -47,6 +69,7 @@ export async function loginUser(email: string, password: string) {
 
   if (!user) {
     console.warn(`[Auth] Login failed: User not found (${normalizedEmail})`);
+    // No registered account to warn — nothing further to do here.
     await recordAccountLoginFailure(prisma, normalizedEmail);
     const err: any = new Error("Invalid credentials");
     err.status = 401;
@@ -56,7 +79,8 @@ export async function loginUser(email: string, password: string) {
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
     console.warn(`[Auth] Login failed: Password mismatch for ${normalizedEmail}`);
-    await recordAccountLoginFailure(prisma, normalizedEmail);
+    const attempts = await recordAccountLoginFailure(prisma, normalizedEmail);
+    await maybeSendAttackWarningEmail(user.email, attempts);
     const err: any = new Error("Invalid credentials");
     err.status = 401;
     throw err;

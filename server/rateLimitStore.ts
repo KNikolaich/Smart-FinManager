@@ -82,7 +82,11 @@ export class PrismaRateLimitStore implements Store {
  * Postgres table used for the IP limiter, so it holds up under autoscale too.
  */
 const ACCOUNT_LOCKOUT_WINDOW_MS = 15 * 60 * 1000;
-const ACCOUNT_LOCKOUT_MAX_ATTEMPTS = 10;
+export const ACCOUNT_LOCKOUT_MAX_ATTEMPTS = 10;
+// Fires an early "your account is being targeted" warning before the account
+// actually locks out, so the owner has a chance to react (e.g. change their
+// password) while the attack is still in progress.
+export const ACCOUNT_WARNING_THRESHOLD = 5;
 
 function accountFailureKey(normalizedEmail: string) {
   return `acct-fail:${normalizedEmail}`;
@@ -104,14 +108,16 @@ export async function isAccountLockedOut(prisma: PrismaClient, normalizedEmail: 
 /**
  * Records a failed login attempt for the given account. Call this whenever
  * a login fails (unknown user or bad password) for a given email, regardless
- * of the requester's IP.
+ * of the requester's IP. Returns the resulting attempt count within the
+ * current window, so callers can decide e.g. whether to fire a one-time
+ * "your account is being targeted" warning.
  */
-export async function recordAccountLoginFailure(prisma: PrismaClient, normalizedEmail: string): Promise<void> {
+export async function recordAccountLoginFailure(prisma: PrismaClient, normalizedEmail: string): Promise<number> {
   const key = accountFailureKey(normalizedEmail);
   const now = new Date();
   const newExpiresAt = new Date(now.getTime() + ACCOUNT_LOCKOUT_WINDOW_MS);
 
-  await prisma.$executeRaw`
+  const rows = await prisma.$queryRaw<{ points: number }[]>`
     INSERT INTO rate_limit_hits (key, points, "expiresAt")
     VALUES (${key}, 1, ${newExpiresAt})
     ON CONFLICT (key) DO UPDATE SET
@@ -123,7 +129,9 @@ export async function recordAccountLoginFailure(prisma: PrismaClient, normalized
         WHEN rate_limit_hits."expiresAt" <= ${now} THEN ${newExpiresAt}
         ELSE rate_limit_hits."expiresAt"
       END
+    RETURNING points
   `;
+  return rows[0].points;
 }
 
 /**

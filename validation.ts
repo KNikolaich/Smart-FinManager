@@ -262,3 +262,86 @@ export const aiLogCreateSchema = z.object({
   response: z.any().optional().default({}),
   provider: z.string().trim().max(60).optional().default("gemini"),
 }).strict();
+
+// --- Bulk Import ---
+// The import endpoint accepts a legacy dump-style shape (ids, uid/currencyUid
+// legacy fields, relation objects to be discarded) rather than the strict
+// create/update shapes above. We can't use .strict() here since these items
+// may legitimately carry extra legacy fields, but we still enforce correct
+// types/lengths on every field that ends up written to the database, and cap
+// array sizes to prevent a single request from doing unbounded DB work.
+const MAX_IMPORT_ITEMS = 5000;
+const importIdValue = z.union([z.string(), z.number()]);
+
+const importAccountSchema = z.object({
+  id: importIdValue.optional(),
+  uid: importIdValue.optional(),
+  currencyUid: z.string().trim().max(60).optional().nullable(),
+  currency: z.string().trim().max(20).optional().nullable(),
+  name: z.string().trim().min(1).max(120),
+  type: z.string().trim().min(1).max(60),
+  balance: z.coerce.number().finite().optional(),
+  description: z.string().trim().max(500).optional().nullable(),
+  showOnDashboard: z.boolean().optional(),
+  showInTotals: z.boolean().optional(),
+  isArchived: z.boolean().optional(),
+  color: z.string().trim().max(30).optional().nullable(),
+}).passthrough();
+
+const importCategorySchema = z.object({
+  id: importIdValue.optional(),
+  parentId: importIdValue.optional().nullable(),
+  name: z.string().trim().min(1).max(120),
+  type: z.string().trim().min(1).max(60),
+  icon: z.string().trim().max(30).optional().nullable(),
+  color: z.string().trim().max(30).optional().nullable(),
+  sortOrder: z.coerce.number().int().optional().nullable(),
+}).passthrough();
+
+const importGoalSchema = z.object({
+  id: importIdValue.optional(),
+  name: z.string().trim().min(1).max(120),
+  targetAmount: z.coerce.number().finite(),
+  currentAmount: z.coerce.number().finite().optional(),
+  deadline: z.union([z.string(), z.null()]).optional(),
+  color: z.string().trim().max(30).optional().nullable(),
+  icon: z.string().trim().max(30).optional().nullable(),
+  sortOrder: z.coerce.number().int().optional().nullable(),
+}).passthrough();
+
+const importTransactionSchema = z.object({
+  id: importIdValue.optional(),
+  accountId: importIdValue,
+  targetAccountId: importIdValue.optional().nullable(),
+  categoryId: importIdValue.optional().nullable(),
+  subcategoryId: importIdValue.optional().nullable(),
+  amount: z.coerce.number().finite(),
+  type: z.enum(["income", "expense", "transfer"]),
+  description: z.string().trim().max(500).nullish().transform((v) => v ?? ""),
+  createdAt: z.union([z.string(), z.null()]).optional(),
+}).passthrough();
+
+const importPlanGridSchema = z.object({
+  type: z.string().trim().min(1).max(60),
+  data: z.record(z.string(), z.any()).optional(),
+}).passthrough();
+
+const importProfileSchema = z.object({
+  settings: z.record(z.string(), z.any()).optional(),
+  displayName: z.string().trim().max(120).optional().nullable(),
+  photoURL: z.string().trim().max(2048).optional().nullable(),
+}).passthrough();
+
+export const importBatchSchema = z.object({
+  accounts: z.array(importAccountSchema).max(MAX_IMPORT_ITEMS).optional(),
+  categories: z.array(importCategorySchema).max(MAX_IMPORT_ITEMS).optional(),
+  transactions: z.array(importTransactionSchema).max(MAX_IMPORT_ITEMS).optional(),
+  goals: z.array(importGoalSchema).max(MAX_IMPORT_ITEMS).optional(),
+  plan_grids: z.array(importPlanGridSchema).max(MAX_IMPORT_ITEMS).optional(),
+  profile: z.array(importProfileSchema).max(1).optional(),
+}).strict();
+
+// --- Admin ---
+export const adminSendPasswordSchema = z.object({
+  email: z.string().trim().email().max(254),
+}).strict();

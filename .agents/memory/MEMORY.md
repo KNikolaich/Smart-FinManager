@@ -4,5 +4,6 @@
 - [Transactions pagination](transactions-pagination.md) — GET /api/transactions supports paged (page/pageSize) and legacy unpaged modes; unpaged must bypass the page-size cap, and date-range filters must treat endDate as end-of-day.
 - [App.tsx / Dashboard.tsx structure](app-dashboard-structure.md) — App split into hooks (useAppData/useAuth/useGlobalInputContextMenu) + components/app/*; Dashboard split into useDashboardMetrics + components/dashboard/*.
 - [React Query server-state migration](react-query-migration.md) — server data (auth/me, initial-data) lives in @tanstack/react-query, keyed per-user; socket.io pushes invalidate the cache instead of manual refetch calls.
+- [Bulk import ownership checks](bulk-import-idor.md) — batch import must check ownership of both a record's own id AND every foreign key it references, not just the top-level id.
 - [Transaction ownership validation](transaction-ownership.md) — writes referencing account/category ids must check ownership server-side, not just id shape, or foreign ids cause 500s / cross-user mutation.
 - [Vite watch loop on workflow logs](vite-watch-workflow-logs.md) — Replit's `.local/state/workflow-logs/**` dir sits inside the project root and must be excluded from Vite's file watcher or it causes an infinite reload loop.

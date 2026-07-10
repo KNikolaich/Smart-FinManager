@@ -1,6 +1,7 @@
 import { prisma } from "../prisma";
 import { decrypt } from "../crypto";
 import { transporter } from "../mailer";
+import { resetAccountLoginFailures } from "../rateLimitStore";
 
 export function listUsers() {
   return prisma.user.findMany({
@@ -17,6 +18,19 @@ export function listUsers() {
 
 export function deleteUser(id: string) {
   return prisma.user.delete({ where: { id } });
+}
+
+// Clears the per-account failed-login lockout for a user, letting an admin
+// unlock an account that's been temporarily locked out early instead of
+// waiting for the lockout window to expire.
+export async function unlockUser(id: string) {
+  const user = await prisma.user.findUnique({ where: { id }, select: { email: true } });
+  if (!user) {
+    const err: any = new Error("User not found");
+    err.status = 404;
+    throw err;
+  }
+  await resetAccountLoginFailures(prisma, user.email.toLowerCase().trim());
 }
 
 export async function sendUserPassword(id: string, email: string) {

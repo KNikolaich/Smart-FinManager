@@ -18,6 +18,19 @@ export async function deleteUser(req: any, res: any) {
   }
 }
 
+export async function unlockUser(req: any, res: any) {
+  try {
+    await adminService.unlockUser(req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    if (error.status === 404) {
+      return res.status(404).json({ error: error.message });
+    }
+    console.error("Unlock user error:", error);
+    res.status(500).json({ error: error.message });
+  }
+}
+
 export async function sendUserPassword(req: any, res: any) {
   try {
     const { email } = req.body;
