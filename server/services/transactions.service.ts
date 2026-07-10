@@ -1,11 +1,101 @@
 import { prisma } from "../prisma";
 
-export function listTransactions(userId: string) {
-  return prisma.transaction.findMany({
-    where: { userId },
-    orderBy: { createdAt: 'desc' }
-  });
+export interface TransactionListFilters {
+  page?: number;
+  pageSize?: number;
+  startDate?: string;
+  endDate?: string;
+  type?: string;
+  accountIds?: string[];
+  categoryIds?: string[];
+  search?: string;
+  searchCategoryIds?: string[];
+  searchAccountIds?: string[];
 }
+
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 200;
+// Sentinel used by legacy (unpaginated) callers that need every matching
+// row, e.g. AI context building or exports. Not subject to MAX_PAGE_SIZE.
+const UNPAGINATED = Symbol("unpaginated");
+
+export async function listTransactions(
+  userId: string,
+  filters: TransactionListFilters & { unpaginated?: typeof UNPAGINATED } = {}
+) {
+  const isUnpaginated = filters.pageSize === (UNPAGINATED as any);
+  const page = Math.max(1, Number(filters.page) || 1);
+  const pageSize = isUnpaginated
+    ? undefined
+    : Math.min(MAX_PAGE_SIZE, Math.max(1, Number(filters.pageSize) || DEFAULT_PAGE_SIZE));
+
+  const where: any = { userId };
+
+  if (filters.startDate || filters.endDate) {
+    where.createdAt = {};
+    if (filters.startDate) where.createdAt.gte = new Date(filters.startDate);
+    if (filters.endDate) {
+      // Make the end date inclusive of the whole day rather than just its
+      // midnight instant, which previously excluded same-day transactions.
+      const end = new Date(filters.endDate);
+      end.setHours(23, 59, 59, 999);
+      where.createdAt.lte = end;
+    }
+  }
+
+  if (filters.type && filters.type !== 'all') {
+    where.type = filters.type;
+  }
+
+  if (filters.categoryIds && filters.categoryIds.length > 0) {
+    where.categoryId = { in: filters.categoryIds };
+  }
+
+  if (filters.accountIds && filters.accountIds.length > 0) {
+    where.OR = [
+      { accountId: { in: filters.accountIds } },
+      { targetAccountId: { in: filters.accountIds } },
+    ];
+  }
+
+  if (filters.search) {
+    const searchOr: any[] = [
+      { description: { contains: filters.search, mode: 'insensitive' } },
+    ];
+    if (filters.searchCategoryIds && filters.searchCategoryIds.length > 0) {
+      searchOr.push({ categoryId: { in: filters.searchCategoryIds } });
+    }
+    if (filters.searchAccountIds && filters.searchAccountIds.length > 0) {
+      searchOr.push({ targetAccountId: { in: filters.searchAccountIds } });
+    }
+    // Combine with any existing account OR-filter using AND, since Prisma
+    // only allows one `OR` key per object.
+    where.AND = [...(where.AND || []), { OR: searchOr }];
+  }
+
+  const [transactions, total, incomeAgg, expenseAgg] = await Promise.all([
+    prisma.transaction.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      ...(isUnpaginated ? {} : { skip: (page - 1) * pageSize!, take: pageSize }),
+    }),
+    prisma.transaction.count({ where }),
+    prisma.transaction.aggregate({ where: { ...where, type: 'income' }, _sum: { amount: true } }),
+    prisma.transaction.aggregate({ where: { ...where, type: 'expense' }, _sum: { amount: true } }),
+  ]);
+
+  return {
+    transactions,
+    total,
+    page,
+    pageSize: pageSize ?? total,
+    totalPages: isUnpaginated ? 1 : Math.max(1, Math.ceil(total / pageSize!)),
+    totalIncome: incomeAgg._sum.amount || 0,
+    totalExpense: expenseAgg._sum.amount || 0,
+  };
+}
+
+export const UNPAGINATED_SENTINEL = UNPAGINATED;
 
 export async function createTransaction(userId: string, body: any) {
   const { accountId, targetAccountId, amount, type, categoryId, subcategoryId, description, createdAt } = body;

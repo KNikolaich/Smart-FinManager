@@ -2,13 +2,15 @@ import { useMemo, useState, useRef, useEffect } from 'react';
 import { Transaction, Category, Account } from '../types';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { X, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy, ChevronDown, Search } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy, ChevronDown, Search, Loader2 } from 'lucide-react';
 import { GenericContextMenu } from './ui/GenericContextMenu';
 import { AnimatePresence } from 'motion/react';
 import { cn, getTransactionDisplayTitle } from '../lib/utils';
+import { api } from '../lib/api';
+
+const PAGE_SIZE = 50;
 
 interface TransactionHistoryProps {
-  transactions: Transaction[];
   categories: Category[];
   accounts: Account[];
   onClose: () => void;
@@ -20,10 +22,13 @@ interface TransactionHistoryProps {
   initialStartDate?: string;
   initialEndDate?: string;
   initialSelectedMonth?: Date;
+  // Bumped by the parent whenever transactions/accounts data changes
+  // elsewhere (add/edit/delete, socket sync), so this view refetches
+  // its currently visible page instead of relying on a fully-loaded array.
+  refreshSignal?: number;
 }
 
 export default function TransactionHistory({ 
-  transactions, 
   categories, 
   accounts, 
   onClose, 
@@ -34,16 +39,34 @@ export default function TransactionHistory({
   initialType = 'all',
   initialStartDate,
   initialEndDate,
-  initialSelectedMonth
+  initialSelectedMonth,
+  refreshSignal
 }: TransactionHistoryProps) {
   const [selectedMonth, setSelectedMonth] = useState(initialSelectedMonth || new Date());
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>(initialType);
   const [filterCategoryId, setFilterCategoryId] = useState<string | 'all'>(initialCategoryId || 'all');
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>(initialAccountId && initialAccountId !== 'all' ? [initialAccountId] : []);
   const [customStartDate, setCustomStartDate] = useState<string>(initialStartDate || '');
   const [customEndDate, setCustomEndDate] = useState<string>(initialEndDate || '');
   const [isFunnelOpen, setIsFunnelOpen] = useState(false);
+
+  // Server-fetched, paginated transaction data for the current filters
+  const [items, setItems] = useState<Transaction[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalIncome, setTotalIncome] = useState(0);
+  const [totalExpense, setTotalExpense] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const requestSeq = useRef(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
@@ -105,63 +128,91 @@ export default function TransactionHistory({
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, transaction: Transaction } | null>(null);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const dateFilteredTransactions = useMemo(() => {
-    const hasCustomDates = customStartDate || customEndDate;
-    if (hasCustomDates) {
-      return transactions
-        .filter(t => {
-          const localString = format(new Date(t.createdAt), 'yyyy-MM-dd');
-          if (customStartDate && localString < customStartDate) return false;
-          if (customEndDate && localString > customEndDate) return false;
-          return true;
-        })
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    } else {
-      const start = startOfMonth(selectedMonth);
-      const end = endOfMonth(selectedMonth);
-      return transactions
-        .filter(t => {
-          const date = new Date(t.createdAt);
-          return date >= start && date <= end;
-        })
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  // Date range sent to the server: either the custom range or the selected month
+  const { effectiveStartDate, effectiveEndDate } = useMemo(() => {
+    if (customStartDate || customEndDate) {
+      return { effectiveStartDate: customStartDate || undefined, effectiveEndDate: customEndDate || undefined };
     }
-  }, [transactions, selectedMonth, customStartDate, customEndDate]);
+    return {
+      effectiveStartDate: format(startOfMonth(selectedMonth), 'yyyy-MM-dd'),
+      effectiveEndDate: format(endOfMonth(selectedMonth), 'yyyy-MM-dd'),
+    };
+  }, [selectedMonth, customStartDate, customEndDate]);
 
-  const allowedCategoryIds = useMemo(() => {
-    if (filterCategoryId === 'all') return null;
-    
+  // All category ids matching the selected filter (parent + its subcategories)
+  const categoryIdsFilter = useMemo(() => {
+    if (filterCategoryId === 'all') return undefined;
+
     const getSubcategoryIds = (parentId: string): string[] => {
       const children = categories.filter(c => c.parentId === parentId);
       return [parentId, ...children.flatMap(c => getSubcategoryIds(c.id))];
     };
-    
-    return new Set(getSubcategoryIds(filterCategoryId));
+
+    return getSubcategoryIds(filterCategoryId);
   }, [filterCategoryId, categories]);
 
-  const filteredTransactions = useMemo(() => {
-    return dateFilteredTransactions.filter(t => {
-      const matchesSearch = t.description.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            categories.find(c => c.id === t.categoryId)?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            accounts.find(a => a.id === t.targetAccountId)?.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesType = filterType === 'all' || t.type === filterType;
-      const matchesCategory = !allowedCategoryIds || allowedCategoryIds.has(t.categoryId);
-      const matchesAccount = selectedAccountIds.length === 0 || 
-                             selectedAccountIds.includes(t.accountId) || 
-                             (t.targetAccountId && selectedAccountIds.includes(t.targetAccountId));
-      return matchesSearch && matchesType && matchesCategory && matchesAccount;
-    });
-  }, [dateFilteredTransactions, searchQuery, filterType, allowedCategoryIds, selectedAccountIds, categories, accounts]);
+  // Original UX also matched the search text against category/account names;
+  // resolve those to id lists client-side (cheap, small lookup tables) and
+  // let the server combine them with the description search.
+  const { searchCategoryIds, searchAccountIds } = useMemo(() => {
+    if (!debouncedSearchQuery) return { searchCategoryIds: undefined, searchAccountIds: undefined };
+    const q = debouncedSearchQuery.toLowerCase();
+    return {
+      searchCategoryIds: categories.filter(c => c.name.toLowerCase().includes(q)).map(c => c.id),
+      searchAccountIds: accounts.filter(a => a.name.toLowerCase().includes(q)).map(a => a.id),
+    };
+  }, [debouncedSearchQuery, categories, accounts]);
 
-  const stats = useMemo(() => {
-    const income = filteredTransactions
-      .filter(t => t.type === 'income')
-      .reduce((sum, t) => sum + t.amount, 0);
-    const expense = filteredTransactions
-      .filter(t => t.type === 'expense')
-      .reduce((sum, t) => sum + t.amount, 0);
-    return { income, expense, total: income - expense };
-  }, [filteredTransactions]);
+  const fetchPage = async (targetPage: number, append: boolean) => {
+    const seq = ++requestSeq.current;
+    if (append) setLoadingMore(true); else setLoading(true);
+    try {
+      const result = await api.getTransactionsPage({
+        page: targetPage,
+        pageSize: PAGE_SIZE,
+        startDate: effectiveStartDate,
+        endDate: effectiveEndDate,
+        type: filterType,
+        accountIds: selectedAccountIds.length > 0 ? selectedAccountIds : undefined,
+        categoryIds: categoryIdsFilter,
+        search: debouncedSearchQuery || undefined,
+        searchCategoryIds,
+        searchAccountIds,
+      });
+      // Ignore stale responses from a previous filter/page request
+      if (seq !== requestSeq.current) return;
+
+      setItems(prev => append ? [...prev, ...result.transactions] : result.transactions);
+      setTotal(result.total);
+      setTotalPages(result.totalPages);
+      setTotalIncome(result.totalIncome);
+      setTotalExpense(result.totalExpense);
+      setPage(targetPage);
+    } catch (error) {
+      console.error('Failed to load transactions:', error);
+    } finally {
+      if (seq === requestSeq.current) {
+        if (append) setLoadingMore(false); else setLoading(false);
+      }
+    }
+  };
+
+  // Refetch page 1 whenever any filter (or the parent's refresh signal) changes
+  useEffect(() => {
+    fetchPage(1, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveStartDate, effectiveEndDate, filterType, categoryIdsFilter, selectedAccountIds, debouncedSearchQuery, refreshSignal]);
+
+  const handleLoadMore = () => {
+    if (loadingMore || page >= totalPages) return;
+    fetchPage(page + 1, true);
+  };
+
+  const stats = useMemo(() => ({
+    income: totalIncome,
+    expense: totalExpense,
+    total: totalIncome - totalExpense,
+  }), [totalIncome, totalExpense]);
 
   const handleAddNewByFilter = () => {
     onOpenAddTransaction?.({
@@ -193,13 +244,13 @@ export default function TransactionHistory({
 
   const groupedTransactions = useMemo(() => {
     const groups: { [key: string]: Transaction[] } = {};
-    filteredTransactions.forEach(t => {
+    items.forEach(t => {
       const dateKey = format(new Date(t.createdAt), 'dd.MM.yy', { locale: ru });
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(t);
     });
     return Object.entries(groups).sort((a, b) => new Date(b[0].split('.').reverse().join('-')).getTime() - new Date(a[0].split('.').reverse().join('-')).getTime());
-  }, [filteredTransactions]);
+  }, [items]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-0 lg:p-8">
@@ -615,9 +666,28 @@ export default function TransactionHistory({
               </div>
             );
           })}
-          {filteredTransactions.length === 0 && (
+          {!loading && items.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 text-theme-muted italic">
               <p className="text-sm">В этом месяце операций не было</p>
+            </div>
+          )}
+
+          {loading && (
+            <div className="flex items-center justify-center py-10 text-theme-muted">
+              <Loader2 className="w-5 h-5 animate-spin" />
+            </div>
+          )}
+
+          {!loading && items.length > 0 && page < totalPages && (
+            <div className="flex items-center justify-center py-4">
+              <button
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="px-4 py-2 rounded-xl bg-theme-main border border-theme-base text-[11px] font-bold uppercase tracking-widest text-theme-muted hover:text-theme-main transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+              >
+                {loadingMore && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Показать ещё ({total - items.length})
+              </button>
             </div>
           )}
           

@@ -1,3 +1,4 @@
 - [Auth enumeration responses](auth-enumeration.md) — forgot-password (and similar) endpoints must always return the same generic success payload regardless of account existence/state.
 - [Auth rate limiting setup](auth-rate-limiting.md) — login/register/forgot-password use express-rate-limit; trust proxy scoped to 1 hop for real client IP without spoofing risk; store is Postgres-backed for autoscale deployments, not in-memory.
 - [Per-account login lockout](auth-rate-limiting.md) — IP-based rate limiting alone is bypassable by rotating IPs; login also tracks failures per-account (normalized email) in the shared Postgres counter table, independent of IP.
+- [Transactions pagination](transactions-pagination.md) — GET /api/transactions supports paged (page/pageSize) and legacy unpaged modes; unpaged must bypass the page-size cap, and date-range filters must treat endDate as end-of-day.

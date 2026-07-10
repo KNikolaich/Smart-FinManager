@@ -187,6 +187,7 @@ export default function App() {
   // Data state
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [dataVersion, setDataVersion] = useState(0);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
@@ -224,6 +225,7 @@ export default function App() {
       setCategories(data.categories);
       setCurrencies(data.currencies);
       setBalanceHistory(data.balanceHistory);
+      setDataVersion(v => v + 1);
       
       // Load plans from safeStorage
       const savedPlans = safeStorage.getItem('ai_temporary_plans');
@@ -722,9 +724,9 @@ export default function App() {
         {/* Transaction History Modal */}
         {showTransactionHistory && (
           <TransactionHistory 
-            transactions={transactions}
             categories={categories}
             accounts={accounts}
+            refreshSignal={dataVersion}
             onClose={() => {
               setShowTransactionHistory(false);
               setTransactionHistoryFilter({});

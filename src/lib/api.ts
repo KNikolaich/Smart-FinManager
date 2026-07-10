@@ -395,6 +395,43 @@ export const api = {
     }
   },
 
+  // Fetches a single page of transactions from the server with filters
+  // applied server-side (date range, type, accounts, categories, search).
+  // Not cached for offline use since pages/filters are too numerous to
+  // usefully cache; falls back to an empty page when offline.
+  async getTransactionsPage(params: {
+    page: number;
+    pageSize: number;
+    startDate?: string;
+    endDate?: string;
+    type?: string;
+    accountIds?: string[];
+    categoryIds?: string[];
+    search?: string;
+    searchCategoryIds?: string[];
+    searchAccountIds?: string[];
+  }): Promise<{ transactions: any[]; total: number; page: number; pageSize: number; totalPages: number; totalIncome: number; totalExpense: number }> {
+    if (!navigator.onLine) {
+      return { transactions: [], total: 0, page: 1, pageSize: params.pageSize, totalPages: 1, totalIncome: 0, totalExpense: 0 };
+    }
+
+    const qs = new URLSearchParams();
+    qs.set('page', String(params.page));
+    qs.set('pageSize', String(params.pageSize));
+    if (params.startDate) qs.set('startDate', params.startDate);
+    if (params.endDate) qs.set('endDate', params.endDate);
+    if (params.type) qs.set('type', params.type);
+    if (params.accountIds?.length) qs.set('accountIds', params.accountIds.join(','));
+    if (params.categoryIds?.length) qs.set('categoryIds', params.categoryIds.join(','));
+    if (params.search) qs.set('search', params.search);
+    if (params.searchCategoryIds?.length) qs.set('searchCategoryIds', params.searchCategoryIds.join(','));
+    if (params.searchAccountIds?.length) qs.set('searchAccountIds', params.searchAccountIds.join(','));
+
+    const res = await fetch(`${API_URL}/transactions?${qs.toString()}`, { headers: getHeaders() });
+    await handleAuthError(res, '/transactions');
+    return handleResponse(res);
+  },
+
   async post<T>(endpoint: string, data: any): Promise<T> {
     const isOffline = !navigator.onLine;
 
