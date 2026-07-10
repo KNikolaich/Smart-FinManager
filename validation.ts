@@ -1,22 +1,100 @@
 import { z } from "zod";
 import type { Request, Response, NextFunction } from "express";
 
+// Human-readable Russian names for known field names, used to build
+// friendly messages like "Поле «Пароль» обязательно для заполнения".
+const fieldLabelsRu: Record<string, string> = {
+  email: "Email",
+  password: "Пароль",
+  displayName: "Имя",
+  photoURL: "Фото профиля",
+  name: "Название",
+  type: "Тип",
+  balance: "Баланс",
+  currency: "Валюта",
+  currencyId: "Валюта",
+  description: "Описание",
+  color: "Цвет",
+  icon: "Иконка",
+  parentId: "Родительская категория",
+  sortOrder: "Порядок сортировки",
+  accountId: "Счёт",
+  targetAccountId: "Счёт назначения",
+  amount: "Сумма",
+  categoryId: "Категория",
+  subcategoryId: "Подкатегория",
+  createdAt: "Дата",
+  targetAmount: "Целевая сумма",
+  currentAmount: "Текущая сумма",
+  deadline: "Срок",
+  iso: "Код валюты",
+  rate: "Курс",
+  symbol: "Символ",
+  month: "Месяц",
+  totalBalance: "Общий баланс",
+  role: "Роль",
+  content: "Текст сообщения",
+  request: "Запрос",
+  response: "Ответ",
+  provider: "Провайдер",
+};
+
+// Translates common Zod issue messages into Russian. Falls back to the
+// original message for anything not covered (e.g. custom refine messages
+// that are already in Russian).
+function translateIssueMessage(issue: z.ZodIssue): string {
+  switch (issue.code) {
+    case z.ZodIssueCode.invalid_type:
+      if (issue.received === "undefined") return "обязательно для заполнения";
+      return `неверный тип данных (ожидалось ${issue.expected})`;
+    case z.ZodIssueCode.too_small:
+      if (issue.type === "string") {
+        return issue.minimum === 1
+          ? "не может быть пустым"
+          : `слишком короткое значение (минимум ${issue.minimum} симв.)`;
+      }
+      if (issue.type === "number") return `значение должно быть не меньше ${issue.minimum}`;
+      return "значение слишком маленькое";
+    case z.ZodIssueCode.too_big:
+      if (issue.type === "string") return `слишком длинное значение (максимум ${issue.maximum} симв.)`;
+      if (issue.type === "number") return `значение должно быть не больше ${issue.maximum}`;
+      return "значение слишком большое";
+    case z.ZodIssueCode.invalid_string:
+      if (issue.validation === "email") return "некорректный формат email";
+      return "некорректный формат";
+    case z.ZodIssueCode.invalid_enum_value:
+      return `недопустимое значение (разрешено: ${issue.options.join(", ")})`;
+    case z.ZodIssueCode.unrecognized_keys:
+      return `недопустимые поля: ${issue.keys.join(", ")}`;
+    case z.ZodIssueCode.custom:
+      return issue.message;
+    default:
+      return issue.message;
+  }
+}
+
 /**
  * Express middleware factory: validates req.body against a Zod schema.
  * On success, req.body is REPLACED with the parsed/whitelisted data (so any
  * extra/forbidden fields sent by the client are stripped, not just ignored).
- * On failure, responds 400 with a concise validation error message.
+ * On failure, responds 400 with a human-readable Russian error message.
  */
 export function validateBody(schema: z.ZodTypeAny) {
   return (req: Request, res: Response, next: NextFunction) => {
     const result = schema.safeParse(req.body);
     if (!result.success) {
+      const details = result.error.issues.map((issue) => {
+        const path = issue.path.join(".");
+        const label = fieldLabelsRu[path] || path;
+        const translated = translateIssueMessage(issue);
+        return {
+          path,
+          message: path ? `Поле «${label}»: ${translated}` : translated,
+        };
+      });
       return res.status(400).json({
-        error: "Validation failed",
-        details: result.error.issues.map((i) => ({
-          path: i.path.join("."),
-          message: i.message,
-        })),
+        error: details.map((d) => d.message).join("; "),
+        details,
       });
     }
     req.body = result.data;
