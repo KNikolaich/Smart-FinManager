@@ -50,7 +50,7 @@ export async function create(req: any, res: any) {
 
 export async function remove(req: any, res: any) {
   try {
-    await transactionsService.deleteTransaction(req.params.id);
+    await transactionsService.deleteTransaction(req.user.userId, req.params.id);
     notifyUser(req.user.userId, "data:updated", { type: "transactions" });
     res.json({ success: true });
   } catch (error: any) {
@@ -60,7 +60,7 @@ export async function remove(req: any, res: any) {
 
 export async function update(req: any, res: any) {
   try {
-    const result = await transactionsService.updateTransaction(req.params.id, req.body);
+    const result = await transactionsService.updateTransaction(req.user.userId, req.params.id, req.body);
     notifyUser(req.user.userId, "data:updated", { type: "transactions" });
     res.json(result);
   } catch (error: any) {

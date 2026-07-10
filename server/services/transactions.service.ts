@@ -97,6 +97,39 @@ export async function listTransactions(
 
 export const UNPAGINATED_SENTINEL = UNPAGINATED;
 
+async function assertOwnedAccount(userId: string, accountId: string, label = "Счёт") {
+  const account = await prisma.account.findFirst({ where: { id: accountId, userId } });
+  if (!account) {
+    const err: any = new Error(`${label} не найден`);
+    err.status = 400;
+    throw err;
+  }
+  return account;
+}
+
+async function assertOwnedCategory(userId: string, categoryId: string, label = "Категория") {
+  const category = await prisma.category.findFirst({ where: { id: categoryId, userId } });
+  if (!category) {
+    const err: any = new Error(`${label} не найдена`);
+    err.status = 400;
+    throw err;
+  }
+  return category;
+}
+
+async function validateReferences(userId: string, { accountId, targetAccountId, categoryId, subcategoryId }: any) {
+  await assertOwnedAccount(userId, accountId, "Счёт");
+  if (targetAccountId) {
+    await assertOwnedAccount(userId, targetAccountId, "Счёт получателя");
+  }
+  if (categoryId) {
+    await assertOwnedCategory(userId, categoryId, "Категория");
+  }
+  if (subcategoryId) {
+    await assertOwnedCategory(userId, subcategoryId, "Подкатегория");
+  }
+}
+
 export async function createTransaction(userId: string, body: any) {
   const { accountId, targetAccountId, amount, type, categoryId, subcategoryId, description, createdAt } = body;
   const numAmount = Number(amount);
@@ -106,6 +139,8 @@ export async function createTransaction(userId: string, body: any) {
     err.status = 400;
     throw err;
   }
+
+  await validateReferences(userId, { accountId, targetAccountId, categoryId, subcategoryId });
 
   return prisma.$transaction(async (tx) => {
     const transaction = await tx.transaction.create({
@@ -123,22 +158,22 @@ export async function createTransaction(userId: string, body: any) {
     });
 
     if (type === 'expense') {
-      await tx.account.update({
-        where: { id: accountId },
+      await tx.account.updateMany({
+        where: { id: accountId, userId },
         data: { balance: { decrement: numAmount } }
       });
     } else if (type === 'income') {
-      await tx.account.update({
-        where: { id: accountId },
+      await tx.account.updateMany({
+        where: { id: accountId, userId },
         data: { balance: { increment: numAmount } }
       });
     } else if (type === 'transfer' && targetAccountId) {
-      await tx.account.update({
-        where: { id: accountId },
+      await tx.account.updateMany({
+        where: { id: accountId, userId },
         data: { balance: { decrement: numAmount } }
       });
-      await tx.account.update({
-        where: { id: targetAccountId },
+      await tx.account.updateMany({
+        where: { id: targetAccountId, userId },
         data: { balance: { increment: numAmount } }
       });
     }
@@ -147,8 +182,8 @@ export async function createTransaction(userId: string, body: any) {
   });
 }
 
-export async function deleteTransaction(id: string) {
-  const transaction = await prisma.transaction.findUnique({ where: { id } });
+export async function deleteTransaction(userId: string, id: string) {
+  const transaction = await prisma.transaction.findFirst({ where: { id, userId } });
   if (!transaction) {
     const err: any = new Error("Transaction not found");
     err.status = 404;
@@ -157,31 +192,31 @@ export async function deleteTransaction(id: string) {
 
   await prisma.$transaction(async (tx) => {
     if (transaction.type === 'expense') {
-      await tx.account.update({
-        where: { id: transaction.accountId },
+      await tx.account.updateMany({
+        where: { id: transaction.accountId, userId },
         data: { balance: { increment: transaction.amount } }
       });
     } else if (transaction.type === 'income') {
-      await tx.account.update({
-        where: { id: transaction.accountId },
+      await tx.account.updateMany({
+        where: { id: transaction.accountId, userId },
         data: { balance: { decrement: transaction.amount } }
       });
     } else if (transaction.type === 'transfer' && transaction.targetAccountId) {
-      await tx.account.update({
-        where: { id: transaction.accountId },
+      await tx.account.updateMany({
+        where: { id: transaction.accountId, userId },
         data: { balance: { increment: transaction.amount } }
       });
-      await tx.account.update({
-        where: { id: transaction.targetAccountId },
+      await tx.account.updateMany({
+        where: { id: transaction.targetAccountId, userId },
         data: { balance: { decrement: transaction.amount } }
       });
     }
 
-    await tx.transaction.delete({ where: { id } });
+    await tx.transaction.deleteMany({ where: { id, userId } });
   });
 }
 
-export async function updateTransaction(id: string, body: any) {
+export async function updateTransaction(userId: string, id: string, body: any) {
   const { accountId, targetAccountId, amount, type, categoryId, subcategoryId, description, createdAt } = body;
   const numAmount = Number(amount);
 
@@ -191,32 +226,34 @@ export async function updateTransaction(id: string, body: any) {
     throw err;
   }
 
-  const oldTransaction = await prisma.transaction.findUnique({ where: { id } });
+  const oldTransaction = await prisma.transaction.findFirst({ where: { id, userId } });
   if (!oldTransaction) {
     const err: any = new Error("Transaction not found");
     err.status = 404;
     throw err;
   }
 
+  await validateReferences(userId, { accountId, targetAccountId, categoryId, subcategoryId });
+
   return prisma.$transaction(async (tx) => {
     // 1. Revert old balance changes
     if (oldTransaction.type === 'expense') {
-      await tx.account.update({
-        where: { id: oldTransaction.accountId },
+      await tx.account.updateMany({
+        where: { id: oldTransaction.accountId, userId },
         data: { balance: { increment: oldTransaction.amount } }
       });
     } else if (oldTransaction.type === 'income') {
-      await tx.account.update({
-        where: { id: oldTransaction.accountId },
+      await tx.account.updateMany({
+        where: { id: oldTransaction.accountId, userId },
         data: { balance: { decrement: oldTransaction.amount } }
       });
     } else if (oldTransaction.type === 'transfer' && oldTransaction.targetAccountId) {
-      await tx.account.update({
-        where: { id: oldTransaction.accountId },
+      await tx.account.updateMany({
+        where: { id: oldTransaction.accountId, userId },
         data: { balance: { increment: oldTransaction.amount } }
       });
-      await tx.account.update({
-        where: { id: oldTransaction.targetAccountId },
+      await tx.account.updateMany({
+        where: { id: oldTransaction.targetAccountId, userId },
         data: { balance: { decrement: oldTransaction.amount } }
       });
     }
@@ -238,22 +275,22 @@ export async function updateTransaction(id: string, body: any) {
 
     // 3. Apply new balance changes
     if (type === 'expense') {
-      await tx.account.update({
-        where: { id: accountId },
+      await tx.account.updateMany({
+        where: { id: accountId, userId },
         data: { balance: { decrement: numAmount } }
       });
     } else if (type === 'income') {
-      await tx.account.update({
-        where: { id: accountId },
+      await tx.account.updateMany({
+        where: { id: accountId, userId },
         data: { balance: { increment: numAmount } }
       });
     } else if (type === 'transfer' && targetAccountId) {
-      await tx.account.update({
-        where: { id: accountId },
+      await tx.account.updateMany({
+        where: { id: accountId, userId },
         data: { balance: { decrement: numAmount } }
       });
-      await tx.account.update({
-        where: { id: targetAccountId },
+      await tx.account.updateMany({
+        where: { id: targetAccountId, userId },
         data: { balance: { increment: numAmount } }
       });
     }
