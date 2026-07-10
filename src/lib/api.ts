@@ -327,6 +327,25 @@ function applyMutationToCache(method: string, endpoint: string, data: any) {
   }
 }
 
+// Undoes the optimistic local cache change made by applyMutationToCache when the
+// server ultimately rejects a queued offline mutation. Best-effort: for creations
+// (POST) we can reliably delete the locally-created record; for edits/deletes we
+// have no prior snapshot to restore, so we leave those to the post-sync refetch.
+function revertMutationFromCache(method: string, endpoint: string, data: any) {
+  try {
+    if (method !== 'POST') return;
+
+    if (endpoint.startsWith('/plan-grid/')) return;
+
+    if (endpoint === '/transactions' || endpoint === '/accounts' || endpoint === '/categories' || endpoint === '/goals' || endpoint === '/balance-history') {
+      if (!data || !data.id) return;
+      applyMutationToCache('DELETE', `${endpoint}/${data.id}`, null);
+    }
+  } catch (error) {
+    console.error('Failed to revert mutation from cache:', error);
+  }
+}
+
 export const api = {
   // Direct, unintercepted methods used exclusively for synchronization logic
   async postDirect<T>(endpoint: string, data: any): Promise<T> {
@@ -476,21 +495,24 @@ export const api = {
     const isAuth = endpoint.includes('/auth/login') || endpoint.includes('/auth/register') || endpoint.includes('/auth/verify-password') || endpoint.includes('/auth/forgot-password');
 
     if (isOffline && !isAuth) {
+      // Assign the id up front so the queue item, the optimistic cache entry, and the
+      // returned mock response all refer to the same record (needed to revert the
+      // cache entry precisely if the server later rejects this item on sync).
+      const dataWithId = data && data.id ? data : { ...data, id: 'offline_' + Math.random().toString(36).substring(2, 9) };
       const queueItem = {
         id: Math.random().toString(36).substring(2, 9),
         method: 'POST',
         endpoint,
-        data,
+        data: dataWithId,
         timestamp: Date.now()
       };
       const queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
       queue.push(queueItem);
       safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
 
-      applyMutationToCache('POST', endpoint, data);
+      applyMutationToCache('POST', endpoint, dataWithId);
 
-      const mockResponse: any = { id: 'offline_' + Math.random().toString(36).substring(2, 9), ...data };
-      return mockResponse as T;
+      return dataWithId as T;
     }
 
     try {
@@ -542,20 +564,20 @@ export const api = {
         }
 
         if (!isAuth) {
+          const dataWithId = data && data.id ? data : { ...data, id: 'offline_' + Math.random().toString(36).substring(2, 9) };
           const queueItem = {
             id: Math.random().toString(36).substring(2, 9),
             method: 'POST',
             endpoint,
-            data,
+            data: dataWithId,
             timestamp: Date.now()
           };
           const queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
           queue.push(queueItem);
           safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
 
-          applyMutationToCache('POST', endpoint, data);
-          const mockResponse: any = { id: 'offline_' + Math.random().toString(36).substring(2, 9), ...data };
-          return mockResponse as T;
+          applyMutationToCache('POST', endpoint, dataWithId);
+          return dataWithId as T;
         }
       }
       throw error;
@@ -662,8 +684,11 @@ export const api = {
   },
 };
 
-// Sequentially uploads offline cached actions when network is restored
-export async function syncOfflineQueue(): Promise<boolean> {
+// Sequentially uploads offline cached actions when network is restored.
+// `onItemFailed` is invoked for each queued item the server ultimately rejects
+// (a real error, not a transient network issue) so the caller can notify the
+// user instead of the item being silently dropped.
+export async function syncOfflineQueue(onItemFailed?: (message: string, item: any) => void): Promise<boolean> {
   const queueKey = 'api_offline_queue';
   const rawQueue = safeStorage.getItem(queueKey);
   if (!rawQueue) return false;
@@ -709,9 +734,14 @@ export async function syncOfflineQueue(): Promise<boolean> {
       }
       
       // If indeed some client error (e.g., duplicated entry, bad request, already deleted, 400 bad request),
-      // we discard this specific item so the sync queue doesn't lock forever.
+      // we discard this specific item so the sync queue doesn't lock forever, but we
+      // must roll back the optimistic cache change and tell the user it wasn't saved.
       remaining.shift();
       safeStorage.setItem(queueKey, JSON.stringify(remaining));
+
+      revertMutationFromCache(item.method, item.endpoint, item.data);
+      const message = err?.message || 'Не удалось синхронизировать одну из операций.';
+      onItemFailed?.(message, item);
     }
   }
   

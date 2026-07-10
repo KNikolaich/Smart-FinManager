@@ -79,7 +79,9 @@ export function useAppData({ user, addToast }: UseAppDataParams) {
   useEffect(() => {
     // Auto-sync on startup if online
     if (user && navigator.onLine) {
-      syncOfflineQueue().then((synced) => {
+      syncOfflineQueue((message) => {
+        addToast(`Не удалось сохранить операцию: ${message}`, 'error');
+      }).then((synced) => {
         if (synced) {
           addToast('Синхронизация данных завершена успешно', 'success');
           refetch();

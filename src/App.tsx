@@ -138,7 +138,9 @@ export default function App() {
       addToast('Вы перешли в оффлайн режим', 'error');
     } else {
       addToast('Соединение восстановлено', 'success');
-      syncOfflineQueue().then((synced) => {
+      syncOfflineQueue((message) => {
+        addToast(`Не удалось сохранить операцию: ${message}`, 'error');
+      }).then((synced) => {
         if (synced) {
           addToast('Синхронизация данных завершена успешно', 'success');
         }
