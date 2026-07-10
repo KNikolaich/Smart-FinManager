@@ -36,7 +36,7 @@ import {
   chatMessageUpdateSchema,
   aiLogCreateSchema,
 } from "./validation";
-import { PrismaRateLimitStore } from "./server/rateLimitStore";
+import { PrismaRateLimitStore, isAccountLockedOut, recordAccountLoginFailure, resetAccountLoginFailures } from "./server/rateLimitStore";
 
 dotenv.config();
 
@@ -229,20 +229,33 @@ app.post("/api/auth/login", strictAuthLimiter, validateBody(loginSchema), async 
     const normalizedEmail = email.toLowerCase().trim();
     console.log(`[Auth] Login attempt for: ${normalizedEmail}`);
 
+    // Per-account lockout: tracks failed attempts by account regardless of
+    // requester IP, so rotating IPs can't be used to bypass the IP-based
+    // limiter above.
+    if (await isAccountLockedOut(prisma, normalizedEmail)) {
+      console.warn(`[Auth] Login blocked: account temporarily locked out (${normalizedEmail})`);
+      return res.status(429).json({ error: "Too many failed attempts for this account. Please try again later." });
+    }
+
     const user = await prisma.user.findUnique({ 
       where: { email: normalizedEmail } 
     });
 
     if (!user) {
       console.warn(`[Auth] Login failed: User not found (${normalizedEmail})`);
+      await recordAccountLoginFailure(prisma, normalizedEmail);
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       console.warn(`[Auth] Login failed: Password mismatch for ${normalizedEmail}`);
+      await recordAccountLoginFailure(prisma, normalizedEmail);
       return res.status(401).json({ error: "Invalid credentials" });
     }
+
+    // Successful login: clear any accumulated failure count for this account.
+    await resetAccountLoginFailures(prisma, normalizedEmail);
 
     // Save encrypted password if it's missing (for older accounts)
     if (!user.encryptedPassword) {

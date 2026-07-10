@@ -71,3 +71,68 @@ export class PrismaRateLimitStore implements Store {
     `;
   }
 }
+
+/**
+ * Per-account failed-login tracking, independent of the IP-based
+ * express-rate-limit middleware above. The IP limiter alone can be bypassed
+ * by an attacker rotating source IPs (botnets/proxies) — each new IP gets a
+ * fresh bucket. This tracks failures keyed by the *account* (normalized
+ * email) instead, so repeated attempts against the same account are throttled
+ * no matter how many different IPs they come from. Backed by the same shared
+ * Postgres table used for the IP limiter, so it holds up under autoscale too.
+ */
+const ACCOUNT_LOCKOUT_WINDOW_MS = 15 * 60 * 1000;
+const ACCOUNT_LOCKOUT_MAX_ATTEMPTS = 10;
+
+function accountFailureKey(normalizedEmail: string) {
+  return `acct-fail:${normalizedEmail}`;
+}
+
+/**
+ * Returns true if the account is currently locked out due to too many
+ * recent failed login attempts (across any IP).
+ */
+export async function isAccountLockedOut(prisma: PrismaClient, normalizedEmail: string): Promise<boolean> {
+  const key = accountFailureKey(normalizedEmail);
+  const now = new Date();
+  const row = await prisma.rateLimitHit.findUnique({ where: { key } });
+  if (!row) return false;
+  if (row.expiresAt <= now) return false;
+  return row.points >= ACCOUNT_LOCKOUT_MAX_ATTEMPTS;
+}
+
+/**
+ * Records a failed login attempt for the given account. Call this whenever
+ * a login fails (unknown user or bad password) for a given email, regardless
+ * of the requester's IP.
+ */
+export async function recordAccountLoginFailure(prisma: PrismaClient, normalizedEmail: string): Promise<void> {
+  const key = accountFailureKey(normalizedEmail);
+  const now = new Date();
+  const newExpiresAt = new Date(now.getTime() + ACCOUNT_LOCKOUT_WINDOW_MS);
+
+  await prisma.$executeRaw`
+    INSERT INTO rate_limit_hits (key, points, "expiresAt")
+    VALUES (${key}, 1, ${newExpiresAt})
+    ON CONFLICT (key) DO UPDATE SET
+      points = CASE
+        WHEN rate_limit_hits."expiresAt" <= ${now} THEN 1
+        ELSE rate_limit_hits.points + 1
+      END,
+      "expiresAt" = CASE
+        WHEN rate_limit_hits."expiresAt" <= ${now} THEN ${newExpiresAt}
+        ELSE rate_limit_hits."expiresAt"
+      END
+  `;
+}
+
+/**
+ * Clears the failed-attempt counter for an account, e.g. after a successful
+ * login.
+ */
+export async function resetAccountLoginFailures(prisma: PrismaClient, normalizedEmail: string): Promise<void> {
+  const key = accountFailureKey(normalizedEmail);
+  await prisma.$executeRaw`
+    DELETE FROM rate_limit_hits WHERE key = ${key}
+  `;
+}
