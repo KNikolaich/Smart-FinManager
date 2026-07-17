@@ -345,3 +345,7 @@ export const importBatchSchema = z.object({
 export const adminSendPasswordSchema = z.object({
   email: z.string().trim().email().max(254),
 }).strict();
+
+// Unlock is intentionally bodyless; enforce strict empty object so any
+// unexpected fields sent by the client are rejected with a 400.
+export const adminUnlockSchema = z.object({}).strict();
