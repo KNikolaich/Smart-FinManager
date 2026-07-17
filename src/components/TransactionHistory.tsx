@@ -2,11 +2,55 @@ import { useMemo, useState, useRef, useEffect } from 'react';
 import { Transaction, Category, Account } from '../types';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { X, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy, ChevronDown, Search, Loader2 } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy, ChevronDown, Search, Loader2, WifiOff, Clock } from 'lucide-react';
 import { GenericContextMenu } from './ui/GenericContextMenu';
 import { AnimatePresence } from 'motion/react';
 import { cn, getTransactionDisplayTitle } from '../lib/utils';
-import { api } from '../lib/api';
+import { api, safeStorage } from '../lib/api';
+
+/** Minimal shape needed to render a queued-but-not-yet-synced transaction row. */
+interface PendingTransaction {
+  id: string;
+  amount: number;
+  description: string;
+  accountId: string;
+  targetAccountId: string | null;
+  categoryId: string | null;
+  createdAt: string;
+  type: 'income' | 'expense' | 'transfer';
+}
+
+function getQueuedTransactions(): PendingTransaction[] {
+  const raw = safeStorage.getItem('api_offline_queue');
+  if (!raw) return [];
+  try {
+    const queue: unknown[] = JSON.parse(raw);
+    const pending: PendingTransaction[] = [];
+    for (const item of queue) {
+      if (
+        typeof item !== 'object' || item === null ||
+        (item as any).method !== 'POST' ||
+        (item as any).endpoint !== '/transactions' ||
+        !(item as any).data
+      ) continue;
+      const d = (item as any).data;
+      if (!d.id || !d.accountId || !d.type || d.amount === undefined) continue;
+      pending.push({
+        id: String(d.id),
+        amount: Number(d.amount),
+        description: d.description || '',
+        accountId: String(d.accountId),
+        targetAccountId: d.targetAccountId ? String(d.targetAccountId) : null,
+        categoryId: d.categoryId ? String(d.categoryId) : null,
+        createdAt: d.createdAt || new Date((item as any).timestamp || Date.now()).toISOString(),
+        type: d.type as 'income' | 'expense' | 'transfer',
+      });
+    }
+    return pending;
+  } catch {
+    return [];
+  }
+}
 
 const PAGE_SIZE = 50;
 
@@ -51,6 +95,38 @@ export default function TransactionHistory({
   const [customStartDate, setCustomStartDate] = useState<string>(initialStartDate || '');
   const [customEndDate, setCustomEndDate] = useState<string>(initialEndDate || '');
   const [isFunnelOpen, setIsFunnelOpen] = useState(false);
+
+  // Online status and queued offline transactions
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [queuedTransactions, setQueuedTransactions] = useState<PendingTransaction[]>(() => getQueuedTransactions());
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Keep queue state fresh: poll whenever offline OR while items are still pending
+  // (sync may drain the queue gradually after reconnection, so we continue
+  // polling until the queue is empty regardless of online status).
+  useEffect(() => {
+    setQueuedTransactions(getQueuedTransactions());
+  }, [isOnline, refreshSignal]);
+
+  useEffect(() => {
+    // Continue polling as long as there are pending items so rows disappear
+    // the moment each item is synced and removed from the queue.
+    const id = setInterval(() => {
+      const current = getQueuedTransactions();
+      setQueuedTransactions(current);
+    }, 1500);
+    return () => clearInterval(id);
+  }, []);
 
   // Server-fetched, paginated transaction data for the current filters
   const [items, setItems] = useState<Transaction[]>([]);
@@ -568,6 +644,64 @@ export default function TransactionHistory({
 
         {/* Transactions Table */}
         <div className="flex-1 overflow-y-auto no-scrollbar relative">
+          {/* Queued offline transactions shown at the top while waiting to sync.
+              Visible as long as items remain in the queue — including after
+              reconnection, until sync actually removes each entry. */}
+          {queuedTransactions.length > 0 && (
+            <div>
+              <div className="py-2 bg-amber-500/10 backdrop-blur-md sticky top-0 z-20 border-y border-amber-500/30 flex items-center gap-2 px-4">
+                <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Ожидает отправки</span>
+              </div>
+              <table className="w-full text-left border-collapse table-fixed opacity-70">
+                <tbody>
+                  {queuedTransactions.map(t => {
+                    const category = categories.find(c => c.id === t.categoryId);
+                    const parentCategory = category?.parentId ? categories.find(c => c.id === category.parentId) : category;
+                    const account = accounts.find(a => a.id === t.accountId);
+                    const targetAccount = t.targetAccountId ? accounts.find(a => a.id === t.targetAccountId) : null;
+                    return (
+                      <tr key={t.id} className="border-b border-theme-base/30 last:border-0">
+                        <td className="pl-4 pr-2 py-1.5 align-top">
+                          <div className="flex items-start gap-2">
+                            <span className="text-lg shrink-0">{t.type === 'transfer' ? '🔄' : (category?.icon || parentCategory?.icon || '💰')}</span>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-theme-main truncate">
+                                {getTransactionDisplayTitle(t.description, category?.name, t.type)}
+                              </p>
+                              <p
+                                className="text-[10px] font-medium truncate"
+                                style={{ color: account?.color && account.color !== '#000000' ? account.color : 'var(--text-muted)' }}
+                              >
+                                {account?.name || 'Счет'}
+                                {targetAccount && ` → ${targetAccount.name}`}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className={cn(
+                          "px-4 py-1.5 align-top w-1/2",
+                          t.type === 'income' ? "text-left" :
+                          t.type === 'transfer' ? "text-center" :
+                          "text-right"
+                        )}>
+                          <p className={cn(
+                            "text-xs font-bold",
+                            t.type === 'income' ? "text-emerald-500" :
+                            t.type === 'transfer' ? "text-blue-500" :
+                            "text-theme-main"
+                          )}>
+                            {t.type === 'income' ? '+' : t.type === 'transfer' ? '' : '-'}{t.amount.toLocaleString()} ₽
+                          </p>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           {groupedTransactions.map(([dateKey, transactions]) => {
             const groupIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
             const groupExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
@@ -667,8 +801,15 @@ export default function TransactionHistory({
             );
           })}
           {!loading && items.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-theme-muted italic">
-              <p className="text-sm">В этом месяце операций не было</p>
+            <div className="flex flex-col items-center justify-center py-20 text-theme-muted italic gap-2">
+              {!isOnline ? (
+                <>
+                  <WifiOff className="w-5 h-5 text-amber-400" />
+                  <p className="text-sm">Нет подключения — показаны только локальные данные</p>
+                </>
+              ) : (
+                <p className="text-sm">В этом месяце операций не было</p>
+              )}
             </div>
           )}
 
