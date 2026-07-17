@@ -22,6 +22,7 @@ import { AppModals } from './components/app/AppModals';
 
 import { cn } from './lib/utils';
 import { ToastContainer, ToastType } from './components/ui/Toast';
+import { OfflineBanner } from './components/ui/OfflineBanner';
 
 type Tab = 'dashboard' | 'plan' | 'analytics' | 'settings' | 'ai';
 
@@ -301,6 +302,7 @@ export default function App() {
         </div>
       </main>
 
+      <OfflineBanner isOnline={isOnline} />
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       <BottomNav

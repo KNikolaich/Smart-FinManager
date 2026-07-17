@@ -506,7 +506,13 @@ export const api = {
         data: dataWithId,
         timestamp: Date.now()
       };
-      const queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
+      let queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
+      // Plan-grid saves are full overwrites — only the latest state matters.
+      // Replace any existing queued item for the same endpoint so we don't
+      // replay stale intermediate states on reconnect.
+      if (endpoint.startsWith('/plan-grid/')) {
+        queue = queue.filter((item: any) => !(item.method === 'POST' && item.endpoint === endpoint));
+      }
       queue.push(queueItem);
       safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
 
@@ -572,7 +578,10 @@ export const api = {
             data: dataWithId,
             timestamp: Date.now()
           };
-          const queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
+          let queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
+          if (endpoint.startsWith('/plan-grid/')) {
+            queue = queue.filter((item: any) => !(item.method === 'POST' && item.endpoint === endpoint));
+          }
           queue.push(queueItem);
           safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
 

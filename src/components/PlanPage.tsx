@@ -34,6 +34,7 @@ import {
   Pencil,
   Check,
   Loader2,
+  WifiOff,
   Calculator as CalcIcon
 } from 'lucide-react';
 import { GenericContextMenu } from './ui/GenericContextMenu';
@@ -142,7 +143,16 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
   const [rowEditor, setRowEditor] = useState<{ mode: 'addBefore' | 'addAfter' | null, rowId: string | null, label: string, type: 'month' | 'min' | 'year' | 'past' }>({ mode: null, rowId: null, label: '', type: 'month' });
   const [rowToDelete, setRowToDelete] = useState<string | null>(null);
   const [showCalculator, setShowCalculator] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | 'queued'>('saved');
+
+  // When network is restored, flip 'queued' → 'saved' (sync already fired in App.tsx)
+  useEffect(() => {
+    const handleOnline = () => {
+      setSaveStatus(prev => prev === 'queued' ? 'saved' : prev);
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, []);
 
   const handleSaveCashback = (newData: PlanData) => {
     savePlanData(newData, 'cashback');
@@ -294,7 +304,8 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
       else if (type === 'credit') dataToSave = (newData as any).credit;
       
       await api.post(`/plan-grid/${type}`, dataToSave);
-      setSaveStatus('saved');
+      // If offline, the request was queued locally — show 'queued' rather than 'saved'
+      setSaveStatus(!navigator.onLine ? 'queued' : 'saved');
     } catch (error) {
       console.error(`Error saving plan grid type ${type}:`, error);
       setSaveStatus('error');
@@ -565,17 +576,25 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
                     {activeTab === 'now' ? (
                       <button
                         onClick={handleManualSave}
-                        disabled={saveStatus === 'saving' || saveStatus === 'saved'}
-                        title={saveStatus === 'saved' ? 'Сохранено' : saveStatus === 'saving' ? 'Сохраняется...' : 'Сохранить'}
+                        disabled={saveStatus === 'saving' || saveStatus === 'saved' || saveStatus === 'queued'}
+                        title={
+                          saveStatus === 'saved' ? 'Сохранено' :
+                          saveStatus === 'saving' ? 'Сохраняется...' :
+                          saveStatus === 'queued' ? 'Сохранено локально, будет отправлено при появлении сети' :
+                          'Сохранить'
+                        }
                         className={cn(
                           "w-7 h-7 rounded-lg flex items-center justify-center mx-auto transition-all",
                           saveStatus === 'saved' && "text-emerald-400 bg-emerald-50 cursor-default opacity-50",
                           saveStatus === 'saving' && "text-neutral-400 bg-neutral-100 cursor-default",
+                          saveStatus === 'queued' && "text-amber-500 bg-amber-50 cursor-default",
                           saveStatus === 'error' && "text-rose-500 bg-rose-50 hover:bg-rose-100 active:scale-95"
                         )}
                       >
                         {saveStatus === 'saving'
                           ? <Loader2 size={14} className="animate-spin" />
+                          : saveStatus === 'queued'
+                          ? <WifiOff size={14} />
                           : <Save size={14} />
                         }
                       </button>
@@ -597,9 +616,15 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
                           e.stopPropagation();
                           setSubjectToDelete(subject.id);
                         }}
-                        className="absolute top-1 right-1 p-1 bg-rose-50 text-rose-500 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                        title={activeTab === 'now' ? 'Архивировать' : 'Удалить'}
+                        className={cn(
+                          "absolute top-1 right-1 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity",
+                          activeTab === 'now'
+                            ? "bg-amber-50 text-amber-500"
+                            : "bg-rose-50 text-rose-500"
+                        )}
                       >
-                        <Trash2 size={10} />
+                        {activeTab === 'now' ? <History size={10} /> : <Trash2 size={10} />}
                       </button>
                     </th>
                   ))}
