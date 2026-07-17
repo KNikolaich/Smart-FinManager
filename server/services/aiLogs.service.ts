@@ -4,7 +4,7 @@ export function listAiLogs(userId: string) {
   return prisma.aiLog.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
-    take: 100,
+    take: 16,
   });
 }
 
@@ -20,14 +20,14 @@ export async function createAiLog(userId: string, body: any) {
     },
   });
 
-  // Cleanup old logs (keep last 100)
+  // Cleanup old logs (keep last 16)
   try {
     const count = await prisma.aiLog.count({ where: { userId } });
-    if (count > 100) {
+    if (count > 16) {
       const oldest = await prisma.aiLog.findMany({
         where: { userId },
         orderBy: { createdAt: "asc" },
-        take: count - 100,
+        take: count - 16,
       });
       await prisma.aiLog.deleteMany({
         where: { id: { in: oldest.map(l => l.id) } },
