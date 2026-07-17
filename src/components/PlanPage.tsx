@@ -186,7 +186,7 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
             if (type === 'now') {
               newData.subjects = data.subjects || [];
               newData.rows = data.rows || newData.rows;
-              newData.pastRows = data.pastRows || [];
+              // pastRows live only in 'past' record — don't touch them here
             } else if (type === 'past') {
               // subjects are source of truth from 'now' — never overwrite from 'past'
               newData.pastRows = data.pastRows || data.rows || [];
@@ -284,8 +284,9 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
     setSaveStatus('saving');
     try {
       let dataToSave: any;
-      if (type === 'now') dataToSave = { subjects: newData.subjects, rows: newData.rows, pastRows: newData.pastRows };
-      // 'past' only stores pastRows — subjects are the source of truth in 'now'
+      // 'now' stores only subjects + current rows (pastRows live exclusively in 'past')
+      if (type === 'now') dataToSave = { subjects: newData.subjects, rows: newData.rows };
+      // 'past' stores only pastRows — subjects are the source of truth in 'now'
       else if (type === 'past') dataToSave = { pastRows: newData.pastRows };
       else if (type === 'config') dataToSave = newData.config;
       else if (type === 'cashback') dataToSave = newData.cashback;
@@ -416,6 +417,7 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
   };
 
   const handleDeleteSubject = (id: string) => {
+    // 'past' tab: delete permanently (remove subject + its cell data)
     if (!planData) return;
     const newRows = planData.rows.map(row => {
       const newCells = { ...row.cells };
@@ -426,7 +428,17 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
       ...planData,
       subjects: planData.subjects.filter(s => s.id !== id),
       rows: newRows
-    }, activeTab);
+    }, 'now');
+    setSubjectToDelete(null);
+  };
+
+  const handleArchiveSubject = (id: string) => {
+    // 'now' tab: archive — hide from current view, keep data intact
+    if (!planData) return;
+    savePlanData({
+      ...planData,
+      subjects: planData.subjects.map(s => s.id === id ? { ...s, isArchived: true } : s)
+    }, 'now');
     setSubjectToDelete(null);
   };
 
@@ -1192,33 +1204,63 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
         </div>
       )}
 
-      {/* Delete Subject Confirmation Modal */}
+      {/* Archive / Delete Subject Confirmation Modal */}
       {subjectToDelete && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6 sm:p-4">
           <div className="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-2xl space-y-6 text-center">
-            <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto">
-              <Trash2 size={32} />
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-xl font-bold">Удалить графу?</h3>
-              <p className="text-sm text-neutral-500">
-                Вы уверены, что хотите удалить эту графу расходов? Все данные в этой колонке будут потеряны.
-              </p>
-            </div>
-            <div className="flex gap-3 pt-4">
-              <button 
-                onClick={() => handleDeleteSubject(subjectToDelete)}
-                className="flex-3 bg-rose-500 text-white py-4 rounded-2xl font-bold hover:bg-rose-600 transition-all active:scale-[0.98] shadow-lg shadow-rose-100"
-              >
-                Удалить графу
-              </button>
-              <button 
-                onClick={() => setSubjectToDelete(null)}
-                className="flex-1 bg-neutral-100 text-neutral-600 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
-              >
-                Отмена
-              </button>
-            </div>
+            {activeTab === 'now' ? (
+              <>
+                <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto">
+                  <History size={32} />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-xl font-bold">Архивировать графу?</h3>
+                  <p className="text-sm text-neutral-500">
+                    Графа будет скрыта из вкладки «Сейчас», но останется видна в «Прошлом» со всеми данными.
+                  </p>
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => handleArchiveSubject(subjectToDelete)}
+                    className="flex-3 bg-amber-500 text-white py-4 rounded-2xl font-bold hover:bg-amber-600 transition-all active:scale-[0.98] shadow-lg shadow-amber-100"
+                  >
+                    В архив
+                  </button>
+                  <button
+                    onClick={() => setSubjectToDelete(null)}
+                    className="flex-1 bg-neutral-100 text-neutral-600 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto">
+                  <Trash2 size={32} />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-xl font-bold">Удалить графу?</h3>
+                  <p className="text-sm text-neutral-500">
+                    Графа будет удалена навсегда вместе со всеми данными. Это действие нельзя отменить.
+                  </p>
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => handleDeleteSubject(subjectToDelete)}
+                    className="flex-3 bg-rose-500 text-white py-4 rounded-2xl font-bold hover:bg-rose-600 transition-all active:scale-[0.98] shadow-lg shadow-rose-100"
+                  >
+                    Удалить навсегда
+                  </button>
+                  <button
+                    onClick={() => setSubjectToDelete(null)}
+                    className="flex-1 bg-neutral-100 text-neutral-600 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
