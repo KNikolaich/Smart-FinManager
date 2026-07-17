@@ -33,6 +33,7 @@ import {
   Edit3,
   Pencil,
   Check,
+  Loader2,
   Calculator as CalcIcon
 } from 'lucide-react';
 import { GenericContextMenu } from './ui/GenericContextMenu';
@@ -141,6 +142,7 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
   const [rowEditor, setRowEditor] = useState<{ mode: 'addBefore' | 'addAfter' | null, rowId: string | null, label: string, type: 'month' | 'min' | 'year' | 'past' }>({ mode: null, rowId: null, label: '', type: 'month' });
   const [rowToDelete, setRowToDelete] = useState<string | null>(null);
   const [showCalculator, setShowCalculator] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
 
   const handleSaveCashback = (newData: PlanData) => {
     savePlanData(newData, 'cashback');
@@ -181,10 +183,13 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
               updatedAt: new Date().toISOString()
             };
             
-            if (type === 'now' || type === 'past') {
+            if (type === 'now') {
               newData.subjects = data.subjects || [];
               newData.rows = data.rows || newData.rows;
               newData.pastRows = data.pastRows || [];
+            } else if (type === 'past') {
+              // subjects are source of truth from 'now' — never overwrite from 'past'
+              newData.pastRows = data.pastRows || data.rows || [];
             } else if (type === 'config') {
               newData.config = data;
             } else if (type === 'cashback') {
@@ -276,18 +281,28 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
 
   const savePlanData = async (newData: PlanData, type: TabType) => {
     setPlanData(newData);
+    setSaveStatus('saving');
     try {
       let dataToSave: any;
-      if (type === 'now' || type === 'past') dataToSave = { subjects: newData.subjects, rows: newData.rows, pastRows: newData.pastRows };
+      if (type === 'now') dataToSave = { subjects: newData.subjects, rows: newData.rows, pastRows: newData.pastRows };
+      // 'past' only stores pastRows — subjects are the source of truth in 'now'
+      else if (type === 'past') dataToSave = { pastRows: newData.pastRows };
       else if (type === 'config') dataToSave = newData.config;
       else if (type === 'cashback') dataToSave = newData.cashback;
       else if (type === 'comment') dataToSave = { comment: newData.comment };
       else if (type === 'credit') dataToSave = (newData as any).credit;
       
       await api.post(`/plan-grid/${type}`, dataToSave);
+      setSaveStatus('saved');
     } catch (error) {
       console.error(`Error saving plan grid type ${type}:`, error);
+      setSaveStatus('error');
     }
+  };
+
+  const handleManualSave = () => {
+    if (!planData) return;
+    savePlanData({ ...planData }, 'now');
   };
 
   const parseValue = (val: string): number => {
@@ -533,9 +548,28 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
               <thead className="sticky top-0 z-20">
                 <tr>
                   <th 
-                    className="p-1 border border-neutral-200 text-[10px] font-bold text-neutral-400 uppercase text-center w-10 sticky left-0 top-0 z-30 bg-neutral-50/90 backdrop-blur-sm"
+                    className="p-1 border border-neutral-200 text-center w-10 sticky left-0 top-0 z-30 bg-neutral-50/90 backdrop-blur-sm"
                   >
-                    <div className="rotate-180 [writing-mode:vertical-lr] mx-auto h-16">план в тыс ₽</div>
+                    {activeTab === 'now' ? (
+                      <button
+                        onClick={handleManualSave}
+                        disabled={saveStatus === 'saving' || saveStatus === 'saved'}
+                        title={saveStatus === 'saved' ? 'Сохранено' : saveStatus === 'saving' ? 'Сохраняется...' : 'Сохранить'}
+                        className={cn(
+                          "w-7 h-7 rounded-lg flex items-center justify-center mx-auto transition-all",
+                          saveStatus === 'saved' && "text-emerald-400 bg-emerald-50 cursor-default opacity-50",
+                          saveStatus === 'saving' && "text-neutral-400 bg-neutral-100 cursor-default",
+                          saveStatus === 'error' && "text-rose-500 bg-rose-50 hover:bg-rose-100 active:scale-95"
+                        )}
+                      >
+                        {saveStatus === 'saving'
+                          ? <Loader2 size={14} className="animate-spin" />
+                          : <Save size={14} />
+                        }
+                      </button>
+                    ) : (
+                      <div className="rotate-180 [writing-mode:vertical-lr] mx-auto h-16 text-[10px] font-bold text-neutral-400 uppercase">план в тыс ₽</div>
+                    )}
                   </th>
                   {visibleSubjects.map(subject => (
                     <th 
