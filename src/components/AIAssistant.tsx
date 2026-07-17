@@ -146,6 +146,11 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
 
   const fetchHistory = async () => {
     try {
+      // Delete messages older than 2 days before loading
+      const twoDaysAgo = new Date();
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+      await api.delete(`/chat-history?olderThan=${twoDaysAgo.toISOString()}`);
+
       const history: Message[] = await api.get('/chat-history');
       if (history.length === 0) {
         setMessages([
@@ -466,14 +471,8 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
   return (
     <div className="flex flex-col h-full bg-neutral-50">
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-6 space-y-4 sm:space-y-6 no-scrollbar relative">
-        <button
-          onClick={clearChat}
-          className="absolute bottom-4 right-4 w-10 h-10 bg-white text-neutral-400 rounded-full flex items-center justify-center hover:bg-neutral-100 transition-all active:scale-95 shadow-md border border-neutral-100 z-10"
-          title="Очистить чат"
-        >
-          <Eraser className="w-4 h-4 sm:w-5 sm:h-5" />
-        </button>
+      <div className="flex-1 relative min-h-0">
+        <div className="h-full overflow-y-auto px-2 sm:px-4 py-3 sm:py-6 space-y-4 sm:space-y-6 no-scrollbar">
         <AnimatePresence initial={false}>
           {messages.map((m) => (
             <motion.div 
@@ -543,6 +542,15 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
           </div>
         )}
         <div ref={chatEndRef} />
+        </div>
+        {/* Eraser — fixed to bottom-left of the chat viewport, never scrolls */}
+        <button
+          onClick={clearChat}
+          className="absolute bottom-4 left-3 w-9 h-9 bg-white text-neutral-400 rounded-full flex items-center justify-center hover:bg-neutral-100 transition-all active:scale-95 shadow-md border border-neutral-100 z-10"
+          title="Очистить чат"
+        >
+          <Eraser className="w-4 h-4 sm:w-5 sm:h-5" />
+        </button>
       </div>
 
       {/* Input Area */}

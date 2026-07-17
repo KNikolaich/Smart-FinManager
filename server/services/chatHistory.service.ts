@@ -41,3 +41,9 @@ export function clearChatHistory(userId: string) {
 export function deleteChatMessage(userId: string, id: string) {
   return prisma.chatMessage.delete({ where: { id, userId } });
 }
+
+export function deleteOldChatMessages(userId: string, before: Date) {
+  return prisma.chatMessage.deleteMany({
+    where: { userId, createdAt: { lt: before } },
+  });
+}

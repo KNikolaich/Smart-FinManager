@@ -37,6 +37,15 @@ export async function update(req: any, res: any) {
 
 export async function clear(req: any, res: any) {
   try {
+    const { olderThan } = req.query;
+    if (olderThan) {
+      const before = new Date(olderThan as string);
+      if (isNaN(before.getTime())) {
+        return res.status(400).json({ error: "Invalid olderThan date" });
+      }
+      await chatHistoryService.deleteOldChatMessages(req.user.userId, before);
+      return res.json({ message: "Old messages deleted" });
+    }
     await chatHistoryService.clearChatHistory(req.user.userId);
     res.json({ message: "Chat history cleared" });
   } catch (error) {
