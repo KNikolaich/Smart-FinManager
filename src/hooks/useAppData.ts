@@ -77,6 +77,16 @@ export function useAppData({ user, addToast }: UseAppDataParams) {
   })();
 
   useEffect(() => {
+    const handleQuotaExceeded = () => {
+      addToast('Локальное хранилище заполнено — подключитесь к сети для сохранения данных', 'error');
+    };
+    window.addEventListener('storage-quota-exceeded', handleQuotaExceeded);
+    return () => {
+      window.removeEventListener('storage-quota-exceeded', handleQuotaExceeded);
+    };
+  }, [addToast]);
+
+  useEffect(() => {
     // Auto-sync on startup if online
     if (user && navigator.onLine) {
       syncOfflineQueue((message) => {

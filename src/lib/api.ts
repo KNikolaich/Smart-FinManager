@@ -9,11 +9,24 @@ export const safeStorage = {
       return null;
     }
   },
-  setItem(key: string, value: string): void {
+  setItem(key: string, value: string): boolean {
     try {
       localStorage.setItem(key, value);
-    } catch (e) {
+      return true;
+    } catch (e: any) {
+      const isQuota =
+        e instanceof DOMException &&
+        (e.name === 'QuotaExceededError' ||
+          e.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+          e.code === 22 ||
+          e.code === 1014);
+
+      if (isQuota) {
+        window.dispatchEvent(new CustomEvent('storage-quota-exceeded'));
+      }
+
       console.warn('localStorage setItem failed:', e);
+      return false;
     }
   },
   removeItem(key: string): void {
@@ -514,7 +527,10 @@ export const api = {
         queue = queue.filter((item: any) => !(item.method === 'POST' && item.endpoint === endpoint));
       }
       queue.push(queueItem);
-      safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
+      const saved = safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
+      if (!saved) {
+        throw new Error('Локальное хранилище заполнено — подключитесь к сети для сохранения данных');
+      }
 
       applyMutationToCache('POST', endpoint, dataWithId);
 
@@ -583,7 +599,10 @@ export const api = {
             queue = queue.filter((item: any) => !(item.method === 'POST' && item.endpoint === endpoint));
           }
           queue.push(queueItem);
-          safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
+          const saved = safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
+          if (!saved) {
+            throw new Error('Локальное хранилище заполнено — подключитесь к сети для сохранения данных');
+          }
 
           applyMutationToCache('POST', endpoint, dataWithId);
           return dataWithId as T;
@@ -605,7 +624,10 @@ export const api = {
       };
       const queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
       queue.push(queueItem);
-      safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
+      const saved = safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
+      if (!saved) {
+        throw new Error('Локальное хранилище заполнено — подключитесь к сети для сохранения данных');
+      }
 
       applyMutationToCache('PUT', endpoint, data);
 
@@ -633,7 +655,10 @@ export const api = {
         };
         const queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
         queue.push(queueItem);
-        safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
+        const saved = safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
+        if (!saved) {
+          throw new Error('Локальное хранилище заполнено — подключитесь к сети для сохранения данных');
+        }
 
         applyMutationToCache('PUT', endpoint, data);
         const mockResponse: any = { success: true, ...data };
@@ -655,7 +680,10 @@ export const api = {
       };
       const queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
       queue.push(queueItem);
-      safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
+      const saved = safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
+      if (!saved) {
+        throw new Error('Локальное хранилище заполнено — подключитесь к сети для сохранения данных');
+      }
 
       applyMutationToCache('DELETE', endpoint, null);
 
@@ -682,7 +710,10 @@ export const api = {
         };
         const queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
         queue.push(queueItem);
-        safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
+        const saved = safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
+        if (!saved) {
+          throw new Error('Локальное хранилище заполнено — подключитесь к сети для сохранения данных');
+        }
 
         applyMutationToCache('DELETE', endpoint, null);
         const mockResponse: any = { success: true };
