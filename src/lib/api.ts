@@ -412,6 +412,7 @@ export const api = {
       // Cache response for future offline accesses
       if (!endpoint.includes('/auth/login') && !endpoint.includes('/auth/register') && !endpoint.includes('/auth/verify-password')) {
         safeStorage.setItem(`api_cache_${endpoint}`, JSON.stringify(data));
+        safeStorage.setItem(`api_cache_timestamp_${endpoint}`, String(Date.now()));
       }
       return data;
     } catch (error: any) {
@@ -787,4 +788,15 @@ export async function syncOfflineQueue(onItemFailed?: (message: string, item: an
   
   safeStorage.removeItem(queueKey);
   return true;
+}
+
+/**
+ * Returns the Unix timestamp (ms) when the given endpoint's cache was last
+ * written, or null if the endpoint has never been cached.
+ */
+export function getCacheTimestamp(endpoint: string): number | null {
+  const raw = safeStorage.getItem(`api_cache_timestamp_${endpoint}`);
+  if (!raw) return null;
+  const ts = Number(raw);
+  return isNaN(ts) ? null : ts;
 }
