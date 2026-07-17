@@ -1,10 +1,10 @@
 import { prisma } from "../prisma";
 import { decrypt } from "../crypto";
 import { transporter } from "../mailer";
-import { resetAccountLoginFailures } from "../rateLimitStore";
+import { resetAccountLoginFailures, isAccountLockedOut, ACCOUNT_LOCKOUT_MAX_ATTEMPTS } from "../rateLimitStore";
 
-export function listUsers() {
-  return prisma.user.findMany({
+export async function listUsers() {
+  const users = await prisma.user.findMany({
     orderBy: { createdAt: 'desc' },
     select: {
       id: true,
@@ -14,6 +14,13 @@ export function listUsers() {
       createdAt: true,
     }
   });
+
+  // Fetch lockout state for all users in parallel
+  const lockoutStates = await Promise.all(
+    users.map((u) => isAccountLockedOut(prisma, u.email.toLowerCase().trim()))
+  );
+
+  return users.map((u, i) => ({ ...u, isLockedOut: lockoutStates[i] }));
 }
 
 export function deleteUser(id: string) {

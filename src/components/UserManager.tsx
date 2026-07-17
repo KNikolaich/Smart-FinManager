@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { UserProfile } from '../types';
-import { Trash2, X, AlertTriangle, User, Mail, Calendar } from 'lucide-react';
+import { Trash2, X, AlertTriangle, User, Mail, Calendar, LockOpen, Lock } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export const UserManager: React.FC<{ onClose: () => void }> = ({ onClose }) => {
@@ -12,6 +12,7 @@ export const UserManager: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [targetEmail, setTargetEmail] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [sending, setSending] = useState(false);
+  const [unlockingId, setUnlockingId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
   const fetchUsers = async () => {
@@ -48,6 +49,20 @@ export const UserManager: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       setStatusMessage({ text: 'Ошибка удаления', type: 'error' });
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleUnlockUser = async (id: string) => {
+    setUnlockingId(id);
+    try {
+      await api.post(`/admin/users/${id}/unlock`, {});
+      await fetchUsers();
+      setStatusMessage({ text: 'Аккаунт разблокирован', type: 'success' });
+    } catch (error) {
+      console.error('Error unlocking user:', error);
+      setStatusMessage({ text: 'Ошибка разблокировки', type: 'error' });
+    } finally {
+      setUnlockingId(null);
     }
   };
 
@@ -104,6 +119,12 @@ export const UserManager: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                        {u.role === 'admin' && (
                          <span className="px-1.5 py-0.5 bg-rose-100 text-rose-600 text-[8px] font-black uppercase rounded tracking-widest">Admin</span>
                        )}
+                       {u.isLockedOut && (
+                         <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[8px] font-black uppercase rounded tracking-widest flex items-center gap-0.5">
+                           <Lock size={8} />
+                           Заблокирован
+                         </span>
+                       )}
                     </div>
                     <div className="flex items-center gap-1.5 text-theme-muted text-xs font-medium truncate">
                       <Mail size={12} />
@@ -119,6 +140,16 @@ export const UserManager: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <div className="mt-4 pt-4 border-t border-theme-base flex items-center justify-between">
                   <span className="text-[10px] font-mono text-theme-muted/40 uppercase">ID: {u.id.substring(0, 8)}...</span>
                   <div className="flex items-center gap-1">
+                    {u.isLockedOut && (
+                      <button
+                        onClick={() => handleUnlockUser(u.id)}
+                        disabled={unlockingId === u.id}
+                        className="p-2 text-amber-500 hover:text-amber-600 hover:bg-amber-50 transition-colors rounded-lg disabled:opacity-50"
+                        title="Разблокировать аккаунт"
+                      >
+                        <LockOpen size={18} />
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         setSendPassTarget(u);

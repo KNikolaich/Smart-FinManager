@@ -14,6 +14,7 @@ export interface UserProfile {
   createdAt: string;
   role?: 'admin' | 'user';
   settings?: UserSettings;
+  isLockedOut?: boolean;
 }
 
 export interface Account {
