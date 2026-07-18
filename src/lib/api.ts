@@ -871,12 +871,10 @@ export async function syncOfflineQueue(onItemFailed?: (message: string, item: an
 
     try {
       if (item.method === 'POST') {
-        if (item.endpoint.startsWith('/plan-grid/')) {
-          // Special case for plan pages being overwrites
-          await api.postDirect(item.endpoint, item.data);
-        } else {
-          await api.postDirect(item.endpoint, item.data);
-        }
+        // Strip the client-side optimistic `id` before sending — the server
+        // generates its own ID and strict validation schemas reject unknown fields.
+        const { id: _offlineId, ...dataToSend } = item.data || {};
+        await api.postDirect(item.endpoint, dataToSend);
       } else if (item.method === 'PUT') {
         await api.putDirect(item.endpoint, item.data);
       } else if (item.method === 'DELETE') {
