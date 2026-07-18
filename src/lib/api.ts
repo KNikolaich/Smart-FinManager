@@ -834,6 +834,64 @@ export async function syncOfflineQueue(onItemFailed?: (message: string, item: an
 }
 
 /**
+ * Updates the data payload of a queued offline POST /transactions item and
+ * patches the optimistic cache entry for the same record.
+ * Only supports POST /transactions items (the only kind shown in the pending UI).
+ */
+export function updateOfflineQueueItem(itemId: string, newData: any): boolean {
+  const queueKey = 'api_offline_queue';
+  let queue: any[] = [];
+  try {
+    queue = JSON.parse(safeStorage.getItem(queueKey) || '[]');
+  } catch {
+    return false;
+  }
+
+  const item = queue.find((q: any) => q.id === itemId);
+  if (!item) return false;
+
+  const oldId = item.data?.id;
+  item.data = { ...item.data, ...newData, id: oldId }; // preserve the offline id
+
+  safeStorage.setItem(queueKey, JSON.stringify(queue));
+
+  // Patch the optimistic cache using PUT semantics on the existing offline record id
+  if (item.endpoint === '/transactions' && item.method === 'POST' && oldId) {
+    applyMutationToCache('PUT', `/transactions/${oldId}`, item.data);
+  }
+
+  return true;
+}
+
+/**
+ * Removes a queued offline item by its queue item id and reverts its
+ * optimistic cache change.
+ */
+export function removeOfflineQueueItem(itemId: string): boolean {
+  const queueKey = 'api_offline_queue';
+  let queue: any[] = [];
+  try {
+    queue = JSON.parse(safeStorage.getItem(queueKey) || '[]');
+  } catch {
+    return false;
+  }
+
+  const idx = queue.findIndex((q: any) => q.id === itemId);
+  if (idx === -1) return false;
+
+  const item = queue[idx];
+  queue.splice(idx, 1);
+  safeStorage.setItem(queueKey, JSON.stringify(queue));
+
+  // Revert the optimistic cache change: delete the locally-added record
+  if (item.method === 'POST' && item.data?.id) {
+    applyMutationToCache('DELETE', `${item.endpoint}/${item.data.id}`, null);
+  }
+
+  return true;
+}
+
+/**
  * Returns the Unix timestamp (ms) when the given endpoint's cache was last
  * written, or null if the endpoint has never been cached.
  */

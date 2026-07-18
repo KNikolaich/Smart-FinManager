@@ -7,10 +7,13 @@ import { GenericContextMenu } from './ui/GenericContextMenu';
 import { AnimatePresence } from 'motion/react';
 import { cn, getTransactionDisplayTitle } from '../lib/utils';
 import { api, safeStorage } from '../lib/api';
+import EditOfflineTransaction from './EditOfflineTransaction';
 
 /** Minimal shape needed to render a queued-but-not-yet-synced transaction row. */
 interface PendingTransaction {
   id: string;
+  /** The queue item id — used to locate and mutate the entry in api_offline_queue */
+  queueItemId: string;
   amount: number;
   description: string;
   accountId: string;
@@ -37,6 +40,7 @@ function getQueuedTransactions(): PendingTransaction[] {
       if (!d.id || !d.accountId || !d.type || d.amount === undefined) continue;
       pending.push({
         id: String(d.id),
+        queueItemId: String((item as any).id),
         amount: Number(d.amount),
         description: d.description || '',
         accountId: String(d.accountId),
@@ -99,6 +103,7 @@ export default function TransactionHistory({
   // Online status and queued offline transactions
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [queuedTransactions, setQueuedTransactions] = useState<PendingTransaction[]>(() => getQueuedTransactions());
+  const [editingPendingTx, setEditingPendingTx] = useState<PendingTransaction | null>(null);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -661,7 +666,11 @@ export default function TransactionHistory({
                     const account = accounts.find(a => a.id === t.accountId);
                     const targetAccount = t.targetAccountId ? accounts.find(a => a.id === t.targetAccountId) : null;
                     return (
-                      <tr key={t.id} className="border-b border-theme-base/30 last:border-0">
+                      <tr
+                        key={t.id}
+                        onClick={() => setEditingPendingTx(t)}
+                        className="border-b border-theme-base/30 last:border-0 hover:bg-amber-500/5 active:bg-amber-500/10 transition-colors cursor-pointer select-none"
+                      >
                         <td className="pl-4 pr-2 py-1.5 align-top">
                           <div className="flex items-start gap-2">
                             <span className="text-lg shrink-0">{t.type === 'transfer' ? '🔄' : (category?.icon || parentCategory?.icon || '💰')}</span>
@@ -849,6 +858,19 @@ export default function TransactionHistory({
                   onClick: () => handleContextMenuAction('copy')
                 }
               ]}
+            />
+          )}
+
+          {editingPendingTx && (
+            <EditOfflineTransaction
+              transaction={editingPendingTx}
+              accounts={accounts}
+              categories={categories}
+              onClose={() => setEditingPendingTx(null)}
+              onUpdate={() => {
+                setQueuedTransactions(getQueuedTransactions());
+                setEditingPendingTx(null);
+              }}
             />
           )}
         </div>
