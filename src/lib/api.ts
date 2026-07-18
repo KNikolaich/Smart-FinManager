@@ -845,9 +845,30 @@ export async function syncOfflineQueue(onItemFailed?: (message: string, item: an
   
   console.log('Syncing offline queue of size:', queue.length);
   
+  // Clear any stale `processing` flags left by a previous crash.  Items that
+  // were in-flight when the tab was closed will be retried this session rather
+  // than silently lost.
+  if (queue.some((q: any) => q.processing)) {
+    queue = queue.map((q: any) => {
+      if (!q.processing) return q;
+      const { processing: _p, ...rest } = q;
+      return rest;
+    });
+    safeStorage.setItem(queueKey, JSON.stringify(queue));
+  }
+
   const remaining: any[] = [...queue];
   
   for (const item of queue) {
+    // Before issuing the network request, stamp the item as `processing` and
+    // persist the queue.  This way a hard tab close / process kill during the
+    // call leaves the item in a detectable in-flight state.  On the *next*
+    // startup the stale flag is cleared (see above) and the item is retried,
+    // preventing silent data loss.  A potential duplicate write on retry is
+    // preferable to silently losing a user's financial edit.
+    remaining[0] = { ...remaining[0], processing: true };
+    safeStorage.setItem(queueKey, JSON.stringify(remaining));
+
     try {
       if (item.method === 'POST') {
         if (item.endpoint.startsWith('/plan-grid/')) {
@@ -862,7 +883,8 @@ export async function syncOfflineQueue(onItemFailed?: (message: string, item: an
         await api.deleteDirect(item.endpoint);
       }
       
-      // Successfully synced, remove from queue
+      // Successfully synced — remove from queue and persist immediately so a
+      // crash here won't replay an already-applied write.
       remaining.shift();
       safeStorage.setItem(queueKey, JSON.stringify(remaining));
     } catch (err: any) {
@@ -870,6 +892,9 @@ export async function syncOfflineQueue(onItemFailed?: (message: string, item: an
       // Check if it's a network issue (retry later)
       const isNetworkError = checkIfNetworkError(err);
       if (isNetworkError) {
+        // Clear the processing flag so the item is retried cleanly next time.
+        remaining[0] = item;
+        safeStorage.setItem(queueKey, JSON.stringify(remaining));
         return false;
       }
       
