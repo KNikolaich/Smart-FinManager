@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
-import { api, safeStorage, syncOfflineQueue } from '../lib/api';
+import { api, safeStorage, syncOfflineQueue, describeQueueItem } from '../lib/api';
 import { queryKeys } from '../lib/queryClient';
 import { Account, Transaction, Goal, Category, Currency, BalanceHistory, Plan, UserProfile } from '../types';
 
@@ -80,9 +80,19 @@ export function useAppData({ user, addToast }: UseAppDataParams) {
     const handleQuotaExceeded = () => {
       addToast('Локальное хранилище заполнено — подключитесь к сети для сохранения данных', 'error');
     };
+    const handleItemEvicted = (e: Event) => {
+      const item = (e as CustomEvent).detail?.item;
+      const label = item ? describeQueueItem(item) : 'операция';
+      addToast(
+        `Хранилище переполнено — «${label}» не будет сохранена. Подключитесь к сети.`,
+        'error'
+      );
+    };
     window.addEventListener('storage-quota-exceeded', handleQuotaExceeded);
+    window.addEventListener('offline-queue-item-evicted', handleItemEvicted);
     return () => {
       window.removeEventListener('storage-quota-exceeded', handleQuotaExceeded);
+      window.removeEventListener('offline-queue-item-evicted', handleItemEvicted);
     };
   }, [addToast]);
 

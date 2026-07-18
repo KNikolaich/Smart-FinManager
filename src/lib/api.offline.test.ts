@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { safeStorage, pushToOfflineQueue, syncOfflineQueue } from './api';
+import { safeStorage, pushToOfflineQueue, syncOfflineQueue, describeQueueItem } from './api';
 
 // ---------------------------------------------------------------------------
 // Minimal localStorage shim backed by a plain Map so tests are fully isolated
@@ -76,6 +76,46 @@ function makeQueueItem(endpoint: string, overrides: object = {}): object {
     ...overrides,
   };
 }
+
+// ---------------------------------------------------------------------------
+// 0. describeQueueItem – human-readable label for a queue item
+// ---------------------------------------------------------------------------
+describe('describeQueueItem – human-readable labels', () => {
+  it('labels POST /transactions as "добавление транзакции"', () => {
+    expect(describeQueueItem({ method: 'POST', endpoint: '/transactions' }))
+      .toBe('добавление транзакции');
+  });
+
+  it('labels PUT /transactions/123 as "изменение транзакции"', () => {
+    expect(describeQueueItem({ method: 'PUT', endpoint: '/transactions/123' }))
+      .toBe('изменение транзакции');
+  });
+
+  it('labels DELETE /accounts/abc as "удаление счёта"', () => {
+    expect(describeQueueItem({ method: 'DELETE', endpoint: '/accounts/abc' }))
+      .toBe('удаление счёта');
+  });
+
+  it('labels POST /categories as "добавление категории"', () => {
+    expect(describeQueueItem({ method: 'POST', endpoint: '/categories' }))
+      .toBe('добавление категории');
+  });
+
+  it('labels PUT /goals/x as "изменение цели"', () => {
+    expect(describeQueueItem({ method: 'PUT', endpoint: '/goals/x' }))
+      .toBe('изменение цели');
+  });
+
+  it('labels DELETE /plan-grid/monthly as "удаление плана"', () => {
+    expect(describeQueueItem({ method: 'DELETE', endpoint: '/plan-grid/monthly' }))
+      .toBe('удаление плана');
+  });
+
+  it('falls back gracefully for unknown endpoints', () => {
+    expect(describeQueueItem({ method: 'POST', endpoint: '/unknown-endpoint' }))
+      .toBe('добавление операции');
+  });
+});
 
 // ---------------------------------------------------------------------------
 // 1. Queue survives a page reload
@@ -175,7 +215,7 @@ describe('safeStorage.setItem – quota exceeded', () => {
 // 3. pushToOfflineQueue – eviction policy
 // ---------------------------------------------------------------------------
 describe('pushToOfflineQueue – eviction on quota exceeded', () => {
-  it('evicts the oldest non-plan-grid item and ALWAYS dispatches storage-quota-exceeded', () => {
+  it('evicts the oldest non-plan-grid item and dispatches offline-queue-item-evicted (not the generic quota event)', () => {
     // Seed queue: txItem is oldest regular op, planItem is plan-grid, acItem is newer regular op
     const txItem   = makeQueueItem('/transactions',       { timestamp: 1000 });
     const planItem = makeQueueItem('/plan-grid/monthly',  { timestamp: 1500 });
@@ -195,18 +235,25 @@ describe('pushToOfflineQueue – eviction on quota exceeded', () => {
       realSetItem(k, v);
     });
 
-    const handler = vi.fn();
-    window.addEventListener('storage-quota-exceeded', handler);
+    const genericHandler = vi.fn();
+    const evictedItems: any[] = [];
+    window.addEventListener('storage-quota-exceeded', genericHandler);
+    window.addEventListener('offline-queue-item-evicted', (e: Event) => {
+      evictedItems.push((e as CustomEvent).detail?.item);
+    });
 
     const newItem = makeQueueItem('/goals', { timestamp: 3000 });
     const result = pushToOfflineQueue(newItem);
 
-    window.removeEventListener('storage-quota-exceeded', handler);
+    window.removeEventListener('storage-quota-exceeded', genericHandler);
 
     // The write should succeed after eviction
     expect(result).toBe(true);
-    // storage-quota-exceeded MUST always fire when eviction happens — no silent drops
-    expect(handler).toHaveBeenCalledTimes(1);
+    // The named eviction event must fire — no silent drops
+    expect(evictedItems).toHaveLength(1);
+    expect(evictedItems[0].endpoint).toBe('/transactions');
+    // The generic quota toast must NOT also fire (avoid duplicate notifications)
+    expect(genericHandler).not.toHaveBeenCalled();
 
     // txItem (oldest non-plan-grid) should be gone; plan-grid + newer items preserved
     const remaining = readQueue();
@@ -215,6 +262,45 @@ describe('pushToOfflineQueue – eviction on quota exceeded', () => {
     expect(endpoints).toContain('/plan-grid/monthly');   // preserved
     expect(endpoints).toContain('/accounts');            // preserved
     expect(endpoints).toContain('/goals');               // newly added
+  });
+
+  it('dispatches offline-queue-item-evicted with the dropped item in detail', () => {
+    const txItem  = makeQueueItem('/transactions', { timestamp: 1000 });
+    const accItem = makeQueueItem('/accounts',     { timestamp: 2000 });
+    seedQueue([txItem, accItem]);
+
+    // First setItem call throws; retry succeeds
+    let callCount = 0;
+    const realSetItem = fakeStorage.setItem.bind(fakeStorage);
+    vi.spyOn(fakeStorage, 'setItem').mockImplementation((k: string, v: string) => {
+      if (callCount === 0) {
+        callCount++;
+        const err = Object.assign(new DOMException('QuotaExceededError'), { code: 22 });
+        throw err;
+      }
+      callCount++;
+      realSetItem(k, v);
+    });
+
+    const evictedItems: any[] = [];
+    const genericHandler = vi.fn();
+    const evictHandler = (e: Event) => evictedItems.push((e as CustomEvent).detail?.item);
+
+    window.addEventListener('storage-quota-exceeded', genericHandler);
+    window.addEventListener('offline-queue-item-evicted', evictHandler);
+
+    const newItem = makeQueueItem('/goals', { timestamp: 3000 });
+    pushToOfflineQueue(newItem);
+
+    window.removeEventListener('storage-quota-exceeded', genericHandler);
+    window.removeEventListener('offline-queue-item-evicted', evictHandler);
+
+    // One eviction event fired with the dropped item
+    expect(evictedItems).toHaveLength(1);
+    expect(evictedItems[0].endpoint).toBe('/transactions'); // oldest non-plan-grid item
+
+    // The generic quota toast must NOT also fire (avoid duplicate notifications)
+    expect(genericHandler).not.toHaveBeenCalled();
   });
 
   it('plan-grid items are never the first to be evicted', () => {

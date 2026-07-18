@@ -1,5 +1,37 @@
 const API_URL = '/api';
 
+/**
+ * Returns a short human-readable label for a queued offline operation, used in
+ * eviction / failure toasts so the user can tell which action was dropped.
+ *
+ * Examples:
+ *   { method:'POST', endpoint:'/transactions' }         → "добавление транзакции"
+ *   { method:'DELETE', endpoint:'/accounts/123' }       → "удаление счёта"
+ *   { method:'PUT', endpoint:'/plan-grid/monthly' }     → "изменение плана"
+ */
+export function describeQueueItem(item: { method?: string; endpoint?: string }): string {
+  const method = (item.method || '').toUpperCase();
+  const endpoint = item.endpoint || '';
+
+  const verbMap: Record<string, string> = {
+    POST:   'добавление',
+    PUT:    'изменение',
+    DELETE: 'удаление',
+  };
+  const verb = verbMap[method] || method;
+
+  let noun = 'операции';
+  if (endpoint.startsWith('/transactions'))  noun = 'транзакции';
+  else if (endpoint.startsWith('/accounts')) noun = 'счёта';
+  else if (endpoint.startsWith('/categories')) noun = 'категории';
+  else if (endpoint.startsWith('/goals'))    noun = 'цели';
+  else if (endpoint.startsWith('/balance-history')) noun = 'записи истории баланса';
+  else if (endpoint.startsWith('/plan-grid')) noun = 'плана';
+  else if (endpoint.startsWith('/budget'))   noun = 'бюджета';
+
+  return `${verb} ${noun}`;
+}
+
 export const safeStorage = {
   getItem(key: string): string | null {
     try {
@@ -91,9 +123,13 @@ export function pushToOfflineQueue(item: any): boolean {
   );
 
   if (idx !== -1) {
-    queue.splice(idx, 1);
-    // Always notify the user when an operation is dropped to free space
-    window.dispatchEvent(new CustomEvent('storage-quota-exceeded'));
+    const evicted = queue.splice(idx, 1)[0];
+    // Emit a rich event so the app layer can name the dropped operation in the toast.
+    // storage-quota-exceeded is intentionally NOT dispatched here to avoid showing
+    // the generic quota toast on top of the specific eviction toast.
+    window.dispatchEvent(
+      new CustomEvent('offline-queue-item-evicted', { detail: { item: evicted } })
+    );
     return tryWrite(queue);
   }
 
