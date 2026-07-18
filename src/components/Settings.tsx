@@ -40,19 +40,44 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
   const [dbMigrateRunning, setDbMigrateRunning] = useState(false);
   const [dbMigrateOutput, setDbMigrateOutput] = useState<string | null>(null);
   const [dbMigrateSuccess, setDbMigrateSuccess] = useState<boolean | null>(null);
+  const [dbMigrateSyncedDespiteError, setDbMigrateSyncedDespiteError] = useState(false);
+  const [dbMigrateAlreadyInSync, setDbMigrateAlreadyInSync] = useState(false);
   const [dbMigrateAcceptLoss, setDbMigrateAcceptLoss] = useState(false);
+  const [dbStatusLoading, setDbStatusLoading] = useState(false);
+  const [dbStatusInSync, setDbStatusInSync] = useState<boolean | null>(null);
+
+  const handleDbStatus = async () => {
+    setDbStatusLoading(true);
+    setDbStatusInSync(null);
+    try {
+      const result = await api.get<{ inSync: boolean }>('/admin/db-status');
+      setDbStatusInSync(result.inSync);
+    } catch {
+      setDbStatusInSync(false);
+    } finally {
+      setDbStatusLoading(false);
+    }
+  };
 
   const handleDbMigrate = async () => {
     setDbMigrateRunning(true);
     setDbMigrateOutput(null);
     setDbMigrateSuccess(null);
+    setDbMigrateSyncedDespiteError(false);
+    setDbMigrateAlreadyInSync(false);
     try {
-      const result = await api.post<{ success: boolean; output: string; exitCode: number }>(
-        '/admin/db-migrate',
-        { acceptDataLoss: dbMigrateAcceptLoss }
-      );
+      const result = await api.post<{
+        success: boolean;
+        alreadyInSync?: boolean;
+        syncedDespiteError?: boolean;
+        output: string;
+        exitCode: number;
+      }>('/admin/db-migrate', { acceptDataLoss: dbMigrateAcceptLoss });
       setDbMigrateOutput(result.output || '(нет вывода)');
       setDbMigrateSuccess(result.success);
+      setDbMigrateSyncedDespiteError(!!result.syncedDespiteError);
+      setDbMigrateAlreadyInSync(!!result.alreadyInSync);
+      setDbStatusInSync(result.success);
     } catch (err: any) {
       setDbMigrateOutput(err.message || 'Неизвестная ошибка');
       setDbMigrateSuccess(false);
@@ -193,17 +218,42 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
                 </button>
               </div>
 
-              {/* Info block */}
+              {/* Info + controls */}
               <div className="px-6 pt-5 pb-3 shrink-0 space-y-4">
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3 text-sm text-amber-800">
                   <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
                   <div className="space-y-1">
                     <p className="font-semibold">Когда нужно запускать</p>
                     <p className="text-xs text-amber-700 leading-relaxed">
-                      После каждого обновления приложения, если в нём были изменения схемы БД — новые таблицы, поля или индексы. 
+                      После каждого обновления приложения, если в нём были изменения схемы БД — новые таблицы, поля или индексы.
                       Без этого сервер может падать с ошибками вроде <code className="bg-amber-100 px-1 rounded">relation "..." does not exist</code>.
                     </p>
                   </div>
+                </div>
+
+                {/* Status check */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleDbStatus}
+                    disabled={dbStatusLoading || dbMigrateRunning}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 transition-all disabled:opacity-50"
+                  >
+                    {dbStatusLoading
+                      ? <RefreshCw size={13} className="animate-spin" />
+                      : <Database size={13} />
+                    }
+                    Проверить состояние
+                  </button>
+                  {dbStatusInSync === true && (
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
+                      <CircleCheck size={14} /> БД синхронизирована
+                    </span>
+                  )}
+                  {dbStatusInSync === false && (
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-600">
+                      <AlertCircle size={14} /> Есть несинхронизированные изменения
+                    </span>
+                  )}
                 </div>
 
                 <label className="flex items-center gap-3 cursor-pointer select-none">
@@ -231,7 +281,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
                 >
                   {dbMigrateRunning
                     ? <><RefreshCw size={16} className="animate-spin" /> Выполняется...</>
-                    : <><RefreshCw size={16} /> Запустить синхронизацию</>
+                    : <><RefreshCw size={16} /> Синхронизировать БД</>
                   }
                 </button>
               </div>
@@ -245,14 +295,20 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
                       ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                       : "bg-rose-50 text-rose-700 border border-rose-200"
                   )}>
-                    {dbMigrateSuccess
-                      ? <><CircleCheck size={14} /> Схема успешно синхронизирована</>
-                      : <><AlertCircle size={14} /> Ошибка синхронизации — см. вывод ниже</>
+                    {dbMigrateAlreadyInSync
+                      ? <><CircleCheck size={14} /> БД уже синхронизирована, изменений не требуется</>
+                      : dbMigrateSyncedDespiteError
+                        ? <><CircleCheck size={14} /> БД синхронизирована (несущественная ошибка переименования ключа — игнорируйте)</>
+                        : dbMigrateSuccess
+                          ? <><CircleCheck size={14} /> Схема успешно синхронизирована</>
+                          : <><AlertCircle size={14} /> Ошибка синхронизации — см. вывод ниже</>
                     }
                   </div>
-                  <pre className="flex-1 overflow-y-auto mx-6 mb-6 p-4 bg-neutral-900 text-neutral-300 rounded-2xl font-mono text-xs leading-relaxed whitespace-pre-wrap break-all no-scrollbar">
-                    {dbMigrateOutput}
-                  </pre>
+                  {!dbMigrateAlreadyInSync && (
+                    <pre className="flex-1 overflow-y-auto mx-6 mb-6 p-4 bg-neutral-900 text-neutral-300 rounded-2xl font-mono text-xs leading-relaxed whitespace-pre-wrap break-all no-scrollbar">
+                      {dbMigrateOutput}
+                    </pre>
+                  )}
                 </div>
               )}
             </div>

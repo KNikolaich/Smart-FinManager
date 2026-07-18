@@ -32,31 +32,77 @@ export async function unlockUser(req: any, res: any) {
   }
 }
 
+async function runCommand(cmd: string, args: string[]): Promise<{ text: string; exitCode: number }> {
+  return new Promise((resolve) => {
+    const child = spawn(cmd, args, { env: { ...process.env }, timeout: 120_000 });
+    const chunks: string[] = [];
+    child.stdout.on("data", (d: Buffer) => chunks.push(d.toString()));
+    child.stderr.on("data", (d: Buffer) => chunks.push(d.toString()));
+    child.on("close", (code: number | null) => resolve({ text: chunks.join(""), exitCode: code ?? 1 }));
+    child.on("error", (err: Error) => resolve({ text: `Spawn error: ${err.message}`, exitCode: 1 }));
+  });
+}
+
+export async function dbStatus(req: any, res: any) {
+  try {
+    const result = await runCommand("npx", [
+      "prisma", "migrate", "diff",
+      "--from-url", process.env.DATABASE_URL!,
+      "--to-schema-datamodel", "prisma/schema.prisma",
+      "--script",
+    ]);
+    const inSync = result.exitCode === 0 && result.text.trim() === "-- This is an empty migration.";
+    res.json({ inSync, output: result.text, exitCode: result.exitCode });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
 export async function migrateDb(req: any, res: any) {
   const acceptDataLoss = req.body?.acceptDataLoss === true;
 
   try {
-    const args = ["db", "push", "--skip-generate"];
+    // First check if the DB is already in sync
+    const statusResult = await runCommand("npx", [
+      "prisma", "migrate", "diff",
+      "--from-url", process.env.DATABASE_URL!,
+      "--to-schema-datamodel", "prisma/schema.prisma",
+      "--script",
+    ]);
+    const alreadyInSync = statusResult.exitCode === 0 && statusResult.text.trim() === "-- This is an empty migration.";
+
+    if (alreadyInSync) {
+      return res.json({
+        success: true,
+        alreadyInSync: true,
+        output: "✅ База данных уже синхронизирована. Изменений не требуется.",
+        exitCode: 0,
+      });
+    }
+
+    const args = ["prisma", "db", "push", "--skip-generate"];
     if (acceptDataLoss) args.push("--accept-data-loss");
 
-    const output = await new Promise<{ text: string; exitCode: number }>((resolve) => {
-      const child = spawn("npx", ["prisma", ...args], {
-        env: { ...process.env },
-        timeout: 120_000,
-      });
+    const pushResult = await runCommand("npx", args);
 
-      const chunks: string[] = [];
-      child.stdout.on("data", (d: Buffer) => chunks.push(d.toString()));
-      child.stderr.on("data", (d: Buffer) => chunks.push(d.toString()));
-      child.on("close", (code: number | null) =>
-        resolve({ text: chunks.join(""), exitCode: code ?? 1 })
-      );
-      child.on("error", (err: Error) =>
-        resolve({ text: `Spawn error: ${err.message}`, exitCode: 1 })
-      );
+    // Even if push errored, recheck sync status — some PG versions reject
+    // constraint-rename SQL but still apply the structural changes correctly.
+    const recheckResult = await runCommand("npx", [
+      "prisma", "migrate", "diff",
+      "--from-url", process.env.DATABASE_URL!,
+      "--to-schema-datamodel", "prisma/schema.prisma",
+      "--script",
+    ]);
+    const nowInSync = recheckResult.exitCode === 0 && recheckResult.text.trim() === "-- This is an empty migration.";
+
+    res.json({
+      success: nowInSync,
+      alreadyInSync: false,
+      output: pushResult.text,
+      exitCode: pushResult.exitCode,
+      // If push "failed" but DB is now in sync, flag it so UI can show a softer message
+      syncedDespiteError: pushResult.exitCode !== 0 && nowInSync,
     });
-
-    res.json({ success: output.exitCode === 0, output: output.text, exitCode: output.exitCode });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
