@@ -195,7 +195,7 @@ model BalanceHistory {
 // multiple server processes, instead of each process tracking its own
 // in-memory counts.
 model RateLimitHit {
-  key       String   @id
+  key       String   @id(map: "rate_limit_hits_pk")
   points    Int      @default(0)
   expiresAt DateTime
 
