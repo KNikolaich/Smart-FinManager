@@ -46,6 +46,8 @@ export function useAppData({ user, addToast }: UseAppDataParams) {
         console.error('Error fetching data:', error);
         if (error.message?.includes('Rate exceeded') || error.status === 429) {
           addToast('Превышен лимит запросов. Пожалуйста, подождите немного.', 'error');
+        } else if (error.message === 'OFFLINE_NO_CACHE') {
+          addToast('Нет подключения к сети и кэшированных данных. Подключитесь к интернету, чтобы загрузить данные.', 'error');
         } else {
           addToast('Ошибка при загрузке данных', 'error');
         }

@@ -501,7 +501,7 @@ export const api = {
           console.error(`Failed to parse cache for ${endpoint}:`, e);
         }
       }
-      throw new Error('Оффлайн режим. Данные отсутствуют в кэше.');
+      throw new Error('OFFLINE_NO_CACHE');
     }
 
     try {
