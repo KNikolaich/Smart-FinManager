@@ -277,6 +277,8 @@ export default function App() {
         onOpenUserPage={() => setShowUserPage(true)}
       />
 
+      <OfflineBanner isOnline={isOnline} />
+
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
         <div className={cn(
@@ -302,7 +304,6 @@ export default function App() {
         </div>
       </main>
 
-      <OfflineBanner isOnline={isOnline} />
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       <BottomNav

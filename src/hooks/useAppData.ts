@@ -1,21 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
-import { api, safeStorage, syncOfflineQueue, getCacheTimestamp } from '../lib/api';
+import { api, safeStorage, syncOfflineQueue } from '../lib/api';
 import { queryKeys } from '../lib/queryClient';
 import { Account, Transaction, Goal, Category, Currency, BalanceHistory, Plan, UserProfile } from '../types';
-
-const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-function formatCacheAge(timestampMs: number): string {
-  const ageMs = Date.now() - timestampMs;
-  const minutes = Math.floor(ageMs / 60_000);
-  const hours = Math.floor(ageMs / 3_600_000);
-  const days = Math.floor(ageMs / 86_400_000);
-  if (days >= 1) return `${days} ${days === 1 ? 'день' : days < 5 ? 'дня' : 'дней'} назад`;
-  if (hours >= 1) return `${hours} ${hours === 1 ? 'час' : hours < 5 ? 'часа' : 'часов'} назад`;
-  return `${minutes} ${minutes === 1 ? 'минуту' : minutes < 5 ? 'минуты' : 'минут'} назад`;
-}
 
 interface UseAppDataParams {
   user: UserProfile | null;
@@ -102,25 +90,13 @@ export function useAppData({ user, addToast }: UseAppDataParams) {
   // so we don't repeat it on every re-render or re-trigger.
   const staleWarnShownRef = useRef(false);
 
+  // Staleness is now surfaced via the persistent OfflineBanner component;
+  // this callback only resets the ref so the banner re-appears after reconnect.
   const checkAndWarnStaleness = useCallback(() => {
-    if (!navigator.onLine) {
-      const ts = getCacheTimestamp('/initial-data');
-      if (ts === null) return; // no cached data — nothing to warn about
-
-      if (!staleWarnShownRef.current) {
-        staleWarnShownRef.current = true;
-        const ageLabel = formatCacheAge(ts);
-        const isStale = Date.now() - ts > STALE_THRESHOLD_MS;
-        addToast(`Данные получены из кэша. Последнее обновление: ${ageLabel}`, 'info');
-        if (isStale) {
-          addToast('Внимание: кэшированные данные могут быть значительно устаревшими. Подключитесь к сети для обновления.', 'error');
-        }
-      }
-    } else {
-      // Reset so the warning fires again if the user goes offline later
+    if (navigator.onLine) {
       staleWarnShownRef.current = false;
     }
-  }, [addToast]);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
