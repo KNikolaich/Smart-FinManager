@@ -38,6 +38,70 @@ export const safeStorage = {
   }
 };
 
+/**
+ * Appends a new item to the offline queue, handling plan-grid deduplication
+ * and storage-pressure recovery in one place.
+ *
+ * When localStorage is full the helper attempts to evict the *oldest*
+ * non-plan-grid item from the in-memory queue before retrying.  If an item
+ * is evicted the `storage-quota-exceeded` event is **always** dispatched so
+ * the caller can surface the data-loss to the user via the existing toast
+ * listener in useAppData.  The eviction policy intentionally protects
+ * plan-grid entries because those are the most expensive to recreate.
+ *
+ * Returns `true` if the queue was saved successfully, `false` otherwise.
+ */
+export function pushToOfflineQueue(item: any): boolean {
+  const queueKey = 'api_offline_queue';
+
+  // Read current queue
+  let queue: any[] = [];
+  try {
+    queue = JSON.parse(safeStorage.getItem(queueKey) || '[]');
+  } catch (_) {
+    queue = [];
+  }
+
+  // Plan-grid saves are full overwrites — keep only the latest for each page
+  if (item.endpoint?.startsWith('/plan-grid/')) {
+    queue = queue.filter(
+      (q: any) => !(q.method === item.method && q.endpoint === item.endpoint)
+    );
+  }
+
+  queue.push(item);
+
+  // Use raw localStorage so we fully control when storage-quota-exceeded fires.
+  // safeStorage.setItem also dispatches that event on quota, which would produce
+  // a duplicate notification before we get a chance to evict-and-retry.
+  function tryWrite(q: any[]): boolean {
+    try {
+      localStorage.setItem(queueKey, JSON.stringify(q));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  if (tryWrite(queue)) return true;
+
+  // Write failed — try to free space by evicting the oldest non-plan-grid item
+  const idx = queue.findIndex(
+    (q: any) => !q.endpoint?.startsWith('/plan-grid/')
+  );
+
+  if (idx !== -1) {
+    queue.splice(idx, 1);
+    // Always notify the user when an operation is dropped to free space
+    window.dispatchEvent(new CustomEvent('storage-quota-exceeded'));
+    return tryWrite(queue);
+  }
+
+  // No evictable item — still notify so the caller can surface the error
+  window.dispatchEvent(new CustomEvent('storage-quota-exceeded'));
+  return false;
+}
+
 export const checkIfNetworkError = (error: any): boolean => {
   if (!navigator.onLine) return true;
   if (!error) return false;
@@ -520,15 +584,7 @@ export const api = {
         data: dataWithId,
         timestamp: Date.now()
       };
-      let queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
-      // Plan-grid saves are full overwrites — only the latest state matters.
-      // Replace any existing queued item for the same endpoint so we don't
-      // replay stale intermediate states on reconnect.
-      if (endpoint.startsWith('/plan-grid/')) {
-        queue = queue.filter((item: any) => !(item.method === 'POST' && item.endpoint === endpoint));
-      }
-      queue.push(queueItem);
-      const saved = safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
+      const saved = pushToOfflineQueue(queueItem);
       if (!saved) {
         throw new Error('Локальное хранилище заполнено — подключитесь к сети для сохранения данных');
       }
@@ -595,12 +651,7 @@ export const api = {
             data: dataWithId,
             timestamp: Date.now()
           };
-          let queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
-          if (endpoint.startsWith('/plan-grid/')) {
-            queue = queue.filter((item: any) => !(item.method === 'POST' && item.endpoint === endpoint));
-          }
-          queue.push(queueItem);
-          const saved = safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
+          const saved = pushToOfflineQueue(queueItem);
           if (!saved) {
             throw new Error('Локальное хранилище заполнено — подключитесь к сети для сохранения данных');
           }
@@ -623,9 +674,7 @@ export const api = {
         data,
         timestamp: Date.now()
       };
-      const queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
-      queue.push(queueItem);
-      const saved = safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
+      const saved = pushToOfflineQueue(queueItem);
       if (!saved) {
         throw new Error('Локальное хранилище заполнено — подключитесь к сети для сохранения данных');
       }
@@ -654,9 +703,7 @@ export const api = {
           data,
           timestamp: Date.now()
         };
-        const queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
-        queue.push(queueItem);
-        const saved = safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
+        const saved = pushToOfflineQueue(queueItem);
         if (!saved) {
           throw new Error('Локальное хранилище заполнено — подключитесь к сети для сохранения данных');
         }
@@ -679,9 +726,7 @@ export const api = {
         data: null,
         timestamp: Date.now()
       };
-      const queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
-      queue.push(queueItem);
-      const saved = safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
+      const saved = pushToOfflineQueue(queueItem);
       if (!saved) {
         throw new Error('Локальное хранилище заполнено — подключитесь к сети для сохранения данных');
       }
@@ -709,9 +754,7 @@ export const api = {
           data: null,
           timestamp: Date.now()
         };
-        const queue = JSON.parse(safeStorage.getItem('api_offline_queue') || '[]');
-        queue.push(queueItem);
-        const saved = safeStorage.setItem('api_offline_queue', JSON.stringify(queue));
+        const saved = pushToOfflineQueue(queueItem);
         if (!saved) {
           throw new Error('Локальное хранилище заполнено — подключитесь к сети для сохранения данных');
         }
