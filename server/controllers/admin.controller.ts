@@ -1,5 +1,55 @@
 import { spawn } from "child_process";
+import { prisma } from "../prisma";
 import * as adminService from "../services/admin.service";
+
+/**
+ * Splits compound ALTER TABLE statements that PostgreSQL rejects when they mix
+ * RENAME CONSTRAINT with TYPE-change clauses in a single statement.
+ *
+ * E.g. Prisma may generate:
+ *   ALTER TABLE "t" RENAME CONSTRAINT "old_pkey" TO "new_pkey",
+ *                   ALTER COLUMN "id" TYPE TEXT USING "id"::TEXT;
+ *
+ * PostgreSQL requires those to be separate statements:
+ *   ALTER TABLE "t" RENAME CONSTRAINT "old_pkey" TO "new_pkey";
+ *   ALTER TABLE "t" ALTER COLUMN "id" TYPE TEXT USING "id"::TEXT;
+ */
+function splitCompoundAlterTable(sql: string): string[] {
+  const out: string[] = [];
+
+  // Naive but sufficient: split on ; then handle each statement.
+  const stmts = sql
+    .split(/;\s*/)
+    .map((s) => s.trim())
+    .filter((s) => s && !s.startsWith("--"));
+
+  for (const stmt of stmts) {
+    // Match: ALTER TABLE <name> <rest>
+    const m = stmt.match(/^(ALTER\s+TABLE\s+"?[\w\d_]+"?)\s+([\s\S]+)$/i);
+    if (!m) {
+      out.push(stmt + ";");
+      continue;
+    }
+
+    const prefix = m[1]; // "ALTER TABLE "tbl_name""
+    const body = m[2];   // everything after table name
+
+    // Detect RENAME CONSTRAINT ... TO ..., followed by more clauses
+    const renameRe =
+      /^(RENAME\s+CONSTRAINT\s+"?[\w\d_]+"?\s+TO\s+"?[\w\d_]+"?)\s*,\s*([\s\S]+)$/i;
+    const rm = body.match(renameRe);
+
+    if (rm) {
+      // Split into two standalone ALTER TABLE statements
+      out.push(`${prefix} ${rm[1].trim()};`);
+      out.push(`${prefix} ${rm[2].trim().replace(/;$/, "")};`);
+    } else {
+      out.push(stmt + ";");
+    }
+  }
+
+  return out;
+}
 
 export async function listUsers(req: any, res: any) {
   try {
@@ -59,19 +109,29 @@ export async function dbStatus(req: any, res: any) {
 }
 
 export async function migrateDb(req: any, res: any) {
-  const acceptDataLoss = req.body?.acceptDataLoss === true;
-
   try {
-    // First check if the DB is already in sync
-    const statusResult = await runCommand("npx", [
+    // Step 1 — get the SQL diff between current DB state and schema.
+    // We intentionally avoid "prisma db push" here because it generates compound
+    // ALTER TABLE statements (RENAME CONSTRAINT + ALTER COLUMN in one shot) that
+    // certain PostgreSQL server versions reject with a syntax error.
+    const diffResult = await runCommand("npx", [
       "prisma", "migrate", "diff",
       "--from-url", process.env.DATABASE_URL!,
       "--to-schema-datamodel", "prisma/schema.prisma",
       "--script",
     ]);
-    const alreadyInSync = statusResult.exitCode === 0 && statusResult.text.trim() === "-- This is an empty migration.";
 
-    if (alreadyInSync) {
+    if (diffResult.exitCode !== 0) {
+      return res.json({
+        success: false,
+        alreadyInSync: false,
+        output: `Ошибка при получении diff схемы:\n${diffResult.text}`,
+        exitCode: diffResult.exitCode,
+      });
+    }
+
+    const EMPTY = "-- This is an empty migration.";
+    if (diffResult.text.trim() === EMPTY) {
       return res.json({
         success: true,
         alreadyInSync: true,
@@ -80,28 +140,46 @@ export async function migrateDb(req: any, res: any) {
       });
     }
 
-    const args = ["prisma", "db", "push", "--skip-generate"];
-    if (acceptDataLoss) args.push("--accept-data-loss");
+    // Step 2 — split any compound ALTER TABLE statements that mix RENAME CONSTRAINT
+    // with ALTER COLUMN TYPE, then execute each statement separately.
+    const statements = splitCompoundAlterTable(diffResult.text);
+    const log: string[] = [`Применяю ${statements.length} SQL-операцию(й):\n`];
+    const errors: string[] = [];
 
-    const pushResult = await runCommand("npx", args);
+    for (const stmt of statements) {
+      log.push(`▶ ${stmt}`);
+      try {
+        await prisma.$executeRawUnsafe(stmt);
+        log.push(`  ✅ OK\n`);
+      } catch (err: any) {
+        const msg = err?.message ?? String(err);
+        log.push(`  ❌ ${msg}\n`);
+        errors.push(msg);
+      }
+    }
 
-    // Even if push errored, recheck sync status — some PG versions reject
-    // constraint-rename SQL but still apply the structural changes correctly.
+    // Step 3 — re-check to confirm sync.
     const recheckResult = await runCommand("npx", [
       "prisma", "migrate", "diff",
       "--from-url", process.env.DATABASE_URL!,
       "--to-schema-datamodel", "prisma/schema.prisma",
       "--script",
     ]);
-    const nowInSync = recheckResult.exitCode === 0 && recheckResult.text.trim() === "-- This is an empty migration.";
+    const nowInSync =
+      recheckResult.exitCode === 0 && recheckResult.text.trim() === EMPTY;
+
+    if (nowInSync) {
+      log.push("✅ Схема БД полностью синхронизирована.");
+    } else {
+      log.push("⚠️ После применения всё ещё есть расхождения — возможно, требуется повторный запуск.");
+    }
 
     res.json({
-      success: nowInSync,
+      success: nowInSync && errors.length === 0,
       alreadyInSync: false,
-      output: pushResult.text,
-      exitCode: pushResult.exitCode,
-      // If push "failed" but DB is now in sync, flag it so UI can show a softer message
-      syncedDespiteError: pushResult.exitCode !== 0 && nowInSync,
+      syncedDespiteError: nowInSync && errors.length > 0,
+      output: log.join("\n"),
+      exitCode: errors.length === 0 ? 0 : 1,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
