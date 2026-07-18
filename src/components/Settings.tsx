@@ -1,5 +1,6 @@
-import { LogOut, User as UserIcon, Database, Shield, Github, Info, Sparkles, CheckCircle2, Eraser, Trash2, AlertTriangle, Tag, FileDown, FileUp, X, ArrowRightLeft, AlertCircle, Copy, Palette, ArrowUp, CreditCard, TrendingUp } from 'lucide-react';
+import { LogOut, User as UserIcon, Database, Shield, Github, Info, Sparkles, CheckCircle2, Eraser, Trash2, AlertTriangle, Tag, FileDown, FileUp, X, ArrowRightLeft, AlertCircle, Copy, Palette, ArrowUp, CreditCard, TrendingUp, RefreshCw, ServerCrash, CircleCheck } from 'lucide-react';
 import { useState, useRef } from 'react';
+import { api } from '../lib/api';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import CategoryManager from './CategoryManager';
@@ -33,6 +34,32 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
   const [showUserManager, setShowUserManager] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentTheme, setCurrentTheme] = useState(safeStorage.getItem('theme') || 'theme-nordic');
+
+  // DB migration panel (admin only)
+  const [dbMigrateOpen, setDbMigrateOpen] = useState(false);
+  const [dbMigrateRunning, setDbMigrateRunning] = useState(false);
+  const [dbMigrateOutput, setDbMigrateOutput] = useState<string | null>(null);
+  const [dbMigrateSuccess, setDbMigrateSuccess] = useState<boolean | null>(null);
+  const [dbMigrateAcceptLoss, setDbMigrateAcceptLoss] = useState(false);
+
+  const handleDbMigrate = async () => {
+    setDbMigrateRunning(true);
+    setDbMigrateOutput(null);
+    setDbMigrateSuccess(null);
+    try {
+      const result = await api.post<{ success: boolean; output: string; exitCode: number }>(
+        '/admin/db-migrate',
+        { acceptDataLoss: dbMigrateAcceptLoss }
+      );
+      setDbMigrateOutput(result.output || '(нет вывода)');
+      setDbMigrateSuccess(result.success);
+    } catch (err: any) {
+      setDbMigrateOutput(err.message || 'Неизвестная ошибка');
+      setDbMigrateSuccess(false);
+    } finally {
+      setDbMigrateRunning(false);
+    }
+  };
 
   const themes = [
     { type: 'Светлые', items: [
@@ -145,6 +172,93 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
         )}
 
 
+        {/* DB Migration Modal (admin only) */}
+        {dbMigrateOpen && (
+          <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-6 sm:p-2 bg-black/40 backdrop-blur-sm">
+            <div className="absolute inset-0" onClick={() => setDbMigrateOpen(false)} />
+            <div className="relative w-full max-w-2xl bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              {/* Header */}
+              <div className="p-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center text-white">
+                    <Database size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg">Обновление БД</h3>
+                    <p className="text-xs text-neutral-400">prisma db push — синхронизация схемы</p>
+                  </div>
+                </div>
+                <button onClick={() => setDbMigrateOpen(false)} className="p-2.5 hover:bg-neutral-100 rounded-xl transition-all text-neutral-400">
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Info block */}
+              <div className="px-6 pt-5 pb-3 shrink-0 space-y-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3 text-sm text-amber-800">
+                  <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-semibold">Когда нужно запускать</p>
+                    <p className="text-xs text-amber-700 leading-relaxed">
+                      После каждого обновления приложения, если в нём были изменения схемы БД — новые таблицы, поля или индексы. 
+                      Без этого сервер может падать с ошибками вроде <code className="bg-amber-100 px-1 rounded">relation "..." does not exist</code>.
+                    </p>
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={dbMigrateAcceptLoss}
+                    onChange={e => setDbMigrateAcceptLoss(e.target.checked)}
+                    className="w-4 h-4 accent-violet-600"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-neutral-700">Разрешить удаление данных</p>
+                    <p className="text-xs text-neutral-400">Нужно только если схема удаляет колонки или таблицы. Обычно не требуется.</p>
+                  </div>
+                </label>
+
+                <button
+                  onClick={handleDbMigrate}
+                  disabled={dbMigrateRunning}
+                  className={cn(
+                    "w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all",
+                    dbMigrateRunning
+                      ? "bg-neutral-100 text-neutral-400 cursor-not-allowed"
+                      : "bg-violet-600 text-white hover:bg-violet-700 active:scale-[0.98] shadow-lg shadow-violet-100"
+                  )}
+                >
+                  {dbMigrateRunning
+                    ? <><RefreshCw size={16} className="animate-spin" /> Выполняется...</>
+                    : <><RefreshCw size={16} /> Запустить синхронизацию</>
+                  }
+                </button>
+              </div>
+
+              {/* Output log */}
+              {dbMigrateOutput !== null && (
+                <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
+                  <div className={cn(
+                    "mx-6 mb-2 px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2",
+                    dbMigrateSuccess
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      : "bg-rose-50 text-rose-700 border border-rose-200"
+                  )}>
+                    {dbMigrateSuccess
+                      ? <><CircleCheck size={14} /> Схема успешно синхронизирована</>
+                      : <><AlertCircle size={14} /> Ошибка синхронизации — см. вывод ниже</>
+                    }
+                  </div>
+                  <pre className="flex-1 overflow-y-auto mx-6 mb-6 p-4 bg-neutral-900 text-neutral-300 rounded-2xl font-mono text-xs leading-relaxed whitespace-pre-wrap break-all no-scrollbar">
+                    {dbMigrateOutput}
+                  </pre>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Data Section */}
         <section className="space-y-3 mt-0 pt-0 pb-[6px]">
           <h4 className="text-xs font-bold text-theme-primary uppercase tracking-widest px-4">Данные</h4>
@@ -213,6 +327,21 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
                 <div className="text-left">
                   <p className="font-semibold text-sm">Пользователи</p>
                   <p className="text-xs text-neutral-400">Управление всеми пользователями системы</p>
+                </div>
+              </button>
+            )}
+
+            {user.role === 'admin' && (
+              <button 
+                onClick={() => setDbMigrateOpen(true)}
+                className="w-full px-6 py-2 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
+              >
+                <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center">
+                  <Database className="w-5 h-5 text-violet-600" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-sm">Обновление БД</p>
+                  <p className="text-xs text-neutral-400">Синхронизировать схему базы данных с кодом</p>
                 </div>
               </button>
             )}

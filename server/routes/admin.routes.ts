@@ -11,4 +11,7 @@ router.delete("/api/admin/users/:id", authenticateToken, requireAdmin, adminCont
 router.post("/api/admin/users/:id/send-password", authenticateToken, requireAdmin, validateBody(adminSendPasswordSchema), adminController.sendUserPassword);
 router.post("/api/admin/users/:id/unlock", authenticateToken, requireAdmin, validateBody(adminUnlockSchema), adminController.unlockUser);
 
+// Database schema sync (runs prisma db push server-side)
+router.post("/api/admin/db-migrate", authenticateToken, requireAdmin, adminController.migrateDb);
+
 export default router;
