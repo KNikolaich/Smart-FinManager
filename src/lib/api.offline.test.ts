@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { safeStorage, pushToOfflineQueue, syncOfflineQueue, describeQueueItem } from './api';
+import { safeStorage, pushToOfflineQueue, syncOfflineQueue, describeQueueItem, MAX_QUEUE_SIZE } from './api';
 
 // ---------------------------------------------------------------------------
 // Minimal localStorage shim backed by a plain Map so tests are fully isolated
@@ -341,6 +341,88 @@ describe('pushToOfflineQueue – eviction on quota exceeded', () => {
     const queue = readQueue();
     expect(queue).toHaveLength(1);
     expect(queue[0].data.content).toBe('v2');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3b. pushToOfflineQueue – MAX_QUEUE_SIZE cap
+// ---------------------------------------------------------------------------
+describe('pushToOfflineQueue – MAX_QUEUE_SIZE cap', () => {
+  it('accepts exactly MAX_QUEUE_SIZE non-plan-grid items without triggering the cap', () => {
+    // Seed the queue with MAX_QUEUE_SIZE - 1 items so there is room for one more
+    const existing = Array.from({ length: MAX_QUEUE_SIZE - 1 }, (_, i) =>
+      makeQueueItem('/transactions', { timestamp: i })
+    );
+    seedQueue(existing);
+
+    const fullHandler = vi.fn();
+    window.addEventListener('offline-queue-full', fullHandler);
+
+    const result = pushToOfflineQueue(makeQueueItem('/transactions', { timestamp: MAX_QUEUE_SIZE }));
+
+    window.removeEventListener('offline-queue-full', fullHandler);
+
+    expect(result).toBe(true);
+    expect(fullHandler).not.toHaveBeenCalled();
+    expect(readQueue()).toHaveLength(MAX_QUEUE_SIZE);
+  });
+
+  it('dispatches offline-queue-full and returns false when the cap is already reached', () => {
+    // Fill the queue to the cap
+    const existing = Array.from({ length: MAX_QUEUE_SIZE }, (_, i) =>
+      makeQueueItem('/transactions', { timestamp: i })
+    );
+    seedQueue(existing);
+
+    const fullHandler = vi.fn();
+    window.addEventListener('offline-queue-full', fullHandler);
+
+    const result = pushToOfflineQueue(makeQueueItem('/accounts', { timestamp: MAX_QUEUE_SIZE + 1 }));
+
+    window.removeEventListener('offline-queue-full', fullHandler);
+
+    expect(result).toBe(false);
+    expect(fullHandler).toHaveBeenCalledTimes(1);
+    // Queue must remain unchanged
+    expect(readQueue()).toHaveLength(MAX_QUEUE_SIZE);
+  });
+
+  it('does not count plan-grid items toward the cap', () => {
+    // Fill with MAX_QUEUE_SIZE non-plan-grid items + some plan-grid items
+    const regular  = Array.from({ length: MAX_QUEUE_SIZE }, (_, i) =>
+      makeQueueItem('/transactions', { timestamp: i })
+    );
+    const planGrid = [
+      makeQueueItem('/plan-grid/monthly', { timestamp: MAX_QUEUE_SIZE }),
+      makeQueueItem('/plan-grid/yearly',  { timestamp: MAX_QUEUE_SIZE + 1 }),
+    ];
+    seedQueue([...regular, ...planGrid]);
+
+    const fullHandler = vi.fn();
+    window.addEventListener('offline-queue-full', fullHandler);
+
+    // A new plan-grid item must still succeed even though total queue > MAX_QUEUE_SIZE
+    const result = pushToOfflineQueue(
+      makeQueueItem('/plan-grid/weekly', { timestamp: MAX_QUEUE_SIZE + 2 })
+    );
+
+    window.removeEventListener('offline-queue-full', fullHandler);
+
+    expect(result).toBe(true);
+    expect(fullHandler).not.toHaveBeenCalled();
+  });
+
+  it('does not dispatch offline-queue-full when cap is not yet reached', () => {
+    seedQueue([]); // empty queue
+
+    const fullHandler = vi.fn();
+    window.addEventListener('offline-queue-full', fullHandler);
+
+    pushToOfflineQueue(makeQueueItem('/transactions'));
+
+    window.removeEventListener('offline-queue-full', fullHandler);
+
+    expect(fullHandler).not.toHaveBeenCalled();
   });
 });
 

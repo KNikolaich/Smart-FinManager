@@ -71,6 +71,13 @@ export const safeStorage = {
 };
 
 /**
+ * Hard cap on the number of non-plan-grid items that may sit in the offline
+ * queue at one time.  Plan-grid items are full overwrites so they deduplicate
+ * by endpoint and are exempt from this limit.
+ */
+export const MAX_QUEUE_SIZE = 50;
+
+/**
  * Appends a new item to the offline queue, handling plan-grid deduplication
  * and storage-pressure recovery in one place.
  *
@@ -80,6 +87,10 @@ export const safeStorage = {
  * the caller can surface the data-loss to the user via the existing toast
  * listener in useAppData.  The eviction policy intentionally protects
  * plan-grid entries because those are the most expensive to recreate.
+ *
+ * If pushing a non-plan-grid item would exceed MAX_QUEUE_SIZE the
+ * `offline-queue-full` CustomEvent is dispatched and the function returns
+ * `false` without modifying the queue.
  *
  * Returns `true` if the queue was saved successfully, `false` otherwise.
  */
@@ -99,6 +110,15 @@ export function pushToOfflineQueue(item: any): boolean {
     queue = queue.filter(
       (q: any) => !(q.method === item.method && q.endpoint === item.endpoint)
     );
+  } else {
+    // Enforce the hard cap on non-plan-grid items
+    const nonPlanGridCount = queue.filter(
+      (q: any) => !q.endpoint?.startsWith('/plan-grid/')
+    ).length;
+    if (nonPlanGridCount >= MAX_QUEUE_SIZE) {
+      window.dispatchEvent(new CustomEvent('offline-queue-full'));
+      return false;
+    }
   }
 
   queue.push(item);
