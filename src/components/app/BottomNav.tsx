@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { RobotIcon } from '../icons/RobotIcon';
 import { cn } from '../../lib/utils';
+import { OfflineChip } from '../ui/OfflineChip';
 
 type Tab = 'dashboard' | 'plan' | 'analytics' | 'settings' | 'ai';
 
@@ -18,9 +19,10 @@ interface BottomNavProps {
   onWalletClick: () => void;
   showUserPage: boolean;
   onOpenUserPage: () => void;
+  isOnline: boolean;
 }
 
-export function BottomNav({ activeTab, onChangeTab, onWalletClick, showUserPage, onOpenUserPage }: BottomNavProps) {
+export function BottomNav({ activeTab, onChangeTab, onWalletClick, showUserPage, onOpenUserPage, isOnline }: BottomNavProps) {
   return (
     <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 pb-0 h-[54px] shrink-0 z-40 flex items-center justify-center md:relative md:bottom-0 md:left-auto md:translate-x-0 md:max-w-none md:bg-theme-surface md:border-t border-theme-base md:rounded-none landscape:relative landscape:bottom-0 landscape:left-auto landscape:translate-x-0 landscape:w-20 landscape:h-full landscape:px-0 landscape:bg-theme-surface landscape:border-r landscape:border-t-0">
       <div className="w-full bg-theme-surface/90 backdrop-blur-xl border border-theme-base shadow-elegant rounded-3xl flex items-center justify-around h-full px-2 md:bg-transparent md:backdrop-blur-none md:border-none md:shadow-none md:rounded-none landscape:flex-col landscape:py-4 landscape:bg-transparent landscape:backdrop-blur-none">
@@ -31,6 +33,11 @@ export function BottomNav({ activeTab, onChangeTab, onWalletClick, showUserPage,
         >
           <Wallet size={20} />
         </button>
+
+        {/* Offline indicator - only shown in landscape sidebar */}
+        <div className="hidden landscape:flex items-center justify-center">
+          <OfflineChip isOnline={isOnline} variant="sidebar" />
+        </div>
         <button
           onClick={() => onChangeTab('dashboard')}
           className={cn(

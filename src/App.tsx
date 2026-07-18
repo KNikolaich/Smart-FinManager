@@ -22,7 +22,6 @@ import { AppModals } from './components/app/AppModals';
 
 import { cn } from './lib/utils';
 import { ToastContainer, ToastType } from './components/ui/Toast';
-import { OfflineBanner } from './components/ui/OfflineBanner';
 
 type Tab = 'dashboard' | 'plan' | 'analytics' | 'settings' | 'ai';
 
@@ -277,8 +276,6 @@ export default function App() {
         onOpenUserPage={() => setShowUserPage(true)}
       />
 
-      <OfflineBanner isOnline={isOnline} />
-
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
         <div className={cn(
@@ -312,6 +309,7 @@ export default function App() {
         onWalletClick={handleWalletOrLogoClick}
         showUserPage={showUserPage}
         onOpenUserPage={() => setShowUserPage(true)}
+        isOnline={isOnline}
       />
 
       <AppModals

@@ -1,6 +1,7 @@
 import { motion } from 'motion/react';
 import { User as UserIcon, Wallet } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { OfflineChip } from '../ui/OfflineChip';
 
 interface AppHeaderProps {
   activeTab: string;
@@ -32,11 +33,7 @@ export function AppHeader({ activeTab, onLogoClick, isOnline, showUserPage, onOp
         </div>
       </div>
       <div className="flex items-center gap-2">
-        {!isOnline && (
-          <span className="text-[10px] text-theme-muted font-bold uppercase tracking-widest mr-2 select-none animate-pulse">
-            Оффлайн
-          </span>
-        )}
+        <OfflineChip isOnline={isOnline} variant="header" />
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
