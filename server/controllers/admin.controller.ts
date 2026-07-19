@@ -82,14 +82,19 @@ export async function unlockUser(req: any, res: any) {
   }
 }
 
-async function runCommand(cmd: string, args: string[]): Promise<{ text: string; exitCode: number }> {
+async function runCommand(cmd: string, args: string[]): Promise<{ stdout: string; stderr: string; text: string; exitCode: number }> {
   return new Promise((resolve) => {
     const child = spawn(cmd, args, { env: { ...process.env }, timeout: 120_000 });
-    const chunks: string[] = [];
-    child.stdout.on("data", (d: Buffer) => chunks.push(d.toString()));
-    child.stderr.on("data", (d: Buffer) => chunks.push(d.toString()));
-    child.on("close", (code: number | null) => resolve({ text: chunks.join(""), exitCode: code ?? 1 }));
-    child.on("error", (err: Error) => resolve({ text: `Spawn error: ${err.message}`, exitCode: 1 }));
+    const outChunks: string[] = [];
+    const errChunks: string[] = [];
+    child.stdout.on("data", (d: Buffer) => outChunks.push(d.toString()));
+    child.stderr.on("data", (d: Buffer) => errChunks.push(d.toString()));
+    child.on("close", (code: number | null) => {
+      const stdout = outChunks.join("");
+      const stderr = errChunks.join("");
+      resolve({ stdout, stderr, text: stdout + stderr, exitCode: code ?? 1 });
+    });
+    child.on("error", (err: Error) => resolve({ stdout: "", stderr: `Spawn error: ${err.message}`, text: `Spawn error: ${err.message}`, exitCode: 1 }));
   });
 }
 
@@ -101,8 +106,8 @@ export async function dbStatus(req: any, res: any) {
       "--to-schema-datamodel", "prisma/schema.prisma",
       "--script",
     ]);
-    const inSync = result.exitCode === 0 && result.text.trim() === "-- This is an empty migration.";
-    res.json({ inSync, output: result.text, exitCode: result.exitCode });
+    const inSync = result.exitCode === 0 && result.stdout.trim() === "-- This is an empty migration.";
+    res.json({ inSync, output: result.stdout || result.stderr, exitCode: result.exitCode });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -125,13 +130,13 @@ export async function migrateDb(req: any, res: any) {
       return res.json({
         success: false,
         alreadyInSync: false,
-        output: `Ошибка при получении diff схемы:\n${diffResult.text}`,
+        output: `Ошибка при получении diff схемы:\n${diffResult.stderr || diffResult.stdout}`,
         exitCode: diffResult.exitCode,
       });
     }
 
     const EMPTY = "-- This is an empty migration.";
-    if (diffResult.text.trim() === EMPTY) {
+    if (diffResult.stdout.trim() === EMPTY) {
       return res.json({
         success: true,
         alreadyInSync: true,
@@ -142,7 +147,8 @@ export async function migrateDb(req: any, res: any) {
 
     // Step 2 — split any compound ALTER TABLE statements that mix RENAME CONSTRAINT
     // with ALTER COLUMN TYPE, then execute each statement separately.
-    const statements = splitCompoundAlterTable(diffResult.text);
+    // Use only stdout — stderr contains npm notices, not SQL.
+    const statements = splitCompoundAlterTable(diffResult.stdout);
     const log: string[] = [`Применяю ${statements.length} SQL-операцию(й):\n`];
     const errors: string[] = [];
 
