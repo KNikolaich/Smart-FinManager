@@ -15,6 +15,56 @@ interface AccountsSectionProps {
   onRefresh?: () => void;
 }
 
+// Badge shown only when account has a comment.
+// Desktop: CSS hover tooltip. Mobile: tap toggles popup.
+function CommentBadge({ comment, color, isNegative }: { comment: string; color?: string; isNegative: boolean }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const hasColor = color && color !== '#000000';
+
+  const badgeStyle = hasColor ? { backgroundColor: `${color}DD` } : {};
+  const badgeClass = !hasColor ? (isNegative ? 'bg-rose-500' : 'bg-theme-primary') : '';
+
+  return (
+    // sits right below the currency symbol — absolute, so takes no space
+    <div className="absolute top-[26px] right-2.5 z-10">
+      <div className="relative group">
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setMobileOpen(o => !o); }}
+          className={cn(
+            'w-3.5 h-3.5 rounded-full flex items-center justify-center shadow-sm cursor-pointer',
+            badgeClass
+          )}
+          style={badgeStyle}
+          aria-label="Комментарий к счёту"
+        >
+          <span className="text-white font-black leading-none select-none" style={{ fontSize: '8px' }}>!</span>
+        </button>
+
+        {/* Desktop tooltip — pure CSS hover, no JS needed */}
+        <div className="hidden sm:block absolute right-0 top-5 z-50 pointer-events-none
+                        opacity-0 group-hover:opacity-100 transition-opacity duration-150
+                        w-max max-w-[160px] bg-theme-surface border border-theme-base
+                        rounded-xl px-2.5 py-1.5 shadow-lg text-[11px] text-theme-main leading-snug">
+          {comment}
+        </div>
+
+        {/* Mobile popup — toggled on tap */}
+        {mobileOpen && (
+          <div
+            className="sm:hidden absolute right-0 top-5 z-50
+                       w-max max-w-[160px] bg-theme-surface border border-theme-base
+                       rounded-xl px-2.5 py-1.5 shadow-lg text-[11px] text-theme-main leading-snug"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {comment}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function AccountsSection({ accounts, allAccounts, currencies, onOpenTransactionHistory, onRefresh }: AccountsSectionProps) {
   const [showAccountManager, setShowAccountManager] = useState(false);
   const [initialEditingAccountId, setInitialEditingAccountId] = useState<string | null>(null);
@@ -64,17 +114,20 @@ export function AccountsSection({ accounts, allAccounts, currencies, onOpenTrans
                     : "border-theme-base hover:shadow-theme-primary/10 hover:bg-theme-primary/5"
                 )}
               >
+                {/* Currency symbol */}
                 <div className="absolute top-3 right-3 text-[10px] font-bold text-theme-muted opacity-60">
                   {currencies.find(c => c.iso === account.currency)?.symbol || account.currency}
                 </div>
+
+                {/* Comment badge — sits just below the currency symbol */}
                 {account.comment && (
-                  <div
-                    className="absolute bottom-2 right-2 w-3.5 h-3.5 rounded-full bg-amber-500 flex items-center justify-center shadow-sm pointer-events-none"
-                    title={account.comment}
-                  >
-                    <span className="text-white font-black leading-none" style={{ fontSize: '8px' }}>!</span>
-                  </div>
+                  <CommentBadge
+                    comment={account.comment}
+                    color={account.color}
+                    isNegative={isNegative}
+                  />
                 )}
+
                 <div
                   className={cn(
                     "w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110",
