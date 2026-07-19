@@ -160,7 +160,7 @@ export const processUserMessage = async (
 Current date: ${new Date().toISOString()}
 
 REFERENCE DATA:
-- Accounts: ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name })))}
+- Accounts: ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name, aliases: a.aliases ? a.aliases.split(',').map((s: string) => s.trim()).filter(Boolean) : [] })))}
 - Categories: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name, type: c.type })))}
 - Recent Transactions: ${JSON.stringify((recentTransactions || []).slice(0, 15).map(t => ({ amount: Math.ceil(t.amount), description: t.description, date: t.createdAt })))}
   (Check these to avoid duplicates!)`;

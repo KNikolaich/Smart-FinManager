@@ -30,6 +30,8 @@ export interface Account {
   showInTotals: boolean;
   isArchived?: boolean;
   color?: string;
+  aliases?: string;
+  comment?: string;
 }
 
 export interface Subcategory {

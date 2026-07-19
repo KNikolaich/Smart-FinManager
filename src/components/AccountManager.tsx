@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import { Account, AccountType, Currency } from '../types';
-import { X, Plus, Trash2, Check, Pencil, ChevronDown, Save } from 'lucide-react';
+import { X, Plus, Trash2, Check, Pencil, ChevronDown, Save, AlertCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { currencyService } from '../services/currencyService';
 import { getAccountIcon } from '../lib/accountUtils';
@@ -33,6 +33,13 @@ function AccountCard({ account, onEdit, currencySymbol }: AccountCardProps) {
           : "border-theme-base hover:shadow-theme-primary/10 hover:bg-theme-primary/5 hover:-translate-y-0.5"
       )}
     >
+      {/* Comment indicator */}
+      {account.comment && (
+        <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-amber-500 flex items-center justify-center shadow-sm z-10" title={account.comment}>
+          <span className="text-white font-black leading-none" style={{ fontSize: '8px' }}>!</span>
+        </div>
+      )}
+
       {/* Name and color dot */}
       <div className="min-w-0">
         <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5 sm:mb-1">
@@ -92,6 +99,8 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
   const [showInTotals, setShowInTotals] = useState(true);
   const [isArchived, setIsArchived] = useState(false);
   const [isBalanceEditable, setIsBalanceEditable] = useState(false);
+  const [aliases, setAliases] = useState('');
+  const [comment, setComment] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const processedInitialId = useRef<string | null>(null);
@@ -140,6 +149,8 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
     setShowInTotals(true);
     setIsArchived(false);
     setIsBalanceEditable(false);
+    setAliases('');
+    setComment('');
     setConfirmDeleteId(null);
     setShowFormModal(false);
     setEditingId(null);
@@ -151,27 +162,24 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
     if (!name || !balance) return;
     setLoading(true);
     try {
+      const commonFields = {
+        name,
+        type,
+        balance: parseFloat(balance),
+        currencyId,
+        color,
+        showOnDashboard,
+        showInTotals,
+        isArchived,
+        aliases: aliases.trim() || null,
+        comment: comment.trim() || null,
+      };
       if (editingId) {
-        await api.put(`/accounts/${editingId}`, {
-          name,
-          type,
-          balance: parseFloat(balance),
-          currencyId,
-          color,
-          showOnDashboard,
-          showInTotals,
-          isArchived
-        });
+        await api.put(`/accounts/${editingId}`, commonFields);
       } else {
         await api.post('/accounts', {
-          name,
-          type,
-          balance: parseFloat(balance),
+          ...commonFields,
           currencyId: currencyId || currencies.find(c => c.iso === 'RUB')?.id,
-          color,
-          showOnDashboard,
-          showInTotals,
-          isArchived
         });
       }
       resetForm();
@@ -205,6 +213,8 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
     setShowOnDashboard(acc.showOnDashboard ?? true);
     setShowInTotals(acc.showInTotals ?? true);
     setIsArchived(acc.isArchived ?? false);
+    setAliases(acc.aliases || '');
+    setComment(acc.comment || '');
     setIsBalanceEditable(false);
     setShowFormModal(true);
   };
@@ -382,6 +392,32 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
                         </label>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Aliases */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Альтернативные названия</label>
+                    <input
+                      type="text"
+                      value={aliases}
+                      onChange={(e) => setAliases(e.target.value)}
+                      placeholder="нал, наличные, кэш"
+                      className="w-full bg-theme-main border border-theme-base rounded-lg px-3 h-[48px] text-theme-main font-medium outline-none focus:ring-1 ring-theme-primary/20 transition-all placeholder:text-theme-muted/30 text-sm"
+                    />
+                    <p className="text-[9px] text-theme-muted ml-1 leading-snug">Через запятую — AI будет распознавать счёт по любому из этих имён</p>
+                  </div>
+
+                  {/* Comment */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Комментарий</label>
+                    <textarea
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      placeholder="Например: кредитная карта, закрывается в июне"
+                      rows={2}
+                      className="w-full bg-theme-main border border-theme-base rounded-lg px-3 py-2.5 text-theme-main font-medium outline-none focus:ring-1 ring-theme-primary/20 transition-all placeholder:text-theme-muted/30 text-sm resize-none"
+                    />
+                    <p className="text-[9px] text-theme-muted ml-1 leading-snug">Отображается как значок <span className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-amber-500 text-white font-black" style={{fontSize:'7px'}}>!</span> на карточке счёта</p>
                   </div>
 
                   {/* Settings / Toggles */}

@@ -67,6 +67,14 @@ export function AccountsSection({ accounts, allAccounts, currencies, onOpenTrans
                 <div className="absolute top-3 right-3 text-[10px] font-bold text-theme-muted opacity-60">
                   {currencies.find(c => c.iso === account.currency)?.symbol || account.currency}
                 </div>
+                {account.comment && (
+                  <div
+                    className="absolute bottom-2 right-2 w-3.5 h-3.5 rounded-full bg-amber-500 flex items-center justify-center shadow-sm pointer-events-none"
+                    title={account.comment}
+                  >
+                    <span className="text-white font-black leading-none" style={{ fontSize: '8px' }}>!</span>
+                  </div>
+                )}
                 <div
                   className={cn(
                     "w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110",

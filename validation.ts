@@ -15,6 +15,8 @@ const fieldLabelsRu: Record<string, string> = {
   currencyId: "Валюта",
   description: "Описание",
   color: "Цвет",
+  aliases: "Алиасы",
+  comment: "Комментарий",
   icon: "Иконка",
   parentId: "Родительская категория",
   sortOrder: "Порядок сортировки",
@@ -143,6 +145,8 @@ export const accountCreateSchema = z.object({
   showInTotals: z.boolean().optional().default(true),
   isArchived: z.boolean().optional().default(false),
   color: z.string().trim().max(30).optional().nullable(),
+  aliases: z.string().trim().max(500).optional().nullable(),
+  comment: z.string().trim().max(1000).optional().nullable(),
 }).strict();
 
 export const accountUpdateSchema = accountCreateSchema.partial().strict();
