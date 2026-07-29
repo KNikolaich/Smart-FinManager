@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import { Account, AccountType, Currency } from '../types';
-import { X, Plus, Trash2, Check, Pencil, ChevronDown, Save, AlertCircle } from 'lucide-react';
+import { X, Plus, Trash2, Check, Pencil, ChevronDown, Save, AlertCircle, HelpCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { currencyService } from '../services/currencyService';
 import { getAccountIcon } from '../lib/accountUtils';
@@ -101,6 +101,7 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
   const [isBalanceEditable, setIsBalanceEditable] = useState(false);
   const [aliases, setAliases] = useState('');
   const [comment, setComment] = useState('');
+  const [hintOpen, setHintOpen] = useState<'aliases' | 'comment' | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const processedInitialId = useRef<string | null>(null);
@@ -309,94 +310,110 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
                 </button>
               </div>
 
-              <div className="p-6 lg:p-10">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-12 gap-4">
-                    {/* Row 1: Type + Name */}
-                    <div className="col-span-12 space-y-1.5">
-                      <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Тип счета и Название</label>
-                      <div className="flex items-center gap-2 bg-theme-main border border-theme-base rounded-lg px-3 h-[48px] focus-within:ring-1 ring-theme-primary/20 transition-all">
-                        <div className="relative group shrink-0">
-                          <div className="flex items-center justify-center w-10 h-8 rounded bg-theme-surface border border-neutral-50 text-theme-primary">
-                            {getAccountIcon(type, "w-5 h-5")}
-                          </div>
-                          <select 
-                            value={type}
-                            onChange={(e) => setType(e.target.value as AccountType)}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                          >
-                            <option value="card">Карта</option>
-                            <option value="bank">Банк</option>
-                            <option value="cash">Нал</option>
-                            <option value="credit">Кредит</option>
-                          </select>
+              {/* Scrollable body */}
+              <div className="flex-1 overflow-y-auto no-scrollbar">
+                <form id="account-form" onSubmit={handleSubmit} className="p-6 lg:p-10 space-y-5">
+
+                  {/* Row 1: Type + Name + Color */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Тип · Название · Цвет</label>
+                    <div className="flex items-center gap-2 bg-theme-main border border-theme-base rounded-lg px-3 h-[48px] focus-within:ring-1 ring-theme-primary/20 transition-all">
+                      {/* Type icon + hidden select */}
+                      <div className="relative shrink-0">
+                        <div className="flex items-center justify-center w-10 h-8 rounded bg-theme-surface border border-neutral-50 text-theme-primary">
+                          {getAccountIcon(type, "w-5 h-5")}
                         </div>
-                        <input 
-                          type="text" 
-                          value={name} 
-                          onChange={(e) => setName(e.target.value)} 
-                          className="w-full bg-transparent border-none p-0 text-theme-main font-bold outline-none placeholder:text-theme-muted/30" 
-                          placeholder="Например: Зарплатная карта" 
-                          required 
-                        />
+                        <select
+                          value={type}
+                          onChange={(e) => setType(e.target.value as AccountType)}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        >
+                          <option value="card">Карта</option>
+                          <option value="bank">Банк</option>
+                          <option value="cash">Нал</option>
+                          <option value="credit">Кредит</option>
+                        </select>
                       </div>
+
+                      {/* Name input */}
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="flex-1 min-w-0 bg-transparent border-none p-0 text-theme-main font-bold outline-none placeholder:text-theme-muted/30"
+                        placeholder="Название счёта"
+                        required
+                      />
+
+                      {/* Color swatch — compact button at the right */}
+                      <label className="shrink-0 w-8 h-8 rounded-lg cursor-pointer relative overflow-hidden border-2 border-theme-base/60 shadow-sm hover:scale-105 transition-transform active:scale-95" style={{ backgroundColor: color }} title="Цвет счёта">
+                        <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="sr-only" />
+                      </label>
                     </div>
+                  </div>
 
-                    {/* Row 2: Balance + Currency + Color */}
-                    <div className="col-span-12 grid grid-cols-12 gap-3 sm:gap-4">
-                      <div className="col-span-12 sm:col-span-8 space-y-1.5">
-                        <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Текущий остаток</label>
-                        <div className="flex items-center bg-theme-main border border-theme-base rounded-lg h-[48px] overflow-hidden focus-within:ring-1 ring-theme-primary/20 transition-all">
-                          <input 
-                            type="number" 
-                            value={balance} 
-                            onChange={(e) => setBalance(e.target.value)} 
-                            disabled={editingId && !isBalanceEditable}
-                            className={cn(
-                              "flex-1 min-w-0 px-3 sm:px-4 py-1 bg-transparent border-none font-black text-base sm:text-lg outline-none italic",
-                              (editingId && !isBalanceEditable) ? "text-theme-muted opacity-50" : "text-theme-primary"
-                            )} 
-                            placeholder="0.00" 
-                            required 
-                          />
-                          {editingId && (
-                            <button
-                              type="button"
-                              onClick={() => setIsBalanceEditable(!isBalanceEditable)}
-                              className={cn(
-                                "w-10 sm:w-12 h-full flex items-center justify-center border-l border-theme-base transition-all shrink-0",
-                                isBalanceEditable ? "bg-theme-primary text-white" : "bg-theme-surface text-theme-muted"
-                              )}
-                            >
-                              {isBalanceEditable ? <Save size={16} /> : <Pencil size={16} />}
-                            </button>
+                  {/* Row 2: Balance + Currency */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Текущий остаток</label>
+                    <div className="flex items-center bg-theme-main border border-theme-base rounded-lg h-[48px] overflow-hidden focus-within:ring-1 ring-theme-primary/20 transition-all">
+                      <input
+                        type="number"
+                        value={balance}
+                        onChange={(e) => setBalance(e.target.value)}
+                        disabled={!!(editingId && !isBalanceEditable)}
+                        className={cn(
+                          "flex-1 min-w-0 px-3 sm:px-4 py-1 bg-transparent border-none font-black text-base sm:text-lg outline-none italic",
+                          (editingId && !isBalanceEditable) ? "text-theme-muted opacity-50" : "text-theme-primary"
+                        )}
+                        placeholder="0.00"
+                        required
+                      />
+                      {editingId && (
+                        <button
+                          type="button"
+                          onClick={() => setIsBalanceEditable(!isBalanceEditable)}
+                          className={cn(
+                            "w-10 sm:w-12 h-full flex items-center justify-center border-l border-theme-base transition-all shrink-0",
+                            isBalanceEditable ? "bg-theme-primary text-white" : "bg-theme-surface text-theme-muted"
                           )}
-                          <div className="w-px h-8 bg-theme-base shrink-0" />
-                          <select 
-                            value={currencyId || ''} 
-                            onChange={(e) => setCurrencyId(e.target.value)} 
-                            className="w-[50px] sm:w-[70px] h-full bg-theme-surface/50 border-none px-1 sm:px-2 text-[10px] sm:text-[11px] font-black outline-none appearance-none text-center cursor-pointer text-theme-muted shrink-0"
-                          >
-                            <option value="">₽</option>
-                            {currencies.map(c => <option key={c.id} value={c.id} className="bg-theme-main">{c.iso}</option>)}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="col-span-12 sm:col-span-4 space-y-1.5">
-                        <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Цвет</label>
-                        <label className="block w-full h-[48px] bg-theme-main border border-theme-base rounded-lg p-1.5 cursor-pointer relative overflow-hidden group">
-                          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="sr-only" />
-                          <div className="w-full h-full rounded-md shadow-inner" style={{ backgroundColor: color }} />
-                          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </label>
-                      </div>
+                        >
+                          {isBalanceEditable ? <Save size={16} /> : <Pencil size={16} />}
+                        </button>
+                      )}
+                      <div className="w-px h-8 bg-theme-base shrink-0" />
+                      <select
+                        value={currencyId || ''}
+                        onChange={(e) => setCurrencyId(e.target.value)}
+                        className="w-[50px] sm:w-[70px] h-full bg-theme-surface/50 border-none px-1 sm:px-2 text-[10px] sm:text-[11px] font-black outline-none appearance-none text-center cursor-pointer text-theme-muted shrink-0"
+                      >
+                        <option value="">₽</option>
+                        {currencies.map(c => <option key={c.id} value={c.id} className="bg-theme-main">{c.iso}</option>)}
+                      </select>
                     </div>
                   </div>
 
                   {/* Aliases */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Альтернативные названия</label>
+                    <div className="flex items-center gap-1.5 ml-1">
+                      <span className="text-[10px] font-black text-theme-muted uppercase tracking-widest">Альтернативные названия</span>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setHintOpen(hintOpen === 'aliases' ? null : 'aliases')}
+                          className="w-4 h-4 flex items-center justify-center text-theme-muted/50 hover:text-theme-primary transition-colors"
+                        >
+                          <HelpCircle size={13} />
+                        </button>
+                        {hintOpen === 'aliases' && (
+                          <div className="absolute left-0 top-6 z-50 w-56 bg-theme-surface border border-theme-base rounded-xl px-3 py-2 shadow-lg text-[11px] text-theme-main leading-snug animate-in fade-in zoom-in-95 duration-150">
+                            Введите через запятую все варианты, которыми вы называете этот счёт — AI будет распознавать его по любому из них.
+                            <button type="button" onClick={() => setHintOpen(null)} className="absolute top-1.5 right-1.5 text-theme-muted hover:text-theme-main">
+                              <X size={11} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                     <input
                       type="text"
                       value={aliases}
@@ -404,12 +421,32 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
                       placeholder="нал, наличные, кэш"
                       className="w-full bg-theme-main border border-theme-base rounded-lg px-3 h-[48px] text-theme-main font-medium outline-none focus:ring-1 ring-theme-primary/20 transition-all placeholder:text-theme-muted/30 text-sm"
                     />
-                    <p className="text-[9px] text-theme-muted ml-1 leading-snug">Через запятую — AI будет распознавать счёт по любому из этих имён</p>
                   </div>
 
                   {/* Comment */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Комментарий</label>
+                    <div className="flex items-center gap-1.5 ml-1">
+                      <span className="text-[10px] font-black text-theme-muted uppercase tracking-widest">Комментарий</span>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setHintOpen(hintOpen === 'comment' ? null : 'comment')}
+                          className="w-4 h-4 flex items-center justify-center text-theme-muted/50 hover:text-theme-primary transition-colors"
+                        >
+                          <HelpCircle size={13} />
+                        </button>
+                        {hintOpen === 'comment' && (
+                          <div className="absolute left-0 top-6 z-50 w-56 bg-theme-surface border border-theme-base rounded-xl px-3 py-2 shadow-lg text-[11px] text-theme-main leading-snug animate-in fade-in zoom-in-95 duration-150">
+                            Личная заметка к счёту. Отображается в виде значка&nbsp;
+                            <span className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-amber-500 text-white font-black align-middle" style={{fontSize:'7px'}}>!</span>
+                            &nbsp;на карточке счёта (при наведении / тапе).
+                            <button type="button" onClick={() => setHintOpen(null)} className="absolute top-1.5 right-1.5 text-theme-muted hover:text-theme-main">
+                              <X size={11} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                     <textarea
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
@@ -417,78 +454,80 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
                       rows={2}
                       className="w-full bg-theme-main border border-theme-base rounded-lg px-3 py-2.5 text-theme-main font-medium outline-none focus:ring-1 ring-theme-primary/20 transition-all placeholder:text-theme-muted/30 text-sm resize-none"
                     />
-                    <p className="text-[9px] text-theme-muted ml-1 leading-snug">Отображается как значок <span className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-amber-500 text-white font-black" style={{fontSize:'7px'}}>!</span> на карточке счёта</p>
                   </div>
 
                   {/* Settings / Toggles */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-theme-surface/30 rounded-xl border border-neutral-100">
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input type="checkbox" checked={showOnDashboard} onChange={(e) => setShowOnDashboard(e.target.checked)} className="w-4 h-4 rounded-md bg-theme-main border-theme-base text-theme-primary focus:ring-0" />
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-black text-theme-main uppercase tracking-tighter">На главном</span>
+                  <div className="grid grid-cols-3 gap-3 p-4 bg-theme-surface/30 rounded-xl border border-neutral-100">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={showOnDashboard} onChange={(e) => setShowOnDashboard(e.target.checked)} className="w-4 h-4 rounded-md bg-theme-main border-theme-base text-theme-primary focus:ring-0 shrink-0" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-[10px] font-black text-theme-main uppercase tracking-tighter truncate">На главном</span>
                         <span className="text-[8px] text-theme-muted uppercase tracking-widest">Виджет</span>
                       </div>
                     </label>
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input type="checkbox" checked={showInTotals} onChange={(e) => setShowInTotals(e.target.checked)} className="w-4 h-4 rounded-md bg-theme-main border-theme-base text-theme-primary focus:ring-0" />
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-black text-theme-main uppercase tracking-tighter">В общий итог</span>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={showInTotals} onChange={(e) => setShowInTotals(e.target.checked)} className="w-4 h-4 rounded-md bg-theme-main border-theme-base text-theme-primary focus:ring-0 shrink-0" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-[10px] font-black text-theme-main uppercase tracking-tighter truncate">В итог</span>
                         <span className="text-[8px] text-theme-muted uppercase tracking-widest">Сумма</span>
                       </div>
                     </label>
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input type="checkbox" checked={isArchived} onChange={(e) => setIsArchived(e.target.checked)} className="w-4 h-4 rounded-md bg-theme-main border-theme-base text-theme-primary focus:ring-0" />
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-black text-theme-main uppercase tracking-tighter">В архив</span>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={isArchived} onChange={(e) => setIsArchived(e.target.checked)} className="w-4 h-4 rounded-md bg-theme-main border-theme-base text-theme-primary focus:ring-0 shrink-0" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-[10px] font-black text-theme-main uppercase tracking-tighter truncate">В архив</span>
                         <span className="text-[8px] text-theme-muted uppercase tracking-widest">Скрыть</span>
                       </div>
                     </label>
                   </div>
 
-                  {/* Footer Actions */}
-                  <div className="flex items-center gap-3 pt-6">
-                    {editingId && (
-                      <div className="flex shrink-0">
-                        {confirmDeleteId === editingId ? (
-                          <div className="flex items-center gap-1 bg-rose-500/10 px-2 h-12 rounded-lg border border-rose-500/20 animate-in zoom-in duration-200">
-                            <span className="text-[8px] text-rose-500 font-bold uppercase px-1">Удалить?</span>
-                            <button 
-                              type="button" 
-                              onClick={() => handleDelete(editingId)} 
-                              className="px-3 py-2 bg-rose-500 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 shadow-md"
-                            >
-                              ДА
-                            </button>
-                            <button 
-                              type="button" 
-                              onClick={() => setConfirmDeleteId(null)} 
-                              className="px-3 py-2 text-theme-muted font-black text-[9px] uppercase tracking-widest hover:text-theme-main"
-                            >
-                              НЕТ
-                            </button>
-                          </div>
-                        ) : (
-                          <button 
-                            type="button"
-                            onClick={() => setConfirmDeleteId(editingId)} 
-                            className="w-12 h-12 flex items-center justify-center rounded-xl bg-rose-50/50 text-rose-500 hover:bg-rose-50 transition-all border border-rose-100 shadow-md active:scale-95"
-                            title="Удалить счет"
-                          >
-                            <Trash2 size={20} />
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    
-                    <button 
-                      type="submit" 
-                      disabled={loading} 
-                      className="flex-1 py-3 bg-theme-primary text-theme-on-primary rounded-lg font-black uppercase tracking-widest text-[11px] shadow-lg shadow-theme-primary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 h-12"
-                    >
-                      {loading ? '...' : 'Сохранить'}
-                    </button>
-                  </div>
                 </form>
+              </div>
+
+              {/* Footer — pinned, never hidden behind keyboard/screen edge */}
+              <div className="shrink-0 px-6 py-4 border-t border-theme-base bg-theme-main/80 backdrop-blur-sm">
+                <div className="flex items-center gap-3">
+                  {editingId && (
+                    <div className="flex shrink-0">
+                      {confirmDeleteId === editingId ? (
+                        <div className="flex items-center gap-1 bg-rose-500/10 px-2 h-12 rounded-lg border border-rose-500/20 animate-in zoom-in duration-200">
+                          <span className="text-[8px] text-rose-500 font-bold uppercase px-1">Удалить?</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(editingId)}
+                            className="px-3 py-2 bg-rose-500 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 shadow-md"
+                          >
+                            ДА
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="px-3 py-2 text-theme-muted font-black text-[9px] uppercase tracking-widest hover:text-theme-main"
+                          >
+                            НЕТ
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteId(editingId)}
+                          className="w-12 h-12 flex items-center justify-center rounded-xl bg-rose-50/50 text-rose-500 hover:bg-rose-50 transition-all border border-rose-100 shadow-md active:scale-95"
+                          title="Удалить счет"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  <button
+                    type="submit"
+                    form="account-form"
+                    disabled={loading}
+                    className="flex-1 py-3 bg-theme-primary text-theme-on-primary rounded-lg font-black uppercase tracking-widest text-[11px] shadow-lg shadow-theme-primary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 h-12"
+                  >
+                    {loading ? '...' : 'Сохранить'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
