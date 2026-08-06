@@ -394,29 +394,29 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
                 {Object.entries(groupedEntries).map(([assetId, entries]) => (
                   <div key={assetId} className="mb-3">
                     {/* Bank header */}
-                    <div className="text-[9px] font-black uppercase tracking-[0.18em] text-neutral-400 pb-1 mb-1.5 border-b border-neutral-200">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-400 pb-1 mb-1.5 border-b border-neutral-200">
                       {assetId}
                     </div>
                     {/* Entries */}
-                    <div className="space-y-0.5">
+                    <div className="space-y-1">
                       {entries.map(entry => {
                         const category = cashbackData.categories.find(c => c.id === entry.categoryId);
                         return (
                           <div key={entry.id}>
-                            <div className="flex items-center gap-1.5 py-0.5">
+                            <div className="flex items-start gap-1.5 py-0.5">
                               <div
-                                className="w-2 h-2 rounded-full shrink-0"
+                                className="w-2.5 h-2.5 rounded-full shrink-0 mt-0.5"
                                 style={{ backgroundColor: category?.color || '#aaa' }}
                               />
-                              <span className="text-[11px] text-neutral-700 flex-1 truncate leading-tight">
+                              <span className="text-[13px] text-neutral-700 flex-1 leading-tight break-words">
                                 {category?.name || 'Неизвестно'}
                               </span>
-                              <span className="text-[12px] font-black text-neutral-900 tabular-nums shrink-0">
+                              <span className="text-[14px] font-black text-neutral-900 tabular-nums shrink-0 ml-1">
                                 {entry.percent}%
                               </span>
                             </div>
                             {entry.comment && (
-                              <p className="text-[9.5px] italic text-neutral-400 ml-3.5 leading-tight -mt-0.5 truncate">
+                              <p className="text-[11px] italic text-neutral-400 ml-4 leading-tight -mt-0.5">
                                 {entry.comment}
                               </p>
                             )}

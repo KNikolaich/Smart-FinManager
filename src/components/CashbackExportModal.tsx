@@ -27,10 +27,16 @@ interface Props {
   onClose: () => void;
 }
 
-// ─── Canvas constants (full export at 1080×1920) ──────────────────────────────
+// ─── Canvas export size: use physical screen pixels (portrait orientation) ────
 
-const EXP_W = 1080;
-const EXP_H = 1920;
+function getExportSize(): { w: number; h: number } {
+  const sw = window.screen.width  * (window.devicePixelRatio || 1);
+  const sh = window.screen.height * (window.devicePixelRatio || 1);
+  // always portrait
+  const w = Math.min(sw, sh);
+  const h = Math.max(sw, sh);
+  return { w, h };
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -89,7 +95,7 @@ function drawCashback(
 ) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
-  const s = W / EXP_W; // scale factor
+  const s = W / 1080; // scale factor relative to 1080px base
 
   ctx.clearRect(0, 0, W, H);
 
@@ -288,6 +294,7 @@ export default function CashbackExportModal({ cashbackData, groupedEntries, onCl
 
   // Full-res export
   const handleExport = () => {
+    const { w: EXP_W, h: EXP_H } = getExportSize();
     const canvas = document.createElement('canvas');
     canvas.width  = EXP_W;
     canvas.height = EXP_H;
@@ -421,7 +428,7 @@ export default function CashbackExportModal({ cashbackData, groupedEntries, onCl
             className="w-full h-12 bg-theme-primary text-theme-on-primary rounded-xl font-black uppercase tracking-widest text-[12px] shadow-lg shadow-theme-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
           >
             <Download size={17} />
-            Скачать PNG (1080×1920)
+            {(() => { const { w, h } = getExportSize(); return `Скачать PNG (${w}×${h})`; })()}
           </button>
           <p className="text-center text-[10px] text-theme-muted mt-2 leading-snug">
             После скачивания установите картинку как обои телефона вручную
