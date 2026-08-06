@@ -69,15 +69,20 @@ export async function listTransactions(
       .join('.*');
 
     // Fetch IDs of rows whose description matches the subsequence pattern.
-    // This pre-query runs without the other filters (date/type/account) for
-    // simplicity; the main Prisma query re-applies all filters so false
-    // positives here are harmlessly excluded.
-    const fuzzyRows = await prisma.$queryRaw<{ id: string }[]>`
-      SELECT id FROM "Transaction"
-      WHERE "userId" = ${userId}
-        AND description ~* ${subseqPattern}
-    `;
-    const fuzzyIds = fuzzyRows.map(r => r.id);
+    // Table is mapped to "transactions" (@@map); columns keep camelCase names.
+    // Wrapped in try/catch so a regex syntax error never breaks the main search.
+    let fuzzyIds: string[] = [];
+    try {
+      const fuzzyRows = await prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM "transactions"
+        WHERE "userId" = ${userId}
+          AND description ~* ${subseqPattern}
+      `;
+      fuzzyIds = fuzzyRows.map(r => r.id);
+    } catch {
+      // Fuzzy pre-query failed (e.g. invalid regex chars) — fall back to
+      // exact ILIKE only, which is handled by the contains condition below.
+    }
 
     const searchOr: any[] = [
       { description: { contains: filters.search, mode: 'insensitive' } },
