@@ -238,9 +238,20 @@ export default function TransactionHistory({
   const { searchCategoryIds, searchAccountIds } = useMemo(() => {
     if (!debouncedSearchQuery) return { searchCategoryIds: undefined, searchAccountIds: undefined };
     const q = debouncedSearchQuery.toLowerCase();
+    // Subsequence match: every character in q must appear in the target in
+    // order, but with any characters in between. Catches typos and substrings.
+    const fuzzyMatch = (text: string) => {
+      const t = text.toLowerCase();
+      if (t.includes(q)) return true;
+      let qi = 0;
+      for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+        if (t[ti] === q[qi]) qi++;
+      }
+      return qi === q.length;
+    };
     return {
-      searchCategoryIds: categories.filter(c => c.name.toLowerCase().includes(q)).map(c => c.id),
-      searchAccountIds: accounts.filter(a => a.name.toLowerCase().includes(q)).map(a => a.id),
+      searchCategoryIds: categories.filter(c => fuzzyMatch(c.name)).map(c => c.id),
+      searchAccountIds: accounts.filter(a => fuzzyMatch(a.name)).map(a => a.id),
     };
   }, [debouncedSearchQuery, categories, accounts]);
 

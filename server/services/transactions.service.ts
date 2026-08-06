@@ -59,8 +59,29 @@ export async function listTransactions(
   }
 
   if (filters.search) {
+    // Build a subsequence regex: "корр" → "к.*о.*р.*р"
+    // This lets PostgreSQL find fuzzy/out-of-order-character matches (typos)
+    // in addition to the exact ILIKE substring match.
+    const subseqPattern = filters.search
+      .toLowerCase()
+      .split('')
+      .map(c => c.replace(/[-[\]{}()*+?.\\^$|]/g, '\\$&'))
+      .join('.*');
+
+    // Fetch IDs of rows whose description matches the subsequence pattern.
+    // This pre-query runs without the other filters (date/type/account) for
+    // simplicity; the main Prisma query re-applies all filters so false
+    // positives here are harmlessly excluded.
+    const fuzzyRows = await prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "Transaction"
+      WHERE "userId" = ${userId}
+        AND description ~* ${subseqPattern}
+    `;
+    const fuzzyIds = fuzzyRows.map(r => r.id);
+
     const searchOr: any[] = [
       { description: { contains: filters.search, mode: 'insensitive' } },
+      ...(fuzzyIds.length > 0 ? [{ id: { in: fuzzyIds } }] : []),
     ];
     if (filters.searchCategoryIds && filters.searchCategoryIds.length > 0) {
       searchOr.push({ categoryId: { in: filters.searchCategoryIds } });
