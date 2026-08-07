@@ -81,6 +81,17 @@ function truncate(ctx: CanvasRenderingContext2D, text: string, maxW: number): st
   return t + '…';
 }
 
+// Font scale: step 1–5 → multiplier
+// step 3 = 1.0 (default), linear between 0.55 (step 1) and 1.55 (step 5)
+function fontMultiplier(step: number): number {
+  return 0.55 + (step - 1) * 0.25; // 0.55, 0.80, 1.05, 1.30, 1.55
+}
+
+// Side pad: step 1–5 → OUTER_PAD in virtual px (at 1080 base)
+function sidePadPx(step: number): number {
+  return 20 + (step - 1) * 25; // 20, 45, 70, 95, 120
+}
+
 // ─── Core draw function (shared for preview and full export) ──────────────────
 
 function drawCashback(
@@ -91,11 +102,14 @@ function drawCashback(
   bgImg: HTMLImageElement | null,
   position: Position,
   fontColor: FontColor,
-  blur: boolean
+  blur: boolean,
+  fontSizeStep: number,
+  sidePadStep: number,
 ) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
-  const s = W / 1080; // scale factor relative to 1080px base
+  const s  = W / 1080; // spatial scale factor
+  const fs = fontMultiplier(fontSizeStep); // font scale multiplier
 
   ctx.clearRect(0, 0, W, H);
 
@@ -103,7 +117,7 @@ function drawCashback(
   fillBg(ctx, W, H, bgImg, '#1a1a2e');
 
   // ── Layout math ───────────────────────────────────────────────────────────
-  const OUTER_PAD   = 60 * s;
+  const OUTER_PAD   = sidePadPx(sidePadStep) * s;
   const COL_GAP     = 40 * s;
   const INNER_PH    = 44 * s;   // inner horizontal padding
   const INNER_PV    = 44 * s;   // inner vertical padding
@@ -173,7 +187,7 @@ function drawCashback(
 
     col.forEach((group, gi) => {
       // Bank header
-      ctx.font = `600 ${Math.round(17 * s)}px system-ui, -apple-system, sans-serif`;
+      ctx.font = `600 ${Math.round(17 * s * fs)}px system-ui, -apple-system, sans-serif`;
       ctx.fillStyle = fcSub;
       ctx.textBaseline = 'top';
       ctx.textAlign = 'left';
@@ -206,14 +220,14 @@ function drawCashback(
         const maxNameW = colW - DOT_R * 2 - 10 * s - 60 * s;
 
         // Category name
-        ctx.font = `${Math.round(26 * s)}px system-ui, -apple-system, sans-serif`;
+        ctx.font = `${Math.round(26 * s * fs)}px system-ui, -apple-system, sans-serif`;
         ctx.fillStyle = fcMain;
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'left';
         ctx.fillText(truncate(ctx, entry.categoryName, maxNameW), textX, midY);
 
         // Percent (right-aligned)
-        ctx.font = `bold ${Math.round(26 * s)}px system-ui, -apple-system, sans-serif`;
+        ctx.font = `bold ${Math.round(26 * s * fs)}px system-ui, -apple-system, sans-serif`;
         ctx.fillStyle = fcMain;
         ctx.textAlign = 'right';
         ctx.fillText(`${entry.percent}%`, colX + colW, midY);
@@ -223,7 +237,7 @@ function drawCashback(
 
         // Comment
         if (entry.comment) {
-          ctx.font = `italic ${Math.round(19 * s)}px system-ui, -apple-system, sans-serif`;
+          ctx.font = `italic ${Math.round(19 * s * fs)}px system-ui, -apple-system, sans-serif`;
           ctx.fillStyle = fcSub;
           ctx.textBaseline = 'top';
           ctx.fillText(truncate(ctx, entry.comment, colW), textX, y - CMT_H + 2 * s);
@@ -245,11 +259,13 @@ function drawCashback(
 // ─── Modal component ──────────────────────────────────────────────────────────
 
 export default function CashbackExportModal({ cashbackData, groupedEntries, onClose }: Props) {
-  const [bgImg, setBgImg]       = useState<HTMLImageElement | null>(null);
-  const [bgName, setBgName]     = useState<string | null>(null);
-  const [position, setPosition] = useState<Position>('center');
-  const [fontColor, setFontColor] = useState<FontColor>('white');
-  const [blur, setBlur]         = useState(true);
+  const [bgImg, setBgImg]           = useState<HTMLImageElement | null>(null);
+  const [bgName, setBgName]         = useState<string | null>(null);
+  const [position, setPosition]     = useState<Position>('center');
+  const [fontColor, setFontColor]   = useState<FontColor>('white');
+  const [blur, setBlur]             = useState(true);
+  const [fontSizeStep, setFontSizeStep] = useState(3); // 1–5, default middle
+  const [sidePadStep, setSidePadStep]   = useState(3); // 1–5, default middle
 
   const previewRef = useRef<HTMLCanvasElement>(null);
   const PW = 270;
@@ -276,8 +292,8 @@ export default function CashbackExportModal({ cashbackData, groupedEntries, onCl
     if (!canvas) return;
     canvas.width  = PW;
     canvas.height = PH;
-    drawCashback(canvas, PW, PH, groups, bgImg, position, fontColor, blur);
-  }, [groups, bgImg, position, fontColor, blur]);
+    drawCashback(canvas, PW, PH, groups, bgImg, position, fontColor, blur, fontSizeStep, sidePadStep);
+  }, [groups, bgImg, position, fontColor, blur, fontSizeStep, sidePadStep]);
 
   useEffect(() => { redraw(); }, [redraw]);
 
@@ -298,7 +314,7 @@ export default function CashbackExportModal({ cashbackData, groupedEntries, onCl
     const canvas = document.createElement('canvas');
     canvas.width  = EXP_W;
     canvas.height = EXP_H;
-    drawCashback(canvas, EXP_W, EXP_H, groups, bgImg, position, fontColor, blur);
+    drawCashback(canvas, EXP_W, EXP_H, groups, bgImg, position, fontColor, blur, fontSizeStep, sidePadStep);
     canvas.toBlob(blob => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
@@ -416,6 +432,66 @@ export default function CashbackExportModal({ cashbackData, groupedEntries, onCl
                 >
                   {label}
                 </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Font size slider */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] font-black text-theme-muted uppercase tracking-widest">Размер шрифта</p>
+              <span className="text-[10px] font-black text-theme-primary tabular-nums">{fontSizeStep} / 5</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] text-theme-muted">А</span>
+              <input
+                type="range"
+                min={1} max={5} step={1}
+                value={fontSizeStep}
+                onChange={e => setFontSizeStep(Number(e.target.value))}
+                className="flex-1 h-1.5 accent-[var(--color-primary)] cursor-pointer"
+              />
+              <span className="text-[14px] font-black text-theme-muted">А</span>
+            </div>
+            <div className="flex justify-between mt-1 px-0.5">
+              {[1,2,3,4,5].map(n => (
+                <span key={n} className={cn("text-[9px] tabular-nums", n === fontSizeStep ? "text-theme-primary font-black" : "text-theme-muted/50")}>
+                  {n}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Side padding slider */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] font-black text-theme-muted uppercase tracking-widest">Боковые отступы</p>
+              <span className="text-[10px] font-black text-theme-primary tabular-nums">{sidePadStep} / 5</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 text-theme-muted">
+                <rect x="1" y="2" width="1.5" height="10" rx="0.75" fill="currentColor"/>
+                <rect x="3.5" y="5" width="7" height="4" rx="1" fill="currentColor" opacity="0.4"/>
+                <rect x="11.5" y="2" width="1.5" height="10" rx="0.75" fill="currentColor"/>
+              </svg>
+              <input
+                type="range"
+                min={1} max={5} step={1}
+                value={sidePadStep}
+                onChange={e => setSidePadStep(Number(e.target.value))}
+                className="flex-1 h-1.5 accent-[var(--color-primary)] cursor-pointer"
+              />
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 text-theme-muted">
+                <rect x="0" y="2" width="2.5" height="10" rx="1" fill="currentColor"/>
+                <rect x="4" y="5" width="6" height="4" rx="1" fill="currentColor" opacity="0.4"/>
+                <rect x="11.5" y="2" width="2.5" height="10" rx="1" fill="currentColor"/>
+              </svg>
+            </div>
+            <div className="flex justify-between mt-1 px-0.5">
+              {[1,2,3,4,5].map(n => (
+                <span key={n} className={cn("text-[9px] tabular-nums", n === sidePadStep ? "text-theme-primary font-black" : "text-theme-muted/50")}>
+                  {n}
+                </span>
               ))}
             </div>
           </div>
