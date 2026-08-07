@@ -119,14 +119,14 @@ function drawCashback(
   // ── Layout math ───────────────────────────────────────────────────────────
   const OUTER_PAD   = sidePadPx(sidePadStep) * s;
   const COL_GAP     = 40 * s;
-  const INNER_PH    = 44 * s;   // inner horizontal padding
-  const INNER_PV    = 44 * s;   // inner vertical padding
-  const HDR_H       = 26 * s;   // bank header text height
-  const HDR_MB      = 14 * s;   // margin below header
-  const ENTRY_H     = 46 * s;   // height per entry (without comment)
-  const CMT_H       = 22 * s;   // extra height when comment present
-  const SEC_GAP     = 30 * s;   // gap between bank sections
-  const DOT_R       = 5  * s;
+  const INNER_PH    = 44 * s;          // inner horizontal padding (not font-scaled)
+  const INNER_PV    = 44 * s * fs;     // inner vertical padding scales with font
+  const HDR_H       = 26 * s * fs;     // bank header text height
+  const HDR_MB      = 14 * s * fs;     // margin below header
+  const ENTRY_H     = 46 * s * fs;     // height per entry (without comment)
+  const CMT_H       = 22 * s * fs;     // extra height when comment present
+  const SEC_GAP     = 30 * s * fs;     // gap between bank sections
+  const DOT_R       = 5  * s * fs;
 
   const tableAreaW  = W - OUTER_PAD * 2;
   const colW        = (tableAreaW - COL_GAP) / 2 - INNER_PH;
