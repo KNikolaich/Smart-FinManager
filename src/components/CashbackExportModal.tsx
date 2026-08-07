@@ -82,9 +82,9 @@ function truncate(ctx: CanvasRenderingContext2D, text: string, maxW: number): st
 }
 
 // Font scale: step 1–5 → multiplier
-// step 3 = 1.0 (default), linear between 0.55 (step 1) and 1.55 (step 5)
+// step 1 = current base size, scales up to ×2.2 at step 5
 function fontMultiplier(step: number): number {
-  return 0.55 + (step - 1) * 0.25; // 0.55, 0.80, 1.05, 1.30, 1.55
+  return 1.0 + (step - 1) * 0.3; // 1.0, 1.3, 1.6, 1.9, 2.2
 }
 
 // Side pad: step 1–5 → OUTER_PAD in virtual px (at 1080 base)

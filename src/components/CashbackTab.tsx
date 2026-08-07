@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { PlanData, CashbackEntry, CashbackCategory, Account, CashbackMonth } from '../types';
-import { Pencil, Plus, Trash2, Check, X, Copy, Save, Filter, ImageDown } from 'lucide-react';
+import { Pencil, Plus, Trash2, Check, X, Copy, Save, Filter, ImageDown, Tags } from 'lucide-react';
 import { cn } from '../lib/utils';
 import CashbackCategoryManager from './CashbackCategoryManager';
 import CashbackExportModal from './CashbackExportModal';
@@ -337,16 +337,6 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
               )}
             </div>
 
-            {isEditorMode && (
-              <button
-                onClick={() => setShowCategoryManager(true)}
-                className="p-2 bg-neutral-100 text-neutral-500 rounded-lg hover:bg-neutral-200 h-8 flex items-center justify-center"
-                title="Управление категориями"
-              >
-                <Plus size={18} />
-              </button>
-            )}
-            
             {!isEditorMode && Object.keys(groupedEntries).length > 0 && (
               <button
                 onClick={() => setShowExportModal(true)}
@@ -378,6 +368,14 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
                   <span className="hidden sm:inline">Редактировать</span>
                 </>
               )}
+            </button>
+
+            <button
+              onClick={() => setShowCategoryManager(true)}
+              className="p-2 bg-neutral-100 text-neutral-500 rounded-lg hover:bg-neutral-200 h-8 w-8 flex items-center justify-center transition-colors"
+              title="Управление категориями"
+            >
+              <Tags size={15} />
             </button>
           </div>
         </div>
