@@ -1,4 +1,5 @@
 import { prisma } from "../prisma";
+import { parseConversionFields } from "./transactions.service";
 
 const iconMap: Record<string, string> = {
   'железяки': '🛠️', 'кухня': '🛠️', 'мебель и уют': '🛠️', 'мелочной товар': '🛠️', 'ремонт': '🛠️', 'техника': '🛠️', 'туалетные принадлежности': '🛠️',
@@ -209,8 +210,30 @@ export async function importBatch(userId: string, body: any) {
         continue;
       }
 
+      // Sanitize cross-currency conversion fields with the same rules as the
+      // regular transaction endpoints — never trust imported client math.
+      let convTargetAmount: number | null = null;
+      let convExchangeRate: number | null = null;
+      try {
+        const conv = parseConversionFields(transData.type, Number(amount), {
+          targetAmount: transData.targetAmount,
+          exchangeRate: transData.exchangeRate,
+          accountId: mappedAccountId,
+          targetAccountId: mappedTargetAccountId,
+        });
+        convTargetAmount = conv.targetAmount;
+        convExchangeRate = conv.exchangeRate;
+      } catch (e: any) {
+        console.error(`Invalid conversion fields on imported transaction: ${e?.message}. Skipping transaction.`);
+        continue;
+      }
+      delete (transData as any).targetAmount;
+      delete (transData as any).exchangeRate;
+
       const { id: rawTransId, ...transactionData } = {
         ...transData,
+        targetAmount: convTargetAmount,
+        exchangeRate: convExchangeRate,
         userId,
         accountId: mappedAccountId,
         targetAccountId: mappedTargetAccountId,
@@ -253,9 +276,12 @@ export async function importBatch(userId: string, body: any) {
           where: { id: mappedAccountId },
           data: { balance: { decrement: Number(amount) } }
         });
+        // Cross-currency transfers credit the target account with targetAmount
+        // (in its own currency); legacy transfers fall back to 1:1.
+        const credited = convTargetAmount != null ? convTargetAmount : Number(amount);
         await prisma.account.update({
           where: { id: mappedTargetAccountId },
-          data: { balance: { increment: Number(amount) } }
+          data: { balance: { increment: credited } }
         });
       }
     }

@@ -317,6 +317,7 @@ export default function App() {
         transactionHistoryFilter={transactionHistoryFilter}
         categories={categories}
         accounts={accounts}
+        currencies={currencies}
         dataVersion={dataVersion}
         onCloseTransactionHistory={() => {
           setShowTransactionHistory(false);

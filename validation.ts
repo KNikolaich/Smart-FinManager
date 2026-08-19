@@ -23,6 +23,7 @@ const fieldLabelsRu: Record<string, string> = {
   accountId: "Счёт",
   targetAccountId: "Счёт назначения",
   amount: "Сумма",
+  exchangeRate: "Курс конвертации",
   categoryId: "Категория",
   subcategoryId: "Подкатегория",
   createdAt: "Дата",
@@ -170,6 +171,10 @@ export const transactionCreateSchema = z.object({
   accountId: idString,
   targetAccountId: idString.optional().nullable(),
   amount: z.coerce.number().finite(),
+  // Cross-currency transfer fields: credited amount in the target account's
+  // currency and the applied rate. Must be strictly positive when present.
+  targetAmount: z.coerce.number().finite().positive().optional().nullable(),
+  exchangeRate: z.coerce.number().finite().positive().optional().nullable(),
   type: transactionTypeEnum,
   categoryId: idString.optional().nullable(),
   subcategoryId: idString.optional().nullable(),
@@ -320,6 +325,8 @@ const importTransactionSchema = z.object({
   categoryId: importIdValue.optional().nullable(),
   subcategoryId: importIdValue.optional().nullable(),
   amount: z.coerce.number().finite(),
+  targetAmount: z.coerce.number().finite().positive().optional().nullable(),
+  exchangeRate: z.coerce.number().finite().positive().optional().nullable(),
   type: z.enum(["income", "expense", "transfer"]),
   description: z.string().trim().max(500).nullish().transform((v) => v ?? ""),
   createdAt: z.union([z.string(), z.null()]).optional(),

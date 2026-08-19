@@ -6,4 +6,5 @@
 - [React Query server-state migration](react-query-migration.md) — server data (auth/me, initial-data) lives in @tanstack/react-query, keyed per-user; socket.io pushes invalidate the cache instead of manual refetch calls.
 - [Bulk import ownership checks](bulk-import-idor.md) — batch import must check ownership of both a record's own id AND every foreign key it references, not just the top-level id.
 - [Transaction ownership validation](transaction-ownership.md) — writes referencing account/category ids must check ownership server-side, not just id shape, or foreign ids cause 500s / cross-user mutation.
+- [Cross-currency transfers](cross-currency-transfers.md) — transfers debit `amount`, credit `targetAmount ?? amount`; rate fixed at op time; server re-validates client math everywhere (incl. import & offline cache).
 - [Vite watch loop on workflow logs](vite-watch-workflow-logs.md) — Replit's `.local/state/workflow-logs/**` dir sits inside the project root and must be excluded from Vite's file watcher or it causes an infinite reload loop.

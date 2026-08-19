@@ -60,6 +60,12 @@ export interface Transaction {
   categoryId: string;
   subcategoryId?: string;
   amount: number;
+  // Cross-currency transfers: amount credited to the target account in its
+  // own currency, and the fixed rate (target units per 1 source unit) at the
+  // moment of the operation. Absent for ordinary transactions and legacy
+  // 1:1 transfers.
+  targetAmount?: number | null;
+  exchangeRate?: number | null;
   type: TransactionType;
   description: string;
   createdAt: string;

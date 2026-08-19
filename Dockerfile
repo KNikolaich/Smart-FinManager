@@ -45,4 +45,8 @@ EXPOSE 3000
 
 # Start command: run migrations and then start the server
 # We use npx tsx to handle TypeScript files in the production container
-CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx server.ts"]
+# Databases created before the migrations directory existed (schema applied
+# via `prisma db push`) fail `migrate deploy` with P3005 (non-empty schema).
+# In that case we baseline them by marking 0_init as applied (it matches the
+# pre-migrations schema exactly) and re-run deploy so newer migrations apply.
+CMD ["sh", "-c", "npx prisma migrate deploy || (npx prisma migrate resolve --applied 0_init && npx prisma migrate deploy); npx tsx server.ts"]

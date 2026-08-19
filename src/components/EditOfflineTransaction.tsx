@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Account, Category } from '../types';
+import { useState, useEffect, useRef } from 'react';
+import { Account, Category, Currency } from '../types';
+import { accountCurrencySymbol, defaultTransferRate, isCrossCurrency, formatAmount, formatAmountInputDisplay } from '../lib/currencyUtils';
 import { X, Trash2, Check, Calculator as CalcIcon, ChevronDown, WifiOff } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
@@ -12,6 +13,8 @@ interface PendingTransaction {
   id: string;           // offline transaction id (e.g. "offline_abc123")
   queueItemId: string;  // queue item id used to locate and mutate the queue entry
   amount: number;
+  targetAmount?: number | null;
+  exchangeRate?: number | null;
   description: string;
   accountId: string;
   targetAccountId: string | null;
@@ -24,6 +27,7 @@ interface EditOfflineTransactionProps {
   transaction: PendingTransaction;
   accounts: Account[];
   categories: Category[];
+  currencies: Currency[];
   onClose: () => void;
   onUpdate: () => void;
 }
@@ -32,6 +36,7 @@ export default function EditOfflineTransaction({
   transaction,
   accounts,
   categories,
+  currencies,
   onClose,
   onUpdate,
 }: EditOfflineTransactionProps) {
@@ -44,6 +49,31 @@ export default function EditOfflineTransaction({
   const [showCalculator, setShowCalculator] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // --- Cross-currency transfer state ---
+  const sourceAccount = accounts.find(a => a.id === selectedAccountId);
+  const targetAccount = accounts.find(a => a.id === selectedTargetAccountId);
+  const crossCurrency = transaction.type === 'transfer' && isCrossCurrency(sourceAccount, targetAccount, currencies);
+  const sourceSymbol = accountCurrencySymbol(sourceAccount, currencies);
+  const targetSymbol = accountCurrencySymbol(targetAccount, currencies);
+  const [entrySide, setEntrySide] = useState<'source' | 'target'>('source');
+  const [rate, setRate] = useState<string>(() => (transaction.exchangeRate != null ? String(transaction.exchangeRate) : ''));
+  const accountPairKey = `${selectedAccountId}|${selectedTargetAccountId}`;
+  const prevPairKey = useRef(accountPairKey);
+  useEffect(() => {
+    if (prevPairKey.current !== accountPairKey) {
+      prevPairKey.current = accountPairKey;
+      setRate('');
+    }
+  }, [accountPairKey]);
+  const effectiveRate = (() => {
+    const manual = Number(String(rate).replace(',', '.'));
+    if (rate !== '' && isFinite(manual) && manual > 0) return manual;
+    return defaultTransferRate(sourceAccount, targetAccount, currencies);
+  })();
+  const numEntered = Number(amount);
+  const sourceAmountNum = entrySide === 'source' ? numEntered : Math.round((numEntered / effectiveRate) * 1e8) / 1e8;
+  const targetAmountNum = entrySide === 'source' ? Math.round(numEntered * effectiveRate * 100) / 100 : numEntered;
 
   const handleSave = () => {
     if (!amount || isNaN(Number(amount))) return;
@@ -60,8 +90,11 @@ export default function EditOfflineTransaction({
       finalCreatedAt = now.toISOString();
     }
 
+    const isConversion = transaction.type === 'transfer' && crossCurrency;
     const newData = {
-      amount: Number(amount),
+      amount: isConversion ? sourceAmountNum : Number(amount),
+      targetAmount: isConversion ? targetAmountNum : null,
+      exchangeRate: isConversion ? effectiveRate : null,
       description,
       accountId: selectedAccountId,
       targetAccountId: transaction.type === 'transfer' ? selectedTargetAccountId : null,
@@ -157,10 +190,10 @@ export default function EditOfflineTransaction({
                   <div className="flex-1 flex items-center justify-end gap-1 overflow-hidden">
                     <input
                       type="text"
-                      value={amount === '' ? '' : Number(amount.replace(/\s/g, '')).toLocaleString('ru-RU').replace(',', '.').split('.')[0]}
+                      value={formatAmountInputDisplay(amount)}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/\s/g, '');
-                        if (/^\d*$/.test(val)) {
+                        const val = e.target.value.replace(/\s/g, '').replace(',', '.');
+                        if (/^\d*\.?\d*$/.test(val)) {
                           setAmount(val);
                         }
                       }}
@@ -172,7 +205,9 @@ export default function EditOfflineTransaction({
                       autoFocus
                       inputMode="numeric"
                     />
-                    <span className="text-theme-muted shrink-0">₽</span>
+                    <span className="text-theme-muted shrink-0">
+                      {transaction.type === 'transfer' ? (entrySide === 'source' ? sourceSymbol : targetSymbol) : sourceSymbol}
+                    </span>
                   </div>
                   <button
                     onClick={(e) => {
@@ -236,6 +271,58 @@ export default function EditOfflineTransaction({
                   </div>
                 )}
               </div>
+
+              {/* Cross-currency conversion panel */}
+              {crossCurrency && (
+                <div className="bg-theme-main rounded-2xl border border-theme-base p-3 space-y-3">
+                  <div className="flex gap-1 bg-theme-surface p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setEntrySide('source')}
+                      className={cn("flex-1 py-1 px-2 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all", entrySide === 'source' ? "bg-theme-main shadow-sm text-theme-primary" : "text-theme-muted")}
+                    >
+                      Списываю ({sourceSymbol})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEntrySide('target')}
+                      className={cn("flex-1 py-1 px-2 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all", entrySide === 'target' ? "bg-theme-main shadow-sm text-theme-primary" : "text-theme-muted")}
+                    >
+                      Получаю ({targetSymbol})
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">Курс (1 {sourceSymbol} =)</label>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={rate !== '' ? rate : String(Math.round(effectiveRate * 1e6) / 1e6)}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(',', '.');
+                            if (/^\d*\.?\d*$/.test(val)) setRate(val);
+                          }}
+                          className="w-full bg-transparent outline-none font-bold text-theme-main text-sm border-b border-theme-base focus:border-theme-primary transition-colors py-0.5"
+                        />
+                        <span className="text-theme-muted text-xs shrink-0">{targetSymbol}</span>
+                      </div>
+                    </div>
+                    <div className="flex-1 text-right">
+                      <p className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">
+                        {entrySide === 'source' ? 'Зачислится' : 'Спишется'}
+                      </p>
+                      <p className="text-sm font-black text-theme-main">
+                        {amount && isFinite(numEntered)
+                          ? (entrySide === 'source'
+                              ? `${formatAmount(targetAmountNum)} ${targetSymbol}`
+                              : `${formatAmount(sourceAmountNum)} ${sourceSymbol}`)
+                          : '—'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {transaction.type !== 'transfer' && (
                 <div className="space-y-1.5">

@@ -4,7 +4,7 @@ import EditTransaction from '../EditTransaction';
 import UserPage from '../UserPage';
 import AILogs from '../AILogs';
 import { GenericContextMenu } from '../ui/GenericContextMenu';
-import { Account, Category, Transaction, UserProfile } from '../../types';
+import { Account, Category, Currency, Transaction, UserProfile } from '../../types';
 
 interface TransactionHistoryFilter {
   categoryId?: string;
@@ -21,6 +21,7 @@ interface AppModalsProps {
   transactionHistoryFilter: TransactionHistoryFilter;
   categories: Category[];
   accounts: Account[];
+  currencies: Currency[];
   dataVersion: number;
   onCloseTransactionHistory: () => void;
 
@@ -64,6 +65,7 @@ export function AppModals({
   transactionHistoryFilter,
   categories,
   accounts,
+  currencies,
   dataVersion,
   onCloseTransactionHistory,
   showAddTransaction,
@@ -95,6 +97,7 @@ export function AppModals({
         <TransactionHistory
           categories={categories}
           accounts={accounts}
+          currencies={currencies}
           refreshSignal={dataVersion}
           onClose={onCloseTransactionHistory}
           onEditTransaction={onEditTransaction}
@@ -117,6 +120,7 @@ export function AppModals({
           accounts={accounts}
           transactions={transactions}
           categories={categories}
+          currencies={currencies}
           userId={userId}
           initialData={initialTransactionData}
         />
@@ -128,6 +132,7 @@ export function AppModals({
           accounts={accounts}
           transactions={transactions}
           categories={categories}
+          currencies={currencies}
           onClose={onCloseEditTransaction}
           onUpdate={onUpdateTransaction}
         />

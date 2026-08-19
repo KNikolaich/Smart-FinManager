@@ -1,5 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
-import { Transaction, Category, Account } from '../types';
+import { Transaction, Category, Account, Currency } from '../types';
+import { accountCurrencySymbol } from '../lib/currencyUtils';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { X, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy, ChevronDown, Search, Loader2, WifiOff, Clock } from 'lucide-react';
@@ -15,6 +16,8 @@ interface PendingTransaction {
   /** The queue item id — used to locate and mutate the entry in api_offline_queue */
   queueItemId: string;
   amount: number;
+  targetAmount?: number | null;
+  exchangeRate?: number | null;
   description: string;
   accountId: string;
   targetAccountId: string | null;
@@ -42,6 +45,8 @@ function getQueuedTransactions(): PendingTransaction[] {
         id: String(d.id),
         queueItemId: String((item as any).id),
         amount: Number(d.amount),
+        targetAmount: d.targetAmount != null ? Number(d.targetAmount) : null,
+        exchangeRate: d.exchangeRate != null ? Number(d.exchangeRate) : null,
         description: d.description || '',
         accountId: String(d.accountId),
         targetAccountId: d.targetAccountId ? String(d.targetAccountId) : null,
@@ -61,6 +66,7 @@ const PAGE_SIZE = 50;
 interface TransactionHistoryProps {
   categories: Category[];
   accounts: Account[];
+  currencies: Currency[];
   onClose: () => void;
   onEditTransaction: (transaction: Transaction) => void;
   onOpenAddTransaction: (initialData?: any) => void;
@@ -79,6 +85,7 @@ interface TransactionHistoryProps {
 export default function TransactionHistory({ 
   categories, 
   accounts, 
+  currencies,
   onClose, 
   onEditTransaction, 
   onOpenAddTransaction,
@@ -325,6 +332,8 @@ export default function TransactionHistory({
       onOpenAddTransaction?.({
         type: t.type,
         amount: t.amount,
+        targetAmount: t.targetAmount ?? null,
+        exchangeRate: t.exchangeRate ?? null,
         accountId: t.accountId,
         categoryId: t.categoryId,
         description: t.description,
@@ -711,7 +720,11 @@ export default function TransactionHistory({
                             t.type === 'transfer' ? "text-blue-500" :
                             "text-theme-main"
                           )}>
-                            {t.type === 'income' ? '+' : t.type === 'transfer' ? '' : '-'}{t.amount.toLocaleString()} ₽
+                            {t.type === 'transfer'
+                              ? (t.targetAmount != null
+                                  ? `${t.amount.toLocaleString()} ${accountCurrencySymbol(account, currencies)} → ${t.targetAmount.toLocaleString()} ${accountCurrencySymbol(targetAccount, currencies)}`
+                                  : `${t.amount.toLocaleString()} ${accountCurrencySymbol(account, currencies)}`)
+                              : `${t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()} ${accountCurrencySymbol(account, currencies)}`}
                           </p>
                         </td>
                       </tr>
@@ -809,7 +822,11 @@ export default function TransactionHistory({
                               t.type === 'transfer' ? "text-blue-500" : 
                               "text-theme-main"
                             )}>
-                              {t.type === 'income' ? '+' : t.type === 'transfer' ? '' : '-'}{t.amount.toLocaleString()} ₽
+                              {t.type === 'transfer'
+                                ? (t.targetAmount != null
+                                    ? `${t.amount.toLocaleString()} ${accountCurrencySymbol(account, currencies)} → ${t.targetAmount.toLocaleString()} ${accountCurrencySymbol(targetAccount, currencies)}`
+                                    : `${t.amount.toLocaleString()} ${accountCurrencySymbol(account, currencies)}`)
+                                : `${t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()} ${accountCurrencySymbol(account, currencies)}`}
                             </p>
                           </td>
                         </tr>
@@ -877,6 +894,7 @@ export default function TransactionHistory({
               transaction={editingPendingTx}
               accounts={accounts}
               categories={categories}
+              currencies={currencies}
               onClose={() => setEditingPendingTx(null)}
               onUpdate={() => {
                 setQueuedTransactions(getQueuedTransactions());

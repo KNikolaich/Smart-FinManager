@@ -156,6 +156,80 @@ async function validateReferences(userId: string, { accountId, targetAccountId, 
   }
 }
 
+// Parses and validates the cross-currency transfer fields (targetAmount and
+// exchangeRate). Only transfers may carry them. Returns nulls for ordinary
+// transactions and for transfers without conversion (legacy 1:1 behavior).
+// The server never trusts the client's arithmetic blindly: both values must be
+// finite and positive, and if both are present they must be mutually
+// consistent (targetAmount ≈ amount × exchangeRate).
+export function parseConversionFields(type: string, numAmount: number, body: any): { targetAmount: number | null; exchangeRate: number | null } {
+  const rawTarget = body.targetAmount;
+  const rawRate = body.exchangeRate;
+  const hasTarget = rawTarget !== undefined && rawTarget !== null && rawTarget !== '';
+  const hasRate = rawRate !== undefined && rawRate !== null && rawRate !== '';
+
+  if (!hasTarget && !hasRate) return { targetAmount: null, exchangeRate: null };
+
+  if (type !== 'transfer') {
+    const err: any = new Error("Курс и сумма зачисления допустимы только для переводов");
+    err.status = 400;
+    throw err;
+  }
+
+  // A converted transfer requires a real, distinct target account and a
+  // strictly positive debit amount — otherwise the derived rate is undefined
+  // or the credit/debit directions become inconsistent.
+  if (!body.targetAccountId || body.targetAccountId === body.accountId) {
+    const err: any = new Error("Для конверсионного перевода требуется отдельный счёт получателя");
+    err.status = 400;
+    throw err;
+  }
+  if (!isFinite(numAmount) || numAmount <= 0) {
+    const err: any = new Error("Сумма перевода должна быть положительной");
+    err.status = 400;
+    throw err;
+  }
+
+  const targetAmount = hasTarget ? Number(rawTarget) : null;
+  const exchangeRate = hasRate ? Number(rawRate) : null;
+
+  if (targetAmount !== null && (!isFinite(targetAmount) || targetAmount <= 0)) {
+    const err: any = new Error("Некорректная сумма зачисления");
+    err.status = 400;
+    throw err;
+  }
+  if (exchangeRate !== null && (!isFinite(exchangeRate) || exchangeRate <= 0)) {
+    const err: any = new Error("Некорректный курс конвертации");
+    err.status = 400;
+    throw err;
+  }
+
+  // If both are given, they must agree within the precision the client can
+  // actually introduce: targetAmount is rounded to 2 decimals (±0.005) and,
+  // when the user enters the credited side, the source amount is rounded to
+  // 8 decimals (error ≤ rate × 5e-9). No looser relative tolerance is allowed.
+  if (targetAmount !== null && exchangeRate !== null) {
+    const expected = numAmount * exchangeRate;
+    const tolerance = 0.01 + Math.abs(exchangeRate) * 1e-8;
+    if (Math.abs(expected - targetAmount) > tolerance) {
+      const err: any = new Error("Сумма зачисления не соответствует курсу конвертации");
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  return {
+    targetAmount: targetAmount ?? (exchangeRate !== null ? Math.round(numAmount * exchangeRate * 100) / 100 : null),
+    exchangeRate: exchangeRate ?? (targetAmount !== null ? targetAmount / numAmount : null),
+  };
+}
+
+// Amount credited to the target account of a transfer. Legacy transfers
+// (created before cross-currency support) have no targetAmount and behave 1:1.
+function creditedAmount(t: { amount: number; targetAmount?: number | null }): number {
+  return t.targetAmount ?? t.amount;
+}
+
 export async function createTransaction(userId: string, body: any) {
   const { accountId, targetAccountId, amount, type, categoryId, subcategoryId, description, createdAt } = body;
   const numAmount = Number(amount);
@@ -165,6 +239,8 @@ export async function createTransaction(userId: string, body: any) {
     err.status = 400;
     throw err;
   }
+
+  const { targetAmount, exchangeRate } = parseConversionFields(type, numAmount, body);
 
   await validateReferences(userId, { accountId, targetAccountId, categoryId, subcategoryId });
 
@@ -177,6 +253,8 @@ export async function createTransaction(userId: string, body: any) {
         categoryId: categoryId || null,
         subcategoryId: subcategoryId || null,
         amount: numAmount,
+        targetAmount: type === 'transfer' ? targetAmount : null,
+        exchangeRate: type === 'transfer' ? exchangeRate : null,
         type,
         description: description || '',
         createdAt: createdAt ? new Date(createdAt) : new Date()
@@ -200,7 +278,7 @@ export async function createTransaction(userId: string, body: any) {
       });
       await tx.account.updateMany({
         where: { id: targetAccountId, userId },
-        data: { balance: { increment: numAmount } }
+        data: { balance: { increment: targetAmount ?? numAmount } }
       });
     }
 
@@ -234,7 +312,7 @@ export async function deleteTransaction(userId: string, id: string) {
       });
       await tx.account.updateMany({
         where: { id: transaction.targetAccountId, userId },
-        data: { balance: { decrement: transaction.amount } }
+        data: { balance: { decrement: creditedAmount(transaction) } }
       });
     }
 
@@ -251,6 +329,8 @@ export async function updateTransaction(userId: string, id: string, body: any) {
     err.status = 400;
     throw err;
   }
+
+  const { targetAmount, exchangeRate } = parseConversionFields(type, numAmount, body);
 
   const oldTransaction = await prisma.transaction.findFirst({ where: { id, userId } });
   if (!oldTransaction) {
@@ -280,7 +360,7 @@ export async function updateTransaction(userId: string, id: string, body: any) {
       });
       await tx.account.updateMany({
         where: { id: oldTransaction.targetAccountId, userId },
-        data: { balance: { decrement: oldTransaction.amount } }
+        data: { balance: { decrement: creditedAmount(oldTransaction) } }
       });
     }
 
@@ -293,6 +373,8 @@ export async function updateTransaction(userId: string, id: string, body: any) {
         categoryId: categoryId || null,
         subcategoryId: subcategoryId || null,
         amount: numAmount,
+        targetAmount: type === 'transfer' ? targetAmount : null,
+        exchangeRate: type === 'transfer' ? exchangeRate : null,
         type,
         description: description || '',
         createdAt: createdAt ? new Date(createdAt) : new Date()
@@ -317,7 +399,7 @@ export async function updateTransaction(userId: string, id: string, body: any) {
       });
       await tx.account.updateMany({
         where: { id: targetAccountId, userId },
-        data: { balance: { increment: numAmount } }
+        data: { balance: { increment: targetAmount ?? numAmount } }
       });
     }
 

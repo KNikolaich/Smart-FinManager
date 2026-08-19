@@ -277,6 +277,8 @@ function applyMutationToCache(method: string, endpoint: string, data: any) {
         const tr = {
           id: data.id || 'offline_tr_' + Math.random().toString(36).substring(2, 9),
           amount: Number(data.amount),
+          targetAmount: data.targetAmount != null ? Number(data.targetAmount) : null,
+          exchangeRate: data.exchangeRate != null ? Number(data.exchangeRate) : null,
           description: data.description || '',
           accountId: data.accountId,
           targetAccountId: data.targetAccountId || null,
@@ -299,8 +301,9 @@ function applyMutationToCache(method: string, endpoint: string, data: any) {
           } else if (data.type === 'transfer') {
             const srcAcc = cache.accounts.find((a: any) => a.id === data.accountId);
             if (srcAcc) srcAcc.balance = Number(srcAcc.balance) - amount;
+            const credited = data.targetAmount != null ? Number(data.targetAmount) : amount;
             const dstAcc = cache.accounts.find((a: any) => a.id === data.targetAccountId);
-            if (dstAcc) dstAcc.balance = Number(dstAcc.balance) + amount;
+            if (dstAcc) dstAcc.balance = Number(dstAcc.balance) + credited;
           }
         }
       }
@@ -325,8 +328,9 @@ function applyMutationToCache(method: string, endpoint: string, data: any) {
             } else if (oldTr.type === 'transfer') {
               const srcAcc = cache.accounts.find((a: any) => a.id === oldTr.accountId);
               if (srcAcc) srcAcc.balance = Number(srcAcc.balance) + oldAmount;
+              const oldCredited = oldTr.targetAmount != null ? Number(oldTr.targetAmount) : oldAmount;
               const dstAcc = cache.accounts.find((a: any) => a.id === oldTr.targetAccountId);
-              if (dstAcc) dstAcc.balance = Number(dstAcc.balance) - oldAmount;
+              if (dstAcc) dstAcc.balance = Number(dstAcc.balance) - oldCredited;
             }
 
             // Apply new transaction balances
@@ -340,8 +344,9 @@ function applyMutationToCache(method: string, endpoint: string, data: any) {
             } else if (newTr.type === 'transfer') {
               const srcAcc = cache.accounts.find((a: any) => a.id === newTr.accountId);
               if (srcAcc) srcAcc.balance = Number(srcAcc.balance) - newAmount;
+              const newCredited = newTr.targetAmount != null ? Number(newTr.targetAmount) : newAmount;
               const dstAcc = cache.accounts.find((a: any) => a.id === newTr.targetAccountId);
-              if (dstAcc) dstAcc.balance = Number(dstAcc.balance) + newAmount;
+              if (dstAcc) dstAcc.balance = Number(dstAcc.balance) + newCredited;
             }
           }
         }
@@ -362,8 +367,9 @@ function applyMutationToCache(method: string, endpoint: string, data: any) {
             } else if (oldTr.type === 'transfer') {
               const srcAcc = cache.accounts.find((a: any) => a.id === oldTr.accountId);
               if (srcAcc) srcAcc.balance = Number(srcAcc.balance) + oldAmount;
+              const oldCredited = oldTr.targetAmount != null ? Number(oldTr.targetAmount) : oldAmount;
               const dstAcc = cache.accounts.find((a: any) => a.id === oldTr.targetAccountId);
-              if (dstAcc) dstAcc.balance = Number(dstAcc.balance) - oldAmount;
+              if (dstAcc) dstAcc.balance = Number(dstAcc.balance) - oldCredited;
             }
           }
         }

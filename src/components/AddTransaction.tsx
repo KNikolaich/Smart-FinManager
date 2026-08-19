@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
-import { Transaction, Account, Category, TransactionType } from '../types';
+import { Transaction, Account, Category, Currency, TransactionType } from '../types';
+import { accountCurrencySymbol, defaultTransferRate, isCrossCurrency, formatAmount, formatAmountInputDisplay } from '../lib/currencyUtils';
 import { X, Check, Calculator as CalcIcon, Calendar, ChevronDown, Eye, Edit2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
@@ -13,6 +14,7 @@ interface AddTransactionProps {
   accounts: Account[];
   transactions: Transaction[];
   categories: Category[];
+  currencies: Currency[];
   onComplete: () => void;
   onAdd: () => void;
   onOptimisticAdd: (transaction: Transaction) => void;
@@ -20,7 +22,7 @@ interface AddTransactionProps {
   initialData?: any;
 }
 
-export default function AddTransaction({ accounts, transactions, categories, onComplete, onAdd, onOptimisticAdd, userId, initialData }: AddTransactionProps) {
+export default function AddTransaction({ accounts, transactions, categories, currencies, onComplete, onAdd, onOptimisticAdd, userId, initialData }: AddTransactionProps) {
   const [type, setType] = useState<TransactionType>(initialData?.type || 'expense');
   const [amount, setAmount] = useState(() => {
     if (initialData?.amount === undefined || initialData?.amount === null) return '';
@@ -35,6 +37,34 @@ export default function AddTransaction({ accounts, transactions, categories, onC
   const [showCalculator, setShowCalculator] = useState(false);
   const [showPreview, setShowPreview] = useState(!!initialData?.description);
   const activeAccounts = accounts.filter(a => !a.isArchived);
+
+  // --- Cross-currency transfer state ---
+  const sourceAccount = accounts.find(a => a.id === selectedAccountId);
+  const targetAccount = accounts.find(a => a.id === selectedTargetAccountId);
+  const crossCurrency = type === 'transfer' && isCrossCurrency(sourceAccount, targetAccount, currencies);
+  const sourceSymbol = accountCurrencySymbol(sourceAccount, currencies);
+  const targetSymbol = accountCurrencySymbol(targetAccount, currencies);
+  // Side the user is typing the amount for: 'source' = "списываю", 'target' = "получаю"
+  const [entrySide, setEntrySide] = useState<'source' | 'target'>(initialData?.targetAmount != null && initialData?.amount == null ? 'target' : 'source');
+  const [rate, setRate] = useState<string>(() => (initialData?.exchangeRate != null ? String(initialData.exchangeRate) : ''));
+  const accountPairKey = `${selectedAccountId}|${selectedTargetAccountId}`;
+  const prevPairKey = useRef(accountPairKey);
+  useEffect(() => {
+    // Reset the rate to the directory default whenever the account pair changes
+    // (manual edits apply to the current pair only).
+    if (prevPairKey.current !== accountPairKey) {
+      prevPairKey.current = accountPairKey;
+      setRate('');
+    }
+  }, [accountPairKey]);
+  const effectiveRate = (() => {
+    const manual = Number(String(rate).replace(',', '.'));
+    if (rate !== '' && isFinite(manual) && manual > 0) return manual;
+    return defaultTransferRate(sourceAccount, targetAccount, currencies);
+  })();
+  const numEntered = Number(amount);
+  const sourceAmountNum = entrySide === 'source' ? numEntered : Math.round((numEntered / effectiveRate) * 1e8) / 1e8;
+  const targetAmountNum = entrySide === 'source' ? Math.round(numEntered * effectiveRate * 100) / 100 : numEntered;
 
   const prevType = useRef<TransactionType>(type);
 
@@ -61,10 +91,17 @@ export default function AddTransaction({ accounts, transactions, categories, onC
       finalCreatedAt = now.toISOString();
     }
 
+    const isConversion = type === 'transfer' && crossCurrency;
+    const finalAmount = isConversion ? sourceAmountNum : Number(amount);
+    const finalTargetAmount = isConversion ? targetAmountNum : undefined;
+    const finalRate = isConversion ? effectiveRate : undefined;
+
     const newTransaction: Transaction = {
       id: Math.random().toString(36).substring(2, 9),
       userId,
-      amount: Number(amount),
+      amount: finalAmount,
+      targetAmount: finalTargetAmount ?? null,
+      exchangeRate: finalRate ?? null,
       description,
       accountId: selectedAccountId,
       targetAccountId: type === 'transfer' ? selectedTargetAccountId : undefined,
@@ -78,7 +115,9 @@ export default function AddTransaction({ accounts, transactions, categories, onC
 
     try {
       await api.post('/transactions', {
-        amount: Number(amount),
+        amount: finalAmount,
+        targetAmount: finalTargetAmount ?? null,
+        exchangeRate: finalRate ?? null,
         description,
         accountId: selectedAccountId,
         targetAccountId: type === 'transfer' ? selectedTargetAccountId : null,
@@ -127,10 +166,10 @@ export default function AddTransaction({ accounts, transactions, categories, onC
                   <div className="flex-1 flex items-center justify-end gap-1 overflow-hidden">
                     <input
                       type="text"
-                      value={amount === '' ? '' : Number(amount.replace(/\s/g, '')).toLocaleString('ru-RU').replace(',', '.').split('.')[0]}
+                      value={formatAmountInputDisplay(amount)}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/\s/g, '');
-                        if (/^\d*$/.test(val)) {
+                        const val = e.target.value.replace(/\s/g, '').replace(',', '.');
+                        if (/^\d*\.?\d*$/.test(val)) {
                           setAmount(val);
                         }
                       }}
@@ -142,7 +181,9 @@ export default function AddTransaction({ accounts, transactions, categories, onC
                       autoFocus
                       inputMode="numeric"
                     />
-                    <span className="text-theme-muted shrink-0">₽</span>
+                    <span className="text-theme-muted shrink-0">
+                      {type === 'transfer' ? (entrySide === 'source' ? sourceSymbol : targetSymbol) : sourceSymbol}
+                    </span>
                   </div>
 
                   <button 
@@ -205,6 +246,58 @@ export default function AddTransaction({ accounts, transactions, categories, onC
                   </div>
                 )}
               </div>
+
+              {/* Cross-currency conversion panel */}
+              {crossCurrency && (
+                <div className="bg-theme-main rounded-2xl border border-theme-base p-3 space-y-3">
+                  <div className="flex gap-1 bg-theme-surface p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setEntrySide('source')}
+                      className={cn("flex-1 py-1 px-2 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all", entrySide === 'source' ? "bg-theme-main shadow-sm text-theme-primary" : "text-theme-muted")}
+                    >
+                      Списываю ({sourceSymbol})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEntrySide('target')}
+                      className={cn("flex-1 py-1 px-2 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all", entrySide === 'target' ? "bg-theme-main shadow-sm text-theme-primary" : "text-theme-muted")}
+                    >
+                      Получаю ({targetSymbol})
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">Курс (1 {sourceSymbol} =)</label>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={rate !== '' ? rate : String(Math.round(effectiveRate * 1e6) / 1e6)}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(',', '.');
+                            if (/^\d*\.?\d*$/.test(val)) setRate(val);
+                          }}
+                          className="w-full bg-transparent outline-none font-bold text-theme-main text-sm border-b border-theme-base focus:border-theme-primary transition-colors py-0.5"
+                        />
+                        <span className="text-theme-muted text-xs shrink-0">{targetSymbol}</span>
+                      </div>
+                    </div>
+                    <div className="flex-1 text-right">
+                      <p className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">
+                        {entrySide === 'source' ? 'Зачислится' : 'Спишется'}
+                      </p>
+                      <p className="text-sm font-black text-theme-main">
+                        {amount && isFinite(numEntered)
+                          ? (entrySide === 'source'
+                              ? `${formatAmount(targetAmountNum)} ${targetSymbol}`
+                              : `${formatAmount(sourceAmountNum)} ${sourceSymbol}`)
+                          : '—'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {type !== 'transfer' && (
                 <div className="space-y-1.5">
