@@ -24,7 +24,13 @@ export const currencyService = {
   },
 
   async updateCurrency(currency: Currency): Promise<void> {
-    await api.put(`/currencies/${currency.id}`, currency);
+    // The record id belongs in the URL. The update schema intentionally
+    // rejects server-controlled fields in the request body.
+    const { id, ...changes } = currency;
+    await api.put(`/currencies/${id}`, {
+      ...changes,
+      iso: changes.iso.trim().toUpperCase(),
+    });
   },
 
   async deleteCurrency(id: string): Promise<void> {
@@ -33,6 +39,10 @@ export const currencyService = {
 
   async addCurrency(currency: Omit<Currency, 'id'>): Promise<void> {
     await api.post('/currencies', currency);
+  },
+
+  async getRateHistory(iso: string): Promise<{ iso: string; days: number; points: { date: string; rate: number }[] }> {
+    return await api.get(`/currencies/history/${encodeURIComponent(iso)}`);
   },
 
   async seedDefaultCurrencies() {

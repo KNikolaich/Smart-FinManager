@@ -46,6 +46,20 @@ export async function seed(req: any, res: any) {
   }
 }
 
+export async function history(req: any, res: any) {
+  try {
+    const { iso } = req.params;
+    const data = await currenciesService.getRateHistory(iso);
+    res.json(data);
+  } catch (error: any) {
+    if (error.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error("Error fetching currency history:", error.message);
+    res.status(500).json({ error: "Failed to fetch currency history" });
+  }
+}
+
 export async function rates(req: any, res: any) {
   try {
     const { iso } = req.params;

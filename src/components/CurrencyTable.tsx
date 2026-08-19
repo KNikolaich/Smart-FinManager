@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { currencyService } from '../services/currencyService';
 import { Currency, UserProfile } from '../types';
-import { Plus, Trash2, X, Check, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, X, AlertTriangle, Pencil } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const [currencies, setCurrencies] = useState<Currency[]>([]);
@@ -13,6 +14,7 @@ export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) =
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [updatingRates, setUpdatingRates] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const fetchCurrencies = async () => {
     try {
@@ -130,27 +132,44 @@ export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) =
               </thead>
               <tbody className="divide-y divide-neutral-50 bg-white">
                 {currencies.map((cur) => (
-                  <tr 
-                    key={cur.id} 
-                    className={cn(
-                      "transition-colors tabular-nums",
-                      isAdmin ? "hover:bg-theme-surface/30 cursor-pointer" : ""
+                  <React.Fragment key={cur.id}>
+                    <tr 
+                      className="transition-colors tabular-nums hover:bg-theme-surface/30 cursor-pointer"
+                      onClick={() => setExpandedId(prev => prev === cur.id ? null : cur.id)}
+                    >
+                      <td className="px-6 py-4 border-r border-neutral-50/50">
+                          <div className="font-bold text-sm text-theme-main truncate">{cur.name}</div>
+                          <div className="font-mono text-xs text-theme-muted truncate">{cur.iso} • {cur.symbol || '-'}</div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-black italic text-theme-primary tabular-nums">
+                            {cur.rate?.toFixed(2) || '1.00'}
+                          </span>
+                          {isAdmin && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingCurrency(cur);
+                                setShowFormModal(true);
+                              }}
+                              className="p-2 text-theme-muted hover:text-theme-primary hover:bg-theme-surface/50 rounded-lg transition-colors shrink-0"
+                              title="Редактировать валюту"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                    {expandedId === cur.id && (
+                      <tr>
+                        <td colSpan={2} className="px-4 py-4 bg-theme-surface/20">
+                          <RateHistoryChart iso={cur.iso} />
+                        </td>
+                      </tr>
                     )}
-                    onClick={() => { 
-                      if (isAdmin) {
-                        setEditingCurrency(cur); 
-                        setShowFormModal(true);
-                      }
-                    }}
-                  >
-                    <td className="px-6 py-4 border-r border-neutral-50/50">
-                        <div className="font-bold text-sm text-theme-main truncate">{cur.name}</div>
-                        <div className="font-mono text-xs text-theme-muted truncate">{cur.iso} • {cur.symbol || '-'}</div>
-                    </td>
-                    <td className="px-4 py-4 font-black italic text-theme-primary tabular-nums">
-                      {cur.rate?.toFixed(2) || '1.00'}
-                    </td>
-                  </tr>
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -203,6 +222,83 @@ export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) =
     </div>
   );
 };
+
+function RateHistoryChart({ iso }: { iso: string }) {
+  const [points, setPoints] = useState<{ date: string; rate: number }[] | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPoints(null);
+    setError(false);
+    currencyService.getRateHistory(iso)
+      .then(data => { if (!cancelled) setPoints(data.points); })
+      .catch(err => {
+        console.error('Error fetching rate history:', err);
+        if (!cancelled) setError(true);
+      });
+    return () => { cancelled = true; };
+  }, [iso]);
+
+  if (error) {
+    return <div className="text-xs font-bold text-theme-muted py-6 text-center">Не удалось загрузить историю курса</div>;
+  }
+  if (points === null) {
+    return <div className="text-xs font-bold text-theme-muted py-6 text-center animate-pulse">Загрузка графика...</div>;
+  }
+  if (points.length === 0) {
+    return <div className="text-xs font-bold text-theme-muted py-6 text-center">Нет данных за последние 30 дней для {iso}</div>;
+  }
+
+  const rates = points.map(p => p.rate);
+  const min = Math.min(...rates);
+  const max = Math.max(...rates);
+  const pad = (max - min) * 0.1 || Math.abs(max) * 0.01 || 0.01;
+  const fmtDate = (d: string) => {
+    const [, m, day] = d.split('-');
+    return `${day}.${m}`;
+  };
+
+  return (
+    <div>
+      <div className="text-[10px] font-black uppercase tracking-widest text-theme-muted mb-2 ml-1">
+        {iso} → RUB · 30 дней
+      </div>
+      <div className="h-48 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={points} margin={{ top: 5, right: 10, bottom: 0, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+            <XAxis
+              dataKey="date"
+              tickFormatter={fmtDate}
+              tick={{ fontSize: 10 }}
+              minTickGap={24}
+            />
+            <YAxis
+              domain={[min - pad, max + pad]}
+              tick={{ fontSize: 10 }}
+              width={55}
+              tickFormatter={(v: number) => v.toFixed(2)}
+            />
+            <Tooltip
+              formatter={(value: any) => [Number(value).toFixed(4) + ' ₽', 'Курс']}
+              labelFormatter={(label: any) => fmtDate(String(label))}
+            />
+            <Line
+              type="monotone"
+              dataKey="rate"
+              stroke="currentColor"
+              className="text-theme-primary"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
 
 interface CurrencyFormProps {
   currency: Currency | null;

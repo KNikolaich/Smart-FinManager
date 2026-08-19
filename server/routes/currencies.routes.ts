@@ -11,5 +11,6 @@ router.put("/api/currencies/:id", authenticateToken, requireAdmin, validateBody(
 router.delete("/api/currencies/:id", authenticateToken, requireAdmin, currenciesController.remove);
 router.post("/api/currencies/seed", authenticateToken, requireAdmin, currenciesController.seed);
 router.get("/api/currencies/rates/:iso", authenticateToken, currenciesController.rates);
+router.get("/api/currencies/history/:iso", authenticateToken, currenciesController.history);
 
 export default router;
