@@ -1,0 +1,35 @@
+/* Smart-FinManager extracted tokens. Dependency-free and safe to load in static artifacts. */
+:root {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --type-display: 700 2rem/1.05 var(--font-sans);
+  --type-title: 700 1.125rem/1.2 var(--font-sans);
+  --type-body: 400 0.875rem/1.5 var(--font-sans);
+  --type-label: 700 0.625rem/1.2 var(--font-sans);
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px;
+  --radius-control: 12px; --radius-card: 16px; --radius-group: 24px;
+  --radius-nav: 18px; --radius-pill: 999px;
+  --shadow-soft: 0 2px 15px -3px rgba(0,0,0,.07), 0 4px 6px -2px rgba(0,0,0,.05);
+  --shadow-elegant: 0 20px 25px -5px rgba(0,0,0,.05), 0 10px 10px -5px rgba(0,0,0,.02);
+  --color-action: #0ea5e9; --color-action-soft: #e0f2fe; --color-action-strong: #0284c7; --color-on-action: #ffffff;
+  --color-income: #10b981; --color-expense: #f43f5e; --color-transfer: #3b82f6; --color-warning: #f59e0b;
+  --surface-page: #f8fafc; --surface-card: #ffffff; --surface-input: #f8fafc;
+  --text-primary: #0f172a; --text-muted: #ff6b3d; --border-subtle: #e2e8f0;
+  --focus-ring: #0ea5e9;
+  --primary: var(--color-action); --primary-light: var(--color-action-soft); --primary-dark: var(--color-action-strong);
+  --text-on-primary: var(--color-on-action); --bg-main: var(--surface-page); --bg-surface: var(--surface-card);
+  --text-main: var(--text-primary); --input-bg: var(--surface-input); --border-color: var(--border-subtle);
+}
+.theme-light-green { --color-action:#10b981; --color-action-soft:#d1fae5; --color-action-strong:#059669; --surface-page:#f5f5f4; --text-muted:#6b7280; --border-subtle:#d1fae5; }
+.theme-light-blue { --color-action:#3b82f6; --color-action-soft:#dbeafe; --color-action-strong:#2563eb; --surface-page:#f0f9ff; --text-muted:#64748b; --border-subtle:#e2e8f0; }
+.theme-light-ruby { --color-action:#e11d48; --color-action-soft:#fff1f2; --color-action-strong:#be123c; --surface-page:#fff1f2; --text-muted:#9f1239; --border-subtle:#f1f5f9; }
+.theme-light-orange { --color-action:#f59e0b; --color-action-soft:#fffbeb; --color-action-strong:#d97706; --surface-page:#fffbeb; --text-muted:#b45309; --border-subtle:#f1f5f9; }
+.theme-light-violet { --color-action:#8b5cf6; --color-action-soft:#f5f3ff; --color-action-strong:#7c3aed; --surface-page:#f5f3ff; --text-muted:#6d28d9; --border-subtle:#e5e7eb; }
+.theme-midnight { --color-action:#6366f1; --color-action-soft:rgba(99,102,241,.2); --color-action-strong:#4f46e5; --surface-page:#0f172a; --surface-card:#1e293b; --surface-input:#0f172a; --text-primary:#f8fafc; --text-muted:#94a3b8; --border-subtle:#0c1222; }
+.theme-carbon { --color-action:#10b981; --color-action-soft:rgba(16,185,129,.2); --color-action-strong:#059669; --surface-page:#121212; --surface-card:#1e1e1e; --surface-input:#262626; --text-primary:#e2e2e2; --text-muted:#a0a0a0; --border-subtle:#0a0a0a; }
+.theme-oled { --color-action:#10b981; --color-action-soft:rgba(16,185,129,.1); --color-action-strong:#059669; --surface-page:#000; --surface-card:#0a0a0a; --surface-input:#111; --text-primary:#fff; --text-muted:#888; --border-subtle:#050505; }
+.theme-forest-dark { --color-action:#22c55e; --color-action-soft:rgba(34,197,94,.15); --color-action-strong:#16a34a; --surface-page:#052e16; --surface-card:#064e3b; --text-primary:#f0fdf4; --text-muted:#86efac; --border-subtle:#03200f; }
+.theme-nocturnal { --color-action:#00d4ff; --color-action-soft:rgba(0,212,255,.15); --color-action-strong:#008ab3; --surface-page:#000; --surface-card:#0a0f14; --surface-input:#050a0f; --text-primary:#f8fafc; --text-muted:#ff6b3d; --border-subtle:#121820; }
+.theme-cyber { --color-action:#00ffcc; --color-action-soft:rgba(0,255,204,.2); --color-action-strong:#00b38f; --surface-page:#050505; --surface-card:#121212; --surface-input:#000; --text-primary:#00ffcc; --text-muted:#008877; --border-subtle:rgba(0,255,204,.2); }
+.theme-bw { --color-action:#000; --color-action-soft:#e5e7eb; --color-action-strong:#000; --surface-page:#fff; --surface-card:#fff; --text-primary:#000; --text-muted:#4b5563; --border-subtle:#000; }
+.theme-midnight,.theme-carbon,.theme-oled,.theme-forest-dark,.theme-nocturnal,.theme-cyber { color-scheme:dark; }
