@@ -307,17 +307,26 @@ function RateHistoryChart({ iso }: { iso: string }) {
             <XAxis
               dataKey="date"
               tickFormatter={fmtDate}
-              tick={{ fontSize: 10 }}
+              tick={{ fontSize: 10, fill: '#374151' }}
               minTickGap={24}
             />
             <YAxis
               domain={[min - pad, max + pad]}
-              tick={{ fontSize: 10 }}
+              tick={{ fontSize: 10, fill: '#374151' }}
               width={55}
               tickFormatter={(v: number) => v.toFixed(2)}
             />
             <Tooltip
-              formatter={(value: any) => [Number(value).toFixed(4) + ' ₽', 'Курс']}
+              contentStyle={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #9ca3af',
+                borderRadius: '8px',
+                color: '#111827',
+                boxShadow: '0 4px 12px rgba(17, 24, 39, 0.15)',
+              }}
+              labelStyle={{ color: '#111827', fontWeight: 700 }}
+              itemStyle={{ color: '#111827', fontWeight: 700 }}
+              formatter={(value: any) => [Number(value).toFixed(2) + ' ₽', 'Курс']}
               labelFormatter={(label: any) => fmtDate(String(label))}
             />
             <Line
