@@ -5,5 +5,5 @@ generated = []
 id = "fSQiR0nMIYtfEP0V1FG_-"
 uri = "file://artifacts/smart-fin-manager-design-system/index.html"
 type = "text"
-title = "Smart-FinManager Design System"
-description = "Визуальный каталог извлечённой дизайн-системы: токены, темы, типографика, состояния и финансовые компоненты."
+title = "Smart-FinManager Design System — исправленный preview"
+description = "Самодостаточный визуальный каталог со встроенными токенами и темами. Корректно отображается в Preview и New Tab."
