@@ -21,26 +21,52 @@ export function deleteCurrency(id: string) {
   return prisma.currency.delete({ where: { id } });
 }
 
+const FIAT_DEFAULTS = [
+  { currency: 'рубль', name: 'RUB - Russia (руб)', iso: 'RUB', rate: 1.0, symbol: '₽' },
+  { currency: 'доллар', name: 'USD - USA (US$)', iso: 'USD', rate: 1.0, symbol: '$' },
+  { currency: 'евро', name: 'EUR - European Union (€)', iso: 'EUR', rate: 1.0, symbol: '€' },
+  { currency: 'фунт', name: 'GBP - United Kingdom (£)', iso: 'GBP', rate: 1.0, symbol: '£' },
+  { currency: 'иена', name: 'JPY - Japan (¥)', iso: 'JPY', rate: 1.0, symbol: '¥' },
+  { currency: 'юань', name: 'CNY - China (¥)', iso: 'CNY', rate: 1.0, symbol: '¥' },
+];
+
+const CRYPTO_DEFAULTS = [
+  { currency: 'биткоин', name: 'BTC - Bitcoin (₿)', iso: 'BTC', rate: 1.0, symbol: '₿' },
+  { currency: 'эфириум', name: 'ETH - Ethereum (Ξ)', iso: 'ETH', rate: 1.0, symbol: 'Ξ' },
+  { currency: 'солана', name: 'SOL - Solana', iso: 'SOL', rate: 1.0, symbol: 'SOL' },
+  { currency: 'тезер', name: 'USDT - Tether', iso: 'USDT', rate: 1.0, symbol: '₮' },
+];
+
 export async function seedCurrencies() {
   const count = await prisma.currency.count();
-  if (count > 0) {
-    return;
+
+  // Fiat defaults only apply to a completely empty catalog (existing behavior);
+  // crypto defaults are also added to existing catalogs that predate crypto
+  // support, matched by ISO so admin-renamed entries are not duplicated.
+  const toSeed = count === 0 ? [...FIAT_DEFAULTS, ...CRYPTO_DEFAULTS] : CRYPTO_DEFAULTS;
+
+  const existing = await prisma.currency.findMany({ select: { iso: true } });
+  const existingIsos = new Set(existing.map((c) => c.iso.toUpperCase()));
+
+  const missing = toSeed.filter((cur) => !existingIsos.has(cur.iso));
+  if (missing.length === 0) return;
+
+  // Best effort: give newly seeded crypto entries a real RUB rate right away
+  // instead of the 1.0 placeholder. Seeding must not fail if the source is down.
+  let cryptoRates: Record<string, number> = {};
+  if (missing.some((cur) => isCryptoCode(cur.iso))) {
+    try {
+      cryptoRates = (await getCryptoRates()).rates;
+    } catch (error: any) {
+      console.error("Seed: crypto rates unavailable, using placeholder:", error.message);
+    }
   }
 
-  const defaults = [
-    { currency: 'рубль', name: 'RUB - Russia (руб)', iso: 'RUB', rate: 1.0, symbol: '₽' },
-    { currency: 'доллар', name: 'USD - USA (US$)', iso: 'USD', rate: 1.0, symbol: '$' },
-    { currency: 'евро', name: 'EUR - European Union (€)', iso: 'EUR', rate: 1.0, symbol: '€' },
-    { currency: 'фунт', name: 'GBP - United Kingdom (£)', iso: 'GBP', rate: 1.0, symbol: '£' },
-    { currency: 'иена', name: 'JPY - Japan (¥)', iso: 'JPY', rate: 1.0, symbol: '¥' },
-    { currency: 'юань', name: 'CNY - China (¥)', iso: 'CNY', rate: 1.0, symbol: '¥' },
-  ];
-
-  for (const cur of defaults) {
+  for (const cur of missing) {
     await prisma.currency.upsert({
       where: { currency: cur.currency },
       update: {},
-      create: cur
+      create: { ...cur, rate: cryptoRates[cur.iso] ?? cur.rate }
     });
   }
 }
