@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => {
         // Exclude Replit's own workflow log/state directory: it lives inside the
         // project root and is continuously appended to by the running dev server's
         // own stdout, which otherwise causes an infinite watch->reload->more-logs loop.
-        ignored: ['**/.local/**', '**/.agents/**', '**/.git/**'],
+        ignored: ['**/.local/**', '**/.agents/**', '**/.cache/**', '**/.git/**'],
       },
     },
 

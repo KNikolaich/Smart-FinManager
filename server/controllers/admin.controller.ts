@@ -14,14 +14,20 @@ import * as adminService from "../services/admin.service";
  *   ALTER TABLE "t" RENAME CONSTRAINT "old_pkey" TO "new_pkey";
  *   ALTER TABLE "t" ALTER COLUMN "id" TYPE TEXT USING "id"::TEXT;
  */
-function splitCompoundAlterTable(sql: string): string[] {
+export function splitCompoundAlterTable(sql: string): string[] {
   const out: string[] = [];
 
-  // Naive but sufficient: split on ; then handle each statement.
-  const stmts = sql
+  // Prisma prefixes statements with headings such as "-- AlterTable". Remove
+  // only comment *lines*, rather than dropping the entire semicolon-delimited
+  // block (which may also contain the SQL statement below that heading).
+  const executableSql = sql
+    .split(/\r?\n/)
+    .filter((line) => !line.trimStart().startsWith("--"))
+    .join("\n");
+  const stmts = executableSql
     .split(/;\s*/)
     .map((s) => s.trim())
-    .filter((s) => s && !s.startsWith("--"));
+    .filter(Boolean);
 
   for (const stmt of stmts) {
     // Match: ALTER TABLE <name> <rest>
@@ -49,6 +55,19 @@ function splitCompoundAlterTable(sql: string): string[] {
   }
 
   return out;
+}
+
+const EMPTY_MIGRATION = "-- This is an empty migration.";
+
+function commandOutput(result: { stdout: string; stderr: string }) {
+  return [
+    result.stdout.trim() && `Вывод Prisma:\n${result.stdout.trim()}`,
+    result.stderr.trim() && `Диагностика Prisma:\n${result.stderr.trim()}`,
+  ].filter(Boolean).join("\n\n");
+}
+
+function isEmptyMigration(sql: string) {
+  return sql.trim() === EMPTY_MIGRATION;
 }
 
 export async function listUsers(req: any, res: any) {
@@ -98,16 +117,28 @@ async function runCommand(cmd: string, args: string[]): Promise<{ stdout: string
   });
 }
 
+// Calling `npx prisma` writes its on-demand package metadata under `.cache`.
+// In development Vite observes that write and reloads the app while an admin
+// request is still pending. Run the already-installed local Prisma binary
+// directly so status/migration commands cannot interrupt their own response.
+const prismaCommand = process.platform === "win32"
+  ? "node_modules/.bin/prisma.cmd"
+  : "node_modules/.bin/prisma";
+
 export async function dbStatus(req: any, res: any) {
   try {
-    const result = await runCommand("npx", [
-      "prisma", "migrate", "diff",
+    const result = await runCommand(prismaCommand, [
+      "migrate", "diff",
       "--from-url", process.env.DATABASE_URL!,
       "--to-schema-datamodel", "prisma/schema.prisma",
       "--script",
     ]);
-    const inSync = result.exitCode === 0 && result.stdout.trim() === "-- This is an empty migration.";
-    res.json({ inSync, output: result.stdout || result.stderr, exitCode: result.exitCode });
+    const inSync = result.exitCode === 0 && isEmptyMigration(result.stdout);
+    res.json({
+      inSync,
+      output: commandOutput(result),
+      exitCode: result.exitCode,
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -119,8 +150,8 @@ export async function migrateDb(req: any, res: any) {
     // We intentionally avoid "prisma db push" here because it generates compound
     // ALTER TABLE statements (RENAME CONSTRAINT + ALTER COLUMN in one shot) that
     // certain PostgreSQL server versions reject with a syntax error.
-    const diffResult = await runCommand("npx", [
-      "prisma", "migrate", "diff",
+    const diffResult = await runCommand(prismaCommand, [
+      "migrate", "diff",
       "--from-url", process.env.DATABASE_URL!,
       "--to-schema-datamodel", "prisma/schema.prisma",
       "--script",
@@ -130,13 +161,12 @@ export async function migrateDb(req: any, res: any) {
       return res.json({
         success: false,
         alreadyInSync: false,
-        output: `Ошибка при получении diff схемы:\n${diffResult.stderr || diffResult.stdout}`,
+        output: `Ошибка при получении diff схемы.\n\n${commandOutput(diffResult) || "Prisma не вернула текст ошибки."}`,
         exitCode: diffResult.exitCode,
       });
     }
 
-    const EMPTY = "-- This is an empty migration.";
-    if (diffResult.stdout.trim() === EMPTY) {
+    if (isEmptyMigration(diffResult.stdout)) {
       return res.json({
         success: true,
         alreadyInSync: true,
@@ -149,6 +179,18 @@ export async function migrateDb(req: any, res: any) {
     // with ALTER COLUMN TYPE, then execute each statement separately.
     // Use only stdout — stderr contains npm notices, not SQL.
     const statements = splitCompoundAlterTable(diffResult.stdout);
+    if (statements.length === 0) {
+      return res.json({
+        success: false,
+        alreadyInSync: false,
+        output: [
+          "Не удалось выделить SQL-операции из diff Prisma. Изменения не были применены.",
+          "",
+          commandOutput(diffResult) || "Prisma не вернула SQL-операции.",
+        ].join("\n"),
+        exitCode: 1,
+      });
+    }
     const log: string[] = [`Применяю ${statements.length} SQL-операцию(й):\n`];
     const errors: string[] = [];
 
@@ -165,19 +207,24 @@ export async function migrateDb(req: any, res: any) {
     }
 
     // Step 3 — re-check to confirm sync.
-    const recheckResult = await runCommand("npx", [
-      "prisma", "migrate", "diff",
+    const recheckResult = await runCommand(prismaCommand, [
+      "migrate", "diff",
       "--from-url", process.env.DATABASE_URL!,
       "--to-schema-datamodel", "prisma/schema.prisma",
       "--script",
     ]);
     const nowInSync =
-      recheckResult.exitCode === 0 && recheckResult.text.trim() === EMPTY;
+      recheckResult.exitCode === 0 && isEmptyMigration(recheckResult.stdout);
 
     if (nowInSync) {
       log.push("✅ Схема БД полностью синхронизирована.");
+    } else if (recheckResult.exitCode !== 0) {
+      log.push("❌ Не удалось повторно проверить состояние схемы.");
+      log.push(commandOutput(recheckResult) || "Prisma не вернула текст ошибки.");
     } else {
-      log.push("⚠️ После применения всё ещё есть расхождения — возможно, требуется повторный запуск.");
+      log.push("⚠️ После применения всё ещё есть расхождения. Ниже — SQL, который Prisma всё ещё ожидает:");
+      log.push(recheckResult.stdout.trim() || "Prisma не вернула SQL-операции.");
+      if (recheckResult.stderr.trim()) log.push(`Диагностика Prisma:\n${recheckResult.stderr.trim()}`);
     }
 
     res.json({

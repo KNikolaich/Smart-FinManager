@@ -45,15 +45,24 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
   const [dbMigrateAcceptLoss, setDbMigrateAcceptLoss] = useState(false);
   const [dbStatusLoading, setDbStatusLoading] = useState(false);
   const [dbStatusInSync, setDbStatusInSync] = useState<boolean | null>(null);
+  const [dbStatusOutput, setDbStatusOutput] = useState<string | null>(null);
+  const [dbStatusError, setDbStatusError] = useState<string | null>(null);
 
   const handleDbStatus = async () => {
     setDbStatusLoading(true);
     setDbStatusInSync(null);
+    setDbStatusOutput(null);
+    setDbStatusError(null);
     try {
-      const result = await api.get<{ inSync: boolean }>('/admin/db-status');
+      const result = await api.get<{ inSync: boolean; output?: string; exitCode?: number }>('/admin/db-status');
       setDbStatusInSync(result.inSync);
-    } catch {
+      setDbStatusOutput(result.output || null);
+      if (result.exitCode && result.exitCode !== 0) {
+        setDbStatusError(result.output || `Prisma завершилась с кодом ${result.exitCode}.`);
+      }
+    } catch (err: any) {
       setDbStatusInSync(false);
+      setDbStatusError(err.message || 'Не удалось проверить состояние схемы.');
     } finally {
       setDbStatusLoading(false);
     }
@@ -249,12 +258,24 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
                       <CircleCheck size={14} /> БД синхронизирована
                     </span>
                   )}
-                  {dbStatusInSync === false && (
+                  {dbStatusInSync === false && !dbStatusError && (
                     <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-600">
                       <AlertCircle size={14} /> Есть несинхронизированные изменения
                     </span>
                   )}
                 </div>
+                {dbStatusError && (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                    <p className="font-semibold">Не удалось проверить состояние БД</p>
+                    <pre className="mt-1 max-h-28 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed">{dbStatusError}</pre>
+                  </div>
+                )}
+                {dbStatusOutput && !dbStatusError && dbStatusInSync === false && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    <p className="font-semibold">Prisma ожидает следующие изменения:</p>
+                    <pre className="mt-1 max-h-36 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed">{dbStatusOutput}</pre>
+                  </div>
+                )}
 
                 <label className="flex items-center gap-3 cursor-pointer select-none">
                   <input
