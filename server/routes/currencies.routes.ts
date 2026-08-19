@@ -10,6 +10,7 @@ router.post("/api/currencies", authenticateToken, requireAdmin, validateBody(cur
 router.put("/api/currencies/:id", authenticateToken, requireAdmin, validateBody(currencyUpdateSchema), currenciesController.update);
 router.delete("/api/currencies/:id", authenticateToken, requireAdmin, currenciesController.remove);
 router.post("/api/currencies/seed", authenticateToken, requireAdmin, currenciesController.seed);
+router.get("/api/currencies/crypto-rates", authenticateToken, currenciesController.cryptoRates);
 router.get("/api/currencies/rates/:iso", authenticateToken, currenciesController.rates);
 router.get("/api/currencies/history/:iso", authenticateToken, currenciesController.history);
 

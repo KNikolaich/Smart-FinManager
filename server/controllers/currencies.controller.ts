@@ -55,8 +55,26 @@ export async function history(req: any, res: any) {
     if (error.status) {
       return res.status(error.status).json({ error: error.message });
     }
+    if (error.response?.status === 429) {
+      console.error("Currency history API rate limit exceeded");
+      return res.status(429).json({ error: "Rate limit exceeded for currency history. Please try again later." });
+    }
     console.error("Error fetching currency history:", error.message);
     res.status(500).json({ error: "Failed to fetch currency history" });
+  }
+}
+
+export async function cryptoRates(req: any, res: any) {
+  try {
+    const data = await currenciesService.getCryptoRates();
+    res.json(data);
+  } catch (error: any) {
+    if (error.response?.status === 429) {
+      console.error("Crypto rates API rate limit exceeded");
+      return res.status(429).json({ error: "Rate limit exceeded for crypto rates. Please try again later." });
+    }
+    console.error("Error fetching crypto rates:", error.message);
+    res.status(500).json({ error: "Failed to fetch crypto rates" });
   }
 }
 

@@ -72,6 +72,10 @@ export const currencyService = {
     await api.post('/currencies', currency);
   },
 
+  async getCryptoRates(): Promise<{ rates: Record<string, number> }> {
+    return await api.get('/currencies/crypto-rates');
+  },
+
   async getRateHistory(iso: string): Promise<{ iso: string; days: number; points: RateHistoryPoint[] }> {
     return await api.get(`/currencies/history/${encodeURIComponent(iso)}`);
   },

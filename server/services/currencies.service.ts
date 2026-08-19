@@ -156,9 +156,95 @@ async function fetchHistoryFromCbr(iso: string): Promise<RateHistoryPoint[]> {
   return parseCbrDynamicXml(response.data);
 }
 
+// ---- Cryptocurrencies (CoinGecko public API, RUB-based) ----
+// Supported set is a fixed allowlist: rates must be real, so unknown codes
+// return "no data" instead of invented values.
+
+const SUPPORTED_CRYPTO: Record<string, string> = {
+  BTC: "bitcoin",
+  ETH: "ethereum",
+  SOL: "solana",
+  USDT: "tether",
+  USDC: "usd-coin",
+  BNB: "binancecoin",
+  XRP: "ripple",
+  TON: "the-open-network",
+  DOGE: "dogecoin",
+};
+
+export function isCryptoCode(code: string) {
+  return Object.prototype.hasOwnProperty.call(SUPPORTED_CRYPTO, code);
+}
+
+const COINGECKO_BASE = "https://api.coingecko.com/api/v3";
+
+let cryptoRatesCache: { rates: Record<string, number>; expiresAt: number } | null = null;
+let cryptoRatesInFlight: Promise<Record<string, number>> | null = null;
+
+/** Current RUB price for every supported crypto, one upstream request, cached. */
+export async function getCryptoRates(): Promise<{ rates: Record<string, number> }> {
+  if (cryptoRatesCache && cryptoRatesCache.expiresAt > Date.now()) {
+    return { rates: cryptoRatesCache.rates };
+  }
+
+  if (!cryptoRatesInFlight) {
+    cryptoRatesInFlight = axios
+      .get(`${COINGECKO_BASE}/simple/price`, {
+        timeout: 10000,
+        params: {
+          ids: Object.values(SUPPORTED_CRYPTO).join(","),
+          vs_currencies: "rub",
+        },
+      })
+      .then((response) => {
+        const rates: Record<string, number> = {};
+        for (const [code, geckoId] of Object.entries(SUPPORTED_CRYPTO)) {
+          const value = response.data?.[geckoId]?.rub;
+          if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+            rates[code] = value;
+          }
+        }
+        cryptoRatesCache = { rates, expiresAt: Date.now() + HISTORY_CACHE_TTL_MS };
+        return rates;
+      })
+      .finally(() => {
+        cryptoRatesInFlight = null;
+      });
+  }
+
+  return { rates: await cryptoRatesInFlight };
+}
+
+async function fetchCryptoHistory(code: string): Promise<RateHistoryPoint[]> {
+  const geckoId = SUPPORTED_CRYPTO[code];
+  if (!geckoId) return [];
+
+  const response = await axios.get(`${COINGECKO_BASE}/coins/${geckoId}/market_chart`, {
+    timeout: 10000,
+    params: { vs_currency: "rub", days: HISTORY_DAYS, interval: "daily" },
+  });
+
+  const prices = response.data?.prices;
+  if (!Array.isArray(prices)) return [];
+
+  // CoinGecko returns [timestampMs, price] pairs at daily 00:00 UTC plus a
+  // final in-progress point for "now"; keep one point per date (the last one).
+  const byDate = new Map<string, number>();
+  for (const entry of prices) {
+    if (!Array.isArray(entry) || entry.length < 2) continue;
+    const [ts, price] = entry;
+    if (typeof ts !== "number" || typeof price !== "number" || !Number.isFinite(price) || price <= 0) continue;
+    byDate.set(mskDate(ts), price);
+  }
+
+  return Array.from(byDate.entries())
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([date, rate]) => ({ date, rate }));
+}
+
 export async function getRateHistory(iso: string) {
   const code = iso.toUpperCase();
-  if (!/^[A-Z]{3}$/.test(code)) {
+  if (!/^[A-Z]{3,5}$/.test(code)) {
     const err: any = new Error("Invalid currency code");
     err.status = 400;
     throw err;
@@ -170,7 +256,7 @@ export async function getRateHistory(iso: string) {
   }
 
   const existing = historyInFlight.get(code);
-  const request = existing ?? fetchHistoryFromCbr(code);
+  const request = existing ?? (isCryptoCode(code) ? fetchCryptoHistory(code) : fetchHistoryFromCbr(code));
   if (!existing) historyInFlight.set(code, request);
 
   try {

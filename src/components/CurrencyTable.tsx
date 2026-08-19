@@ -48,22 +48,37 @@ export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) =
   const handleUpdateRates = async () => {
     setUpdatingRates(true);
     try {
-      // One call to get all RUB rates
-      const data = await api.get<any>(`/currencies/rates/RUB`);
-      
-      if (data.result === 'success' && data.conversion_rates) {
-        for (const cur of currencies) {
-          if (cur.iso === 'RUB') continue;
-          
-          const rateToRub = data.conversion_rates[cur.iso];
-          if (rateToRub) {
-            // If 1 RUB = X USD, then 1 USD = 1/X RUB
-            const rate = 1 / rateToRub;
-            await currencyService.updateCurrency({ ...cur, rate });
-          }
+      // One call for all fiat RUB rates + one call for all crypto RUB rates.
+      // Each request is independent so one source failing doesn't block the other.
+      const [fiat, crypto] = await Promise.allSettled([
+        api.get<any>(`/currencies/rates/RUB`),
+        currencyService.getCryptoRates(),
+      ]);
+      const conversionRates = fiat.status === 'fulfilled' && fiat.value?.result === 'success'
+        ? fiat.value.conversion_rates
+        : null;
+      const cryptoRates = crypto.status === 'fulfilled' ? crypto.value.rates : null;
+      if (fiat.status === 'rejected') console.error('Error fetching fiat rates:', fiat.reason);
+      if (crypto.status === 'rejected') console.error('Error fetching crypto rates:', crypto.reason);
+
+      for (const cur of currencies) {
+        if (cur.iso === 'RUB') continue;
+
+        const cryptoRate = cryptoRates?.[cur.iso];
+        if (cryptoRate) {
+          // Crypto rates are already quoted directly in RUB
+          await currencyService.updateCurrency({ ...cur, rate: cryptoRate });
+          continue;
         }
-        await fetchCurrencies();
+
+        const rateToRub = conversionRates?.[cur.iso];
+        if (rateToRub) {
+          // If 1 RUB = X USD, then 1 USD = 1/X RUB
+          const rate = 1 / rateToRub;
+          await currencyService.updateCurrency({ ...cur, rate });
+        }
       }
+      await fetchCurrencies();
     } catch (error) {
       console.error('Error updating rates:', error);
     } finally {
@@ -259,6 +274,13 @@ function RateHistoryChart({ iso }: { iso: string }) {
     const [, m, day] = d.split('-');
     return `${day}.${m}`;
   };
+  // Crypto prices in RUB can reach millions; compact ticks keep the axis readable.
+  const fmtTick = (v: number) => {
+    const abs = Math.abs(v);
+    if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}М`;
+    if (abs >= 10_000) return `${(v / 1_000).toFixed(1)}К`;
+    return v.toFixed(2);
+  };
   const formatSigned = (value: number, decimals: number) => {
     if (value === 0) return value.toFixed(decimals);
     return `${value > 0 ? '+' : ''}${value.toFixed(decimals)}`;
@@ -314,7 +336,7 @@ function RateHistoryChart({ iso }: { iso: string }) {
               domain={[min - pad, max + pad]}
               tick={{ fontSize: 10, fill: '#374151' }}
               width={55}
-              tickFormatter={(v: number) => v.toFixed(2)}
+              tickFormatter={fmtTick}
             />
             <Tooltip
               contentStyle={{
