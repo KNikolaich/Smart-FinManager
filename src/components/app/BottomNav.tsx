@@ -24,11 +24,12 @@ interface BottomNavProps {
 
 export function BottomNav({ activeTab, onChangeTab, onWalletClick, showUserPage, onOpenUserPage, isOnline }: BottomNavProps) {
   return (
-    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 pb-0 h-[54px] shrink-0 z-40 flex items-center justify-center md:relative md:bottom-0 md:left-auto md:translate-x-0 md:max-w-none md:bg-theme-surface md:border-t border-theme-base md:rounded-none landscape:relative landscape:bottom-0 landscape:left-auto landscape:translate-x-0 landscape:w-20 landscape:h-full landscape:px-0 landscape:bg-theme-surface landscape:border-r landscape:border-t-0">
+    <nav aria-label="Основная навигация" className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 pb-0 h-[54px] shrink-0 z-40 flex items-center justify-center md:relative md:bottom-0 md:left-auto md:translate-x-0 md:max-w-none md:bg-theme-surface md:border-t border-theme-base md:rounded-none landscape:relative landscape:bottom-0 landscape:left-auto landscape:translate-x-0 landscape:w-20 landscape:h-full landscape:px-0 landscape:bg-theme-surface landscape:border-r landscape:border-t-0">
       <div className="w-full bg-theme-surface/90 backdrop-blur-xl border border-theme-base shadow-elegant rounded-3xl flex items-center justify-around h-full px-2 md:bg-transparent md:backdrop-blur-none md:border-none md:shadow-none md:rounded-none landscape:flex-col landscape:py-4 landscape:bg-transparent landscape:backdrop-blur-none">
         {/* Wallet button - only shown in landscape, where the header is hidden */}
         <button
           onClick={onWalletClick}
+          aria-label="Открыть главную страницу"
           className="hidden landscape:flex flex-col items-center justify-center w-12 h-10 rounded-[18px] transition-all active:scale-95 text-theme-muted hover:text-theme-primary"
         >
           <Wallet size={20} />
@@ -40,6 +41,8 @@ export function BottomNav({ activeTab, onChangeTab, onWalletClick, showUserPage,
         </div>
         <button
           onClick={() => onChangeTab('dashboard')}
+          aria-label="Дашборд"
+          aria-current={activeTab === 'dashboard' ? 'page' : undefined}
           className={cn(
             "flex flex-col items-center justify-center w-12 h-10 rounded-[18px] transition-all active:scale-95",
             activeTab === 'dashboard' ? "text-theme-primary bg-theme-primary-light/50" : "text-theme-muted hover:text-theme-primary"
@@ -49,6 +52,8 @@ export function BottomNav({ activeTab, onChangeTab, onWalletClick, showUserPage,
         </button>
         <button
           onClick={() => onChangeTab('plan')}
+          aria-label="План"
+          aria-current={activeTab === 'plan' ? 'page' : undefined}
           className={cn(
             "flex flex-col items-center justify-center w-12 h-10 rounded-[18px] transition-all active:scale-95",
             activeTab === 'plan' ? "text-theme-primary bg-theme-primary-light/50" : "text-theme-muted hover:text-theme-primary"
@@ -63,6 +68,8 @@ export function BottomNav({ activeTab, onChangeTab, onWalletClick, showUserPage,
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => onChangeTab('ai')}
+            aria-label="AI-помощник"
+            aria-current={activeTab === 'ai' ? 'page' : undefined}
             className={cn(
               "w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all z-50",
               activeTab === 'ai'
@@ -76,6 +83,8 @@ export function BottomNav({ activeTab, onChangeTab, onWalletClick, showUserPage,
 
         <button
           onClick={() => onChangeTab('analytics')}
+          aria-label="Аналитика"
+          aria-current={activeTab === 'analytics' ? 'page' : undefined}
           className={cn(
             "flex flex-col items-center justify-center w-12 h-10 rounded-[18px] transition-all active:scale-95",
             activeTab === 'analytics' ? "text-theme-primary bg-theme-primary-light/50" : "text-theme-muted hover:text-theme-primary"
@@ -85,6 +94,8 @@ export function BottomNav({ activeTab, onChangeTab, onWalletClick, showUserPage,
         </button>
         <button
           onClick={() => onChangeTab('settings')}
+          aria-label="Настройки"
+          aria-current={activeTab === 'settings' ? 'page' : undefined}
           className={cn(
             "flex flex-col items-center justify-center w-12 h-10 rounded-[18px] transition-all active:scale-95",
             activeTab === 'settings' ? "text-theme-primary bg-theme-primary-light/50" : "text-theme-muted hover:text-theme-primary"
@@ -96,6 +107,7 @@ export function BottomNav({ activeTab, onChangeTab, onWalletClick, showUserPage,
         {/* Profile button - only shown in landscape, where the header is hidden */}
         <button
           onClick={onOpenUserPage}
+          aria-label="Открыть профиль"
           className={cn(
             "hidden landscape:flex flex-col items-center justify-center w-12 h-10 rounded-[18px] transition-all active:scale-95",
             showUserPage ? "text-theme-primary bg-theme-primary-light/50" : "text-theme-muted hover:text-theme-primary"

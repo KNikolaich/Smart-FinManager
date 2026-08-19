@@ -8,18 +8,42 @@
   --shadow-elegant: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
 }
 
-/* Themes */
-root {
-  --primary: #10b981;
-  --primary-light: #d1fae5;
-  --primary-dark: #059669;
+/* Nordic is the default and the semantic roles below are shared by every theme. */
+:root {
+  --primary: #0ea5e9;
+  --primary-light: #e0f2fe;
+  --primary-dark: #0284c7;
   --text-on-primary: #ffffff;
-  --bg-main: #f5f5f4;
+  --bg-main: #f8fafc;
   --bg-surface: #ffffff;
-  --text-main: #111827;
-  --text-muted: #6b7280;
-  --border-color: #f3f4f628;
-  --input-bg: #f9fafb;
+  --text-main: #0f172a;
+  --text-muted: #ff6b3d;
+  --border-color: #e2e8f0;
+  --input-bg: #f8fafc;
+
+  --type-display: 700 2rem/1.05 var(--font-sans);
+  --type-title: 700 1.125rem/1.2 var(--font-sans);
+  --type-body: 400 0.875rem/1.5 var(--font-sans);
+  --type-label: 700 0.625rem/1.2 var(--font-sans);
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px;
+  --radius-control: 12px; --radius-card: 16px; --radius-group: 24px;
+  --radius-nav: 18px; --radius-pill: 999px;
+
+  --color-action: var(--primary);
+  --color-action-soft: var(--primary-light);
+  --color-action-strong: var(--primary-dark);
+  --color-on-action: var(--text-on-primary);
+  --color-income: #10b981;
+  --color-expense: #f43f5e;
+  --color-transfer: #3b82f6;
+  --color-warning: #f59e0b;
+  --surface-page: var(--bg-main);
+  --surface-card: var(--bg-surface);
+  --surface-input: var(--input-bg);
+  --text-primary: var(--text-main);
+  --border-subtle: var(--border-color);
+  --focus-ring: var(--color-action);
 }
 
 .theme-light-green { 
@@ -94,27 +118,32 @@ root {
   }
   
   /* Theme-aware utilities */
-  .bg-theme-primary { background-color: var(--primary); }
-  .text-theme-primary { color: var(--primary); }
-  .text-theme-on-primary { color: var(--text-on-primary); }
-  .border-theme-primary { border-color: var(--primary); }
-  .ring-theme-primary { --tw-ring-color: var(--primary); }
-  .text-theme-primary-dark { color: var(--primary-dark); }
-  .border-theme-primary-dark { border-color: var(--primary-dark); }
-  .hover\:text-theme-primary-dark:hover { color: var(--primary-dark); }
+  .bg-theme-primary { background-color: var(--color-action); }
+  .text-theme-primary { color: var(--color-action); }
+  .text-theme-on-primary { color: var(--color-on-action); }
+  .border-theme-primary { border-color: var(--color-action); }
+  .ring-theme-primary { --tw-ring-color: var(--focus-ring); }
+  .text-theme-primary-dark { color: var(--color-action-strong); }
+  .border-theme-primary-dark { border-color: var(--color-action-strong); }
+  .hover\:text-theme-primary-dark:hover { color: var(--color-action-strong); }
   
   /* Theme-aware background/text */
-  .bg-theme-main { background-color: var(--bg-main); }
-  .bg-theme-surface { background-color: var(--bg-surface); }
-  .text-theme-main { color: var(--text-main); }
+  .bg-theme-main { background-color: var(--surface-page); }
+  .bg-theme-surface { background-color: var(--surface-card); }
+  .text-theme-main { color: var(--text-primary); }
   .text-theme-muted { color: var(--text-muted); }
-  .border-theme-base { border-color: var(--border-color); }
-  .divide-theme-base { border-color: var(--border-color); }
+  .border-theme-base { border-color: var(--border-subtle); }
+  .divide-theme-base { border-color: var(--border-subtle); }
 
-  .bg-theme-primary-light { background-color: var(--primary-light); }
-  .hover\:bg-theme-primary-dark:hover { background-color: var(--primary-dark); }
-  .shadow-theme-primary-light { --tw-shadow-color: var(--primary-light); --tw-shadow: var(--tw-shadow-colored); }
-  .ring-theme-primary-light { --tw-ring-color: var(--primary-light); }
+  .bg-theme-primary-light { background-color: var(--color-action-soft); }
+  .hover\:bg-theme-primary-dark:hover { background-color: var(--color-action-strong); }
+  .shadow-theme-primary-light { --tw-shadow-color: var(--color-action-soft); --tw-shadow: var(--tw-shadow-colored); }
+  .ring-theme-primary-light { --tw-ring-color: var(--color-action-soft); }
+  .text-finance-income { color: var(--color-income); }
+  .text-finance-expense { color: var(--color-expense); }
+  .text-finance-transfer { color: var(--color-transfer); }
+  .bg-finance-income-soft { background-color: color-mix(in srgb, var(--color-income) 10%, transparent); }
+  .bg-finance-expense-soft { background-color: color-mix(in srgb, var(--color-expense) 10%, transparent); }
 }
 
 /* Hide number input arrows */
@@ -131,13 +160,23 @@ input[type=number] {
 body {
   @apply font-sans antialiased transition-colors duration-300;
   overscroll-behavior-y: contain;
-  background-color: var(--bg-main, #f5f5f4);
-  color: var(--text-main, #111827);
+  background-color: var(--surface-page);
+  color: var(--text-primary);
 }
 
 /* Base element overrides for dark mode compatibility */
-.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal {
+.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber {
   color-scheme: dark;
+}
+
+::selection {
+  background-color: var(--color-action-soft);
+  color: var(--text-primary);
+}
+
+:where(button, [href], input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 /* Common element adjustments */
@@ -154,9 +193,9 @@ body {
 
 /* Form Elements */
 input, select, textarea {
-  background-color: var(--bg-surface) !important;
-  color: var(--text-main) !important;
-  border-color: var(--border-color) !important;
+  background-color: var(--surface-input) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-subtle) !important;
 }
 
 input::placeholder, textarea::placeholder {
@@ -279,4 +318,13 @@ table td { border-color: var(--border-color); }
 .markdown-body tr:hover td {
   background-color: var(--bg-main);
   opacity: 0.9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -64,6 +64,7 @@ export function TransactionsSection({
           onClick={() => {
             if (onOpenAddTransaction) onOpenAddTransaction();
           }}
+          aria-label="Добавить операцию"
           className="flex items-center justify-center w-8 h-8 bg-theme-primary/10 border-2 border-theme-primary text-theme-primary rounded-full hover:bg-theme-primary hover:text-theme-on-primary shadow-md shadow-theme-primary/20 active:scale-95 transition-all font-bold"
           title="Добавить операцию"
         >
@@ -138,8 +139,8 @@ export function TransactionsSection({
                       )}>
                         <p className={cn(
                           "text-xs font-bold",
-                          t.type === 'income' ? "text-emerald-500" :
-                          t.type === 'transfer' ? "text-blue-500" :
+                          t.type === 'income' ? "text-finance-income" :
+                          t.type === 'transfer' ? "text-finance-transfer" :
                           "text-theme-main"
                         )}>
                           {t.type === 'income' ? '+' : t.type === 'transfer' ? '' : '-'}{t.amount.toLocaleString()} ₽

@@ -38,7 +38,7 @@ export function TotalBalanceCard({
               filterType: 'period',
               periodRange: { start: subMonths(new Date(), 1), end: new Date() }
             })}
-            className="bg-theme-surface rounded-2xl p-2 text-theme-main border border-theme-base shadow-soft cursor-pointer group relative overflow-hidden"
+            className="bg-theme-surface rounded-3xl p-4 text-theme-main border border-theme-base shadow-soft cursor-pointer group relative overflow-hidden"
           >
             <div className="relative z-10 flex flex-col sm:flex-row items-center gap-6">
               {/* Left Side: Stats (Max Width 400px) */}
@@ -52,7 +52,7 @@ export function TotalBalanceCard({
                     <p className="text-theme-muted text-[10px] sm:text-xs font-bold uppercase tracking-wider pb-[2px]">За прошедший месяц</p>
                     <h2 className={cn(
                       "text-lg sm:text-xl font-bold pb-[5px]",
-                      monthlyRollingBalance >= 0 ? "text-emerald-500" : "text-rose-500"
+                      monthlyRollingBalance >= 0 ? "text-finance-income" : "text-finance-expense"
                     )}>
                       {monthlyRollingBalance > 0 ? "+" : ""}{monthlyRollingBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} ₽
                     </h2>
@@ -68,10 +68,10 @@ export function TotalBalanceCard({
                     className="mt-3 pt-[10px] pb-[10px] pl-[10px] bg-theme-main rounded-[12px] flex items-center gap-3 cursor-pointer hover:bg-theme-primary-light/30 transition-colors"
                   >
                     <div className="bg-theme-primary-light/50 p-[6px] rounded-[12px]">
-                      <TrendingUp className="mr-0 pr-0 w-4 h-4 text-emerald-500" />
+                      <TrendingUp className="mr-0 pr-0 w-4 h-4 text-finance-income" />
                     </div>
                     <div className="leading-[12px] pb-0">
-                      <p className="text-[10px] sm:text-xs pt-0 pb-[6px] px-[6px] rounded-0 font-bold uppercase text-emerald-500/80">Доход</p>
+                      <p className="text-[10px] sm:text-xs pt-0 pb-[6px] px-[6px] rounded-0 font-bold uppercase text-finance-income">Доход</p>
                       <p className="font-semibold pt-[2px] pb-[2px] px-[6px] text-theme-main">{monthlyStats.income.toLocaleString()} ₽</p>
                     </div>
                   </div>
@@ -83,10 +83,10 @@ export function TotalBalanceCard({
                     className="mt-[12px] p-[10px] bg-theme-main rounded-[12px] flex items-center gap-3 cursor-pointer hover:bg-theme-primary-light/30 transition-colors"
                   >
                     <div className="bg-rose-500/10 p-[6px] rounded-[12px]">
-                      <TrendingDown className="mr-0 pr-0 w-4 h-4 text-rose-500" />
+                      <TrendingDown className="mr-0 pr-0 w-4 h-4 text-finance-expense" />
                     </div>
                     <div>
-                      <p className="text-[10px] sm:text-xs pt-[2px] pb-[2px] font-bold uppercase text-rose-500/80">Расход</p>
+                      <p className="text-[10px] sm:text-xs pt-[2px] pb-[2px] font-bold uppercase text-finance-expense">Расход</p>
                       <p className="font-semibold pt-0 text-theme-main">{monthlyStats.expense.toLocaleString()} ₽</p>
                     </div>
                   </div>

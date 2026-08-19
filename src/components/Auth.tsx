@@ -91,7 +91,7 @@ export default function Auth({ onAuth }: AuthProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-theme-main p-4">
-      <div className="w-full max-w-md bg-theme-surface rounded-[32px] shadow-2xl overflow-hidden p-8 border border-theme-base">
+      <div className="w-full max-w-md bg-theme-surface rounded-[32px] shadow-elegant overflow-hidden p-8 border border-theme-base">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-theme-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-theme-primary-light">
             {isLogin ? <LogIn className="text-theme-on-primary w-8 h-8" /> : <UserPlus className="text-theme-on-primary w-8 h-8" />}
@@ -106,14 +106,14 @@ export default function Auth({ onAuth }: AuthProps) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-center gap-3 text-rose-500 text-sm">
+            <div role="alert" className="p-4 bg-finance-expense-soft border border-rose-500/30 rounded-2xl flex items-center gap-3 text-finance-expense text-sm">
               <AlertCircle className="w-5 h-5 shrink-0" />
               <p>{error}</p>
             </div>
           )}
 
           {success && (
-            <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center gap-3 text-emerald-500 text-sm">
+            <div role="status" className="p-4 bg-finance-income-soft border border-emerald-500/30 rounded-2xl flex items-center gap-3 text-finance-income text-sm">
               <div className="w-5 h-5 shrink-0 bg-emerald-500 rounded-full flex items-center justify-center text-white text-[10px]">✓</div>
               <p>{success}</p>
             </div>
@@ -126,6 +126,7 @@ export default function Auth({ onAuth }: AuthProps) {
               <input
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyDown={handleEmailKeyDown}
@@ -142,6 +143,7 @@ export default function Auth({ onAuth }: AuthProps) {
               <input
                 type="password"
                 required
+                autoComplete={isLogin ? 'current-password' : 'new-password'}
                 ref={passwordRef}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
