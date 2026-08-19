@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import { Transaction, Account, Category, Currency, TransactionType } from '../types';
-import { accountCurrencySymbol, defaultTransferRate, isCrossCurrency, formatAmount, formatAmountInputDisplay } from '../lib/currencyUtils';
+import { accountCurrencySymbol, defaultTransferRate, isCrossCurrency, isRubleAccount, formatAmount, formatAmountInputDisplay, rubleRateFromTransferAmounts, sourceAmountFromTarget, targetAmountFromSource } from '../lib/currencyUtils';
 import { X, Trash2, Check, Calculator as CalcIcon, Calendar, ChevronDown, Eye, Edit2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
@@ -39,9 +39,13 @@ export default function EditTransaction({ transaction, accounts, transactions, c
   const crossCurrency = transaction.type === 'transfer' && isCrossCurrency(sourceAccount, targetAccount, currencies);
   const sourceSymbol = accountCurrencySymbol(sourceAccount, currencies);
   const targetSymbol = accountCurrencySymbol(targetAccount, currencies);
+  const rateCurrencySymbol = isRubleAccount(targetAccount, currencies) ? sourceSymbol : targetSymbol;
   const [entrySide, setEntrySide] = useState<'source' | 'target'>('source');
   // Keep the rate saved with the operation; fall back to the directory default.
-  const [rate, setRate] = useState<string>(() => (transaction.exchangeRate != null ? String(transaction.exchangeRate) : ''));
+  const [rate, setRate] = useState<string>(() => {
+    const savedRubleRate = rubleRateFromTransferAmounts(transaction.amount, transaction.targetAmount, sourceAccount, targetAccount, currencies);
+    return savedRubleRate != null ? String(savedRubleRate) : '';
+  });
   const accountPairKey = `${selectedAccountId}|${selectedTargetAccountId}`;
   const initialPairKey = `${transaction.accountId}|${transaction.targetAccountId || ''}`;
   const prevPairKey = useRef(accountPairKey);
@@ -50,17 +54,22 @@ export default function EditTransaction({ transaction, accounts, transactions, c
       prevPairKey.current = accountPairKey;
       // Restore the stored rate when returning to the original pair; otherwise
       // fall back to the directory default for the new pair.
-      setRate(accountPairKey === initialPairKey && transaction.exchangeRate != null ? String(transaction.exchangeRate) : '');
+       const savedRubleRate = rubleRateFromTransferAmounts(transaction.amount, transaction.targetAmount, sourceAccount, targetAccount, currencies);
+       setRate(accountPairKey === initialPairKey && savedRubleRate != null ? String(savedRubleRate) : '');
     }
-  }, [accountPairKey, initialPairKey, transaction.exchangeRate]);
+  }, [accountPairKey, initialPairKey, transaction.amount, transaction.targetAmount, sourceAccount, targetAccount, currencies]);
   const effectiveRate = (() => {
     const manual = Number(String(rate).replace(',', '.'));
     if (rate !== '' && isFinite(manual) && manual > 0) return manual;
     return defaultTransferRate(sourceAccount, targetAccount, currencies);
   })();
   const numEntered = Number(amount);
-  const sourceAmountNum = entrySide === 'source' ? numEntered : Math.round((numEntered / effectiveRate) * 1e8) / 1e8;
-  const targetAmountNum = entrySide === 'source' ? Math.round(numEntered * effectiveRate * 100) / 100 : numEntered;
+  const sourceAmountNum = entrySide === 'source'
+    ? numEntered
+    : sourceAmountFromTarget(numEntered, sourceAccount, targetAccount, currencies, effectiveRate);
+  const targetAmountNum = entrySide === 'source'
+    ? targetAmountFromSource(numEntered, sourceAccount, targetAccount, currencies, effectiveRate)
+    : numEntered;
 
   const handleUpdate = async () => {
     if (!amount || isNaN(Number(amount))) return;
@@ -190,7 +199,7 @@ export default function EditTransaction({ transaction, accounts, transactions, c
                       )}
                       placeholder="0"
                       autoFocus
-                      inputMode="numeric"
+                      inputMode="decimal"
                     />
                     <span className="text-theme-muted shrink-0">
                       {transaction.type === 'transfer' ? (entrySide === 'source' ? sourceSymbol : targetSymbol) : sourceSymbol}
@@ -279,7 +288,7 @@ export default function EditTransaction({ transaction, accounts, transactions, c
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="flex-1">
-                      <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">Курс (1 {sourceSymbol} =)</label>
+                      <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">Курс (1 {rateCurrencySymbol} =)</label>
                       <div className="flex items-center gap-1">
                         <input
                           type="text"
@@ -291,7 +300,7 @@ export default function EditTransaction({ transaction, accounts, transactions, c
                           }}
                           className="w-full bg-transparent outline-none font-bold text-theme-main text-sm border-b border-theme-base focus:border-theme-primary transition-colors py-0.5"
                         />
-                        <span className="text-theme-muted text-xs shrink-0">{targetSymbol}</span>
+                        <span className="text-theme-muted text-xs shrink-0">₽</span>
                       </div>
                     </div>
                     <div className="flex-1 text-right">

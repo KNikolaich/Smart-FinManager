@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import { Transaction, Account, Category, Currency, TransactionType } from '../types';
-import { accountCurrencySymbol, defaultTransferRate, isCrossCurrency, formatAmount, formatAmountInputDisplay } from '../lib/currencyUtils';
+import { accountCurrencySymbol, defaultTransferRate, isCrossCurrency, isRubleAccount, formatAmount, formatAmountInputDisplay, sourceAmountFromTarget, targetAmountFromSource } from '../lib/currencyUtils';
 import { X, Check, Calculator as CalcIcon, Calendar, ChevronDown, Eye, Edit2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
@@ -44,6 +44,7 @@ export default function AddTransaction({ accounts, transactions, categories, cur
   const crossCurrency = type === 'transfer' && isCrossCurrency(sourceAccount, targetAccount, currencies);
   const sourceSymbol = accountCurrencySymbol(sourceAccount, currencies);
   const targetSymbol = accountCurrencySymbol(targetAccount, currencies);
+  const rateCurrencySymbol = isRubleAccount(targetAccount, currencies) ? sourceSymbol : targetSymbol;
   // Side the user is typing the amount for: 'source' = "списываю", 'target' = "получаю"
   const [entrySide, setEntrySide] = useState<'source' | 'target'>(initialData?.targetAmount != null && initialData?.amount == null ? 'target' : 'source');
   const [rate, setRate] = useState<string>(() => (initialData?.exchangeRate != null ? String(initialData.exchangeRate) : ''));
@@ -63,8 +64,12 @@ export default function AddTransaction({ accounts, transactions, categories, cur
     return defaultTransferRate(sourceAccount, targetAccount, currencies);
   })();
   const numEntered = Number(amount);
-  const sourceAmountNum = entrySide === 'source' ? numEntered : Math.round((numEntered / effectiveRate) * 1e8) / 1e8;
-  const targetAmountNum = entrySide === 'source' ? Math.round(numEntered * effectiveRate * 100) / 100 : numEntered;
+  const sourceAmountNum = entrySide === 'source'
+    ? numEntered
+    : sourceAmountFromTarget(numEntered, sourceAccount, targetAccount, currencies, effectiveRate);
+  const targetAmountNum = entrySide === 'source'
+    ? targetAmountFromSource(numEntered, sourceAccount, targetAccount, currencies, effectiveRate)
+    : numEntered;
 
   const prevType = useRef<TransactionType>(type);
 
@@ -179,7 +184,7 @@ export default function AddTransaction({ accounts, transactions, categories, cur
                       )}
                       placeholder="0"
                       autoFocus
-                      inputMode="numeric"
+                      inputMode="decimal"
                     />
                     <span className="text-theme-muted shrink-0">
                       {type === 'transfer' ? (entrySide === 'source' ? sourceSymbol : targetSymbol) : sourceSymbol}
@@ -268,7 +273,7 @@ export default function AddTransaction({ accounts, transactions, categories, cur
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="flex-1">
-                      <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">Курс (1 {sourceSymbol} =)</label>
+                      <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">Курс (1 {rateCurrencySymbol} =)</label>
                       <div className="flex items-center gap-1">
                         <input
                           type="text"
@@ -280,7 +285,7 @@ export default function AddTransaction({ accounts, transactions, categories, cur
                           }}
                           className="w-full bg-transparent outline-none font-bold text-theme-main text-sm border-b border-theme-base focus:border-theme-primary transition-colors py-0.5"
                         />
-                        <span className="text-theme-muted text-xs shrink-0">{targetSymbol}</span>
+                        <span className="text-theme-muted text-xs shrink-0">₽</span>
                       </div>
                     </div>
                     <div className="flex-1 text-right">

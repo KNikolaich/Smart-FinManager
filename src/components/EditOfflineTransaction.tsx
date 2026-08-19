@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Account, Category, Currency } from '../types';
-import { accountCurrencySymbol, defaultTransferRate, isCrossCurrency, formatAmount, formatAmountInputDisplay } from '../lib/currencyUtils';
+import { accountCurrencySymbol, defaultTransferRate, isCrossCurrency, isRubleAccount, formatAmount, formatAmountInputDisplay, rubleRateFromTransferAmounts, sourceAmountFromTarget, targetAmountFromSource } from '../lib/currencyUtils';
 import { X, Trash2, Check, Calculator as CalcIcon, ChevronDown, WifiOff } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
@@ -56,8 +56,12 @@ export default function EditOfflineTransaction({
   const crossCurrency = transaction.type === 'transfer' && isCrossCurrency(sourceAccount, targetAccount, currencies);
   const sourceSymbol = accountCurrencySymbol(sourceAccount, currencies);
   const targetSymbol = accountCurrencySymbol(targetAccount, currencies);
+  const rateCurrencySymbol = isRubleAccount(targetAccount, currencies) ? sourceSymbol : targetSymbol;
   const [entrySide, setEntrySide] = useState<'source' | 'target'>('source');
-  const [rate, setRate] = useState<string>(() => (transaction.exchangeRate != null ? String(transaction.exchangeRate) : ''));
+  const [rate, setRate] = useState<string>(() => {
+    const savedRubleRate = rubleRateFromTransferAmounts(transaction.amount, transaction.targetAmount, sourceAccount, targetAccount, currencies);
+    return savedRubleRate != null ? String(savedRubleRate) : '';
+  });
   const accountPairKey = `${selectedAccountId}|${selectedTargetAccountId}`;
   const prevPairKey = useRef(accountPairKey);
   useEffect(() => {
@@ -72,8 +76,12 @@ export default function EditOfflineTransaction({
     return defaultTransferRate(sourceAccount, targetAccount, currencies);
   })();
   const numEntered = Number(amount);
-  const sourceAmountNum = entrySide === 'source' ? numEntered : Math.round((numEntered / effectiveRate) * 1e8) / 1e8;
-  const targetAmountNum = entrySide === 'source' ? Math.round(numEntered * effectiveRate * 100) / 100 : numEntered;
+  const sourceAmountNum = entrySide === 'source'
+    ? numEntered
+    : sourceAmountFromTarget(numEntered, sourceAccount, targetAccount, currencies, effectiveRate);
+  const targetAmountNum = entrySide === 'source'
+    ? targetAmountFromSource(numEntered, sourceAccount, targetAccount, currencies, effectiveRate)
+    : numEntered;
 
   const handleSave = () => {
     if (!amount || isNaN(Number(amount))) return;
@@ -203,7 +211,7 @@ export default function EditOfflineTransaction({
                       )}
                       placeholder="0"
                       autoFocus
-                      inputMode="numeric"
+                      inputMode="decimal"
                     />
                     <span className="text-theme-muted shrink-0">
                       {transaction.type === 'transfer' ? (entrySide === 'source' ? sourceSymbol : targetSymbol) : sourceSymbol}
@@ -293,7 +301,7 @@ export default function EditOfflineTransaction({
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="flex-1">
-                      <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">Курс (1 {sourceSymbol} =)</label>
+                      <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">Курс (1 {rateCurrencySymbol} =)</label>
                       <div className="flex items-center gap-1">
                         <input
                           type="text"
@@ -305,7 +313,7 @@ export default function EditOfflineTransaction({
                           }}
                           className="w-full bg-transparent outline-none font-bold text-theme-main text-sm border-b border-theme-base focus:border-theme-primary transition-colors py-0.5"
                         />
-                        <span className="text-theme-muted text-xs shrink-0">{targetSymbol}</span>
+                        <span className="text-theme-muted text-xs shrink-0">₽</span>
                       </div>
                     </div>
                     <div className="flex-1 text-right">

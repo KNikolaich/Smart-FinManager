@@ -1,5 +1,5 @@
 import { prisma } from "../prisma";
-import { parseConversionFields } from "./transactions.service";
+import { resolveConversionFields } from "./transactions.service";
 
 const iconMap: Record<string, string> = {
   'железяки': '🛠️', 'кухня': '🛠️', 'мебель и уют': '🛠️', 'мелочной товар': '🛠️', 'ремонт': '🛠️', 'техника': '🛠️', 'туалетные принадлежности': '🛠️',
@@ -39,6 +39,26 @@ async function safeIdFor(
   const existing = await finder(id);
   if (existing && existing.userId !== userId) return undefined;
   return id;
+}
+
+// Imports are upserts, so their account effects must be idempotent. Before
+// replacing an existing transaction we reverse its old effect, then apply the
+// replacement once — including targetAmount for cross-currency transfers.
+async function applyTransactionBalance(tx: any, transaction: any, direction: 1 | -1) {
+  const amount = Number(transaction.amount);
+  const update = (id: string, delta: number) => tx.account.update({
+    where: { id },
+    data: { balance: delta >= 0 ? { increment: delta } : { decrement: -delta } },
+  });
+
+  if (transaction.type === 'expense') {
+    await update(transaction.accountId, -direction * amount);
+  } else if (transaction.type === 'income') {
+    await update(transaction.accountId, direction * amount);
+  } else if (transaction.type === 'transfer' && transaction.targetAccountId) {
+    await update(transaction.accountId, -direction * amount);
+    await update(transaction.targetAccountId, direction * Number(transaction.targetAmount ?? amount));
+  }
 }
 
 export async function importBatch(userId: string, body: any) {
@@ -160,6 +180,13 @@ export async function importBatch(userId: string, body: any) {
         account, targetAccount, category, subcategory, user,
         ...transData
       } = trans;
+      const numericAmount = Number(amount);
+      // Imports can reach this service outside the HTTP schema validator, so
+      // keep the money invariant at the mutation boundary too.
+      if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+        console.error(`Invalid non-positive imported transaction amount: ${amount}. Skipping transaction.`);
+        continue;
+      }
 
       // Map IDs if they were provided in the import
       let mappedAccountId = createdAccounts[accountId] || accountId;
@@ -215,12 +242,17 @@ export async function importBatch(userId: string, body: any) {
       let convTargetAmount: number | null = null;
       let convExchangeRate: number | null = null;
       try {
-        const conv = parseConversionFields(transData.type, Number(amount), {
+        const [sourceAccount, targetAccount] = await Promise.all([
+          prisma.account.findFirst({ where: { id: mappedAccountId, userId } }),
+          mappedTargetAccountId ? prisma.account.findFirst({ where: { id: mappedTargetAccountId, userId } }) : null,
+        ]);
+        if (!sourceAccount) throw new Error("Счёт списания не найден");
+        const conv = await resolveConversionFields(transData.type, numericAmount, {
           targetAmount: transData.targetAmount,
           exchangeRate: transData.exchangeRate,
           accountId: mappedAccountId,
           targetAccountId: mappedTargetAccountId,
-        });
+        }, sourceAccount, targetAccount, { allowLegacyTransfer: true });
         convTargetAmount = conv.targetAmount;
         convExchangeRate = conv.exchangeRate;
       } catch (e: any) {
@@ -239,7 +271,7 @@ export async function importBatch(userId: string, body: any) {
         targetAccountId: mappedTargetAccountId,
         categoryId: mappedCategoryId,
         subcategoryId: mappedSubcategoryId,
-        amount: Number(amount),
+        amount: numericAmount,
         createdAt: createdAt ? new Date(createdAt) : new Date()
       };
       const id = await safeIdFor(
@@ -248,42 +280,17 @@ export async function importBatch(userId: string, body: any) {
         userId
       );
 
-      if (id) {
-        await prisma.transaction.upsert({
-          where: { id },
-          update: transactionData,
-          create: { id, ...transactionData }
-        });
-      } else {
-        await prisma.transaction.create({
-          data: transactionData
-        });
-      }
+      await prisma.$transaction(async (tx) => {
+        const existing = id
+          ? await tx.transaction.findFirst({ where: { id, userId } })
+          : null;
+        if (existing) await applyTransactionBalance(tx, existing, -1);
 
-      // Update balances
-      if (transData.type === 'expense') {
-        await prisma.account.update({
-          where: { id: mappedAccountId },
-          data: { balance: { decrement: Number(amount) } }
-        });
-      } else if (transData.type === 'income') {
-        await prisma.account.update({
-          where: { id: mappedAccountId },
-          data: { balance: { increment: Number(amount) } }
-        });
-      } else if (transData.type === 'transfer' && mappedTargetAccountId) {
-        await prisma.account.update({
-          where: { id: mappedAccountId },
-          data: { balance: { decrement: Number(amount) } }
-        });
-        // Cross-currency transfers credit the target account with targetAmount
-        // (in its own currency); legacy transfers fall back to 1:1.
-        const credited = convTargetAmount != null ? convTargetAmount : Number(amount);
-        await prisma.account.update({
-          where: { id: mappedTargetAccountId },
-          data: { balance: { increment: credited } }
-        });
-      }
+        const saved = existing
+          ? await tx.transaction.update({ where: { id: existing.id }, data: transactionData })
+          : await tx.transaction.create({ data: id ? { id, ...transactionData } : transactionData });
+        await applyTransactionBalance(tx, saved, 1);
+      });
     }
   }
 

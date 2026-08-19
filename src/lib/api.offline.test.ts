@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { safeStorage, pushToOfflineQueue, syncOfflineQueue, describeQueueItem, MAX_QUEUE_SIZE } from './api';
+import { api, safeStorage, pushToOfflineQueue, syncOfflineQueue, describeQueueItem, MAX_QUEUE_SIZE, removeOfflineQueueItem, updateOfflineQueueItem } from './api';
 
 // ---------------------------------------------------------------------------
 // Minimal localStorage shim backed by a plain Map so tests are fully isolated
@@ -146,6 +146,55 @@ describe('offline queue – persistence across reload', () => {
     const queue = JSON.parse(recovered!);
     expect(queue).toHaveLength(1);
     expect(queue[0].endpoint).toBe('/goals');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 1b. Cross-currency transfer cache math
+// ---------------------------------------------------------------------------
+describe('offline cross-currency transfers', () => {
+  it('debits source and credits targetAmount through create, edit, and cancel', async () => {
+    fakeStorage.setItem('api_cache_/initial-data', JSON.stringify({
+      accounts: [
+        { id: 'rub', balance: 10_000, currency: 'RUB' },
+        { id: 'usd', balance: 0, currency: 'USD' },
+      ],
+      transactions: [],
+    }));
+    Object.defineProperty(navigator, 'onLine', { value: false, writable: true, configurable: true });
+
+    await api.post('/transactions', {
+      accountId: 'rub',
+      targetAccountId: 'usd',
+      amount: 9_000,
+      targetAmount: 100,
+      exchangeRate: 90,
+      type: 'transfer',
+      description: 'buy USD',
+    });
+
+    let cache = JSON.parse(safeStorage.getItem('api_cache_/initial-data')!);
+    expect(cache.accounts.find((a: any) => a.id === 'rub').balance).toBe(1_000);
+    expect(cache.accounts.find((a: any) => a.id === 'usd').balance).toBe(100);
+
+    const queueItem = readQueue()[0];
+    expect(updateOfflineQueueItem(queueItem.id, {
+      accountId: 'rub',
+      targetAccountId: 'usd',
+      amount: 4_600,
+      targetAmount: 50,
+      exchangeRate: 92,
+      type: 'transfer',
+    })).toBe(true);
+
+    cache = JSON.parse(safeStorage.getItem('api_cache_/initial-data')!);
+    expect(cache.accounts.find((a: any) => a.id === 'rub').balance).toBe(5_400);
+    expect(cache.accounts.find((a: any) => a.id === 'usd').balance).toBe(50);
+
+    expect(removeOfflineQueueItem(queueItem.id)).toBe(true);
+    cache = JSON.parse(safeStorage.getItem('api_cache_/initial-data')!);
+    expect(cache.accounts.find((a: any) => a.id === 'rub').balance).toBe(10_000);
+    expect(cache.accounts.find((a: any) => a.id === 'usd').balance).toBe(0);
   });
 });
 

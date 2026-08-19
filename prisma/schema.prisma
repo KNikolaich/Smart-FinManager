@@ -89,9 +89,9 @@ model Transaction {
   subcategoryId   String?
   amount          Float
   // For cross-currency transfers: amount credited to the target account in
-  // its own currency, and the exchange rate that was applied (target units
-  // per 1 source unit) fixed at the moment of the operation. Null for
-  // ordinary transactions and legacy 1:1 transfers.
+  // its own currency, and the RUB price of one unit of the exchanged foreign
+  // currency, fixed at the moment of the operation. Null for ordinary
+  // transactions and legacy 1:1 transfers.
   targetAmount    Float?
   exchangeRate    Float?
   type            String

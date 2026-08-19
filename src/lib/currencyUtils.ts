@@ -30,17 +30,85 @@ export function isCrossCurrency(source: Account | undefined, target: Account | u
   return s !== t;
 }
 
-// Default exchange rate for source → target (target units per 1 source unit),
-// derived from the currency directory where Currency.rate is RUB per unit.
-// Returns 1 when either side is unknown or the currencies match.
+// Currency.rate is the price of one currency unit in rubles. Accounts created
+// before `currencyId` was introduced may only have the currency code/symbol.
+export function accountCurrencyRate(account: Account | undefined, currencies: Currency[]): number {
+  const rate = findAccountCurrency(account, currencies)?.rate;
+  return Number.isFinite(rate) && rate! > 0 ? rate! : 1;
+}
+
+export function isRubleAccount(account: Account | undefined, currencies: Currency[]): boolean {
+  const currency = findAccountCurrency(account, currencies);
+  const values = [currency?.iso, currency?.symbol, account?.currency]
+    .filter(Boolean)
+    .map(value => String(value).trim().toUpperCase());
+  return values.includes('RUB') || values.includes('RUR') || values.includes('₽');
+}
+
+// The exchange rate entered for a transfer is always the ruble price of one
+// unit of the foreign currency. For RUB → USD this is USD.rate (for example
+// 90), rather than the inverse 0.011. When a transfer ends in rubles, the
+// source is that foreign currency; otherwise the target is the bought
+// currency. This also gives a useful quote for foreign → foreign transfers.
 export function defaultTransferRate(source: Account | undefined, target: Account | undefined, currencies: Currency[]): number {
   if (!isCrossCurrency(source, target, currencies)) return 1;
-  const sCur = findAccountCurrency(source, currencies);
-  const tCur = findAccountCurrency(target, currencies);
-  // Unresolved side is treated as RUB (rate 1), matching the app-wide default.
-  const sRate = sCur?.rate && sCur.rate > 0 ? sCur.rate : 1;
-  const tRate = tCur?.rate && tCur.rate > 0 ? tCur.rate : 1;
-  return sRate / tRate;
+  return isRubleAccount(target, currencies)
+    ? accountCurrencyRate(source, currencies)
+    : accountCurrencyRate(target, currencies);
+}
+
+// Multiplier from an amount on the source account to an amount on the target
+// account. `rubleRate` is the editable quote returned by defaultTransferRate.
+export function transferAmountMultiplier(
+  source: Account | undefined,
+  target: Account | undefined,
+  currencies: Currency[],
+  rubleRate: number
+): number {
+  const sourceRubleRate = isRubleAccount(target, currencies)
+    ? rubleRate
+    : accountCurrencyRate(source, currencies);
+  const targetRubleRate = isRubleAccount(target, currencies)
+    ? 1
+    : rubleRate;
+  return sourceRubleRate / targetRubleRate;
+}
+
+export function targetAmountFromSource(
+  sourceAmount: number,
+  source: Account | undefined,
+  target: Account | undefined,
+  currencies: Currency[],
+  rubleRate: number
+): number {
+  return Math.round(sourceAmount * transferAmountMultiplier(source, target, currencies, rubleRate) * 100) / 100;
+}
+
+export function sourceAmountFromTarget(
+  targetAmount: number,
+  source: Account | undefined,
+  target: Account | undefined,
+  currencies: Currency[],
+  rubleRate: number
+): number {
+  return Math.round((targetAmount / transferAmountMultiplier(source, target, currencies, rubleRate)) * 1e8) / 1e8;
+}
+
+// Converts a saved pair of amounts to the current quote convention. This
+// keeps older transfers editable after the app switched away from an inverse
+// target-per-source rate.
+export function rubleRateFromTransferAmounts(
+  sourceAmount: number,
+  targetAmount: number | null | undefined,
+  source: Account | undefined,
+  target: Account | undefined,
+  currencies: Currency[]
+): number | null {
+  if (!Number.isFinite(sourceAmount) || sourceAmount <= 0 || !Number.isFinite(targetAmount) || !targetAmount || targetAmount <= 0) {
+    return null;
+  }
+  if (isRubleAccount(target, currencies)) return targetAmount / sourceAmount;
+  return accountCurrencyRate(source, currencies) * sourceAmount / targetAmount;
 }
 
 // Display formatting for the raw amount-input string: groups the integer part

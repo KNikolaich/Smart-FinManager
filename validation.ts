@@ -170,7 +170,7 @@ const transactionTypeEnum = z.enum(["income", "expense", "transfer"]);
 export const transactionCreateSchema = z.object({
   accountId: idString,
   targetAccountId: idString.optional().nullable(),
-  amount: z.coerce.number().finite(),
+  amount: z.coerce.number().finite().positive(),
   // Cross-currency transfer fields: credited amount in the target account's
   // currency and the applied rate. Must be strictly positive when present.
   targetAmount: z.coerce.number().finite().positive().optional().nullable(),

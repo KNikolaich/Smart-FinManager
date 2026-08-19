@@ -144,24 +144,21 @@ async function assertOwnedCategory(userId: string, categoryId: string, label = "
 }
 
 async function validateReferences(userId: string, { accountId, targetAccountId, categoryId, subcategoryId }: any) {
-  await assertOwnedAccount(userId, accountId, "Счёт");
-  if (targetAccountId) {
-    await assertOwnedAccount(userId, targetAccountId, "Счёт получателя");
-  }
+  const account = await assertOwnedAccount(userId, accountId, "Счёт");
+  const targetAccount = targetAccountId
+    ? await assertOwnedAccount(userId, targetAccountId, "Счёт получателя")
+    : null;
   if (categoryId) {
     await assertOwnedCategory(userId, categoryId, "Категория");
   }
   if (subcategoryId) {
     await assertOwnedCategory(userId, subcategoryId, "Подкатегория");
   }
+  return { account, targetAccount };
 }
 
-// Parses and validates the cross-currency transfer fields (targetAmount and
-// exchangeRate). Only transfers may carry them. Returns nulls for ordinary
-// transactions and for transfers without conversion (legacy 1:1 behavior).
-// The server never trusts the client's arithmetic blindly: both values must be
-// finite and positive, and if both are present they must be mutually
-// consistent (targetAmount ≈ amount × exchangeRate).
+// Performs input-only conversion validation. The relationship between rate and
+// credited amount is checked with the actual account currencies below.
 export function parseConversionFields(type: string, numAmount: number, body: any): { targetAmount: number | null; exchangeRate: number | null } {
   const rawTarget = body.targetAmount;
   const rawRate = body.exchangeRate;
@@ -204,24 +201,89 @@ export function parseConversionFields(type: string, numAmount: number, body: any
     throw err;
   }
 
-  // If both are given, they must agree within the precision the client can
-  // actually introduce: targetAmount is rounded to 2 decimals (±0.005) and,
-  // when the user enters the credited side, the source amount is rounded to
-  // 8 decimals (error ≤ rate × 5e-9). No looser relative tolerance is allowed.
-  if (targetAmount !== null && exchangeRate !== null) {
-    const expected = numAmount * exchangeRate;
-    const tolerance = 0.01 + Math.abs(exchangeRate) * 1e-8;
-    if (Math.abs(expected - targetAmount) > tolerance) {
-      const err: any = new Error("Сумма зачисления не соответствует курсу конвертации");
-      err.status = 400;
-      throw err;
-    }
+  return { targetAmount, exchangeRate };
+}
+
+function isRubleCurrency(value: string | null | undefined) {
+  const normalized = String(value || '').trim().toUpperCase();
+  return normalized === 'RUB' || normalized === 'RUR' || normalized === '₽';
+}
+
+async function accountRubleRate(account: { currency: string; currencyId: string | null }) {
+  // The account UI persists currencyId and leaves the legacy `currency`
+  // column at its database default ("RUB"). Match the frontend resolver:
+  // currencyId is authoritative, then the legacy code/name/symbol, then RUB.
+  let currency = account.currencyId
+    ? await prisma.currency.findUnique({ where: { id: account.currencyId } })
+    : null;
+  if (!currency) {
+    currency = await prisma.currency.findFirst({
+      where: {
+        OR: [
+          { iso: { equals: account.currency, mode: 'insensitive' } },
+          { currency: { equals: account.currency, mode: 'insensitive' } },
+          { symbol: account.currency },
+        ],
+      },
+    });
+  }
+  if (!currency && isRubleCurrency(account.currency)) return { rate: 1, isRuble: true };
+  if (!currency || !Number.isFinite(currency.rate) || currency.rate <= 0) {
+    const err: any = new Error(`Не найден корректный рублёвый курс для валюты счёта ${account.currency}`);
+    err.status = 400;
+    throw err;
+  }
+  return {
+    rate: currency.rate,
+    isRuble: isRubleCurrency(currency.iso) || isRubleCurrency(currency.symbol),
+  };
+}
+
+// exchangeRate is the ruble price of one unit of the exchanged foreign
+// currency: both RUB → USD and USD → RUB use 90 for "1 USD = 90 RUB".
+// This is the authoritative target-amount calculation for every write path.
+export async function resolveConversionFields(
+  type: string,
+  numAmount: number,
+  body: any,
+  sourceAccount: { currency: string; currencyId: string | null },
+  targetAccount: { currency: string; currencyId: string | null } | null,
+  options: { allowLegacyTransfer?: boolean } = {},
+): Promise<{ targetAmount: number | null; exchangeRate: number | null }> {
+  const parsed = parseConversionFields(type, numAmount, body);
+  if (type !== 'transfer' || !targetAccount) {
+    if (parsed.targetAmount === null && parsed.exchangeRate === null) return parsed;
+    const err: any = new Error("Для конверсионного перевода требуется счёт получателя");
+    err.status = 400;
+    throw err;
   }
 
-  return {
-    targetAmount: targetAmount ?? (exchangeRate !== null ? Math.round(numAmount * exchangeRate * 100) / 100 : null),
-    exchangeRate: exchangeRate ?? (targetAmount !== null ? targetAmount / numAmount : null),
-  };
+  const [source, target] = await Promise.all([accountRubleRate(sourceAccount), accountRubleRate(targetAccount)]);
+  if (source.isRuble && target.isRuble) {
+    if (parsed.targetAmount === null && parsed.exchangeRate === null) return parsed;
+    const err: any = new Error("Курс конвертации нужен только для разных валют");
+    err.status = 400;
+    throw err;
+  }
+  if (parsed.targetAmount === null && parsed.exchangeRate === null && options.allowLegacyTransfer) {
+    return parsed;
+  }
+
+  // If the target is RUB, the entered rate quotes the source currency.
+  // Otherwise it quotes the bought target currency. When no manual quote is
+  // supplied, always use the appropriate Currency.rate from the directory;
+  // never derive a rate from client-provided targetAmount.
+  const exchangeRate = parsed.exchangeRate ?? (target.isRuble ? source.rate : target.rate);
+  const sourceRate = target.isRuble ? exchangeRate : source.rate;
+  const targetRate = target.isRuble ? 1 : exchangeRate;
+  const expectedTargetAmount = Math.round(numAmount * (sourceRate / targetRate) * 100) / 100;
+
+  if (parsed.targetAmount !== null && Math.abs(parsed.targetAmount - expectedTargetAmount) > 0.01) {
+    const err: any = new Error("Сумма зачисления не соответствует рублёвому курсу конвертации");
+    err.status = 400;
+    throw err;
+  }
+  return { targetAmount: parsed.targetAmount ?? expectedTargetAmount, exchangeRate };
 }
 
 // Amount credited to the target account of a transfer. Legacy transfers
@@ -234,15 +296,14 @@ export async function createTransaction(userId: string, body: any) {
   const { accountId, targetAccountId, amount, type, categoryId, subcategoryId, description, createdAt } = body;
   const numAmount = Number(amount);
 
-  if (isNaN(numAmount)) {
-    const err: any = new Error("Invalid amount");
+  if (!Number.isFinite(numAmount) || numAmount <= 0) {
+    const err: any = new Error("Сумма операции должна быть положительной");
     err.status = 400;
     throw err;
   }
 
-  const { targetAmount, exchangeRate } = parseConversionFields(type, numAmount, body);
-
-  await validateReferences(userId, { accountId, targetAccountId, categoryId, subcategoryId });
+  const { account, targetAccount } = await validateReferences(userId, { accountId, targetAccountId, categoryId, subcategoryId });
+  const { targetAmount, exchangeRate } = await resolveConversionFields(type, numAmount, body, account, targetAccount);
 
   return prisma.$transaction(async (tx) => {
     const transaction = await tx.transaction.create({
@@ -324,13 +385,11 @@ export async function updateTransaction(userId: string, id: string, body: any) {
   const { accountId, targetAccountId, amount, type, categoryId, subcategoryId, description, createdAt } = body;
   const numAmount = Number(amount);
 
-  if (isNaN(numAmount)) {
-    const err: any = new Error("Invalid amount");
+  if (!Number.isFinite(numAmount) || numAmount <= 0) {
+    const err: any = new Error("Сумма операции должна быть положительной");
     err.status = 400;
     throw err;
   }
-
-  const { targetAmount, exchangeRate } = parseConversionFields(type, numAmount, body);
 
   const oldTransaction = await prisma.transaction.findFirst({ where: { id, userId } });
   if (!oldTransaction) {
@@ -339,7 +398,8 @@ export async function updateTransaction(userId: string, id: string, body: any) {
     throw err;
   }
 
-  await validateReferences(userId, { accountId, targetAccountId, categoryId, subcategoryId });
+  const { account, targetAccount } = await validateReferences(userId, { accountId, targetAccountId, categoryId, subcategoryId });
+  const { targetAmount, exchangeRate } = await resolveConversionFields(type, numAmount, body, account, targetAccount);
 
   return prisma.$transaction(async (tx) => {
     // 1. Revert old balance changes
