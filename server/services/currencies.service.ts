@@ -46,103 +46,114 @@ export async function seedCurrencies() {
 }
 
 // ---- Historical rates (30 days, RUB-based) ----
-// Source: Central Bank of Russia daily archives via cbr-xml-daily.ru (no API key).
-// Each archive file contains all currencies for one date, so we cache per-date.
+// The Central Bank's dynamic endpoint returns the complete period for one
+// currency in a single response. The previous archive implementation fetched
+// one file per day, making a cold chart wait for up to 30 network requests.
 
-type DailyRates = Record<string, number>; // ISO -> rate to RUB (per 1 unit)
+type RateHistoryPoint = { date: string; rate: number };
 
 const HISTORY_DAYS = 30;
+const HISTORY_CACHE_TTL_MS = 10 * 60 * 1000;
 const MSK_OFFSET_MS = 3 * 60 * 60 * 1000; // Europe/Moscow is fixed UTC+3 (no DST)
-const MISS_TTL_MS = 10 * 60 * 1000; // re-check unpublished dates every 10 minutes
 
-// Positive results are cached forever (archives are immutable).
-const historyCache = new Map<string, DailyRates>(); // key: YYYY/MM/DD
-// Misses (404 / no data yet) are cached with a short TTL so today's publication can appear.
-const missCache = new Map<string, number>(); // key -> expiry timestamp
-// Global in-flight dedup: concurrent requests for the same date share one fetch.
-const inFlight = new Map<string, Promise<DailyRates | null>>();
+// These are the currencies seeded by the app. They avoid an extra lookup for
+// every ordinary chart; custom CBR-supported currencies use the fallback below.
+const KNOWN_CBR_IDS: Record<string, string> = {
+  USD: "R01235",
+  EUR: "R01239",
+  GBP: "R01035",
+  JPY: "R01820",
+  CNY: "R01375",
+};
 
-// Module-level semaphore bounding total concurrent outbound archive fetches.
-const GLOBAL_CONCURRENCY = 4;
-let activeFetches = 0;
-const fetchWaiters: (() => void)[] = [];
-async function acquireSlot() {
-  if (activeFetches < GLOBAL_CONCURRENCY) {
-    activeFetches++;
-    return;
-  }
-  await new Promise<void>(resolve => fetchWaiters.push(resolve));
-  activeFetches++;
-}
-function releaseSlot() {
-  activeFetches--;
-  const next = fetchWaiters.shift();
-  if (next) next();
-}
+const historyCache = new Map<string, { points: RateHistoryPoint[]; expiresAt: number }>();
+const historyInFlight = new Map<string, Promise<RateHistoryPoint[]>>();
+let cbrIdsCache: { ids: Record<string, string>; expiresAt: number } | null = null;
+let cbrIdsInFlight: Promise<Record<string, string>> | null = null;
 
-// Format a Moscow-calendar date (input: UTC ms timestamp).
-function mskParts(ts: number) {
+function mskDate(ts: number) {
   const d = new Date(ts + MSK_OFFSET_MS);
   const y = d.getUTCFullYear();
   const m = String(d.getUTCMonth() + 1).padStart(2, "0");
   const day = String(d.getUTCDate()).padStart(2, "0");
-  return { key: `${y}/${m}/${day}`, iso: `${y}-${m}-${day}` };
+  return `${y}-${m}-${day}`;
 }
 
-async function doFetchDailyRates(key: string, attempt = 0): Promise<DailyRates | null> {
-  try {
-    const resp = await axios.get(`https://www.cbr-xml-daily.ru/archive/${key}/daily_json.js`, { timeout: 10000 });
-    const valute = resp.data?.Valute;
-    if (!valute || typeof valute !== "object") {
-      missCache.set(key, Date.now() + MISS_TTL_MS);
-      return null;
+function cbrRequestDate(isoDate: string) {
+  const [year, month, day] = isoDate.split("-");
+  return `${day}/${month}/${year}`;
+}
+
+function parseCbrDynamicXml(xml: string): RateHistoryPoint[] {
+  const points: RateHistoryPoint[] = [];
+  const records = xml.matchAll(/<Record\b[^>]*Date="(\d{2})\.(\d{2})\.(\d{4})"[^>]*>([\s\S]*?)<\/Record>/g);
+
+  for (const record of records) {
+    const [, day, month, year, body] = record;
+    const nominal = Number(body.match(/<Nominal>([^<]+)<\/Nominal>/)?.[1]?.replace(",", "."));
+    const value = Number(body.match(/<Value>([^<]+)<\/Value>/)?.[1]?.replace(",", "."));
+    if (Number.isFinite(value) && Number.isFinite(nominal) && nominal > 0) {
+      points.push({ date: `${year}-${month}-${day}`, rate: value / nominal });
     }
-    const rates: DailyRates = { RUB: 1 };
-    for (const code of Object.keys(valute)) {
-      const v = valute[code];
-      if (v && typeof v.Value === "number" && typeof v.Nominal === "number" && v.Nominal > 0) {
-        rates[code] = v.Value / v.Nominal;
-      }
-    }
-    historyCache.set(key, rates);
-    missCache.delete(key);
-    return rates;
-  } catch (e: any) {
-    // 404 = no publication for that date (weekend/holiday, or not published yet).
-    // Cache the miss with a short TTL so later publications can still appear.
-    if (e?.response?.status === 404) {
-      missCache.set(key, Date.now() + MISS_TTL_MS);
-      return null;
-    }
-    // Transient error: retry a couple of times with backoff, then skip this date.
-    if (attempt < 2) {
-      await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
-      return doFetchDailyRates(key, attempt + 1);
-    }
-    return null;
   }
+
+  return points;
 }
 
-async function fetchDailyRates(key: string): Promise<DailyRates | null> {
-  const cached = historyCache.get(key);
-  if (cached) return cached;
-  const missUntil = missCache.get(key);
-  if (missUntil && missUntil > Date.now()) return null;
+async function getCbrIds(): Promise<Record<string, string>> {
+  if (cbrIdsCache && cbrIdsCache.expiresAt > Date.now()) return cbrIdsCache.ids;
+  if (cbrIdsInFlight) return cbrIdsInFlight;
 
-  const existing = inFlight.get(key);
-  if (existing) return existing;
+  cbrIdsInFlight = axios
+    .get("https://www.cbr-xml-daily.ru/daily_json.js", { timeout: 8000 })
+    .then((response) => {
+      const ids: Record<string, string> = { ...KNOWN_CBR_IDS };
+      const valute = response.data?.Valute;
+      if (valute && typeof valute === "object") {
+        for (const [code, value] of Object.entries(valute as Record<string, any>)) {
+          if (typeof value?.ID === "string") ids[code] = value.ID;
+        }
+      }
+      cbrIdsCache = { ids, expiresAt: Date.now() + HISTORY_CACHE_TTL_MS };
+      return ids;
+    })
+    .finally(() => {
+      cbrIdsInFlight = null;
+    });
 
-  const promise = (async () => {
-    await acquireSlot();
-    try {
-      return await doFetchDailyRates(key);
-    } finally {
-      releaseSlot();
-      inFlight.delete(key);
-    }
-  })();
-  inFlight.set(key, promise);
-  return promise;
+  return cbrIdsInFlight;
+}
+
+async function getCbrId(iso: string) {
+  return KNOWN_CBR_IDS[iso] ?? (await getCbrIds())[iso];
+}
+
+async function fetchHistoryFromCbr(iso: string): Promise<RateHistoryPoint[]> {
+  if (iso === "RUB") {
+    const now = Date.now();
+    return Array.from({ length: HISTORY_DAYS }, (_, index) => ({
+      date: mskDate(now - (HISTORY_DAYS - 1 - index) * 24 * 60 * 60 * 1000),
+      rate: 1,
+    }));
+  }
+
+  const cbrId = await getCbrId(iso);
+  if (!cbrId) return [];
+
+  const now = Date.now();
+  const from = mskDate(now - (HISTORY_DAYS - 1) * 24 * 60 * 60 * 1000);
+  const to = mskDate(now);
+  const response = await axios.get("https://www.cbr.ru/scripts/XML_dynamic.asp", {
+    timeout: 8000,
+    params: {
+      date_req1: cbrRequestDate(from),
+      date_req2: cbrRequestDate(to),
+      VAL_NM_RQ: cbrId,
+    },
+    responseType: "text",
+  });
+
+  return parseCbrDynamicXml(response.data);
 }
 
 export async function getRateHistory(iso: string) {
@@ -153,25 +164,22 @@ export async function getRateHistory(iso: string) {
     throw err;
   }
 
-  const now = Date.now();
-  const dates: { key: string; iso: string }[] = [];
-  for (let i = HISTORY_DAYS - 1; i >= 0; i--) {
-    dates.push(mskParts(now - i * 24 * 60 * 60 * 1000));
+  const cached = historyCache.get(code);
+  if (cached && cached.expiresAt > Date.now()) {
+    return { iso: code, days: HISTORY_DAYS, points: cached.points };
   }
 
-  const results = await Promise.all(dates.map(d => fetchDailyRates(d.key)));
+  const existing = historyInFlight.get(code);
+  const request = existing ?? fetchHistoryFromCbr(code);
+  if (!existing) historyInFlight.set(code, request);
 
-  const points: { date: string; rate: number }[] = [];
-  for (let i = 0; i < dates.length; i++) {
-    const day = results[i];
-    if (!day) continue;
-    const rate = code === "RUB" ? 1 : day[code];
-    if (typeof rate === "number" && isFinite(rate)) {
-      points.push({ date: dates[i].iso, rate });
-    }
+  try {
+    const points = await request;
+    historyCache.set(code, { points, expiresAt: Date.now() + HISTORY_CACHE_TTL_MS });
+    return { iso: code, days: HISTORY_DAYS, points };
+  } finally {
+    if (!existing) historyInFlight.delete(code);
   }
-
-  return { iso: code, days: HISTORY_DAYS, points };
 }
 
 export async function getExchangeRates(iso: string) {
