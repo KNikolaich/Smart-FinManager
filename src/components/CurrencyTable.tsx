@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../lib/api';
-import { currencyService } from '../services/currencyService';
+import { currencyService, getRateChange } from '../services/currencyService';
 import { Currency, UserProfile } from '../types';
-import { Plus, Trash2, X, AlertTriangle, Pencil } from 'lucide-react';
+import { Plus, Trash2, X, AlertTriangle, Pencil, ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -254,15 +254,51 @@ function RateHistoryChart({ iso }: { iso: string }) {
   const min = Math.min(...rates);
   const max = Math.max(...rates);
   const pad = (max - min) * 0.1 || Math.abs(max) * 0.01 || 0.01;
+  const rateChange = getRateChange(points);
   const fmtDate = (d: string) => {
     const [, m, day] = d.split('-');
     return `${day}.${m}`;
   };
+  const formatSigned = (value: number, decimals: number) => {
+    if (value === 0) return value.toFixed(decimals);
+    return `${value > 0 ? '+' : ''}${value.toFixed(decimals)}`;
+  };
+  const ChangeIcon = rateChange?.direction === 'up'
+    ? ArrowUpRight
+    : rateChange?.direction === 'down'
+      ? ArrowDownRight
+      : Minus;
+  const changeColor = rateChange?.direction === 'up'
+    ? 'text-emerald-600'
+    : rateChange?.direction === 'down'
+      ? 'text-rose-600'
+      : 'text-theme-muted';
 
   return (
     <div>
-      <div className="text-[10px] font-black uppercase tracking-widest text-theme-muted mb-2 ml-1">
-        {iso} → RUB · 30 дней
+      <div className="flex items-center justify-between gap-3 mb-2 ml-1">
+        <div className="text-[10px] font-black uppercase tracking-widest text-theme-muted">
+          {iso} → RUB · 30 дней
+        </div>
+        {rateChange ? (
+          <div
+            className={cn('flex items-center gap-1.5 text-[11px] font-black tabular-nums', changeColor)}
+            role="status"
+            aria-label={`Изменение курса: ${formatSigned(rateChange.absolute, 4)} рублей, ${
+              rateChange.percent === null ? 'процент недоступен' : `${formatSigned(rateChange.percent, 2)} процентов`
+            }`}
+          >
+            <ChangeIcon className="h-4 w-4 shrink-0" strokeWidth={3} aria-hidden="true" />
+            <span>{formatSigned(rateChange.absolute, 4)} ₽</span>
+            <span className="opacity-70">
+              ({rateChange.percent === null ? '—' : `${formatSigned(rateChange.percent, 2)}%`})
+            </span>
+          </div>
+        ) : (
+          <span className="text-[10px] font-bold text-theme-muted">
+            Недостаточно данных для сравнения
+          </span>
+        )}
       </div>
       <div className="h-48 w-full">
         <ResponsiveContainer width="100%" height="100%">
