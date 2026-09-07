@@ -48,3 +48,45 @@ describe('Calculator decimal input', () => {
     expect(screen.getByTestId('calculator-display').textContent).toBe('1.23');
   });
 });
+
+describe('Calculator keyboard and continuous operations', () => {
+  it('accepts digits, decimal separators, operators, and Enter from the keyboard', () => {
+    const onConfirm = vi.fn();
+    render(<Calculator initialValue="" onConfirm={onConfirm} onCancel={vi.fn()} />);
+
+    for (const key of ['1', ',', '5', '*', '2', '.', '4', 'Enter']) {
+      fireEvent.keyDown(window, { key });
+    }
+
+    expect(screen.getByTestId('calculator-display').textContent).toBe('3.6');
+    click('OK');
+    expect(onConfirm).toHaveBeenCalledWith('3.6');
+  });
+
+  it('shows the intermediate result when the next operator is pressed', () => {
+    render(<Calculator initialValue="100" onConfirm={vi.fn()} onCancel={vi.fn()} />);
+
+    click('Сложить');
+    click('5');
+    click('0');
+    click('0');
+    click('Умножить');
+
+    expect(screen.getByTestId('calculator-display').textContent).toBe('600');
+
+    click('2');
+    click('Вычислить');
+    expect(screen.getByTestId('calculator-display').textContent).toBe('1200');
+  });
+
+  it('lets a repeated operator replace the pending operation', () => {
+    render(<Calculator initialValue="100" onConfirm={vi.fn()} onCancel={vi.fn()} />);
+
+    click('Сложить');
+    click('Умножить');
+    click('2');
+    click('Вычислить');
+
+    expect(screen.getByTestId('calculator-display').textContent).toBe('200');
+  });
+});

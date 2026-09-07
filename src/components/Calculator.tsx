@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Delete, Check, X } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -7,6 +7,23 @@ interface CalculatorProps {
   initialValue: string;
   onConfirm: (value: string) => void;
   onCancel: () => void;
+}
+
+type Operator = '+' | '-' | '*' | '/';
+
+function applyOperation(left: number, right: number, operator: Operator) {
+  if (operator === '/' && right === 0) throw new Error('Division by zero');
+
+  const result = {
+    '+': left + right,
+    '-': left - right,
+    '*': left * right,
+    '/': left / right,
+  }[operator];
+
+  // Keep decimal results while hiding floating-point artifacts such as
+  // 0.1 + 0.2 = 0.30000000000000004.
+  return Number(result.toFixed(10));
 }
 
 export default function Calculator({ initialValue, onConfirm, onCancel }: CalculatorProps) {
@@ -18,17 +35,19 @@ export default function Calculator({ initialValue, onConfirm, onCancel }: Calcul
   );
   const [expression, setExpression] = useState('');
   const [shouldReset, setShouldReset] = useState(false);
+  const [accumulator, setAccumulator] = useState<number | null>(null);
+  const [pendingOperator, setPendingOperator] = useState<Operator | null>(null);
 
-  const handleNumber = (num: string) => {
+  const handleNumber = useCallback((num: string) => {
     if (display === '0' || display === 'Error' || shouldReset) {
       setDisplay(num);
       setShouldReset(false);
     } else {
       setDisplay(display + num);
     }
-  };
+  }, [display, shouldReset]);
 
-  const handleDecimal = () => {
+  const handleDecimal = useCallback(() => {
     if (display === 'Error' || shouldReset) {
       setDisplay('0.');
       setShouldReset(false);
@@ -38,68 +57,127 @@ export default function Calculator({ initialValue, onConfirm, onCancel }: Calcul
     if (!display.includes('.')) {
       setDisplay(`${display}.`);
     }
-  };
+  }, [display, shouldReset]);
 
-  const handleOperator = (op: string) => {
+  const handleOperator = useCallback((op: Operator) => {
     if (display === 'Error') return;
-    setExpression(display + ' ' + op + ' ');
-    setShouldReset(true);
-  };
 
-  const calculate = () => {
-    if (!expression) return;
-    try {
-      const fullExpression = expression + display;
-      // Basic math parsing without eval for safety
-      const parts = fullExpression.split(' ');
-      let result = parseFloat(parts[0]);
-      if (!Number.isFinite(result)) throw new Error('Invalid operand');
-      
-      for (let i = 1; i < parts.length; i += 2) {
-        const operator = parts[i];
-        const nextValue = parseFloat(parts[i + 1]);
-        if (!Number.isFinite(nextValue)) throw new Error('Invalid operand');
-        if (operator === '/' && nextValue === 0) throw new Error('Division by zero');
-        if (operator === '+') result += nextValue;
-        if (operator === '-') result -= nextValue;
-        if (operator === '*') result *= nextValue;
-        if (operator === '/') result /= nextValue;
+    const currentValue = Number(display);
+    if (!Number.isFinite(currentValue)) return;
+
+    let nextAccumulator = currentValue;
+
+    if (accumulator !== null && pendingOperator) {
+      // Pressing another operator evaluates the pending operation immediately,
+      // just like a desktop calculator. Repeated operators only replace the
+      // pending operator instead of applying the displayed value twice.
+      if (!shouldReset) {
+        try {
+          nextAccumulator = applyOperation(accumulator, currentValue, pendingOperator);
+          setDisplay(nextAccumulator.toString());
+        } catch {
+          setDisplay('Error');
+          setExpression('');
+          setAccumulator(null);
+          setPendingOperator(null);
+          setShouldReset(true);
+          return;
+        }
+      } else {
+        nextAccumulator = accumulator;
       }
-      
-      // Keep decimal results while hiding floating-point artifacts such as
-      // 0.1 + 0.2 = 0.30000000000000004.
-      const finalResult = Number(result.toFixed(10));
+    }
+
+    setAccumulator(nextAccumulator);
+    setPendingOperator(op);
+    setExpression(`${nextAccumulator} ${op} `);
+    setShouldReset(true);
+  }, [accumulator, display, pendingOperator, shouldReset]);
+
+  const calculate = useCallback(() => {
+    if (accumulator === null || !pendingOperator || shouldReset) return;
+
+    try {
+      const currentValue = Number(display);
+      if (!Number.isFinite(currentValue)) throw new Error('Invalid operand');
+
+      const finalResult = applyOperation(accumulator, currentValue, pendingOperator);
       setDisplay(finalResult.toString());
       setExpression('');
+      setAccumulator(null);
+      setPendingOperator(null);
       setShouldReset(true);
       return finalResult;
-    } catch (e) {
+    } catch {
       setDisplay('Error');
+      setExpression('');
+      setAccumulator(null);
+      setPendingOperator(null);
+      setShouldReset(true);
     }
-  };
+  }, [accumulator, display, pendingOperator, shouldReset]);
 
-  const handleBackspace = () => {
+  const handleBackspace = useCallback(() => {
+    if (display === 'Error' || shouldReset) {
+      setDisplay('0');
+      setShouldReset(false);
+      return;
+    }
+
     if (display.length > 1) {
       setDisplay(display.slice(0, -1));
     } else {
       setDisplay('0');
     }
-  };
+  }, [display, shouldReset]);
 
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
     setDisplay('0');
     setExpression('');
-  };
+    setAccumulator(null);
+    setPendingOperator(null);
+    setShouldReset(false);
+  }, []);
 
-  const handleConfirm = () => {
+  const handleConfirm = useCallback(() => {
     // If there's an active expression, calculate first
     let finalValue = display;
-    if (expression) {
+    if (pendingOperator && !shouldReset) {
       const result = calculate();
       if (result !== undefined) finalValue = result.toString();
     }
-    onConfirm(finalValue);
-  };
+    if (finalValue !== 'Error') onConfirm(finalValue);
+  }, [calculate, display, onConfirm, pendingOperator, shouldReset]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (/^\d$/.test(event.key)) {
+        event.preventDefault();
+        handleNumber(event.key);
+      } else if (event.key === '.' || event.key === ',') {
+        event.preventDefault();
+        handleDecimal();
+      } else if (['+', '-', '*', '/'].includes(event.key)) {
+        event.preventDefault();
+        handleOperator(event.key as Operator);
+      } else if (event.key === 'Enter' || event.key === '=') {
+        event.preventDefault();
+        calculate();
+      } else if (event.key === 'Backspace') {
+        event.preventDefault();
+        handleBackspace();
+      } else if (event.key === 'Delete') {
+        event.preventDefault();
+        handleClear();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        onCancel();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [calculate, handleBackspace, handleClear, handleDecimal, handleNumber, handleOperator, onCancel]);
 
   const buttons = [
     { label: 'AC', action: handleClear, className: 'text-rose-500 font-bold', ariaLabel: 'Очистить' },
