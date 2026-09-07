@@ -160,7 +160,14 @@ export default function Calculator({ initialValue, onConfirm, onCancel }: Calcul
       } else if (['+', '-', '*', '/'].includes(event.key)) {
         event.preventDefault();
         handleOperator(event.key as Operator);
-      } else if (event.key === 'Enter' || event.key === '=') {
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        if (pendingOperator && !shouldReset) {
+          calculate();
+        } else if (shouldReset && accumulator === null) {
+          handleConfirm();
+        }
+      } else if (event.key === '=') {
         event.preventDefault();
         calculate();
       } else if (event.key === 'Backspace') {
@@ -177,7 +184,7 @@ export default function Calculator({ initialValue, onConfirm, onCancel }: Calcul
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [calculate, handleBackspace, handleClear, handleDecimal, handleNumber, handleOperator, onCancel]);
+  }, [accumulator, calculate, handleBackspace, handleClear, handleConfirm, handleDecimal, handleNumber, handleOperator, onCancel, pendingOperator, shouldReset]);
 
   const buttons = [
     { label: 'AC', action: handleClear, className: 'text-rose-500 font-bold', ariaLabel: 'Очистить' },

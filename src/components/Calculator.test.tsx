@@ -50,7 +50,7 @@ describe('Calculator decimal input', () => {
 });
 
 describe('Calculator keyboard and continuous operations', () => {
-  it('accepts digits, decimal separators, operators, and Enter from the keyboard', () => {
+  it('calculates on the first Enter and confirms on the second Enter', () => {
     const onConfirm = vi.fn();
     render(<Calculator initialValue="" onConfirm={onConfirm} onCancel={vi.fn()} />);
 
@@ -59,7 +59,9 @@ describe('Calculator keyboard and continuous operations', () => {
     }
 
     expect(screen.getByTestId('calculator-display').textContent).toBe('3.6');
-    click('OK');
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(window, { key: 'Enter' });
     expect(onConfirm).toHaveBeenCalledWith('3.6');
   });
 
