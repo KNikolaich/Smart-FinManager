@@ -1,9 +1,18 @@
-const CACHE_NAME = 'finance-app-v3';
+const CACHE_NAME = 'finance-app-v4';
 const OFFLINE_URL = '/offline.html';
+const IS_DEV_PREVIEW =
+  self.location.hostname === 'localhost' ||
+  self.location.hostname === '127.0.0.1' ||
+  self.location.hostname.endsWith('.replit.dev');
 // Shell files pre-cached on install so the app loads even when refreshed offline
 const SHELL_URLS = ['/', '/index.html', '/manifest.json', OFFLINE_URL];
 
 self.addEventListener('install', (e) => {
+  if (IS_DEV_PREVIEW) {
+    e.waitUntil(self.skipWaiting());
+    return;
+  }
+
   e.waitUntil(
     caches.open(CACHE_NAME)
       .then(c => c.addAll(SHELL_URLS))
@@ -12,17 +21,34 @@ self.addEventListener('install', (e) => {
 });
 
 self.addEventListener('activate', (e) => {
-  // Remove stale caches from previous versions
   e.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
-      ))
-      .then(() => self.clients.claim())  // take control of all tabs immediately
+    (async () => {
+      const keys = await caches.keys();
+      const staleFinanceCaches = keys.filter(key =>
+        key.startsWith('finance-app-') &&
+        (IS_DEV_PREVIEW || key !== CACHE_NAME)
+      );
+
+      await Promise.all(
+        staleFinanceCaches.map(key => caches.delete(key))
+      );
+
+      await self.clients.claim();
+
+      // A stale development worker can keep serving broken Vite modules to every
+      // new tab. Reload controlled previews once after v4 takes over and clears it.
+      if (IS_DEV_PREVIEW && staleFinanceCaches.length > 0) {
+        const windows = await self.clients.matchAll({ type: 'window' });
+        await Promise.all(windows.map(client => client.navigate(client.url)));
+      }
+    })()
   );
 });
 
 self.addEventListener('fetch', (e) => {
+  // Vite module URLs are stable in development and must never be cache-first.
+  if (IS_DEV_PREVIEW) return;
+
   const { request } = e;
   const url = new URL(request.url);
 
