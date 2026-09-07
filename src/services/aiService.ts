@@ -94,6 +94,15 @@ export const processUserMessage = async (
 ): Promise<AIResponse> => {
   const mainAccounts = accounts.filter(a => a.showOnDashboard && !a.isArchived);
   
+  const now = new Date();
+  const localDate = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0')
+  ].join('-');
+  const localWeekday = new Intl.DateTimeFormat('ru-RU', { weekday: 'long' }).format(now);
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'local';
+
   const systemInstruction = `Ты — мудрый и дружелюбный финансовый ассистент, как понимающий старший товарищ. Твоя цель — помогать пользователю управлять деньгами легко и без стресса. Говори по-дружески, но конкретно.
   
   Твой тон: теплый, поддерживающий, уверенный. Ты не просто бот, ты — наставник, который уже все сделал за пользователя.
@@ -124,7 +133,15 @@ export const processUserMessage = async (
   - If you cannot find a matching ID for an account or category mentioned by the user, set intent to "unknown" and ask for clarification.
   - You MUST return the intent and data even if some parameters are missing, as long as you have identified the intent and at least ONE parameter.
   - Only set intent to "unknown" and ask for clarification if more than ONE required parameter is missing.
-  - For transaction intent, required fields in "data" are: type, amount, accountId, accountName, categoryId.
+  - For transaction intent, required fields in "data" are: type, amount, accountId, accountName, categoryId, createdAt.
+  - TRANSACTION DATE:
+    - Always return the transaction date in data.createdAt as YYYY-MM-DD or a valid ISO 8601 timestamp.
+    - Resolve relative Russian dates from the current LOCAL date supplied in the user prompt: "сегодня", "вчера", "позавчера", "три дня назад", "на прошлой неделе".
+    - Resolve weekdays according to the wording: "в прошлую пятницу" is in the past; "в следующую пятницу" is in the future.
+    - Resolve explicit dates such as "5 сентября", "05.09", "5 сентября 2025" and "15.10.2026".
+    - Future transaction dates are allowed and must be preserved: "завтра", "послезавтра", "в следующую среду", or an explicit future date.
+    - If the user does not mention a date, use the supplied current local date.
+    - Never silently replace a mentioned date with today.
   - **PHRASING**: Never ask for confirmation if you have all the data. Communicate that the action is DONE. 
     - Use phrases like: "Записал твой расход...", "Добавил операцию в базу...", "Готово, отметил это в журнале...", "Сделано! Твои траты по категории... учтены."
     - Be empathetic: "Вижу, зашел перекусить? Отметил твой обед в расходах по карте...", "Пополнил твой счет..., молодец, так держать!"
@@ -146,6 +163,7 @@ export const processUserMessage = async (
       - targetAccountId: string (required for transfers)
       - categoryId: string (required)
       - description: string (optional)
+      - createdAt: string (required; YYYY-MM-DD or ISO 8601, may be in the past or future)
   - goal:
       - name: string (required)
       - targetAmount: number (required)
@@ -157,7 +175,10 @@ export const processUserMessage = async (
   `;
 
   const userPrompt = `User message: "${text}"
-Current date: ${new Date().toISOString()}
+Current instant (UTC): ${now.toISOString()}
+Current LOCAL date: ${localDate}
+Current LOCAL weekday: ${localWeekday}
+User time zone: ${timeZone}
 
 REFERENCE DATA:
 - Accounts: ${JSON.stringify(mainAccounts.map(a => ({ id: a.id, name: a.name, aliases: a.aliases ? a.aliases.split(',').map((s: string) => s.trim()).filter(Boolean) : [] })))}

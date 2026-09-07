@@ -8,6 +8,7 @@ import { api } from '../lib/api';
 import { Account, Category, Transaction, Goal, Plan, Message } from '../types';
 import { SimpleMarkdown } from './ui/InteractiveMarkdown';
 import { cn } from '../lib/utils';
+import { normalizeTransactionDate } from '../lib/transactionDate';
 
 interface AIAssistantProps {
   accounts: Account[];
@@ -255,6 +256,8 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
           throw new Error('Не удалось определить корректную сумму операции.');
         }
 
+        const createdAt = normalizeTransactionDate(data.createdAt ?? data.date);
+
         if (data.type === 'transfer') {
           let foundTargetAccount = findAccount(data.targetAccountId, data.targetAccountName);
 
@@ -273,7 +276,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
             amount,
             type: 'transfer',
             description: data.description || `Перевод: ${sourceAcc?.name} -> ${targetAcc?.name}`,
-            createdAt: new Date().toISOString()
+            createdAt
           });
         } else {
           await api.post('/transactions', {
@@ -282,7 +285,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
             amount,
             type: data.type,
             description: data.description || '',
-            createdAt: new Date().toISOString()
+            createdAt
           });
         }
         if (onRefresh) onRefresh();
@@ -413,7 +416,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
               if (onOpenAddTransaction) {
                 onOpenAddTransaction({
                   ...result.data,
-                  createdAt: new Date().toISOString()
+                  createdAt: normalizeTransactionDate(result.data?.createdAt ?? result.data?.date)
                 });
               }
             }
