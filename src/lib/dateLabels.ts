@@ -25,28 +25,20 @@ export function getRelativeDateLabel(date: Date, now: Date = new Date()): string
 
   const monthsAgo = differenceInCalendarMonths(now, date);
   if (daysAgo >= 28 && monthsAgo > 0) {
-    return monthsAgo === 1
-      ? 'месяц назад'
-      : `${monthsAgo} ${plural(monthsAgo, 'месяц', 'месяца', 'месяцев')} назад`;
+    return `${monthsAgo} мес. назад`;
   }
   if (daysAgo <= -28 && monthsAgo < 0) {
     const monthsAhead = Math.abs(monthsAgo);
-    return monthsAhead === 1
-      ? 'через месяц'
-      : `через ${monthsAhead} ${plural(monthsAhead, 'месяц', 'месяца', 'месяцев')}`;
+    return `через ${monthsAhead} мес.`;
   }
 
   if (daysAgo >= 7) {
     const weeks = Math.floor(daysAgo / 7);
-    return weeks === 1
-      ? 'неделю назад'
-      : `${weeks} ${plural(weeks, 'неделю', 'недели', 'недель')} назад`;
+    return `${weeks} нед. назад`;
   }
   if (daysAgo <= -7) {
     const weeks = Math.floor(Math.abs(daysAgo) / 7);
-    return weeks === 1
-      ? 'через неделю'
-      : `через ${weeks} ${plural(weeks, 'неделю', 'недели', 'недель')}`;
+    return `через ${weeks} нед.`;
   }
 
   if (daysAgo > 0) {
@@ -61,7 +53,7 @@ export function formatTransactionDateHeading(dateKey: string, now: Date = new Da
   const date = dateFromKey(dateKey);
   return {
     date: format(date, 'dd MMMM', { locale: ru }),
-    weekday: format(date, 'EEEE', { locale: ru }),
+    weekday: format(date, 'EEEEEE', { locale: ru }),
     relative: getRelativeDateLabel(date, now),
   };
 }

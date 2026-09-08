@@ -12,16 +12,16 @@ describe('transaction date labels', () => {
   });
 
   it('labels weeks and months in both directions', () => {
-    expect(getRelativeDateLabel(dateFromKey('2026-08-25'), now)).toBe('2 недели назад');
-    expect(getRelativeDateLabel(dateFromKey('2026-08-08'), now)).toBe('месяц назад');
-    expect(getRelativeDateLabel(dateFromKey('2026-09-22'), now)).toBe('через 2 недели');
-    expect(getRelativeDateLabel(dateFromKey('2026-10-08'), now)).toBe('через месяц');
+    expect(getRelativeDateLabel(dateFromKey('2026-08-25'), now)).toBe('2 нед. назад');
+    expect(getRelativeDateLabel(dateFromKey('2026-08-08'), now)).toBe('1 мес. назад');
+    expect(getRelativeDateLabel(dateFromKey('2026-09-22'), now)).toBe('через 2 нед.');
+    expect(getRelativeDateLabel(dateFromKey('2026-10-08'), now)).toBe('через 1 мес.');
   });
 
   it('formats the calendar date and weekday in Russian', () => {
     expect(formatTransactionDateHeading('2026-09-08', now)).toEqual({
       date: '08 сентября',
-      weekday: 'вторник',
+      weekday: 'вт',
       relative: 'сегодня',
     });
   });
