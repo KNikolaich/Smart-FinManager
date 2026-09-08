@@ -1,9 +1,9 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { Transaction, Category, Account, Currency } from '../types';
 import { accountCurrencySymbol } from '../lib/currencyUtils';
-import { format } from 'date-fns';
+import { addMonths, endOfMonth, format, startOfMonth, subMonths } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { X, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy, ChevronDown, Search, Loader2, WifiOff, Clock, CalendarDays } from 'lucide-react';
+import { X, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy, ChevronDown, ChevronLeft, ChevronRight, Search, Loader2, WifiOff, Clock } from 'lucide-react';
 import { GenericContextMenu } from './ui/GenericContextMenu';
 import { AnimatePresence } from 'motion/react';
 import { cn, getTransactionDisplayTitle } from '../lib/utils';
@@ -338,6 +338,13 @@ export default function TransactionHistory({
     });
   };
 
+  const selectMonthPeriod = (month: Date) => {
+    setPendingNavigationDate(null);
+    setSelectedMonth(month);
+    setCustomStartDate(format(startOfMonth(month), 'yyyy-MM-dd'));
+    setCustomEndDate(format(endOfMonth(month), 'yyyy-MM-dd'));
+  };
+
   const handleContextMenuAction = (action: 'create' | 'copy') => {
     if (!contextMenu) return;
 
@@ -500,27 +507,39 @@ export default function TransactionHistory({
         <div className="py-3 px-4 bg-theme-main flex flex-col gap-4 shrink-0 border-b border-theme-base/30">
           <div className="flex items-center justify-between">
             {/* Top Row / Left Side: Date and Type Filter */}
-            <div className="flex items-center justify-between min-[550px]:justify-start gap-4">
-              <button
-                onClick={() => setCalendarDate(selectedMonth)}
-                className="flex items-center gap-2 bg-theme-surface py-1.5 px-3 rounded-xl border border-theme-base hover:border-theme-primary/40 transition-colors"
-                aria-label="Открыть календарь"
-              >
-                <CalendarDays className="w-4 h-4 text-theme-primary shrink-0" />
-                <div className="text-center min-w-[90px]">
+            <div className="flex items-center justify-between min-[550px]:justify-start gap-2">
+              <div className="flex items-stretch bg-theme-surface rounded-xl border border-theme-base overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => selectMonthPeriod(subMonths(selectedMonth, 1))}
+                  className="w-6 flex items-center justify-center text-theme-primary hover:bg-theme-primary/10 transition-colors"
+                  aria-label="Предыдущий месяц"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCalendarDate(selectedMonth)}
+                  className="py-1.5 px-1 text-center min-w-[82px] hover:bg-theme-primary/5 transition-colors"
+                  aria-label="Открыть календарь"
+                >
                   <p className="text-[10px] font-bold text-theme-main leading-none">
-                    {customStartDate || customEndDate ? (
-                      <span className="text-[9px] text-theme-primary">Фильтр дат</span>
-                    ) : (
-                      <span className="capitalize">{format(selectedMonth, 'LLLL yyyy', { locale: ru })}</span>
-                    )}
+                    <span className="capitalize">{format(selectedMonth, 'LLLL yyyy', { locale: ru })}</span>
                   </p>
                   <div className="flex justify-center gap-2 mt-0.5">
                     <span className="text-[8px] font-bold text-emerald-500">+{visibleMonthStats.income.toLocaleString()}</span>
                     <span className="text-[8px] font-bold text-rose-500">-{visibleMonthStats.expense.toLocaleString()}</span>
                   </div>
-                </div>
-              </button>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectMonthPeriod(addMonths(selectedMonth, 1))}
+                  className="w-6 flex items-center justify-center text-theme-primary hover:bg-theme-primary/10 transition-colors"
+                  aria-label="Следующий месяц"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
 
               <div className="flex items-center gap-2 shrink-0">
                 {/* Type Filter */}
