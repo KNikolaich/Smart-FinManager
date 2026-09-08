@@ -160,7 +160,7 @@ export interface PlanData {
   rows: PlanRow[];
   pastRows?: PlanRow[];
   config: PlanConfig;
-  comment: string;
+  comment: string | PlanNotesPayload;
   updatedAt: string;
   cashback?: CashbackData;
   credit?: {
@@ -168,6 +168,18 @@ export interface PlanData {
     rate: number;
     term: number;
   };
+}
+
+export interface PlanNote {
+  id: string;
+  title: string;
+  content: string;
+}
+
+export interface PlanNotesPayload {
+  version: 1;
+  activeNoteId: string;
+  notes: PlanNote[];
 }
 
 export interface BalanceHistory {
