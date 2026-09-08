@@ -1,9 +1,9 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { Transaction, Category, Account, Currency } from '../types';
 import { accountCurrencySymbol } from '../lib/currencyUtils';
-import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { X, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy, ChevronDown, Search, Loader2, WifiOff, Clock } from 'lucide-react';
+import { X, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy, ChevronDown, Search, Loader2, WifiOff, Clock, CalendarDays } from 'lucide-react';
 import { GenericContextMenu } from './ui/GenericContextMenu';
 import { AnimatePresence } from 'motion/react';
 import { cn, getTransactionDisplayTitle } from '../lib/utils';
@@ -153,6 +153,9 @@ export default function TransactionHistory({
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const requestSeq = useRef(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
+  const scrollFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
@@ -219,16 +222,14 @@ export default function TransactionHistory({
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, transaction: Transaction } | null>(null);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // Date range sent to the server: either the custom range or the selected month
+  // By default the history is continuous across all months. A date range is
+  // only sent when the user explicitly selects one in filters/calendar.
   const { effectiveStartDate, effectiveEndDate } = useMemo(() => {
-    if (customStartDate || customEndDate) {
-      return { effectiveStartDate: customStartDate || undefined, effectiveEndDate: customEndDate || undefined };
-    }
     return {
-      effectiveStartDate: format(startOfMonth(selectedMonth), 'yyyy-MM-dd'),
-      effectiveEndDate: format(endOfMonth(selectedMonth), 'yyyy-MM-dd'),
+      effectiveStartDate: customStartDate || undefined,
+      effectiveEndDate: customEndDate || undefined,
     };
-  }, [selectedMonth, customStartDate, customEndDate]);
+  }, [customStartDate, customEndDate]);
 
   // All category ids matching the selected filter (parent + its subcategories)
   const categoryIdsFilter = useMemo(() => {
@@ -301,20 +302,31 @@ export default function TransactionHistory({
 
   // Refetch page 1 whenever any filter (or the parent's refresh signal) changes
   useEffect(() => {
+    scrollContainerRef.current?.scrollTo({ top: 0 });
     fetchPage(1, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveStartDate, effectiveEndDate, filterType, categoryIdsFilter, selectedAccountIds, debouncedSearchQuery, refreshSignal]);
 
-  const handleLoadMore = () => {
-    if (loadingMore || page >= totalPages) return;
-    fetchPage(page + 1, true);
-  };
+  useEffect(() => {
+    const root = scrollContainerRef.current;
+    const trigger = loadMoreTriggerRef.current;
+    if (!root || !trigger || loading || loadingMore || page >= totalPages) return;
 
-  const stats = useMemo(() => ({
-    income: totalIncome,
-    expense: totalExpense,
-    total: totalIncome - totalExpense,
-  }), [totalIncome, totalExpense]);
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries[0]?.isIntersecting) return;
+      observer.unobserve(trigger);
+      fetchPage(page + 1, true);
+    }, {
+      root,
+      rootMargin: '0px 0px 320px 0px',
+      threshold: 0,
+    });
+
+    observer.observe(trigger);
+    return () => observer.disconnect();
+    // fetchPage intentionally uses the current filter closure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.length, loading, loadingMore, page, totalPages]);
 
   const handleAddNewByFilter = () => {
     onOpenAddTransaction?.({
@@ -356,6 +368,67 @@ export default function TransactionHistory({
     return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
   }, [items]);
 
+  const visibleMonthStats = useMemo(() => {
+    if (customStartDate || customEndDate) {
+      return { income: totalIncome, expense: totalExpense };
+    }
+
+    const visibleMonthKey = format(selectedMonth, 'yyyy-MM');
+    return items.reduce((stats, transaction) => {
+      if (format(new Date(transaction.createdAt), 'yyyy-MM') !== visibleMonthKey) return stats;
+      if (transaction.type === 'income') stats.income += transaction.amount;
+      if (transaction.type === 'expense') stats.expense += transaction.amount;
+      return stats;
+    }, { income: 0, expense: 0 });
+  }, [customEndDate, customStartDate, items, selectedMonth, totalExpense, totalIncome]);
+
+  const stats = useMemo(() => ({
+    income: totalIncome,
+    expense: totalExpense,
+    total: totalIncome - totalExpense,
+  }), [totalExpense, totalIncome]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const updateVisibleMonth = () => {
+      const headers = Array.from(container.querySelectorAll<HTMLElement>('[data-transaction-date]'));
+      if (headers.length === 0) return;
+
+      const containerTop = container.getBoundingClientRect().top + 8;
+      let activeHeader = headers[0];
+      for (const header of headers) {
+        if (header.getBoundingClientRect().top <= containerTop + 40) {
+          activeHeader = header;
+        } else {
+          break;
+        }
+      }
+
+      const dateKey = activeHeader.dataset.transactionDate;
+      if (!dateKey) return;
+      const visibleDate = dateFromKey(dateKey);
+      setSelectedMonth(current => (
+        format(current, 'yyyy-MM') === format(visibleDate, 'yyyy-MM')
+          ? current
+          : visibleDate
+      ));
+    };
+
+    const handleScroll = () => {
+      if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current);
+      scrollFrameRef.current = requestAnimationFrame(updateVisibleMonth);
+    };
+
+    updateVisibleMonth();
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current);
+    };
+  }, [groupedTransactions]);
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-0 lg:p-8">
       <div className="w-full h-full lg:h-auto lg:max-h-full max-w-2xl bg-theme-surface shadow-2xl flex flex-col relative overflow-hidden animate-in slide-in-from-bottom duration-300 lg:rounded-2xl">
@@ -384,13 +457,12 @@ export default function TransactionHistory({
           <div className="flex flex-col min-[550px]:flex-row min-[550px]:items-center gap-4 justify-between">
             {/* Top Row / Left Side: Date and Type Filter */}
             <div className="flex items-center justify-between min-[550px]:justify-start gap-4">
-              <div className="flex items-center gap-1 bg-theme-surface p-1 rounded-xl border border-theme-base">
-                <button 
-                  onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
-                  className="p-1.5 hover:bg-theme-main rounded-lg transition-all"
-                >
-                  <ChevronLeft className="w-4 h-4 text-theme-muted" />
-                </button>
+              <button
+                onClick={() => setCalendarDate(selectedMonth)}
+                className="flex items-center gap-2 bg-theme-surface py-1.5 px-3 rounded-xl border border-theme-base hover:border-theme-primary/40 transition-colors"
+                aria-label="Открыть календарь"
+              >
+                <CalendarDays className="w-4 h-4 text-theme-primary shrink-0" />
                 <div className="text-center min-w-[90px]">
                   <p className="text-[10px] font-bold text-theme-main leading-none">
                     {customStartDate || customEndDate ? (
@@ -400,17 +472,11 @@ export default function TransactionHistory({
                     )}
                   </p>
                   <div className="flex justify-center gap-2 mt-0.5">
-                    <span className="text-[8px] font-bold text-emerald-500">+{stats.income.toLocaleString()}</span>
-                    <span className="text-[8px] font-bold text-rose-500">-{stats.expense.toLocaleString()}</span>
+                    <span className="text-[8px] font-bold text-emerald-500">+{visibleMonthStats.income.toLocaleString()}</span>
+                    <span className="text-[8px] font-bold text-rose-500">-{visibleMonthStats.expense.toLocaleString()}</span>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
-                  className="p-1.5 hover:bg-theme-main rounded-lg transition-all"
-                >
-                  <ChevronRight className="w-4 h-4 text-theme-muted" />
-                </button>
-              </div>
+              </button>
 
               {/* Type Filter */}
               <div className="flex bg-theme-surface rounded-xl p-1 shrink-0 border border-theme-base">
@@ -671,7 +737,7 @@ export default function TransactionHistory({
         </div>
 
         {/* Transactions Table */}
-        <div className="flex-1 overflow-y-auto no-scrollbar relative">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto no-scrollbar relative">
           {/* Queued offline transactions shown at the top while waiting to sync.
               Visible as long as items remain in the queue — including after
               reconnection, until sync actually removes each entry. */}
@@ -744,7 +810,10 @@ export default function TransactionHistory({
             const heading = formatTransactionDateHeading(dateKey);
             return (
               <div key={dateKey}>
-                <div className="py-2 bg-theme-primary/5 backdrop-blur-md sticky top-0 z-20 border-y border-theme-base/50 flex items-center">
+                <div
+                  data-transaction-date={dateKey}
+                  className="py-2 bg-theme-primary/5 backdrop-blur-md sticky top-0 z-20 border-y border-theme-base/50 flex items-center"
+                >
                   <button
                     onClick={() => setCalendarDate(dateFromKey(dateKey))}
                     className="w-1/2 pl-4 pr-2 text-left min-w-0 group"
@@ -861,7 +930,7 @@ export default function TransactionHistory({
                 <p className="text-sm">
                   {customStartDate && customStartDate === customEndDate
                     ? 'За выбранную дату операций не было'
-                    : 'В этом месяце операций не было'}
+                    : 'Операций не найдено'}
                 </p>
               )}
             </div>
@@ -874,15 +943,8 @@ export default function TransactionHistory({
           )}
 
           {!loading && items.length > 0 && page < totalPages && (
-            <div className="flex items-center justify-center py-4">
-              <button
-                onClick={handleLoadMore}
-                disabled={loadingMore}
-                className="px-4 py-2 rounded-xl bg-theme-main border border-theme-base text-[11px] font-bold uppercase tracking-widest text-theme-muted hover:text-theme-main transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer"
-              >
-                {loadingMore && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                Показать ещё ({total - items.length})
-              </button>
+            <div ref={loadMoreTriggerRef} className="flex items-center justify-center py-5 text-theme-muted" aria-label="Загрузка следующих операций">
+              {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
             </div>
           )}
           
@@ -934,8 +996,8 @@ export default function TransactionHistory({
             }}
             onShowMonth={(date) => {
               setSelectedMonth(date);
-              setCustomStartDate('');
-              setCustomEndDate('');
+              setCustomStartDate(format(startOfMonth(date), 'yyyy-MM-dd'));
+              setCustomEndDate(format(endOfMonth(date), 'yyyy-MM-dd'));
               setCalendarDate(null);
             }}
           />
