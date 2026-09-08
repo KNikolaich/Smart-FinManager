@@ -11,7 +11,6 @@ describe('TransactionCalendar', () => {
       <TransactionCalendar
         initialDate={initialDate}
         onSelect={onSelect}
-        onShowMonth={vi.fn()}
         onClose={vi.fn()}
       />
     );
@@ -24,23 +23,18 @@ describe('TransactionCalendar', () => {
     expect(onSelect.mock.calls[0][0].getDate()).toBe(15);
   });
 
-  it('navigates to another month and can open its full list', () => {
-    const onShowMonth = vi.fn();
+  it('navigates to another month without applying a date filter', () => {
     render(
       <TransactionCalendar
         initialDate={initialDate}
         onSelect={vi.fn()}
-        onShowMonth={onShowMonth}
         onClose={vi.fn()}
       />
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Следующий месяц' }));
     expect(screen.getByText('октябрь 2026')).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Показать весь месяц' }));
-    expect(onShowMonth).toHaveBeenCalledTimes(1);
-    expect(onShowMonth.mock.calls[0][0].getMonth()).toBe(9);
+    expect(screen.queryByRole('button', { name: 'Показать весь месяц' })).toBeNull();
   });
 
   it('closes with Escape', () => {
@@ -49,7 +43,6 @@ describe('TransactionCalendar', () => {
       <TransactionCalendar
         initialDate={initialDate}
         onSelect={vi.fn()}
-        onShowMonth={vi.fn()}
         onClose={onClose}
       />
     );

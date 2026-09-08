@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { Transaction, Category, Account, Currency } from '../types';
 import { accountCurrencySymbol } from '../lib/currencyUtils';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { X, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy, ChevronDown, Search, Loader2, WifiOff, Clock, CalendarDays } from 'lucide-react';
 import { GenericContextMenu } from './ui/GenericContextMenu';
@@ -109,6 +109,7 @@ export default function TransactionHistory({
   const [customEndDate, setCustomEndDate] = useState<string>(initialEndDate || '');
   const [isFunnelOpen, setIsFunnelOpen] = useState(false);
   const [calendarDate, setCalendarDate] = useState<Date | null>(null);
+  const [pendingNavigationDate, setPendingNavigationDate] = useState<string | null>(null);
 
   // Online status and queued offline transactions
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -310,7 +311,7 @@ export default function TransactionHistory({
   useEffect(() => {
     const root = scrollContainerRef.current;
     const trigger = loadMoreTriggerRef.current;
-    if (!root || !trigger || loading || loadingMore || page >= totalPages) return;
+    if (!root || !trigger || loading || loadingMore || pendingNavigationDate || page >= totalPages) return;
 
     const observer = new IntersectionObserver((entries) => {
       if (!entries[0]?.isIntersecting) return;
@@ -326,7 +327,7 @@ export default function TransactionHistory({
     return () => observer.disconnect();
     // fetchPage intentionally uses the current filter closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items.length, loading, loadingMore, page, totalPages]);
+  }, [items.length, loading, loadingMore, page, pendingNavigationDate, totalPages]);
 
   const handleAddNewByFilter = () => {
     onOpenAddTransaction?.({
@@ -367,6 +368,49 @@ export default function TransactionHistory({
     });
     return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
   }, [items]);
+
+  useEffect(() => {
+    if (!pendingNavigationDate || loading) return;
+
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const headers = Array.from(container.querySelectorAll<HTMLElement>('[data-transaction-date]'));
+    const exactHeader = headers.find(header => header.dataset.transactionDate === pendingNavigationDate);
+    const oldestLoadedDate = groupedTransactions.at(-1)?.[0];
+    const targetReached = !oldestLoadedDate || oldestLoadedDate <= pendingNavigationDate;
+
+    if (exactHeader || targetReached || page >= totalPages) {
+      const targetHeader = exactHeader || headers.reduce<HTMLElement | null>((nearest, header) => {
+        const headerDate = header.dataset.transactionDate;
+        if (!headerDate) return nearest;
+        if (!nearest?.dataset.transactionDate) return header;
+
+        const currentDistance = Math.abs(dateFromKey(headerDate).getTime() - dateFromKey(pendingNavigationDate).getTime());
+        const nearestDistance = Math.abs(dateFromKey(nearest.dataset.transactionDate).getTime() - dateFromKey(pendingNavigationDate).getTime());
+        return currentDistance < nearestDistance ? header : nearest;
+      }, null);
+
+      if (targetHeader) {
+        requestAnimationFrame(() => {
+          const containerTop = container.getBoundingClientRect().top;
+          const headerTop = targetHeader.getBoundingClientRect().top;
+          container.scrollTo({
+            top: container.scrollTop + headerTop - containerTop,
+            behavior: 'smooth',
+          });
+        });
+      }
+      setPendingNavigationDate(null);
+      return;
+    }
+
+    if (!loadingMore && page < totalPages) {
+      fetchPage(page + 1, true);
+    }
+    // fetchPage intentionally uses the current filter closure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupedTransactions, loading, loadingMore, page, pendingNavigationDate, totalPages]);
 
   const visibleMonthStats = useMemo(() => {
     if (customStartDate || customEndDate) {
@@ -509,14 +553,16 @@ export default function TransactionHistory({
               <button
                 onClick={() => setIsFunnelOpen(!isFunnelOpen)}
                 className={cn(
-                  "p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center shrink-0 w-9 h-9",
+                  "px-3 py-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0 h-9",
                   isFunnelOpen || selectedAccountIds.length > 0 || customStartDate || customEndDate || filterCategoryId !== 'all'
                     ? "bg-theme-primary text-theme-on-primary border-theme-primary hover:bg-theme-primary/95" 
                     : "bg-theme-surface text-theme-muted border-theme-base hover:text-theme-main"
                 )}
-                title="Фильтры"
+                aria-label="Открыть фильтры"
+                aria-expanded={isFunnelOpen}
               >
                 <Filter className="w-4 h-4" />
+                <span className="text-[10px] font-black uppercase tracking-wider">Фильтры</span>
               </button>
             </div>
           </div>
@@ -696,7 +742,7 @@ export default function TransactionHistory({
                 {/* Date Range Filter */}
                 <div className="grid grid-cols-2 gap-3 pb-1">
                   <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-theme-muted block mb-1">С даты</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-theme-muted block mb-1">Дата с</label>
                     <input
                       type="date"
                       value={customStartDate}
@@ -705,7 +751,7 @@ export default function TransactionHistory({
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-theme-muted block mb-1">По дату</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-theme-muted block mb-1">Дата по</label>
                     <input
                       type="date"
                       value={customEndDate}
@@ -990,14 +1036,7 @@ export default function TransactionHistory({
             onSelect={(date) => {
               const dateKey = format(date, 'yyyy-MM-dd');
               setSelectedMonth(date);
-              setCustomStartDate(dateKey);
-              setCustomEndDate(dateKey);
-              setCalendarDate(null);
-            }}
-            onShowMonth={(date) => {
-              setSelectedMonth(date);
-              setCustomStartDate(format(startOfMonth(date), 'yyyy-MM-dd'));
-              setCustomEndDate(format(endOfMonth(date), 'yyyy-MM-dd'));
+              setPendingNavigationDate(dateKey);
               setCalendarDate(null);
             }}
           />

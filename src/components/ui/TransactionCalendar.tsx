@@ -18,7 +18,6 @@ import { cn } from '../../lib/utils';
 interface TransactionCalendarProps {
   initialDate: Date;
   onSelect: (date: Date) => void;
-  onShowMonth: (date: Date) => void;
   onClose: () => void;
 }
 
@@ -27,7 +26,6 @@ const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 export function TransactionCalendar({
   initialDate,
   onSelect,
-  onShowMonth,
   onClose,
 }: TransactionCalendarProps) {
   const [visibleMonth, setVisibleMonth] = useState(startOfMonth(initialDate));
@@ -133,13 +131,6 @@ export function TransactionCalendar({
             );
           })}
         </div>
-
-        <button
-          onClick={() => onShowMonth(visibleMonth)}
-          className="mt-4 w-full h-11 rounded-xl border border-theme-primary/30 bg-theme-primary/5 text-theme-primary text-xs font-black uppercase tracking-wider"
-        >
-          Показать весь месяц
-        </button>
       </div>
     </div>
   );
