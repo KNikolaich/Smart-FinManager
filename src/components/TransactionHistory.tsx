@@ -9,6 +9,8 @@ import { AnimatePresence } from 'motion/react';
 import { cn, getTransactionDisplayTitle } from '../lib/utils';
 import { api, safeStorage } from '../lib/api';
 import EditOfflineTransaction from './EditOfflineTransaction';
+import { dateFromKey, formatTransactionDateHeading } from '../lib/dateLabels';
+import { TransactionCalendar } from './ui/TransactionCalendar';
 
 /** Minimal shape needed to render a queued-but-not-yet-synced transaction row. */
 interface PendingTransaction {
@@ -106,6 +108,7 @@ export default function TransactionHistory({
   const [customStartDate, setCustomStartDate] = useState<string>(initialStartDate || '');
   const [customEndDate, setCustomEndDate] = useState<string>(initialEndDate || '');
   const [isFunnelOpen, setIsFunnelOpen] = useState(false);
+  const [calendarDate, setCalendarDate] = useState<Date | null>(null);
 
   // Online status and queued offline transactions
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -346,11 +349,11 @@ export default function TransactionHistory({
   const groupedTransactions = useMemo(() => {
     const groups: { [key: string]: Transaction[] } = {};
     items.forEach(t => {
-      const dateKey = format(new Date(t.createdAt), 'dd.MM.yy', { locale: ru });
+      const dateKey = format(new Date(t.createdAt), 'yyyy-MM-dd');
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(t);
     });
-    return Object.entries(groups).sort((a, b) => new Date(b[0].split('.').reverse().join('-')).getTime() - new Date(a[0].split('.').reverse().join('-')).getTime());
+    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
   }, [items]);
 
   return (
@@ -738,12 +741,22 @@ export default function TransactionHistory({
           {groupedTransactions.map(([dateKey, transactions]) => {
             const groupIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
             const groupExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+            const heading = formatTransactionDateHeading(dateKey);
             return (
               <div key={dateKey}>
                 <div className="py-2 bg-theme-primary/5 backdrop-blur-md sticky top-0 z-20 border-y border-theme-base/50 flex items-center">
-                  <div className="w-1/2 pl-4 pr-2 text-[10px] font-bold text-theme-primary uppercase tracking-widest">
-                    <span>{dateKey}</span>
-                  </div>
+                  <button
+                    onClick={() => setCalendarDate(dateFromKey(dateKey))}
+                    className="w-1/2 pl-4 pr-2 text-left min-w-0 group"
+                    aria-label={`Открыть календарь, выбрано ${heading.date}`}
+                  >
+                    <span className="text-[10px] font-bold text-theme-primary uppercase tracking-widest group-hover:underline">
+                      {heading.date}
+                    </span>
+                    <span className="ml-2 text-[9px] sm:text-[10px] font-semibold text-theme-muted">
+                      {heading.weekday} · {heading.relative}
+                    </span>
+                  </button>
                   <div className="w-1/2 px-4 flex items-center justify-between text-[11px] font-bold">
                     {groupIncome > 0 ? (
                       <span className="text-emerald-500 font-sans">
@@ -845,7 +858,11 @@ export default function TransactionHistory({
                   <p className="text-sm">Нет подключения — показаны только локальные данные</p>
                 </>
               ) : (
-                <p className="text-sm">В этом месяце операций не было</p>
+                <p className="text-sm">
+                  {customStartDate && customStartDate === customEndDate
+                    ? 'За выбранную дату операций не было'
+                    : 'В этом месяце операций не было'}
+                </p>
               )}
             </div>
           )}
@@ -903,6 +920,26 @@ export default function TransactionHistory({
             />
           )}
         </div>
+
+        {calendarDate && (
+          <TransactionCalendar
+            initialDate={calendarDate}
+            onClose={() => setCalendarDate(null)}
+            onSelect={(date) => {
+              const dateKey = format(date, 'yyyy-MM-dd');
+              setSelectedMonth(date);
+              setCustomStartDate(dateKey);
+              setCustomEndDate(dateKey);
+              setCalendarDate(null);
+            }}
+            onShowMonth={(date) => {
+              setSelectedMonth(date);
+              setCustomStartDate('');
+              setCustomEndDate('');
+              setCalendarDate(null);
+            }}
+          />
+        )}
 
         {/* Fixed Footer */}
         <div className="py-3 px-6 bg-theme-main border-t border-theme-base flex items-center justify-between shrink-0">

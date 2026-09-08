@@ -85,11 +85,11 @@ export function useDashboardMetrics(
   const groupedTransactions = useMemo(() => {
     const groups: { [key: string]: Transaction[] } = {};
     recentTransactions.forEach(t => {
-      const dateKey = format(new Date(t.createdAt), 'dd MMMM', { locale: ru });
+      const dateKey = format(new Date(t.createdAt), 'yyyy-MM-dd');
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(t);
     });
-    return Object.entries(groups).sort((a, b) => new Date(b[0].split('.').reverse().join('-')).getTime() - new Date(a[0].split('.').reverse().join('-')).getTime());
+    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
   }, [recentTransactions]);
 
   const balanceTrend = useMemo(() => {

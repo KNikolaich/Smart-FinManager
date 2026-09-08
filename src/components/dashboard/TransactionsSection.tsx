@@ -4,6 +4,7 @@ import { Account, Category, Transaction } from '../../types';
 import { ChevronRight, Plus, Copy } from 'lucide-react';
 import { GenericContextMenu } from '../ui/GenericContextMenu';
 import { cn, getTransactionDisplayTitle } from '../../lib/utils';
+import { dateFromKey, formatTransactionDateHeading } from '../../lib/dateLabels';
 
 interface TransactionsSectionProps {
   groupedTransactions: [string, Transaction[]][];
@@ -72,16 +73,29 @@ export function TransactionsSection({
         </button>
       </div>
       <div className="bg-theme-surface rounded-3xl border border-theme-base overflow-hidden shadow-soft">
-        {groupedTransactions.map(([dateKey, txs], groupIndex) => (
+        {groupedTransactions.map(([dateKey, txs], groupIndex) => {
+          const heading = formatTransactionDateHeading(dateKey);
+          return (
           <motion.div
             key={dateKey}
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 + (groupIndex * 0.05) }}
           >
-            <div className="px-4 py-2 bg-theme-primary/5 backdrop-blur-md text-[10px] font-bold text-theme-primary uppercase tracking-widest border-y border-neutral-100">
-              {dateKey}
-            </div>
+            <button
+              onClick={() => onOpenTransactionHistory?.({
+                startDate: dateKey,
+                endDate: dateKey,
+                selectedMonth: dateFromKey(dateKey),
+              })}
+              className="w-full px-4 py-2 bg-theme-primary/5 backdrop-blur-md text-left border-y border-neutral-100 hover:bg-theme-primary/10 active:bg-theme-primary/15 transition-colors"
+              aria-label={`Открыть операции за ${heading.date}`}
+            >
+              <span className="text-[10px] font-bold text-theme-primary uppercase tracking-widest">{heading.date}</span>
+              <span className="ml-2 text-[10px] font-semibold text-theme-muted normal-case tracking-normal">
+                {heading.weekday} · {heading.relative}
+              </span>
+            </button>
             <table className="w-full text-left border-collapse table-fixed">
               <tbody>
                 {txs.map(t => {
@@ -152,7 +166,7 @@ export function TransactionsSection({
               </tbody>
             </table>
           </motion.div>
-        ))}
+        )})}
         {!hasTransactions && (
           <div className="text-center py-8">
             <p className="text-theme-muted text-sm italic">Операций пока нет</p>
