@@ -522,25 +522,42 @@ export default function TransactionHistory({
                 </div>
               </button>
 
-              {/* Type Filter */}
-              <div className="flex bg-theme-surface rounded-xl p-1 shrink-0 border border-theme-base">
-                {(['all', 'expense', 'income'] as const).map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setFilterType(type)}
-                    className={cn(
-                      "px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all",
-                      filterType === type ? "bg-theme-main shadow-sm text-theme-main" : "text-theme-muted hover:text-theme-main"
-                    )}
-                  >
-                    {type === 'all' ? 'Все' : type === 'expense' ? 'Расход' : 'Доход'}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Type Filter */}
+                <div className="flex bg-theme-surface rounded-xl p-1 border border-theme-base">
+                  {(['expense', 'income'] as const).map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => setFilterType(current => current === type ? 'all' : type)}
+                      aria-pressed={filterType === type}
+                      className={cn(
+                        "px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all",
+                        filterType === type ? "bg-theme-main shadow-sm text-theme-main" : "text-theme-muted hover:text-theme-main"
+                      )}
+                    >
+                      {type === 'expense' ? 'Расход' : 'Доход'}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setIsFunnelOpen(!isFunnelOpen)}
+                  className={cn(
+                    "p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center shrink-0 w-9 h-9",
+                    isFunnelOpen || selectedAccountIds.length > 0 || customStartDate || customEndDate || filterCategoryId !== 'all'
+                      ? "bg-theme-primary text-theme-on-primary border-theme-primary hover:bg-theme-primary/95"
+                      : "bg-theme-surface text-theme-muted border-theme-base hover:text-theme-main"
+                  )}
+                  aria-label="Открыть фильтры"
+                  aria-expanded={isFunnelOpen}
+                >
+                  <Filter className="w-4 h-4" />
+                </button>
               </div>
             </div>
 
-            {/* Bottom Row / Right Side: Search Bar & Funnel Button */}
-            <div className="flex-1 flex items-center gap-2">
+            {/* Bottom Row / Right Side: Search Bar */}
+            <div className="flex-1">
               <div className="relative flex-1 group">
                 <input 
                   type="text" 
@@ -550,20 +567,6 @@ export default function TransactionHistory({
                   className="w-full pl-3 pr-3 py-2 rounded-xl bg-theme-surface border border-theme-base text-[11px] font-medium focus:outline-none focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary transition-all text-theme-main placeholder:text-theme-muted/50"
                 />
               </div>
-              <button
-                onClick={() => setIsFunnelOpen(!isFunnelOpen)}
-                className={cn(
-                  "px-3 py-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0 h-9",
-                  isFunnelOpen || selectedAccountIds.length > 0 || customStartDate || customEndDate || filterCategoryId !== 'all'
-                    ? "bg-theme-primary text-theme-on-primary border-theme-primary hover:bg-theme-primary/95" 
-                    : "bg-theme-surface text-theme-muted border-theme-base hover:text-theme-main"
-                )}
-                aria-label="Открыть фильтры"
-                aria-expanded={isFunnelOpen}
-              >
-                <Filter className="w-4 h-4" />
-                <span className="text-[10px] font-black uppercase tracking-wider">Фильтры</span>
-              </button>
             </div>
           </div>
 
