@@ -32,7 +32,6 @@ import {
   Palette,
   Plus,
   Trash2,
-  Edit3,
   Pencil,
   Check,
   Loader2,
@@ -133,8 +132,7 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
   const commentSaveChainRef = useRef<Promise<void>>(Promise.resolve());
   const pendingCommentSavesRef = useRef(0);
   const isEditingCommentRef = useRef(false);
-  const [renamingNoteId, setRenamingNoteId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
+  const [editingNoteTitle, setEditingNoteTitle] = useState('');
   const [noteToDelete, setNoteToDelete] = useState<PlanNote | null>(null);
 
   const setNotesSnapshot = (nextNotes: PlanNote[], nextActiveId: string): PlanNotesPayload => {
@@ -820,64 +818,73 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
             <div className="flex items-center justify-between p-1 pb-2 shrink-0">
               <div className="flex w-full min-w-0 items-center gap-1">
                 <div className="relative flex min-w-0 flex-1 items-center">
-                  <label htmlFor="note-selector" className="sr-only">Выбрать заметку</label>
-                  <select
-                    id="note-selector"
-                    data-testid="select-note"
-                    value={activeNoteId}
-                    onChange={(event) => {
-                      const nextId = event.target.value;
-                      const currentNotes = notesRef.current.map(note => note.id === activeNoteIdRef.current
-                        ? { ...note, content: localComment } : note);
-                      const nextNote = currentNotes.find(note => note.id === nextId);
-                      const payload = setNotesSnapshot(currentNotes, nextId);
-                      if (planData && nextNote) savePlanData({ ...planData, comment: payload }, 'comment');
-                    }}
-                    className="h-11 w-full min-w-0 appearance-none truncate rounded-xl border border-neutral-200 bg-neutral-50 px-3 pr-8 text-sm font-semibold text-neutral-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
-                  >
-                    {notes.map(note => <option key={note.id} value={note.id}>{note.title}</option>)}
-                  </select>
-                  <ChevronDown size={14} className="pointer-events-none absolute right-3 text-neutral-400" />
+                  {isEditingComment ? (
+                    <>
+                      <label htmlFor="note-title-editor" className="sr-only">Название заметки</label>
+                      <input
+                        id="note-title-editor"
+                        data-testid="input-note-title"
+                        value={editingNoteTitle}
+                        onChange={(event) => setEditingNoteTitle(event.target.value)}
+                        className="h-11 w-full min-w-0 truncate rounded-xl border border-purple-200 bg-white px-3 text-sm font-semibold text-neutral-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <label htmlFor="note-selector" className="sr-only">Выбрать заметку</label>
+                      <select
+                        id="note-selector"
+                        data-testid="select-note"
+                        value={activeNoteId}
+                        onChange={(event) => {
+                          const nextId = event.target.value;
+                          const currentNotes = notesRef.current.map(note => note.id === activeNoteIdRef.current
+                            ? { ...note, content: localComment } : note);
+                          const nextNote = currentNotes.find(note => note.id === nextId);
+                          const payload = setNotesSnapshot(currentNotes, nextId);
+                          if (planData && nextNote) savePlanData({ ...planData, comment: payload }, 'comment');
+                        }}
+                        className="h-11 w-full min-w-0 appearance-none truncate rounded-xl border border-neutral-200 bg-neutral-50 px-3 pr-8 text-sm font-semibold text-neutral-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                      >
+                        {notes.map(note => <option key={note.id} value={note.id}>{note.title}</option>)}
+                      </select>
+                      <ChevronDown size={14} className="pointer-events-none absolute right-3 text-neutral-400" />
+                    </>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  data-testid="button-add-note"
-                  aria-label="Добавить заметку"
-                  onClick={() => {
-                    const id = `note-${Date.now()}`;
-                    const current = notesRef.current.map(note => note.id === activeNoteIdRef.current ? { ...note, content: localComment } : note);
-                    const created = { id, title: 'Новая заметка', content: '' };
-                    const payload = setNotesSnapshot([...current, created], id);
-                    if (planData) savePlanData({ ...planData, comment: payload }, 'comment');
-                    setIsEditingComment(true);
-                  }}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-purple-500 transition-colors hover:bg-purple-50"
-                  title="Добавить заметку"
-                ><Plus size={17} /></button>
-                <button
-                  type="button"
-                  data-testid="button-rename-note"
-                  aria-label="Переименовать заметку"
-                  onClick={() => {
-                    const note = notesRef.current.find(item => item.id === activeNoteIdRef.current);
-                    if (note) { setRenameValue(note.title); setRenamingNoteId(note.id); }
-                  }}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-500 transition-colors hover:bg-neutral-50"
-                  title="Переименовать заметку"
-                ><Edit3 size={16} /></button>
-                <button
-                  type="button"
-                  data-testid="button-delete-note"
-                  aria-label="Удалить заметку"
-                  onClick={() => {
-                    if (notesRef.current.length <= 1) return;
-                    const activeNote = notesRef.current.find(note => note.id === activeNoteIdRef.current);
-                    if (activeNote) setNoteToDelete(activeNote);
-                  }}
-                  disabled={notes.length <= 1}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-rose-400 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-30"
-                  title={notes.length <= 1 ? 'Нельзя удалить единственную заметку' : 'Удалить заметку'}
-                ><Trash2 size={16} /></button>
+                {!isEditingComment && (
+                  <>
+                    <button
+                      type="button"
+                      data-testid="button-add-note"
+                      aria-label="Добавить заметку"
+                      onClick={() => {
+                        const id = `note-${Date.now()}`;
+                        const current = notesRef.current.map(note => note.id === activeNoteIdRef.current ? { ...note, content: localComment } : note);
+                        const created = { id, title: 'Новая заметка', content: '' };
+                        const payload = setNotesSnapshot([...current, created], id);
+                        if (planData) savePlanData({ ...planData, comment: payload }, 'comment');
+                        setEditingNoteTitle(created.title);
+                        setIsEditingComment(true);
+                      }}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-purple-500 transition-colors hover:bg-purple-50"
+                      title="Добавить заметку"
+                    ><Plus size={17} /></button>
+                    <button
+                      type="button"
+                      data-testid="button-delete-note"
+                      aria-label="Удалить заметку"
+                      onClick={() => {
+                        if (notesRef.current.length <= 1) return;
+                        const activeNote = notesRef.current.find(note => note.id === activeNoteIdRef.current);
+                        if (activeNote) setNoteToDelete(activeNote);
+                      }}
+                      disabled={notes.length <= 1}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-rose-400 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-30"
+                      title={notes.length <= 1 ? 'Нельзя удалить единственную заметку' : 'Удалить заметку'}
+                    ><Trash2 size={16} /></button>
+                  </>
+                )}
                 <button 
                   type="button"
                   data-testid="button-edit-note"
@@ -885,10 +892,13 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
                   onClick={() => {
                     if (isEditingComment && planData) {
                       const next = notesRef.current.map(note => note.id === activeNoteIdRef.current
-                        ? { ...note, content: localComment }
+                        ? { ...note, title: editingNoteTitle.trim() || 'Без названия', content: localComment }
                         : note);
                       const payload = setNotesSnapshot(next, activeNoteIdRef.current);
                       savePlanData({ ...planData, comment: payload }, 'comment');
+                    } else {
+                      const note = notesRef.current.find(item => item.id === activeNoteIdRef.current);
+                      setEditingNoteTitle(note?.title || 'Без названия');
                     }
                     setIsEditingComment(!isEditingComment);
                   }}
@@ -1037,63 +1047,6 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
               )}
             </div>
 
-            {renamingNoteId && (
-              <div className="mb-2 flex items-center gap-2 rounded-2xl border border-purple-100 bg-purple-50/60 p-2">
-                <label htmlFor="note-title-editor" className="sr-only">Название заметки</label>
-                <input
-                  id="note-title-editor"
-                  data-testid="input-note-title"
-                  value={renameValue}
-                  onChange={(event) => setRenameValue(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      const title = renameValue.trim() || 'Без названия';
-                      const next = notesRef.current.map(note => {
-                        const withCurrentContent = note.id === activeNoteIdRef.current
-                          ? { ...note, content: localComment }
-                          : note;
-                        return note.id === renamingNoteId
-                          ? { ...withCurrentContent, title }
-                          : withCurrentContent;
-                      });
-                      const payload = setNotesSnapshot(next, activeNoteIdRef.current);
-                      if (planData) savePlanData({ ...planData, comment: payload }, 'comment');
-                      setRenamingNoteId(null);
-                    }
-                  }}
-                  autoFocus
-                  className="min-w-0 flex-1 rounded-xl border border-purple-100 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-                />
-                <button
-                  type="button"
-                  data-testid="button-confirm-rename-note"
-                  aria-label="Сохранить название заметки"
-                  onClick={() => {
-                    const title = renameValue.trim() || 'Без названия';
-                    const next = notesRef.current.map(note => {
-                      const withCurrentContent = note.id === activeNoteIdRef.current
-                        ? { ...note, content: localComment }
-                        : note;
-                      return note.id === renamingNoteId
-                        ? { ...withCurrentContent, title }
-                        : withCurrentContent;
-                    });
-                    const payload = setNotesSnapshot(next, activeNoteIdRef.current);
-                    if (planData) savePlanData({ ...planData, comment: payload }, 'comment');
-                    setRenamingNoteId(null);
-                  }}
-                  className="rounded-xl bg-purple-500 p-2 text-white hover:bg-purple-600"
-                ><Check size={16} /></button>
-                <button
-                  type="button"
-                  data-testid="button-cancel-rename-note"
-                  aria-label="Отменить переименование"
-                  onClick={() => setRenamingNoteId(null)}
-                  className="rounded-xl bg-white p-2 text-neutral-400 hover:bg-neutral-100"
-                ><X size={16} /></button>
-              </div>
-            )}
-            
             <div className="flex-1 p-1 pt-2 overflow-hidden">
               {isEditingComment ? (
                 <textarea 
