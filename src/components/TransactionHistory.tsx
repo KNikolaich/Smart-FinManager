@@ -498,7 +498,7 @@ export default function TransactionHistory({
 
         {/* Month Selector & Filters */}
         <div className="py-3 px-4 bg-theme-main flex flex-col gap-4 shrink-0 border-b border-theme-base/30">
-          <div className="flex flex-col min-[550px]:flex-row min-[550px]:items-center gap-4 justify-between">
+          <div className="flex items-center justify-between">
             {/* Top Row / Left Side: Date and Type Filter */}
             <div className="flex items-center justify-between min-[550px]:justify-start gap-4">
               <button
@@ -556,23 +556,36 @@ export default function TransactionHistory({
               </div>
             </div>
 
-            {/* Bottom Row / Right Side: Search Bar */}
-            <div className="flex-1">
-              <div className="relative flex-1 group">
-                <input 
-                  type="text" 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Поиск по описанию или категории..."
-                  className="w-full pl-3 pr-3 py-2 rounded-xl bg-theme-surface border border-theme-base text-[11px] font-medium focus:outline-none focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary transition-all text-theme-main placeholder:text-theme-muted/50"
-                />
-              </div>
-            </div>
           </div>
 
           <AnimatePresence>
             {isFunnelOpen && (
               <div className="bg-theme-surface border border-theme-base rounded-2xl p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                {/* Search Filter */}
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-theme-muted block mb-2">Поиск</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-theme-muted" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="По описанию или категории..."
+                      className="w-full pl-9 pr-9 py-2 rounded-xl bg-theme-main border border-theme-base text-[11px] font-medium focus:outline-none focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary transition-all text-theme-main placeholder:text-theme-muted/50"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        aria-label="Очистить поиск"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg text-theme-muted hover:text-theme-main hover:bg-theme-surface flex items-center justify-center"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 {/* Accounts Filter */}
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest text-theme-muted block mb-2">Фильтр по счетам</label>
