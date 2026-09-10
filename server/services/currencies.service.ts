@@ -71,115 +71,181 @@ export async function seedCurrencies() {
   }
 }
 
-// ---- Historical rates (30 days, RUB-based) ----
-// The Central Bank's dynamic endpoint returns the complete period for one
-// currency in a single response. The previous archive implementation fetched
-// one file per day, making a cold chart wait for up to 30 network requests.
+// ---- Avangard cashless buy/sell rates ----
+// Avangard publishes current retail quotes but no public historical API.
+// We therefore persist each distinct official quote and build our own history.
 
-type RateHistoryPoint = { date: string; rate: number };
-
-const HISTORY_DAYS = 30;
-const HISTORY_CACHE_TTL_MS = 10 * 60 * 1000;
-const MSK_OFFSET_MS = 3 * 60 * 60 * 1000; // Europe/Moscow is fixed UTC+3 (no DST)
-
-// These are the currencies seeded by the app. They avoid an extra lookup for
-// every ordinary chart; custom CBR-supported currencies use the fallback below.
-const KNOWN_CBR_IDS: Record<string, string> = {
-  USD: "R01235",
-  EUR: "R01239",
-  GBP: "R01035",
-  JPY: "R01820",
-  CNY: "R01375",
+type BankRate = {
+  iso: string;
+  buyRate: number;
+  sellRate: number;
 };
 
-const historyCache = new Map<string, { points: RateHistoryPoint[]; expiresAt: number }>();
-const historyInFlight = new Map<string, Promise<RateHistoryPoint[]>>();
-let cbrIdsCache: { ids: Record<string, string>; expiresAt: number } | null = null;
-let cbrIdsInFlight: Promise<Record<string, string>> | null = null;
+type BankRateRefreshResult = {
+  source: "avangard";
+  quoteType: "cashless";
+  quotedAt: Date;
+  rates: Array<BankRate & { midRate: number }>;
+};
 
-function mskDate(ts: number) {
-  const d = new Date(ts + MSK_OFFSET_MS);
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+const HISTORY_CACHE_TTL_MS = 10 * 60 * 1000;
+const AVANGARD_PAGE_URL = "https://www.avangard.ru/rus/private/currency/?city=moskva";
+const AVANGARD_READER_URL = `https://r.jina.ai/${AVANGARD_PAGE_URL}`;
+let bankRatesCache: { result: BankRateRefreshResult; expiresAt: number } | null = null;
+let bankRatesInFlight: Promise<BankRateRefreshResult> | null = null;
+
+function parseQuoteTimestamp(content: string) {
+  const match = content.match(/Действительно на(?:\s|<[^>]+>)*(\d{2}):(\d{2}),\s*(\d{2})\.(\d{2})\.(\d{4})/i);
+  if (!match) return new Date();
+  const [, hour, minute, day, month, year] = match;
+  const parsed = new Date(`${year}-${month}-${day}T${hour}:${minute}:00+03:00`);
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
 }
 
-function cbrRequestDate(isoDate: string) {
-  const [year, month, day] = isoDate.split("-");
-  return `${day}/${month}/${year}`;
-}
+function parseAvangardHtml(content: string): BankRate[] {
+  const marker = content.search(/Безналичные курсы валют/i);
+  if (marker < 0) return [];
+  const section = content.slice(marker, marker + 30_000);
+  const rates: BankRate[] = [];
+  const rows = section.matchAll(
+    /flag-name">\s*([A-Z]{3,5})\s*<\/span>[\s\S]{0,1000}?currency-element-curr-digit">\s*([\d.,]+)\s*<\/div>[\s\S]{0,300}?currency-element-curr-digit">\s*([\d.,]+)\s*<\/div>/g
+  );
 
-function parseCbrDynamicXml(xml: string): RateHistoryPoint[] {
-  const points: RateHistoryPoint[] = [];
-  const records = xml.matchAll(/<Record\b[^>]*Date="(\d{2})\.(\d{2})\.(\d{4})"[^>]*>([\s\S]*?)<\/Record>/g);
-
-  for (const record of records) {
-    const [, day, month, year, body] = record;
-    const nominal = Number(body.match(/<Nominal>([^<]+)<\/Nominal>/)?.[1]?.replace(",", "."));
-    const value = Number(body.match(/<Value>([^<]+)<\/Value>/)?.[1]?.replace(",", "."));
-    if (Number.isFinite(value) && Number.isFinite(nominal) && nominal > 0) {
-      points.push({ date: `${year}-${month}-${day}`, rate: value / nominal });
+  for (const row of rows) {
+    const buyRate = Number(row[2].replace(",", "."));
+    const sellRate = Number(row[3].replace(",", "."));
+    if (Number.isFinite(buyRate) && Number.isFinite(sellRate) && buyRate > 0 && sellRate > 0 && sellRate >= buyRate) {
+      rates.push({ iso: row[1], buyRate, sellRate });
     }
   }
-
-  return points;
+  return rates;
 }
 
-async function getCbrIds(): Promise<Record<string, string>> {
-  if (cbrIdsCache && cbrIdsCache.expiresAt > Date.now()) return cbrIdsCache.ids;
-  if (cbrIdsInFlight) return cbrIdsInFlight;
+function parseAvangardMarkdown(content: string): BankRate[] {
+  const marker = content.search(/Безналичные курсы валют/i);
+  if (marker < 0) return [];
+  const lines = content
+    .slice(marker)
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+  const rates: BankRate[] = [];
 
-  cbrIdsInFlight = axios
-    .get("https://www.cbr-xml-daily.ru/daily_json.js", { timeout: 8000 })
-    .then((response) => {
-      const ids: Record<string, string> = { ...KNOWN_CBR_IDS };
-      const valute = response.data?.Valute;
-      if (valute && typeof valute === "object") {
-        for (const [code, value] of Object.entries(valute as Record<string, any>)) {
-          if (typeof value?.ID === "string") ids[code] = value.ID;
-        }
-      }
-      cbrIdsCache = { ids, expiresAt: Date.now() + HISTORY_CACHE_TTL_MS };
-      return ids;
-    })
-    .finally(() => {
-      cbrIdsInFlight = null;
+  for (let index = 0; index < lines.length; index += 1) {
+    const code = lines[index].match(/\)([A-Z]{3,5})$/)?.[1] ?? lines[index].match(/^([A-Z]{3,5})$/)?.[1];
+    if (!code) continue;
+    const numericValues = lines
+      .slice(index + 1, index + 7)
+      .filter(line => /^\d+(?:[.,]\d+)?$/.test(line))
+      .slice(0, 2)
+      .map(value => Number(value.replace(",", ".")));
+    if (numericValues.length !== 2) continue;
+    const [buyRate, sellRate] = numericValues;
+    if (buyRate > 0 && sellRate >= buyRate) rates.push({ iso: code, buyRate, sellRate });
+  }
+  return rates;
+}
+
+async function fetchAvangardRates(): Promise<{ quotedAt: Date; rates: BankRate[] }> {
+  let content = "";
+  try {
+    const response = await axios.get(AVANGARD_PAGE_URL, {
+      timeout: 8000,
+      responseType: "text",
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; FinanceTracker/1.0)" },
     });
-
-  return cbrIdsInFlight;
-}
-
-async function getCbrId(iso: string) {
-  return KNOWN_CBR_IDS[iso] ?? (await getCbrIds())[iso];
-}
-
-async function fetchHistoryFromCbr(iso: string): Promise<RateHistoryPoint[]> {
-  if (iso === "RUB") {
-    const now = Date.now();
-    return Array.from({ length: HISTORY_DAYS }, (_, index) => ({
-      date: mskDate(now - (HISTORY_DAYS - 1 - index) * 24 * 60 * 60 * 1000),
-      rate: 1,
-    }));
+    content = String(response.data);
+  } catch (directError: any) {
+    console.warn("Direct Avangard rate request failed, using reader transport:", directError.code || directError.message);
+    const response = await axios.get(AVANGARD_READER_URL, {
+      timeout: 15000,
+      responseType: "text",
+      headers: {
+        Accept: "text/plain",
+        "X-No-Cache": "true",
+      },
+    });
+    content = String(response.data);
   }
 
-  const cbrId = await getCbrId(iso);
-  if (!cbrId) return [];
+  const rates = content.includes("currency-element-curr-digit")
+    ? parseAvangardHtml(content)
+    : parseAvangardMarkdown(content);
+  if (rates.length === 0) {
+    const error: any = new Error("Avangard returned no supported cashless exchange rates");
+    error.status = 502;
+    throw error;
+  }
+  return { quotedAt: parseQuoteTimestamp(content), rates };
+}
 
-  const now = Date.now();
-  const from = mskDate(now - (HISTORY_DAYS - 1) * 24 * 60 * 60 * 1000);
-  const to = mskDate(now);
-  const response = await axios.get("https://www.cbr.ru/scripts/XML_dynamic.asp", {
-    timeout: 8000,
-    params: {
-      date_req1: cbrRequestDate(from),
-      date_req2: cbrRequestDate(to),
-      VAL_NM_RQ: cbrId,
-    },
-    responseType: "text",
+export async function refreshBankRates(force = false): Promise<BankRateRefreshResult> {
+  if (!force && bankRatesCache && bankRatesCache.expiresAt > Date.now()) return bankRatesCache.result;
+  if (bankRatesInFlight) return bankRatesInFlight;
+
+  bankRatesInFlight = (async () => {
+    const { quotedAt, rates } = await fetchAvangardRates();
+    const enrichedRates = rates.map(rate => ({
+      ...rate,
+      midRate: Math.round(((rate.buyRate + rate.sellRate) / 2) * 1_000_000) / 1_000_000,
+    }));
+
+    await prisma.$transaction(async transaction => {
+      for (const rate of enrichedRates) {
+        const currency = await transaction.currency.findFirst({
+          where: { iso: { equals: rate.iso, mode: "insensitive" } },
+          select: { id: true },
+        });
+        if (currency) {
+          await transaction.currency.update({
+            where: { id: currency.id },
+            data: {
+              rate: rate.midRate,
+              buyRate: rate.buyRate,
+              sellRate: rate.sellRate,
+              rateSource: "avangard",
+              rateUpdatedAt: quotedAt,
+            },
+          });
+        }
+        await transaction.currencyRateSnapshot.upsert({
+          where: {
+            iso_quotedAt_source_quoteType: {
+              iso: rate.iso,
+              quotedAt,
+              source: "avangard",
+              quoteType: "cashless",
+            },
+          },
+          update: {
+            buyRate: rate.buyRate,
+            sellRate: rate.sellRate,
+          },
+          create: {
+            iso: rate.iso,
+            buyRate: rate.buyRate,
+            sellRate: rate.sellRate,
+            quotedAt,
+            source: "avangard",
+            quoteType: "cashless",
+          },
+        });
+      }
+    });
+
+    const result: BankRateRefreshResult = {
+      source: "avangard",
+      quoteType: "cashless",
+      quotedAt,
+      rates: enrichedRates,
+    };
+    bankRatesCache = { result, expiresAt: Date.now() + HISTORY_CACHE_TTL_MS };
+    return result;
+  })().finally(() => {
+    bankRatesInFlight = null;
   });
 
-  return parseCbrDynamicXml(response.data);
+  return bankRatesInFlight;
 }
 
 // ---- Cryptocurrencies (CoinGecko public API, RUB-based) ----
@@ -241,34 +307,7 @@ export async function getCryptoRates(): Promise<{ rates: Record<string, number> 
   return { rates: await cryptoRatesInFlight };
 }
 
-async function fetchCryptoHistory(code: string): Promise<RateHistoryPoint[]> {
-  const geckoId = SUPPORTED_CRYPTO[code];
-  if (!geckoId) return [];
-
-  const response = await axios.get(`${COINGECKO_BASE}/coins/${geckoId}/market_chart`, {
-    timeout: 10000,
-    params: { vs_currency: "rub", days: HISTORY_DAYS, interval: "daily" },
-  });
-
-  const prices = response.data?.prices;
-  if (!Array.isArray(prices)) return [];
-
-  // CoinGecko returns [timestampMs, price] pairs at daily 00:00 UTC plus a
-  // final in-progress point for "now"; keep one point per date (the last one).
-  const byDate = new Map<string, number>();
-  for (const entry of prices) {
-    if (!Array.isArray(entry) || entry.length < 2) continue;
-    const [ts, price] = entry;
-    if (typeof ts !== "number" || typeof price !== "number" || !Number.isFinite(price) || price <= 0) continue;
-    byDate.set(mskDate(ts), price);
-  }
-
-  return Array.from(byDate.entries())
-    .sort(([a], [b]) => (a < b ? -1 : 1))
-    .map(([date, rate]) => ({ date, rate }));
-}
-
-export async function getRateHistory(iso: string) {
+export async function getRateHistory(iso: string, days: number) {
   const code = iso.toUpperCase();
   if (!/^[A-Z]{3,5}$/.test(code)) {
     const err: any = new Error("Invalid currency code");
@@ -276,22 +315,48 @@ export async function getRateHistory(iso: string) {
     throw err;
   }
 
-  const cached = historyCache.get(code);
-  if (cached && cached.expiresAt > Date.now()) {
-    return { iso: code, days: HISTORY_DAYS, points: cached.points };
+  const allowedDays = [7, 30, 90, 180, 365];
+  if (!allowedDays.includes(days)) {
+    const err: any = new Error("Invalid history range");
+    err.status = 400;
+    throw err;
   }
-
-  const existing = historyInFlight.get(code);
-  const request = existing ?? (isCryptoCode(code) ? fetchCryptoHistory(code) : fetchHistoryFromCbr(code));
-  if (!existing) historyInFlight.set(code, request);
 
   try {
-    const points = await request;
-    historyCache.set(code, { points, expiresAt: Date.now() + HISTORY_CACHE_TTL_MS });
-    return { iso: code, days: HISTORY_DAYS, points };
-  } finally {
-    if (!existing) historyInFlight.delete(code);
+    await refreshBankRates(false);
+  } catch (error: any) {
+    // Existing snapshots remain useful when the upstream site is temporarily
+    // unavailable. An empty result below still gives the UI an honest state.
+    console.warn("Could not refresh Avangard rates before history query:", error.message);
   }
+
+  const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const snapshots = await prisma.currencyRateSnapshot.findMany({
+    where: {
+      iso: code,
+      source: "avangard",
+      quoteType: "cashless",
+      quotedAt: { gte: from },
+    },
+    orderBy: { quotedAt: "asc" },
+  });
+
+  return {
+    iso: code,
+    days,
+    source: "avangard",
+    quoteType: "cashless",
+    points: snapshots.map(point => {
+      const spread = point.sellRate - point.buyRate;
+      return {
+        timestamp: point.quotedAt.toISOString(),
+        buyRate: point.buyRate,
+        sellRate: point.sellRate,
+        spread,
+        spreadPercent: point.buyRate > 0 ? (spread / point.buyRate) * 100 : null,
+      };
+    }),
+  };
 }
 
 export async function getExchangeRates(iso: string) {

@@ -198,6 +198,10 @@ export interface Currency {
   iso: string;
   rate: number;
   symbol?: string;
+  buyRate?: number;
+  sellRate?: number;
+  rateSource?: string;
+  rateUpdatedAt?: string;
 }
 
 export interface Message {

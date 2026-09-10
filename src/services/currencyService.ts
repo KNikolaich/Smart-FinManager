@@ -2,8 +2,36 @@ import { api } from '../lib/api';
 import { Currency } from '../types';
 
 export interface RateHistoryPoint {
-  date: string;
-  rate: number;
+  timestamp?: string;
+  buyRate?: number;
+  sellRate?: number;
+  spread?: number;
+  spreadPercent?: number;
+  /** Legacy shape kept for consumers that compare old cached histories. */
+  date?: string;
+  rate?: number;
+}
+
+export interface BankRate {
+  iso: string;
+  buyRate: number;
+  sellRate: number;
+  midRate: number;
+}
+
+export interface BankRatesResponse {
+  source: string;
+  quoteType: string;
+  quotedAt: string;
+  rates: BankRate[];
+}
+
+export interface RateHistoryResponse {
+  iso: string;
+  days: number;
+  source: string;
+  quoteType: string;
+  points: RateHistoryPoint[];
 }
 
 export interface RateChange {
@@ -20,8 +48,10 @@ export interface RateChange {
 export function getRateChange(points: RateHistoryPoint[]): RateChange | null {
   if (points.length < 2) return null;
 
-  const firstRate = points[0].rate;
-  const lastRate = points[points.length - 1].rate;
+  const midpoint = (point: RateHistoryPoint) =>
+    point.rate ?? ((point.buyRate ?? 0) + (point.sellRate ?? 0)) / 2;
+  const firstRate = midpoint(points[0]);
+  const lastRate = midpoint(points[points.length - 1]);
   if (!Number.isFinite(firstRate) || !Number.isFinite(lastRate)) return null;
 
   const absolute = lastRate - firstRate;
@@ -57,7 +87,7 @@ export const currencyService = {
   async updateCurrency(currency: Currency): Promise<void> {
     // The record id belongs in the URL. The update schema intentionally
     // rejects server-controlled fields in the request body.
-    const { id, ...changes } = currency;
+    const { id, buyRate, sellRate, rateSource, rateUpdatedAt, ...changes } = currency;
     await api.put(`/currencies/${id}`, {
       ...changes,
       iso: changes.iso.trim().toUpperCase(),
@@ -76,8 +106,12 @@ export const currencyService = {
     return await api.get('/currencies/crypto-rates');
   },
 
-  async getRateHistory(iso: string): Promise<{ iso: string; days: number; points: RateHistoryPoint[] }> {
-    return await api.get(`/currencies/history/${encodeURIComponent(iso)}`);
+  async refreshBankRates(): Promise<BankRatesResponse> {
+    return await api.post('/currencies/bank-rates/refresh', {});
+  },
+
+  async getRateHistory(iso: string, days: number): Promise<RateHistoryResponse> {
+    return await api.get(`/currencies/history/${encodeURIComponent(iso)}?days=${days}`);
   },
 
   async seedDefaultCurrencies() {

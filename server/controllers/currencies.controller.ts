@@ -49,7 +49,8 @@ export async function seed(req: any, res: any) {
 export async function history(req: any, res: any) {
   try {
     const { iso } = req.params;
-    const data = await currenciesService.getRateHistory(iso);
+    const days = Number(req.query.days ?? 30);
+    const data = await currenciesService.getRateHistory(iso, days);
     res.json(data);
   } catch (error: any) {
     if (error.status) {
@@ -61,6 +62,22 @@ export async function history(req: any, res: any) {
     }
     console.error("Error fetching currency history:", error.message);
     res.status(500).json({ error: "Failed to fetch currency history" });
+  }
+}
+
+export async function refreshBankRates(req: any, res: any) {
+  try {
+    const data = await currenciesService.refreshBankRates(true);
+    res.json({
+      ...data,
+      quotedAt: data.quotedAt.toISOString(),
+    });
+  } catch (error: any) {
+    if (error.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error("Error refreshing Avangard bank rates:", error.message);
+    res.status(502).json({ error: "Failed to refresh Avangard bank rates" });
   }
 }
 

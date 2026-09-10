@@ -11,23 +11,23 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
+  id                String   @id @default(uuid())
+  email             String   @unique
+  password          String
   encryptedPassword String?
-  displayName String?
-  photoURL    String?
-  role      String   @default("user")
-  createdAt DateTime @default(now())
-  settings  Json?    @default("{\"showTotalBalance\": true}")
+  displayName       String?
+  photoURL          String?
+  role              String   @default("user")
+  createdAt         DateTime @default(now())
+  settings          Json?    @default("{\"showTotalBalance\": true}")
 
-  accounts     Account[]
-  categories   Category[]
-  transactions Transaction[]
-  goals        Goal[]
-  planGrid     PlanGrid[]
-  chatMessages ChatMessage[]
-  aiLogs       AiLog[]
+  accounts       Account[]
+  categories     Category[]
+  transactions   Transaction[]
+  goals          Goal[]
+  planGrid       PlanGrid[]
+  chatMessages   ChatMessage[]
+  aiLogs         AiLog[]
   balanceHistory BalanceHistory[]
 
   @@map("users")
@@ -133,7 +133,7 @@ model Goal {
 model PlanGrid {
   id        String   @id @default(uuid())
   userId    String
-  type      String?   // e.g., "config", "cashbacks", "comments", etc.
+  type      String? // e.g., "config", "cashbacks", "comments", etc.
   data      Json
   updatedAt DateTime @updatedAt
 
@@ -144,27 +144,45 @@ model PlanGrid {
 }
 
 model Currency {
-  id       String @id @default(uuid())
-  currency String @unique
-  name     String
-  iso      String
-  rate     Float  @default(1.0)
-  symbol   String?
+  id            String    @id @default(uuid())
+  currency      String    @unique
+  name          String
+  iso           String
+  rate          Float     @default(1.0)
+  buyRate       Float?
+  sellRate      Float?
+  rateSource    String?
+  rateUpdatedAt DateTime?
+  symbol        String?
 
   @@map("currencies")
 }
 
+model CurrencyRateSnapshot {
+  id        String   @id @default(uuid())
+  iso       String
+  buyRate   Float
+  sellRate  Float
+  quotedAt  DateTime
+  source    String
+  quoteType String
+
+  @@unique([iso, quotedAt, source, quoteType])
+  @@index([iso, quotedAt])
+  @@map("currency_rate_snapshots")
+}
+
 model ChatMessage {
-  id         String   @id @default(uuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role       String
-  content    String
-  type       String?
-  actionType String?
-  actionData String?
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String
+  content     String
+  type        String?
+  actionType  String?
+  actionData  String?
   attachments Json?
-  createdAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
 
   @@index([userId])
   @@map("chat_messages")
@@ -187,9 +205,9 @@ model AiLog {
 model BalanceHistory {
   id           String   @id @default(uuid())
   userId       String
-  month        String   // e.g., "2026-04"
+  month        String // e.g., "2026-04"
   totalBalance Float
-  details      Json?    // Optional: breakdown by account
+  details      Json? // Optional: breakdown by account
   createdAt    DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -8,3 +8,4 @@
 - [Transaction ownership validation](transaction-ownership.md) — writes referencing account/category ids must check ownership server-side, not just id shape, or foreign ids cause 500s / cross-user mutation.
 - [Cross-currency transfers](cross-currency-transfers.md) — transfers debit `amount`, credit `targetAmount ?? amount`; rate fixed at op time; server re-validates client math everywhere (incl. import & offline cache).
 - [Vite watch loop on workflow logs](vite-watch-workflow-logs.md) — Replit's `.local/state/workflow-logs/**` dir sits inside the project root and must be excluded from Vite's file watcher or it causes an infinite reload loop.
+- [Avangard rate transport](avangard-rate-transport.md) — keep the verified reader fallback; direct TLS fails in Replit, and globally disabling certificate checks is not acceptable.
