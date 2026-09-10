@@ -474,7 +474,7 @@ async function fetchCryptoHistory(code: string, days: number) {
 }
 
 export async function getRateHistory(iso: string, days: number) {
-  const code = iso.toUpperCase();
+  const code = iso.trim().toUpperCase();
   if (!/^[A-Z]{3,5}$/.test(code)) {
     const err: any = new Error("Invalid currency code");
     err.status = 400;
