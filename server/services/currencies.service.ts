@@ -91,8 +91,34 @@ type BankRateRefreshResult = {
 const HISTORY_CACHE_TTL_MS = 10 * 60 * 1000;
 const AVANGARD_PAGE_URL = "https://www.avangard.ru/rus/private/currency/?city=moskva";
 const AVANGARD_READER_URL = `https://r.jina.ai/${AVANGARD_PAGE_URL}`;
+const MOSCOW_TIME_ZONE = "Europe/Moscow";
+const DAILY_COLLECTION_HOUR = 9;
+const DAILY_COLLECTION_STALE_AFTER_MS = 30 * 60 * 1000;
 let bankRatesCache: { result: BankRateRefreshResult; expiresAt: number } | null = null;
 let bankRatesInFlight: Promise<BankRateRefreshResult> | null = null;
+
+function getMoscowDateParts(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: MOSCOW_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return {
+    year: Number(values.year),
+    month: Number(values.month),
+    day: Number(values.day),
+    hour: Number(values.hour),
+  };
+}
+
+function moscowDateValue(now = new Date()) {
+  const { year, month, day } = getMoscowDateParts(now);
+  return new Date(Date.UTC(year, month - 1, day));
+}
 
 function parseQuoteTimestamp(content: string) {
   const match = content.match(/Действительно на(?:\s|<[^>]+>)*(\d{2}):(\d{2}),\s*(\d{2})\.(\d{2})\.(\d{4})/i);
@@ -246,6 +272,88 @@ export async function refreshBankRates(force = false): Promise<BankRateRefreshRe
   });
 
   return bankRatesInFlight;
+}
+
+/**
+ * Ensures that the daily collection has completed after 09:00 Moscow time.
+ * The state is stored in PostgreSQL rather than process memory so a restart,
+ * sleep/wake cycle, or multiple server instances cannot make us lose the day.
+ */
+export async function ensureDailyBankRates(): Promise<"not-due" | "already-complete" | "already-running" | "refreshed"> {
+  const { hour } = getMoscowDateParts();
+  if (hour < DAILY_COLLECTION_HOUR) return "not-due";
+
+  const runDate = moscowDateValue();
+  let run = await prisma.currencyRateCollectionRun.findUnique({ where: { runDate } });
+  if (run?.status === "success") return "already-complete";
+
+  const staleRunning = run?.status === "running"
+    && Date.now() - run.startedAt.getTime() < DAILY_COLLECTION_STALE_AFTER_MS;
+
+  if (staleRunning) return "already-running";
+
+  if (!run) {
+    try {
+      run = await prisma.currencyRateCollectionRun.create({
+        data: {
+          runDate,
+          source: "avangard",
+          status: "running",
+        },
+      });
+    } catch (error: any) {
+      // Another process may have claimed this date between findUnique and
+      // create. Re-read its claim and let that process do the collection.
+      if (error.code !== "P2002") throw error;
+      run = await prisma.currencyRateCollectionRun.findUnique({ where: { runDate } });
+      if (!run || run.status === "success") return run ? "already-complete" : "already-running";
+      if (run.status === "running" && Date.now() - run.startedAt.getTime() < DAILY_COLLECTION_STALE_AFTER_MS) {
+        return "already-running";
+      }
+    }
+  }
+
+  if (!run) return "already-running";
+
+  // Claim failed or stale work atomically. If another process won the race,
+  // it will either complete the run or keep working on it.
+  const claimed = await prisma.currencyRateCollectionRun.updateMany({
+    where: {
+      id: run.id,
+      status: run.status,
+      startedAt: run.startedAt,
+    },
+    data: {
+      status: "running",
+      startedAt: new Date(),
+      completedAt: null,
+      error: null,
+    },
+  });
+  if (claimed.count === 0) return "already-running";
+
+  try {
+    await refreshBankRates(true);
+    await prisma.currencyRateCollectionRun.update({
+      where: { id: run.id },
+      data: {
+        status: "success",
+        completedAt: new Date(),
+        error: null,
+      },
+    });
+    return "refreshed";
+  } catch (error: any) {
+    await prisma.currencyRateCollectionRun.update({
+      where: { id: run.id },
+      data: {
+        status: "failed",
+        completedAt: new Date(),
+        error: String(error?.message || error).slice(0, 1000),
+      },
+    });
+    throw error;
+  }
 }
 
 // ---- Cryptocurrencies (CoinGecko public API, RUB-based) ----

@@ -7,6 +7,7 @@ import { PORT } from "./server/config";
 import { prisma } from "./server/prisma";
 import { initSocket } from "./server/socket";
 import { ensureAdminExists } from "./server/services/admin.service";
+import { ensureDailyBankRates } from "./server/services/currencies.service";
 
 import authRoutes from "./server/routes/auth.routes";
 import accountsRoutes from "./server/routes/accounts.routes";
@@ -102,6 +103,23 @@ async function startServer() {
 
   httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+
+    const checkDailyRates = async () => {
+      try {
+        const result = await ensureDailyBankRates();
+        if (result !== "not-due" && result !== "already-complete") {
+          console.log(`[Currency scheduler] Daily Avangard collection: ${result}`);
+        }
+      } catch (error: any) {
+        console.error("[Currency scheduler] Daily Avangard collection failed:", error.message);
+      }
+    };
+
+    // The first check covers a process waking after sleep. The interval also
+    // catches a process that started before 09:00 and stayed online.
+    void checkDailyRates();
+    const timer = setInterval(() => void checkDailyRates(), 15 * 60 * 1000);
+    timer.unref();
   });
 }
 

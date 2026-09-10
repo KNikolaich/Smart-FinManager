@@ -172,6 +172,19 @@ model CurrencyRateSnapshot {
   @@map("currency_rate_snapshots")
 }
 
+model CurrencyRateCollectionRun {
+  id          String    @id @default(uuid())
+  runDate     DateTime  @unique @db.Date
+  source      String
+  status      String
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  error       String?
+
+  @@index([source, status])
+  @@map("currency_rate_collection_runs")
+}
+
 model ChatMessage {
   id          String   @id @default(uuid())
   userId      String
