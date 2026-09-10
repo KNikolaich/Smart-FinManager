@@ -95,6 +95,22 @@ export async function cryptoRates(req: any, res: any) {
   }
 }
 
+export async function refreshCryptoRates(req: any, res: any) {
+  try {
+    const data = await currenciesService.refreshCryptoRates();
+    res.json({
+      ...data,
+      quotedAt: data.quotedAt.toISOString(),
+    });
+  } catch (error: any) {
+    if (error.response?.status === 429) {
+      return res.status(429).json({ error: "Rate limit exceeded for crypto rates. Please try again later." });
+    }
+    console.error("Error refreshing crypto rates:", error.message);
+    res.status(502).json({ error: "Failed to refresh crypto rates" });
+  }
+}
+
 export async function rates(req: any, res: any) {
   try {
     const { iso } = req.params;

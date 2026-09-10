@@ -274,8 +274,8 @@ let cryptoRatesCache: { rates: Record<string, number>; expiresAt: number } | nul
 let cryptoRatesInFlight: Promise<Record<string, number>> | null = null;
 
 /** Current RUB price for every supported crypto, one upstream request, cached. */
-export async function getCryptoRates(): Promise<{ rates: Record<string, number> }> {
-  if (cryptoRatesCache && cryptoRatesCache.expiresAt > Date.now()) {
+export async function getCryptoRates(force = false): Promise<{ rates: Record<string, number> }> {
+  if (!force && cryptoRatesCache && cryptoRatesCache.expiresAt > Date.now()) {
     return { rates: cryptoRatesCache.rates };
   }
 
@@ -307,6 +307,64 @@ export async function getCryptoRates(): Promise<{ rates: Record<string, number> 
   return { rates: await cryptoRatesInFlight };
 }
 
+export async function refreshCryptoRates() {
+  const quotedAt = new Date();
+  const { rates } = await getCryptoRates(true);
+
+  await prisma.$transaction(async transaction => {
+    for (const [iso, rate] of Object.entries(rates)) {
+      await transaction.currency.updateMany({
+        where: { iso: { equals: iso, mode: "insensitive" } },
+        data: {
+          rate,
+          buyRate: null,
+          sellRate: null,
+          rateSource: "coingecko",
+          rateUpdatedAt: quotedAt,
+        },
+      });
+    }
+  });
+
+  return {
+    source: "coingecko" as const,
+    quoteType: "market" as const,
+    quotedAt,
+    rates,
+  };
+}
+
+async function fetchCryptoHistory(code: string, days: number) {
+  const geckoId = SUPPORTED_CRYPTO[code];
+  if (!geckoId) return [];
+
+  const response = await axios.get(`${COINGECKO_BASE}/coins/${geckoId}/market_chart`, {
+    timeout: 10000,
+    params: {
+      vs_currency: "rub",
+      days,
+      interval: "daily",
+    },
+  });
+  const prices = response.data?.prices;
+  if (!Array.isArray(prices)) return [];
+
+  const byDate = new Map<string, { timestamp: string; rate: number }>();
+  for (const entry of prices) {
+    if (!Array.isArray(entry) || entry.length < 2) continue;
+    const [timestamp, rate] = entry;
+    if (typeof timestamp !== "number" || typeof rate !== "number" || !Number.isFinite(rate) || rate <= 0) continue;
+    const instant = new Date(timestamp);
+    if (Number.isNaN(instant.getTime())) continue;
+    byDate.set(instant.toISOString().slice(0, 10), {
+      timestamp: instant.toISOString(),
+      rate,
+    });
+  }
+
+  return Array.from(byDate.values()).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+}
+
 export async function getRateHistory(iso: string, days: number) {
   const code = iso.toUpperCase();
   if (!/^[A-Z]{3,5}$/.test(code)) {
@@ -320,6 +378,16 @@ export async function getRateHistory(iso: string, days: number) {
     const err: any = new Error("Invalid history range");
     err.status = 400;
     throw err;
+  }
+
+  if (isCryptoCode(code)) {
+    return {
+      iso: code,
+      days,
+      source: "coingecko",
+      quoteType: "market",
+      points: await fetchCryptoHistory(code, days),
+    };
   }
 
   try {

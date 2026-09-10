@@ -26,6 +26,13 @@ export interface BankRatesResponse {
   rates: BankRate[];
 }
 
+export interface CryptoRatesResponse {
+  source: 'coingecko' | string;
+  quoteType: 'market' | string;
+  quotedAt: string;
+  rates: Record<string, number>;
+}
+
 export interface RateHistoryResponse {
   iso: string;
   days: number;
@@ -102,8 +109,12 @@ export const currencyService = {
     await api.post('/currencies', currency);
   },
 
-  async getCryptoRates(): Promise<{ rates: Record<string, number> }> {
+  async getCryptoRates(): Promise<CryptoRatesResponse> {
     return await api.get('/currencies/crypto-rates');
+  },
+
+  async refreshCryptoRates(): Promise<CryptoRatesResponse> {
+    return await api.post('/currencies/crypto-rates/refresh', {});
   },
 
   async refreshBankRates(): Promise<BankRatesResponse> {
