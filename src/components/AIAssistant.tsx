@@ -189,39 +189,56 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
         throw new Error('Не удалось получить данные для выполнения операции.');
       }
 
+      const normalizeLookupValue = (value?: string) => String(value || '').trim().toLocaleLowerCase();
+
       const findAccount = (idOrName?: string, name?: string) => {
         if (!idOrName && !name) return null;
-        const searchId = String(idOrName || '').toLowerCase().trim();
-        const searchName = String(name || '').toLowerCase().trim();
-
         const filteredAccounts = accounts.filter(a => a.showOnDashboard && !a.isArchived);
-        return filteredAccounts.find(a => {
-          const accName = a.name.toLowerCase().trim();
-          const accId = String(a.id).toLowerCase().trim();
-          return (searchId && (accId === searchId || accName === searchId || accName.includes(searchId) || searchId.includes(accName))) ||
-                 (searchName && (accName === searchName || accName.includes(searchName) || searchName.includes(accName)));
-        });
+        const idOrNameValue = normalizeLookupValue(idOrName);
+        const nameValue = normalizeLookupValue(name);
+        const idMatch = idOrNameValue
+          ? filteredAccounts.find(account => normalizeLookupValue(account.id) === idOrNameValue)
+          : null;
+        const labelMatch = (value: string) => filteredAccounts.find(account => {
+          const labels = [account.name, ...(account.aliases || '').split(',')];
+          return labels.some(label => normalizeLookupValue(label) === value);
+        }) || null;
+        const idOrNameLabelMatch = idOrNameValue ? labelMatch(idOrNameValue) : null;
+        const nameMatch = nameValue ? labelMatch(nameValue) : null;
+        const matches = [idMatch, idOrNameLabelMatch, nameMatch].filter(Boolean);
+        const distinctMatches = matches.filter((account, index) => matches.findIndex(item => item?.id === account?.id) === index);
+
+        // Never guess between two different accounts when the model returned
+        // conflicting id/name values.
+        return distinctMatches.length === 1 ? distinctMatches[0] : null;
       };
 
       const findCategory = (idOrName?: string, name?: string) => {
         if (!idOrName && !name) return null;
-        const searchId = String(idOrName || '').toLowerCase().trim();
-        const searchName = String(name || '').toLowerCase().trim();
-
-        return categories.find(c => {
-          const catName = c.name.toLowerCase().trim();
-          const catId = String(c.id).toLowerCase().trim();
-          return (searchId && (catId === searchId || catName === searchId || catName.includes(searchId) || searchId.includes(catName))) ||
-                 (searchName && (catName === searchName || catName.includes(searchName) || searchName.includes(catName)));
-        });
+        const values = [idOrName, name]
+          .filter(Boolean)
+          .map(value => normalizeLookupValue(value));
+        const matches = categories.filter(category =>
+          values.some(value =>
+            normalizeLookupValue(category.id) === value ||
+            normalizeLookupValue(category.name) === value
+          )
+        );
+        return matches.length === 1 ? matches[0] : null;
       };
 
       if (type === 'transaction') {
-        let foundAccount = findAccount(data.accountId, data.accountName);
+        const foundAccount = findAccount(data.accountId, data.accountName);
+        const foundCategory = findCategory(data.categoryId, data.categoryName);
+        const foundTargetAccount = data.type === 'transfer'
+          ? findAccount(data.targetAccountId, data.targetAccountName)
+          : null;
 
-        if (!foundAccount && accounts.length === 1) {
-          foundAccount = accounts[0];
-        }
+        // Keep only exact, unambiguous matches when the incomplete result is
+        // handed to the manual form. The form must not inherit an AI guess.
+        data.accountId = foundAccount?.id;
+        data.categoryId = foundCategory?.id;
+        if (data.type === 'transfer') data.targetAccountId = foundTargetAccount?.id;
 
         if (!foundAccount) {
           if (silent) return false;
@@ -233,14 +250,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
 
         const accountId = foundAccount.id;
 
-        let foundCategory = findCategory(data.categoryId, data.categoryName);
-        
-        if (!foundCategory && categories.length > 0) {
-          // Fallback to first category of the same type if possible
-          foundCategory = categories.find(c => c.type === data.type) || categories[0];
-        }
-
-        if (!foundCategory) {
+        if (data.type !== 'transfer' && !foundCategory) {
           if (silent) return false;
           if (categories.length === 0) {
             throw new Error('У вас еще нет созданных категорий. Пожалуйста, создайте категорию в разделе "Главная".');
@@ -248,7 +258,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
           throw new Error('Не удалось определить категорию. Пожалуйста, укажите категорию операции.');
         }
 
-        const categoryId = foundCategory.id;
+        const categoryId = foundCategory?.id;
 
         const amount = Number(data.amount);
         if (isNaN(amount) || amount <= 0) {
@@ -259,8 +269,6 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
         const createdAt = normalizeTransactionDate(data.createdAt ?? data.date);
 
         if (data.type === 'transfer') {
-          let foundTargetAccount = findAccount(data.targetAccountId, data.targetAccountName);
-
           if (!foundTargetAccount) {
             if (silent) return false;
             throw new Error('Для перевода необходимо указать корректный целевой счет.');
@@ -281,7 +289,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
         } else {
           await api.post('/transactions', {
             accountId,
-            categoryId,
+            categoryId: categoryId!,
             amount,
             type: data.type,
             description: data.description || '',
@@ -362,6 +370,12 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
 
     try {
       const result = await processUserMessage(userId, text, accounts, categories, currentAttachments, transactions);
+
+      const isTransactionDraft = result.data &&
+        ['income', 'expense', 'transfer'].includes(result.data.type) &&
+        result.data.amount !== undefined &&
+        result.data.amount !== null;
+      const shouldHandleAsTransaction = result.intent === 'transaction' || (result.intent === 'unknown' && isTransactionDraft);
       
       if (result.data?.error_code === 'REGION_NOT_SUPPORTED') {
         if (showToast) showToast('⚠️ Регион не поддерживается! Используйте VPN или смените локацию.', 'error');
@@ -375,17 +389,17 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
           role: 'assistant',
           content: advice
         };
-      } else if (result.intent === 'unknown') {
+      } else if (result.intent === 'unknown' && !isTransactionDraft) {
         assistantMessage = {
           role: 'assistant',
           content: result.message
         };
-      } else if (['transaction', 'goal', 'plan'].includes(result.intent)) {
+      } else if (shouldHandleAsTransaction || ['goal', 'plan'].includes(result.intent)) {
         assistantMessage = {
           role: 'assistant',
           content: result.message,
           type: 'action',
-          actionType: result.intent as any,
+          actionType: shouldHandleAsTransaction ? 'transaction' : result.intent as any,
           actionData: result.data
         };
       } else {
@@ -399,7 +413,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
 
       // Auto-action logic
       if (savedMsg?.id) {
-        if (result.intent === 'transaction') {
+        if (shouldHandleAsTransaction) {
           const isReceipt = currentAttachments.length > 0;
           if (!isReceipt) {
             const success = await confirmAction(savedMsg.id, 'transaction', result.data, true);
@@ -416,6 +430,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
               if (onOpenAddTransaction) {
                 onOpenAddTransaction({
                   ...result.data,
+                  __fromAI: true,
                   createdAt: normalizeTransactionDate(result.data?.createdAt ?? result.data?.date)
                 });
               }

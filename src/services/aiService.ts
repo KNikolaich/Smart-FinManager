@@ -8,6 +8,25 @@ export interface AIResponse {
   message: string;
 }
 
+const normalizeRussianRublesAmount = (text: string, amount: unknown): unknown => {
+  if (typeof amount !== 'number' && typeof amount !== 'string') return amount;
+
+  // Voice transcription often uses a dot/comma as a thousands separator:
+  // "зарплата 30.015 руб" means 30 015 rubles, not 30.015 rubles.
+  // Treat a three-digit group before a ruble marker as thousands unless
+  // the user explicitly mentions kopeks.
+  const mentionsKopeks = /\bкоп(?:ейк|еек|ейки|ейку)?\b|\bс\s+коп/i.test(text);
+  if (mentionsKopeks) return amount;
+
+  const groupedRubles = text.match(
+    /(?:^|[^\d])(\d{1,3}(?:[.,\s]\d{3})+)\s*(?:₽|руб(?:\.|л(?:ь|я|ей|и)?|лей)?)/iu
+  );
+  if (!groupedRubles) return amount;
+
+  const groupedValue = Number(groupedRubles[1].replace(/[.,\s]/g, ''));
+  return Number.isFinite(groupedValue) && groupedValue > 0 ? groupedValue : amount;
+};
+
 const logAIInteraction = async (userId: string, request: any, response: any, provider: string = 'openai') => {
   if (!userId) {
     return;
@@ -133,6 +152,7 @@ export const processUserMessage = async (
   - If you cannot find a matching ID for an account or category mentioned by the user, set intent to "unknown" and ask for clarification.
   - You MUST return the intent and data even if some parameters are missing, as long as you have identified the intent and at least ONE parameter.
   - Only set intent to "unknown" and ask for clarification if more than ONE required parameter is missing.
+  - MONEY AMOUNTS IN RUSSIAN SPEECH: when a number is followed by "руб./рублей/₽" and there is no explicit mention of копейки, a dot or comma before a three-digit group is a thousands separator, not a decimal separator. For example, "30.015 руб" and "30,015 руб" mean 30015 rubles. Do not turn them into 30.015 rubles. Only use fractional rubles when the user explicitly says "копейки" or clearly dictates a fractional amount.
   - For transaction intent, required fields in "data" are: type, amount, accountId, accountName, categoryId, createdAt.
   - TRANSACTION DATE:
     - Always return the transaction date in data.createdAt as YYYY-MM-DD or a valid ISO 8601 timestamp.
@@ -189,6 +209,12 @@ REFERENCE DATA:
   try {
     const responseText = await callAI(systemInstruction, userPrompt, "json_object", imageData);
     const result = JSON.parse(responseText || "{}") as AIResponse;
+
+    if (result.data && ['transaction', 'income', 'expense', 'transfer'].includes(result.intent) || (
+      result.data && ['income', 'expense', 'transfer'].includes(result.data.type)
+    )) {
+      result.data.amount = normalizeRussianRublesAmount(text, result.data.amount);
+    }
 
     // Ensure message is a string to avoid React rendering errors
     if (result.message && typeof result.message !== 'string') {

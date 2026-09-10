@@ -23,13 +23,18 @@ interface AddTransactionProps {
 }
 
 export default function AddTransaction({ accounts, transactions, categories, currencies, onComplete, onAdd, onOptimisticAdd, userId, initialData }: AddTransactionProps) {
+  const openedFromAI = initialData?.__fromAI === true;
   const [type, setType] = useState<TransactionType>(initialData?.type || 'expense');
   const [amount, setAmount] = useState(() => {
     if (initialData?.amount === undefined || initialData?.amount === null) return '';
     return String(initialData.amount);
   });
-  const [selectedAccountId, setSelectedAccountId] = useState(initialData?.accountId || accounts.find(a => !a.isArchived)?.id || accounts[0]?.id || '');
-  const [selectedTargetAccountId, setSelectedTargetAccountId] = useState(initialData?.targetAccountId || accounts.find(a => !a.isArchived && a.id !== initialData?.accountId)?.id || accounts[1]?.id || accounts[0]?.id || '');
+  const [selectedAccountId, setSelectedAccountId] = useState(
+    initialData?.accountId || (openedFromAI ? '' : accounts.find(a => !a.isArchived)?.id || accounts[0]?.id || '')
+  );
+  const [selectedTargetAccountId, setSelectedTargetAccountId] = useState(
+    initialData?.targetAccountId || (openedFromAI ? '' : accounts.find(a => !a.isArchived && a.id !== initialData?.accountId)?.id || accounts[1]?.id || accounts[0]?.id || '')
+  );
   const [selectedCategoryId, setSelectedCategoryId] = useState(initialData?.categoryId || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [date, setDate] = useState(initialData?.createdAt ? format(new Date(initialData.createdAt), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
