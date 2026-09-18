@@ -292,22 +292,22 @@ export default function PaymentCalendarTab({
           <aside className="rounded-2xl border border-theme-base bg-theme-surface p-4">
             <div className="flex items-start justify-between border-b border-theme-base pb-3">
               <div>
-                <p className="text-[10px] uppercase tracking-wider text-theme-muted font-bold">Выбранный день</p>
+                <p className="text-[10px] uppercase tracking-wider text-theme-muted font-bold">Задачи активного дня</p>
                 <h3 className="text-lg font-bold text-theme-main mt-1">{selectedDate ? parseDateKey(selectedDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : 'Выберите день'}</h3>
               </div>
               <button type="button" aria-label="Запланировать на выбранный день" data-testid="button-add-payment-selected-day" onClick={() => openCreate()} className="p-2 rounded-lg bg-theme-primary-light text-theme-primary"><Plus size={16} /></button>
             </div>
             <div className="divide-y divide-theme-base">
               {selectedOccurrences.length === 0 ? (
-                 <div className="py-12 text-center text-xs text-theme-muted"><CircleDashed size={20} className="mx-auto mb-2" />На этот день записей нет</div>
+                 <div className="py-12 text-center text-xs text-theme-muted"><CircleDashed size={20} className="mx-auto mb-2" />На активный день записей нет</div>
               ) : selectedOccurrences.map(item => (
                 <PaymentRow
                   key={`${item.payment.id}-${item.date}`}
                   item={item}
                   menuOpen={menuFor === `${item.payment.id}-${item.date}`}
                   onMenu={() => setMenuFor(menuFor === `${item.payment.id}-${item.date}` ? null : `${item.payment.id}-${item.date}`)}
-                  onEdit={() => { setEditingPayment({ ...item.payment }); setDialogMode('edit'); }}
-                  onDelete={() => onPaymentDelete?.(item.payment.id)}
+                  onEdit={() => { setMenuFor(null); setEditingPayment({ ...item.payment }); setDialogMode('edit'); }}
+                  onDelete={() => { setMenuFor(null); void onPaymentDelete?.(item.payment.id); }}
                   onToggleStatus={() => {
                     if (item.status === 'paid') {
                       onStatusChange?.(item.payment.id, item.date, 'pending');
@@ -367,7 +367,7 @@ function PaymentRow({ item, menuOpen, onMenu, onEdit, onDelete, onToggleStatus }
   return (
     <article className={`flex items-center gap-2 py-2 px-2 rounded-xl ${occurrenceTone(item)}`} data-testid={`payment-row-${key}`}>
        <button type="button" title={item.status === 'paid' ? 'Вернуть в ожидающие' : 'Создать операцию и отметить выполненной'} aria-label={item.status === 'paid' ? 'Отметить как ожидающую' : 'Создать операцию по записи'} data-testid={`button-toggle-payment-${key}`} onClick={onToggleStatus} className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${item.status === 'paid' ? 'bg-neutral-200 border-neutral-300 text-neutral-500' : 'border-neutral-300 bg-white/70'}`}>{item.status === 'paid' && <Check size={13} />}</button>
-       <div className="min-w-0 flex-1"><strong className="block text-xs truncate">{item.payment.title}</strong><span className="text-[10px] opacity-75">{item.payment.categoryName || (item.payment.transactionType === 'income' ? 'Доход' : 'Расход')} · {recurrenceLabel(item.payment.recurrence)} · {item.payment.accountName || 'Счёт не выбран'}</span></div>
+       <div className="min-w-0 flex-1"><strong className="block text-xs truncate">{item.payment.title}</strong><span className="text-[10px] opacity-75">{item.payment.transactionType === 'income' ? 'Доход' : 'Расход'} · {item.payment.categoryName || 'Без категории'} · {recurrenceLabel(item.payment.recurrence)} · {item.payment.accountName || 'Счёт не выбран'}</span></div>
        <strong className="text-xs whitespace-nowrap">{formatMoney(item.payment.amount)}</strong>
       <div className="relative">
          <button type="button" aria-label={`Действия: ${item.payment.title}`} data-testid={`button-payment-menu-${key}`} onClick={onMenu} className="p-1.5 rounded-lg opacity-60 hover:bg-black/5">•••</button>
@@ -381,8 +381,8 @@ function PaymentDialog({ mode, payment, accounts, categories, onChange, onClose,
   const set = <K extends keyof PlannedPayment>(field: K, value: PlannedPayment[K]) => onChange({ ...payment, [field]: value });
   const transactionType = payment.transactionType || 'expense';
   return (
-    <div className="fixed inset-0 z-40 bg-black/30 p-4 flex items-center justify-center" role="presentation" onMouseDown={onClose}>
-      <section className="w-full max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto no-scrollbar rounded-2xl bg-theme-surface shadow-2xl" role="dialog" aria-modal="true" onMouseDown={event => event.stopPropagation()}>
+    <div className="fixed inset-0 z-40 bg-black/30 p-0 sm:p-4 flex items-center justify-center" role="presentation" onMouseDown={onClose}>
+      <section className="w-full max-w-lg h-full max-h-full sm:h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto no-scrollbar rounded-none sm:rounded-2xl bg-theme-surface shadow-2xl" role="dialog" aria-modal="true" onMouseDown={event => event.stopPropagation()}>
         <header className="flex items-center justify-between p-4 border-b border-theme-base"><h3 className="text-lg font-bold text-theme-main">{mode === 'create' ? 'Новая запись' : 'Изменить'}</h3><button type="button" aria-label="Закрыть" data-testid="button-close-payment-dialog" onClick={onClose} className="p-2 rounded-lg hover:bg-theme-main"><X size={16} /></button></header>
         <div className="p-4 space-y-3">
           <label className="block text-xs font-bold text-theme-muted">Название<input data-testid="input-payment-title" value={payment.title} onChange={event => set('title', event.target.value)} placeholder="Аренда квартиры" className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main" autoFocus /></label>

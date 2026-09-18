@@ -26,6 +26,7 @@ describe('PaymentCalendarTab', () => {
 
     expect(screen.getByTestId('payment-row-rent-2026-09-05')).toBeTruthy();
     expect(screen.getByText(/Ежемесячно/)).toBeTruthy();
+    expect(screen.getByText('Задачи активного дня')).toBeTruthy();
   });
 
   it('toggles the selected occurrence status', () => {
@@ -82,5 +83,18 @@ describe('PaymentCalendarTab', () => {
       amount: 900,
       recurrence: 'none',
     }));
+  });
+
+  it('closes the context menu before opening the edit form', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 18, 12));
+    render(<PaymentCalendarTab payments={[payment]} accounts={[]} />);
+
+    fireEvent.click(screen.getByTestId('calendar-day-2026-09-05'));
+    fireEvent.click(screen.getByTestId('button-payment-menu-rent-2026-09-05'));
+    fireEvent.click(screen.getByText('Изменить'));
+
+    expect(screen.queryByText('Удалить')).toBeNull();
+    expect(screen.getByRole('dialog').className).toContain('h-full');
   });
 });
