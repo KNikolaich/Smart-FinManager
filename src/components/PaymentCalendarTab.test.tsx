@@ -40,6 +40,29 @@ describe('PaymentCalendarTab', () => {
     expect(onStatusChange).toHaveBeenCalledWith('rent', '2026-09-05', 'paid');
   });
 
+  it('supports weekly and biweekly occurrences and opens a transaction draft', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 18, 12));
+    const onRequestTransaction = vi.fn();
+    const weekly = { ...payment, id: 'weekly', date: '2026-09-02', recurrence: 'weekly' as const };
+    const biweekly = { ...payment, id: 'biweekly', date: '2026-09-04', recurrence: 'biweekly' as const };
+    render(
+      <PaymentCalendarTab
+        payments={[weekly, biweekly]}
+        accounts={[]}
+        onRequestTransaction={onRequestTransaction}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('calendar-day-2026-09-16'));
+    expect(screen.getByTestId('payment-row-weekly-2026-09-16')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('button-toggle-payment-weekly-2026-09-16'));
+    expect(onRequestTransaction).toHaveBeenCalledWith(weekly, '2026-09-16');
+
+    fireEvent.click(screen.getByTestId('calendar-day-2026-09-18'));
+    expect(screen.getByTestId('payment-row-biweekly-2026-09-18')).toBeTruthy();
+  });
+
   it('opens the create form and sends a valid payment', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 18, 12));

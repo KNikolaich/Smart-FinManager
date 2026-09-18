@@ -156,6 +156,9 @@ export default function AddTransaction({ accounts, transactions, categories, cur
         type
       });
       onAdd();
+      if (typeof initialData?.__onTransactionCreated === 'function') {
+        void initialData.__onTransactionCreated();
+      }
     } catch (err: any) {
       console.error('Error adding transaction:', err);
       // In a real app, we would revert the optimistic update here

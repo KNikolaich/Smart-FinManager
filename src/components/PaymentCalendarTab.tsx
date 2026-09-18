@@ -21,17 +21,20 @@ import {
   PlannedPayment,
   PlannedPaymentRecurrence,
   PlannedPaymentStatus,
+  Category,
 } from '../types';
 
 interface PaymentCalendarTabProps {
   payments: PlannedPayment[];
   accounts: Array<{ id: string; name: string }>;
+  categories?: Category[];
   loading?: boolean;
   error?: string | null;
   todoistConnected?: boolean;
   onRetry?: () => void;
   onTodoistSync?: () => void;
   onStatusChange?: (id: string, date: string, status: PlannedPaymentStatus) => void;
+  onRequestTransaction?: (payment: PlannedPayment, date: string) => void;
   onPaymentChange?: (payment: PlannedPayment) => void | Promise<void>;
   onPaymentDelete?: (id: string) => void | Promise<void>;
 }
@@ -51,6 +54,8 @@ const MONTHS = [
 ];
 const RECURRENCES: Array<{ value: PlannedPaymentRecurrence; label: string }> = [
   { value: 'none', label: 'Однократно' },
+  { value: 'weekly', label: 'Еженедельно' },
+  { value: 'biweekly', label: 'Раз в 2 недели' },
   { value: 'monthly', label: 'Ежемесячно' },
   { value: 'quarterly', label: 'Ежеквартально' },
   { value: 'yearly', label: 'Ежегодно' },
@@ -106,14 +111,19 @@ function getOccurrences(payment: PlannedPayment, cursor: Date): string[] {
   for (let day = 1; day <= daysInMonth; day += 1) {
     const date = new Date(year, month, day);
     const monthDistance = (year - base.getFullYear()) * 12 + month - base.getMonth();
+    const dayDistance = Math.round((date.getTime() - base.getTime()) / 86400000);
     const sameDay = day === baseDay;
     const matches = payment.recurrence === 'none'
       ? toDateKey(date) === payment.date
+      : date >= base && payment.recurrence === 'weekly'
+        ? dayDistance % 7 === 0
+        : date >= base && payment.recurrence === 'biweekly'
+          ? dayDistance % 14 === 0
       : payment.recurrence === 'monthly'
-        ? sameDay
+          ? date >= base && sameDay
         : payment.recurrence === 'quarterly'
-          ? sameDay && monthDistance >= 0 && monthDistance % 3 === 0
-          : sameDay && date.getMonth() === base.getMonth() && year >= base.getFullYear();
+            ? date >= base && sameDay && monthDistance % 3 === 0
+            : date >= base && sameDay && date.getMonth() === base.getMonth() && year >= base.getFullYear();
     if (matches) dates.push(toDateKey(date));
   }
   return dates;
@@ -127,12 +137,14 @@ function occurrenceStatus(payment: PlannedPayment, date: string): PlannedPayment
 export default function PaymentCalendarTab({
   payments,
   accounts,
+  categories = [],
   loading = false,
   error = null,
   todoistConnected = false,
   onRetry,
   onTodoistSync,
   onStatusChange,
+  onRequestTransaction,
   onPaymentChange,
   onPaymentDelete,
 }: PaymentCalendarTabProps) {
@@ -164,12 +176,16 @@ export default function PaymentCalendarTab({
 
   const openCreate = (date = selectedDate) => {
     const account = accounts[0];
+    const category = categories.find(item => item.type === 'expense');
     setEditingPayment({
       id: `payment-${Date.now()}`,
       title: '',
       amount: 0,
       date: date || toDateKey(cursor),
       recurrence: 'none',
+      transactionType: 'expense',
+      categoryId: category?.id,
+      categoryName: category?.name,
       accountId: account?.id,
       accountName: account?.name || '',
       status: 'pending',
@@ -324,7 +340,15 @@ export default function PaymentCalendarTab({
                   onMenu={() => setMenuFor(menuFor === `${item.payment.id}-${item.date}` ? null : `${item.payment.id}-${item.date}`)}
                   onEdit={() => { setEditingPayment({ ...item.payment }); setDialogMode('edit'); }}
                   onDelete={() => onPaymentDelete?.(item.payment.id)}
-                  onToggleStatus={() => onStatusChange?.(item.payment.id, item.date, item.status === 'paid' ? 'pending' : 'paid')}
+                  onToggleStatus={() => {
+                    if (item.status === 'paid') {
+                      onStatusChange?.(item.payment.id, item.date, 'pending');
+                    } else if (onRequestTransaction) {
+                      onRequestTransaction(item.payment, item.date);
+                    } else {
+                      onStatusChange?.(item.payment.id, item.date, 'paid');
+                    }
+                  }}
                 />
               ))}
             </div>
@@ -341,6 +365,7 @@ export default function PaymentCalendarTab({
           mode={dialogMode}
           payment={editingPayment}
           accounts={accounts}
+          categories={categories}
           todoistConnected={todoistConnected}
           onChange={setEditingPayment}
           onClose={() => { setDialogMode(null); setEditingPayment(null); }}
@@ -366,8 +391,8 @@ function PaymentRow({ item, menuOpen, onMenu, onEdit, onDelete, onToggleStatus }
   const key = `${item.payment.id}-${item.date}`;
   return (
     <article className="flex items-center gap-2 py-3" data-testid={`payment-row-${key}`}>
-      <button type="button" aria-label={item.status === 'paid' ? 'Отметить как ожидающую' : 'Отметить оплаченной'} data-testid={`button-toggle-payment-${key}`} onClick={onToggleStatus} className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${item.status === 'paid' ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-neutral-300'}`}>{item.status === 'paid' && <Check size={13} />}</button>
-      <div className="min-w-0 flex-1"><strong className={`block text-xs truncate ${item.status === 'paid' ? 'line-through text-neutral-400' : 'text-neutral-700'}`}>{item.payment.title}{item.payment.todoistTaskId && <span className="ml-1 inline-flex w-4 h-4 rounded bg-[#e66b53] text-white text-[10px] items-center justify-center no-underline">t</span>}</strong><span className="text-[10px] text-neutral-400">{recurrenceLabel(item.payment.recurrence)} · {item.payment.accountName || 'Счёт не выбран'}</span></div>
+      <button type="button" title={item.status === 'paid' ? 'Вернуть в ожидающие' : 'Создать операцию и отметить оплаченной'} aria-label={item.status === 'paid' ? 'Отметить как ожидающую' : 'Создать операцию по оплате'} data-testid={`button-toggle-payment-${key}`} onClick={onToggleStatus} className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${item.status === 'paid' ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-neutral-300'}`}>{item.status === 'paid' && <Check size={13} />}</button>
+      <div className="min-w-0 flex-1"><strong className={`block text-xs truncate ${item.status === 'paid' ? 'line-through text-neutral-400' : 'text-neutral-700'}`}>{item.payment.title}{item.payment.todoistTaskId && <span className="ml-1 inline-flex w-4 h-4 rounded bg-[#e66b53] text-white text-[10px] items-center justify-center no-underline">t</span>}</strong><span className="text-[10px] text-neutral-400">{item.payment.categoryName || (item.payment.transactionType === 'income' ? 'Доход' : 'Расход')} · {recurrenceLabel(item.payment.recurrence)} · {item.payment.accountName || 'Счёт не выбран'}</span></div>
       <strong className={`text-xs whitespace-nowrap ${item.status === 'paid' ? 'text-neutral-400 line-through' : 'text-neutral-700'}`}>{formatMoney(item.payment.amount)}</strong>
       <div className="relative">
         <button type="button" aria-label={`Действия: ${item.payment.title}`} data-testid={`button-payment-menu-${key}`} onClick={onMenu} className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100">•••</button>
@@ -377,8 +402,10 @@ function PaymentRow({ item, menuOpen, onMenu, onEdit, onDelete, onToggleStatus }
   );
 }
 
-function PaymentDialog({ mode, payment, accounts, todoistConnected, onChange, onClose, onSave, saveError }: { mode: 'create' | 'edit'; payment: PlannedPayment; accounts: Array<{ id: string; name: string }>; todoistConnected: boolean; onChange: (payment: PlannedPayment) => void; onClose: () => void; onSave: () => void; saveError?: string | null }) {
+function PaymentDialog({ mode, payment, accounts, categories, todoistConnected, onChange, onClose, onSave, saveError }: { mode: 'create' | 'edit'; payment: PlannedPayment; accounts: Array<{ id: string; name: string }>; categories: Category[]; todoistConnected: boolean; onChange: (payment: PlannedPayment) => void; onClose: () => void; onSave: () => void; saveError?: string | null }) {
   const set = <K extends keyof PlannedPayment>(field: K, value: PlannedPayment[K]) => onChange({ ...payment, [field]: value });
+  const transactionType = payment.transactionType || 'expense';
+  const matchingCategories = categories.filter(category => category.type === transactionType);
   return (
     <div className="fixed inset-0 z-40 bg-black/30 p-4 flex items-center justify-center" role="presentation" onMouseDown={onClose}>
       <section className="w-full max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl bg-white shadow-2xl" role="dialog" aria-modal="true" onMouseDown={event => event.stopPropagation()}>
@@ -392,6 +419,10 @@ function PaymentDialog({ mode, payment, accounts, todoistConnected, onChange, on
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="block text-xs font-bold text-neutral-500">Повторение<select data-testid="select-payment-recurrence" value={payment.recurrence} onChange={event => set('recurrence', event.target.value as PlannedPaymentRecurrence)} className="mt-1 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm font-normal">{RECURRENCES.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
             <label className="block text-xs font-bold text-neutral-500">Счёт<select data-testid="select-payment-account" value={payment.accountId || ''} onChange={event => { const account = accounts.find(item => item.id === event.target.value); onChange({ ...payment, accountId: account?.id, accountName: account?.name || '' }); }} className="mt-1 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm font-normal"><option value="">Не выбран</option>{accounts.map(account => <option key={account.id} value={account.id}>{account.name}</option>)}</select></label>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="block text-xs font-bold text-neutral-500">Тип операции<select data-testid="select-payment-type" value={transactionType} onChange={event => { const nextType = event.target.value as 'expense' | 'income'; const category = categories.find(item => item.type === nextType); onChange({ ...payment, transactionType: nextType, categoryId: category?.id, categoryName: category?.name }); }} className="mt-1 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm font-normal"><option value="expense">Расход</option><option value="income">Доход</option></select></label>
+            <label className="block text-xs font-bold text-neutral-500">Категория<select data-testid="select-payment-category" value={payment.categoryId || ''} onChange={event => { const category = matchingCategories.find(item => item.id === event.target.value); onChange({ ...payment, categoryId: category?.id, categoryName: category?.name }); }} className="mt-1 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm font-normal"><option value="">Не выбрана</option>{matchingCategories.map(category => <option key={category.id} value={category.id}>{category.parentId ? '— ' : ''}{category.name}</option>)}</select></label>
           </div>
           <label className="flex items-center justify-between gap-3 rounded-xl border border-neutral-100 bg-neutral-50 p-3 text-xs text-neutral-600"><span className="flex items-center gap-2"><span className="w-5 h-5 rounded bg-[#e66b53] text-white text-[11px] flex items-center justify-center">t</span>{todoistConnected ? 'Создать напоминание в Todoist' : 'Todoist не подключён'}</span><input type="checkbox" data-testid="checkbox-payment-todoist" checked={Boolean(payment.todoistLinked)} disabled={!todoistConnected} onChange={event => set('todoistLinked', event.target.checked)} /></label>
         </div>

@@ -235,7 +235,18 @@ export default function App() {
           />
         );
       case 'plan':
-        return <PlanPage accounts={accounts} categories={categories} user={user} onRefresh={refreshData} />;
+        return (
+          <PlanPage
+            accounts={accounts}
+            categories={categories}
+            user={user}
+            onRefresh={refreshData}
+            onOpenAddTransaction={(data) => {
+              setInitialTransactionData(data);
+              setShowAddTransaction(true);
+            }}
+          />
+        );
       case 'analytics':
         return (
           <Analytics

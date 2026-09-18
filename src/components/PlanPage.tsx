@@ -55,6 +55,7 @@ interface PlanPageProps {
   categories: Category[];
   user: UserProfile | null;
   onRefresh?: () => void;
+  onOpenAddTransaction?: (data?: any) => void;
 }
 
 type TabType = 'now' | 'past' | 'config' | 'comment' | 'cashback' | 'credit' | 'calendar';
@@ -115,7 +116,7 @@ const DEFAULT_CASHBACK_CATEGORIES: CashbackCategory[] = [
   { id: '35', name: 'Красота', color: '#4b0082' },
 ];
 
-export default function PlanPage({ accounts, categories, user, onRefresh }: PlanPageProps) {
+export default function PlanPage({ accounts, categories, user, onRefresh, onOpenAddTransaction }: PlanPageProps) {
   const [activeTab, setActiveTab] = useState<TabType>('now');
   const [planData, setPlanData] = useState<PlanData | null>(null);
   const [loadedTabs, setLoadedTabs] = useState<Set<TabType>>(new Set());
@@ -395,6 +396,8 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
   };
 
   const todoistDueString = (payment: PlannedPayment) => {
+    if (payment.recurrence === 'weekly') return `every week starting ${payment.date}`;
+    if (payment.recurrence === 'biweekly') return `every 2 weeks starting ${payment.date}`;
     if (payment.recurrence === 'monthly') return `every month starting ${payment.date}`;
     if (payment.recurrence === 'quarterly') return `every 3 months starting ${payment.date}`;
     if (payment.recurrence === 'yearly') return `every year starting ${payment.date}`;
@@ -436,6 +439,19 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
     await saveCalendarPayments(next);
   };
 
+  const handleCalendarPaymentOperation = (payment: PlannedPayment, date: string) => {
+    const transactionType = payment.transactionType || 'expense';
+    onOpenAddTransaction?.({
+      type: transactionType,
+      amount: payment.amount,
+      accountId: payment.accountId || '',
+      categoryId: payment.categoryId || '',
+      description: payment.title,
+      createdAt: `${date}T12:00:00`,
+      __onTransactionCreated: () => handleCalendarStatusChange(payment.id, date, 'paid'),
+    });
+  };
+
   const handleCalendarPaymentDelete = async (id: string) => {
     await saveCalendarPayments(calendarPayments.filter(payment => payment.id !== id));
   };
@@ -456,12 +472,19 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
             title: task.content,
             amount,
             date: String(task.due.date).slice(0, 10),
-            recurrence: task.due.is_recurring ? 'monthly' : 'none',
+            recurrence: task.due.is_recurring
+              ? /2\s+weeks?/i.test(String(task.due.string || '')) ? 'biweekly'
+                : /weeks?/i.test(String(task.due.string || '')) ? 'weekly'
+                  : /quarter/i.test(String(task.due.string || '')) ? 'quarterly'
+                    : /year/i.test(String(task.due.string || '')) ? 'yearly'
+                      : 'monthly'
+              : 'none',
             status: 'pending',
             paidDates: [],
             todoistTaskId: task.id,
             todoistLinked: true,
             accountName: '',
+            transactionType: 'expense',
             color: 'orange',
           } as PlannedPayment;
         })
@@ -739,6 +762,7 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
           <PaymentCalendarTab
             payments={calendarPayments}
             accounts={accounts}
+            categories={categories}
             loading={!loadedTabs.has('calendar')}
             error={calendarError}
             todoistConnected={todoistConnected}
@@ -752,6 +776,7 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
             }}
             onTodoistSync={syncTodoist}
             onStatusChange={handleCalendarStatusChange}
+            onRequestTransaction={handleCalendarPaymentOperation}
             onPaymentChange={handleCalendarPaymentChange}
             onPaymentDelete={handleCalendarPaymentDelete}
           />
