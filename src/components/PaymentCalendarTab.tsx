@@ -9,7 +9,6 @@ import {
   CircleAlert,
   CircleDashed,
   Clock3,
-  Link2,
   ListFilter,
   Pencil,
   Plus,
@@ -30,9 +29,7 @@ interface PaymentCalendarTabProps {
   categories?: Category[];
   loading?: boolean;
   error?: string | null;
-  todoistConnected?: boolean;
   onRetry?: () => void;
-  onTodoistSync?: () => void;
   onStatusChange?: (id: string, date: string, status: PlannedPaymentStatus) => void;
   onRequestTransaction?: (payment: PlannedPayment, date: string) => void;
   onPaymentChange?: (payment: PlannedPayment) => void | Promise<void>;
@@ -140,9 +137,7 @@ export default function PaymentCalendarTab({
   categories = [],
   loading = false,
   error = null,
-  todoistConnected = false,
   onRetry,
-  onTodoistSync,
   onStatusChange,
   onRequestTransaction,
   onPaymentChange,
@@ -190,7 +185,6 @@ export default function PaymentCalendarTab({
       accountName: account?.name || '',
       status: 'pending',
       paidDates: [],
-      todoistLinked: false,
       color: 'plum',
     });
     setDialogMode('create');
@@ -207,7 +201,7 @@ export default function PaymentCalendarTab({
       setEditingPayment(null);
     } catch (error) {
       console.error('Payment save error:', error);
-      setSaveError('Не удалось сохранить оплату. Проверьте подключение и попробуйте ещё раз.');
+       setSaveError('Не удалось сохранить запись. Проверьте подключение и попробуйте ещё раз.');
     }
   };
 
@@ -233,32 +227,19 @@ export default function PaymentCalendarTab({
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-[0.16em] font-bold text-neutral-400">Планы / календарь</p>
-            <h2 className="text-xl sm:text-2xl font-bold text-neutral-800">Плановые оплаты</h2>
-            <p className="text-xs text-neutral-400 mt-1">Регулярные платежи и напоминания в одном месте</p>
+            <p className="text-xs text-neutral-400 mt-1">Регулярные записи и напоминания в одном месте</p>
           </div>
         </div>
         <div className="flex gap-2">
-          <button
-            type="button"
-            data-testid="button-sync-todoist"
-            onClick={onTodoistSync}
-            className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 ${
-              todoistConnected ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-orange-200 bg-orange-50 text-orange-700'
-            }`}
-          >
-            <span className="w-4 h-4 rounded bg-[#e66b53] text-white text-[10px] flex items-center justify-center">t</span>
-            {todoistConnected ? 'Todoist подключён' : 'Подключить Todoist'}
-            <RefreshCw size={13} />
-          </button>
           <button type="button" data-testid="button-add-payment" onClick={() => openCreate()} className="px-3 py-2 rounded-xl bg-purple-600 text-white text-xs font-bold flex items-center gap-2 hover:bg-purple-700">
-            <Plus size={15} /> <span className="hidden sm:inline">Добавить оплату</span>
+            <Plus size={15} /> <span className="hidden sm:inline">Запланировать</span>
           </button>
         </div>
       </header>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        <SummaryCard icon={<Clock3 size={15} />} value={formatMoney(pendingAmount)} label="ожидает оплаты" tone="orange" />
-        <SummaryCard icon={<CheckCircle2 size={15} />} value={formatMoney(paidAmount)} label="уже оплачено" tone="green" />
+         <SummaryCard icon={<Clock3 size={15} />} value={formatMoney(pendingAmount)} label="ожидает выполнения" tone="orange" />
+         <SummaryCard icon={<CheckCircle2 size={15} />} value={formatMoney(paidAmount)} label="выполнено" tone="green" />
         <div className="hidden sm:flex items-center px-4 rounded-xl border border-neutral-100 bg-white text-xs text-neutral-400">
           {occurrences.length} {pluralize(occurrences.length, 'платёж', 'платежа', 'платежей')} в {MONTHS[cursor.getMonth()]}
         </div>
@@ -286,7 +267,7 @@ export default function PaymentCalendarTab({
           <CalendarDays className="text-purple-300 mb-3" size={30} />
           <h3 className="text-lg font-bold text-neutral-700">В этом месяце нет плановых оплат</h3>
           <p className="text-xs text-neutral-400 max-w-sm mt-2 mb-4">Добавьте аренду, подписку или другой регулярный платёж — он появится на календаре.</p>
-          <button type="button" data-testid="button-add-first-payment" onClick={() => openCreate(toDateKey(cursor))} className="px-3 py-2 rounded-xl bg-purple-600 text-white text-xs font-bold"><Plus size={14} className="inline mr-1" />Добавить первую оплату</button>
+           <button type="button" data-testid="button-add-first-payment" onClick={() => openCreate(toDateKey(cursor))} className="px-3 py-2 rounded-xl bg-purple-600 text-white text-xs font-bold"><Plus size={14} className="inline mr-1" />Запланировать первую запись</button>
         </div>
       ) : (
         <div className="grid lg:grid-cols-[minmax(0,1fr)_300px] gap-3">
@@ -327,11 +308,11 @@ export default function PaymentCalendarTab({
                 <p className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">Выбранный день</p>
                 <h3 className="text-lg font-bold text-neutral-800 mt-1">{selectedDate ? parseDateKey(selectedDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : 'Выберите день'}</h3>
               </div>
-              <button type="button" aria-label="Добавить оплату на выбранный день" data-testid="button-add-payment-selected-day" onClick={() => openCreate()} className="p-2 rounded-lg bg-purple-50 text-purple-600"><Plus size={16} /></button>
+              <button type="button" aria-label="Запланировать на выбранный день" data-testid="button-add-payment-selected-day" onClick={() => openCreate()} className="p-2 rounded-lg bg-purple-50 text-purple-600"><Plus size={16} /></button>
             </div>
             <div className="divide-y divide-neutral-100">
               {selectedOccurrences.length === 0 ? (
-                <div className="py-12 text-center text-xs text-neutral-400"><CircleDashed size={20} className="mx-auto mb-2" />На этот день оплат нет</div>
+                 <div className="py-12 text-center text-xs text-neutral-400"><CircleDashed size={20} className="mx-auto mb-2" />На этот день записей нет</div>
               ) : selectedOccurrences.map(item => (
                 <PaymentRow
                   key={`${item.payment.id}-${item.date}`}
@@ -366,7 +347,6 @@ export default function PaymentCalendarTab({
           payment={editingPayment}
           accounts={accounts}
           categories={categories}
-          todoistConnected={todoistConnected}
           onChange={setEditingPayment}
           onClose={() => { setDialogMode(null); setEditingPayment(null); }}
           onSave={savePayment}
@@ -391,8 +371,8 @@ function PaymentRow({ item, menuOpen, onMenu, onEdit, onDelete, onToggleStatus }
   const key = `${item.payment.id}-${item.date}`;
   return (
     <article className="flex items-center gap-2 py-3" data-testid={`payment-row-${key}`}>
-      <button type="button" title={item.status === 'paid' ? 'Вернуть в ожидающие' : 'Создать операцию и отметить оплаченной'} aria-label={item.status === 'paid' ? 'Отметить как ожидающую' : 'Создать операцию по оплате'} data-testid={`button-toggle-payment-${key}`} onClick={onToggleStatus} className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${item.status === 'paid' ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-neutral-300'}`}>{item.status === 'paid' && <Check size={13} />}</button>
-      <div className="min-w-0 flex-1"><strong className={`block text-xs truncate ${item.status === 'paid' ? 'line-through text-neutral-400' : 'text-neutral-700'}`}>{item.payment.title}{item.payment.todoistTaskId && <span className="ml-1 inline-flex w-4 h-4 rounded bg-[#e66b53] text-white text-[10px] items-center justify-center no-underline">t</span>}</strong><span className="text-[10px] text-neutral-400">{item.payment.categoryName || (item.payment.transactionType === 'income' ? 'Доход' : 'Расход')} · {recurrenceLabel(item.payment.recurrence)} · {item.payment.accountName || 'Счёт не выбран'}</span></div>
+       <button type="button" title={item.status === 'paid' ? 'Вернуть в ожидающие' : 'Создать операцию и отметить выполненной'} aria-label={item.status === 'paid' ? 'Отметить как ожидающую' : 'Создать операцию по записи'} data-testid={`button-toggle-payment-${key}`} onClick={onToggleStatus} className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${item.status === 'paid' ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-neutral-300'}`}>{item.status === 'paid' && <Check size={13} />}</button>
+      <div className="min-w-0 flex-1"><strong className={`block text-xs truncate ${item.status === 'paid' ? 'line-through text-neutral-400' : 'text-neutral-700'}`}>{item.payment.title}</strong><span className="text-[10px] text-neutral-400">{item.payment.categoryName || (item.payment.transactionType === 'income' ? 'Доход' : 'Расход')} · {recurrenceLabel(item.payment.recurrence)} · {item.payment.accountName || 'Счёт не выбран'}</span></div>
       <strong className={`text-xs whitespace-nowrap ${item.status === 'paid' ? 'text-neutral-400 line-through' : 'text-neutral-700'}`}>{formatMoney(item.payment.amount)}</strong>
       <div className="relative">
         <button type="button" aria-label={`Действия: ${item.payment.title}`} data-testid={`button-payment-menu-${key}`} onClick={onMenu} className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100">•••</button>
@@ -402,14 +382,14 @@ function PaymentRow({ item, menuOpen, onMenu, onEdit, onDelete, onToggleStatus }
   );
 }
 
-function PaymentDialog({ mode, payment, accounts, categories, todoistConnected, onChange, onClose, onSave, saveError }: { mode: 'create' | 'edit'; payment: PlannedPayment; accounts: Array<{ id: string; name: string }>; categories: Category[]; todoistConnected: boolean; onChange: (payment: PlannedPayment) => void; onClose: () => void; onSave: () => void; saveError?: string | null }) {
+function PaymentDialog({ mode, payment, accounts, categories, onChange, onClose, onSave, saveError }: { mode: 'create' | 'edit'; payment: PlannedPayment; accounts: Array<{ id: string; name: string }>; categories: Category[]; onChange: (payment: PlannedPayment) => void; onClose: () => void; onSave: () => void; saveError?: string | null }) {
   const set = <K extends keyof PlannedPayment>(field: K, value: PlannedPayment[K]) => onChange({ ...payment, [field]: value });
   const transactionType = payment.transactionType || 'expense';
   const matchingCategories = categories.filter(category => category.type === transactionType);
   return (
     <div className="fixed inset-0 z-40 bg-black/30 p-4 flex items-center justify-center" role="presentation" onMouseDown={onClose}>
       <section className="w-full max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl bg-white shadow-2xl" role="dialog" aria-modal="true" onMouseDown={event => event.stopPropagation()}>
-        <header className="flex items-center justify-between p-4 border-b border-neutral-100"><div><p className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">{mode === 'create' ? 'Новая запись' : 'Плановая оплата'}</p><h3 className="text-lg font-bold text-neutral-800">{mode === 'create' ? 'Добавить оплату' : 'Изменить оплату'}</h3></div><button type="button" aria-label="Закрыть" data-testid="button-close-payment-dialog" onClick={onClose} className="p-2 rounded-lg hover:bg-neutral-100"><X size={16} /></button></header>
+        <header className="flex items-center justify-between p-4 border-b border-neutral-100"><h3 className="text-lg font-bold text-neutral-800">{mode === 'create' ? 'Новая запись' : 'Изменить'}</h3><button type="button" aria-label="Закрыть" data-testid="button-close-payment-dialog" onClick={onClose} className="p-2 rounded-lg hover:bg-neutral-100"><X size={16} /></button></header>
         <div className="p-4 space-y-3">
           <label className="block text-xs font-bold text-neutral-500">Название<input data-testid="input-payment-title" value={payment.title} onChange={event => set('title', event.target.value)} placeholder="Аренда квартиры" className="mt-1 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm font-normal" autoFocus /></label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -424,10 +404,9 @@ function PaymentDialog({ mode, payment, accounts, categories, todoistConnected, 
             <label className="block text-xs font-bold text-neutral-500">Тип операции<select data-testid="select-payment-type" value={transactionType} onChange={event => { const nextType = event.target.value as 'expense' | 'income'; const category = categories.find(item => item.type === nextType); onChange({ ...payment, transactionType: nextType, categoryId: category?.id, categoryName: category?.name }); }} className="mt-1 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm font-normal"><option value="expense">Расход</option><option value="income">Доход</option></select></label>
             <label className="block text-xs font-bold text-neutral-500">Категория<select data-testid="select-payment-category" value={payment.categoryId || ''} onChange={event => { const category = matchingCategories.find(item => item.id === event.target.value); onChange({ ...payment, categoryId: category?.id, categoryName: category?.name }); }} className="mt-1 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm font-normal"><option value="">Не выбрана</option>{matchingCategories.map(category => <option key={category.id} value={category.id}>{category.parentId ? '— ' : ''}{category.name}</option>)}</select></label>
           </div>
-          <label className="flex items-center justify-between gap-3 rounded-xl border border-neutral-100 bg-neutral-50 p-3 text-xs text-neutral-600"><span className="flex items-center gap-2"><span className="w-5 h-5 rounded bg-[#e66b53] text-white text-[11px] flex items-center justify-center">t</span>{todoistConnected ? 'Создать напоминание в Todoist' : 'Todoist не подключён'}</span><input type="checkbox" data-testid="checkbox-payment-todoist" checked={Boolean(payment.todoistLinked)} disabled={!todoistConnected} onChange={event => set('todoistLinked', event.target.checked)} /></label>
         </div>
         {saveError && <p className="px-4 pb-3 text-xs text-rose-600">{saveError}</p>}
-        <footer className="flex justify-end gap-2 p-4 border-t border-neutral-100"><button type="button" data-testid="button-cancel-payment" onClick={onClose} className="px-3 py-2 rounded-xl bg-neutral-100 text-neutral-500 text-xs font-bold">Отмена</button><button type="button" data-testid="button-save-payment" disabled={!payment.title.trim() || payment.amount <= 0} onClick={onSave} className="px-3 py-2 rounded-xl bg-purple-600 text-white text-xs font-bold disabled:opacity-40">{mode === 'create' ? <Plus size={14} className="inline mr-1" /> : <Check size={14} className="inline mr-1" />}{mode === 'create' ? 'Добавить оплату' : 'Сохранить'}</button></footer>
+        <footer className="flex justify-end gap-2 p-4 border-t border-neutral-100"><button type="button" data-testid="button-cancel-payment" onClick={onClose} className="px-3 py-2 rounded-xl bg-neutral-100 text-neutral-500 text-xs font-bold">Отмена</button><button type="button" data-testid="button-save-payment" disabled={!payment.title.trim() || payment.amount <= 0} onClick={onSave} className="px-3 py-2 rounded-xl bg-purple-600 text-white text-xs font-bold disabled:opacity-40">{mode === 'create' ? <Plus size={14} className="inline mr-1" /> : <Check size={14} className="inline mr-1" />}{mode === 'create' ? 'Запланировать' : 'Сохранить'}</button></footer>
       </section>
     </div>
   );

@@ -184,7 +184,6 @@ export default function PlanPage({ accounts, categories, user, onRefresh, onOpen
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | 'queued'>('saved');
   const [calendarPayments, setCalendarPayments] = useState<PlannedPayment[]>([]);
   const [calendarError, setCalendarError] = useState<string | null>(null);
-  const [todoistConnected, setTodoistConnected] = useState(false);
 
   // When network is restored, flip 'queued' → 'saved' (sync already fired in App.tsx)
   useEffect(() => {
@@ -395,32 +394,10 @@ export default function PlanPage({ accounts, categories, user, onRefresh, onOpen
     }
   };
 
-  const todoistDueString = (payment: PlannedPayment) => {
-    if (payment.recurrence === 'weekly') return `every week starting ${payment.date}`;
-    if (payment.recurrence === 'biweekly') return `every 2 weeks starting ${payment.date}`;
-    if (payment.recurrence === 'monthly') return `every month starting ${payment.date}`;
-    if (payment.recurrence === 'quarterly') return `every 3 months starting ${payment.date}`;
-    if (payment.recurrence === 'yearly') return `every year starting ${payment.date}`;
-    return payment.date;
-  };
-
   const handleCalendarPaymentChange = async (payment: PlannedPayment) => {
-    let nextPayment = payment;
-    const todoistPayload = {
-      content: `${payment.title} — ${Math.round(payment.amount).toLocaleString('ru-RU')} ₽`,
-      dueString: todoistDueString(payment),
-    };
-    if (payment.todoistLinked && payment.todoistTaskId) {
-      await api.put(`/todoist/tasks/${encodeURIComponent(payment.todoistTaskId)}`, todoistPayload);
-    } else if (payment.todoistLinked && !payment.todoistTaskId) {
-      const task = await api.post<any>('/todoist/tasks', todoistPayload);
-      nextPayment = { ...payment, todoistTaskId: task.id };
-      setTodoistConnected(true);
-    }
-
-    const next = calendarPayments.some(item => item.id === nextPayment.id)
-      ? calendarPayments.map(item => item.id === nextPayment.id ? nextPayment : item)
-      : [...calendarPayments, nextPayment];
+    const next = calendarPayments.some(item => item.id === payment.id)
+      ? calendarPayments.map(item => item.id === payment.id ? payment : item)
+      : [...calendarPayments, payment];
     await saveCalendarPayments(next);
   };
 
@@ -454,47 +431,6 @@ export default function PlanPage({ accounts, categories, user, onRefresh, onOpen
 
   const handleCalendarPaymentDelete = async (id: string) => {
     await saveCalendarPayments(calendarPayments.filter(payment => payment.id !== id));
-  };
-
-  const syncTodoist = async () => {
-    setCalendarError(null);
-    try {
-      const response = await api.get<any>('/todoist/tasks');
-      setTodoistConnected(true);
-      const tasks = Array.isArray(response?.results) ? response.results : [];
-      const imported = tasks
-        .filter((task: any) => task.due?.date)
-        .map((task: any) => {
-          const amountMatch = String(task.content || '').match(/(\d[\d\s.,]*)\s*(?:₽|руб)/i);
-          const amount = amountMatch ? Number(amountMatch[1].replace(/\s/g, '').replace(',', '.')) : 0;
-          return {
-            id: `todoist-${task.id}`,
-            title: task.content,
-            amount,
-            date: String(task.due.date).slice(0, 10),
-            recurrence: task.due.is_recurring
-              ? /2\s+weeks?/i.test(String(task.due.string || '')) ? 'biweekly'
-                : /weeks?/i.test(String(task.due.string || '')) ? 'weekly'
-                  : /quarter/i.test(String(task.due.string || '')) ? 'quarterly'
-                    : /year/i.test(String(task.due.string || '')) ? 'yearly'
-                      : 'monthly'
-              : 'none',
-            status: 'pending',
-            paidDates: [],
-            todoistTaskId: task.id,
-            todoistLinked: true,
-            accountName: '',
-            transactionType: 'expense',
-            color: 'orange',
-          } as PlannedPayment;
-        })
-        .filter((payment: PlannedPayment) => payment.amount > 0);
-      const local = calendarPayments.filter(payment => !payment.todoistTaskId);
-      await saveCalendarPayments([...local, ...imported]);
-    } catch (error) {
-      console.error('Todoist sync error:', error);
-      setCalendarError('Не удалось синхронизировать Todoist.');
-    }
   };
 
   const handleManualSave = () => {
@@ -765,7 +701,6 @@ export default function PlanPage({ accounts, categories, user, onRefresh, onOpen
             categories={categories}
             loading={!loadedTabs.has('calendar')}
             error={calendarError}
-            todoistConnected={todoistConnected}
             onRetry={() => {
               setCalendarError(null);
               setLoadedTabs(prev => {
@@ -774,7 +709,6 @@ export default function PlanPage({ accounts, categories, user, onRefresh, onOpen
                 return next;
               });
             }}
-            onTodoistSync={syncTodoist}
             onStatusChange={handleCalendarStatusChange}
             onRequestTransaction={handleCalendarPaymentOperation}
             onPaymentChange={handleCalendarPaymentChange}

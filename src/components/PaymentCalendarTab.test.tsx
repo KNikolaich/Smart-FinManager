@@ -70,6 +70,9 @@ describe('PaymentCalendarTab', () => {
     render(<PaymentCalendarTab payments={[]} accounts={[]} onPaymentChange={onPaymentChange} />);
 
     fireEvent.click(screen.getByTestId('button-add-first-payment'));
+    expect(screen.getByText('Новая запись')).toBeTruthy();
+    expect(screen.getByTestId('button-save-payment').textContent).toContain('Запланировать');
+    expect(screen.queryByText(/Todoist/i)).toBeNull();
     fireEvent.change(screen.getByTestId('input-payment-title'), { target: { value: 'Интернет' } });
     fireEvent.change(screen.getByTestId('input-payment-amount'), { target: { value: '900' } });
     fireEvent.click(screen.getByTestId('button-save-payment'));

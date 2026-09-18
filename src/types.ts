@@ -186,8 +186,6 @@ export interface PlannedPayment {
   accountName?: string;
   status: PlannedPaymentStatus;
   paidDates?: string[];
-  todoistTaskId?: string;
-  todoistLinked?: boolean;
   color?: 'plum' | 'blue' | 'orange';
 }
 
