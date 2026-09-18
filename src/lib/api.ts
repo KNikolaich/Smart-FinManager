@@ -591,6 +591,36 @@ export const api = {
     return handleResponse(res);
   },
 
+  // Fetches the complete filtered transaction set for calendar markers and
+  // other views that need dates beyond the currently paginated page.
+  async getTransactionsForCalendar(params: {
+    startDate?: string;
+    endDate?: string;
+    type?: string;
+    accountIds?: string[];
+    categoryIds?: string[];
+    search?: string;
+    searchCategoryIds?: string[];
+    searchAccountIds?: string[];
+  }): Promise<any[]> {
+    if (!navigator.onLine) return [];
+
+    const qs = new URLSearchParams();
+    if (params.startDate) qs.set('startDate', params.startDate);
+    if (params.endDate) qs.set('endDate', params.endDate);
+    if (params.type) qs.set('type', params.type);
+    if (params.accountIds?.length) qs.set('accountIds', params.accountIds.join(','));
+    if (params.categoryIds?.length) qs.set('categoryIds', params.categoryIds.join(','));
+    if (params.search) qs.set('search', params.search);
+    if (params.searchCategoryIds?.length) qs.set('searchCategoryIds', params.searchCategoryIds.join(','));
+    if (params.searchAccountIds?.length) qs.set('searchAccountIds', params.searchAccountIds.join(','));
+
+    const query = qs.toString();
+    const res = await fetch(`${API_URL}/transactions${query ? `?${query}` : ''}`, { headers: getHeaders() });
+    await handleAuthError(res, '/transactions');
+    return handleResponse(res);
+  },
+
   async post<T>(endpoint: string, data: any): Promise<T> {
     const isOffline = !navigator.onLine;
 

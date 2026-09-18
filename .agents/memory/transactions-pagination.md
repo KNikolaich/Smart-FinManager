@@ -13,3 +13,5 @@ description: How GET /api/transactions pagination is structured and the date-ran
 **How to apply:** if adding new filters or callers, decide up front whether they want a page or the full set, and route through the matching mode. Also remember `endDate` must be normalized to end-of-day (`23:59:59.999`) before use in `lte`, otherwise same-day/month-end transactions are excluded.
 
 Frontend: `TransactionHistory.tsx` fetches its own paginated data via `api.getTransactionsPage()` (no longer takes a `transactions` prop). It refetches page 1 when filters change or when the parent's `refreshSignal` prop (an incrementing counter bumped after every data refresh in `App.tsx`) changes, so edits/deletes made elsewhere in the app are reflected.
+
+When a caller uses the unpaginated legacy endpoint with filters, the controller must forward those query filters before applying the unpaginated sentinel. Otherwise the response is complete but silently ignores the caller's date/type/account/category/search constraints.

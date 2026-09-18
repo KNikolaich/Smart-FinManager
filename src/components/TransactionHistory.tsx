@@ -109,6 +109,8 @@ export default function TransactionHistory({
   const [customEndDate, setCustomEndDate] = useState<string>(initialEndDate || '');
   const [isFunnelOpen, setIsFunnelOpen] = useState(false);
   const [calendarDate, setCalendarDate] = useState<Date | null>(null);
+  const [calendarTransactions, setCalendarTransactions] = useState<Transaction[]>([]);
+  const [calendarTransactionsLoading, setCalendarTransactionsLoading] = useState(false);
   const [pendingNavigationDate, setPendingNavigationDate] = useState<string | null>(null);
 
   // Online status and queued offline transactions
@@ -266,6 +268,47 @@ export default function TransactionHistory({
       searchAccountIds: accounts.filter(a => fuzzyMatch(a.name)).map(a => a.id),
     };
   }, [debouncedSearchQuery, categories, accounts]);
+
+  useEffect(() => {
+    if (!calendarDate) return;
+
+    let cancelled = false;
+    setCalendarTransactionsLoading(true);
+    api.getTransactionsForCalendar({
+      startDate: effectiveStartDate,
+      endDate: effectiveEndDate,
+      type: filterType,
+      accountIds: selectedAccountIds.length > 0 ? selectedAccountIds : undefined,
+      categoryIds: categoryIdsFilter,
+      search: debouncedSearchQuery || undefined,
+      searchCategoryIds,
+      searchAccountIds,
+    }).then(result => {
+      if (!cancelled) setCalendarTransactions(result as Transaction[]);
+    }).catch(error => {
+      if (!cancelled) {
+        console.error('Failed to load transactions for calendar:', error);
+        setCalendarTransactions([]);
+      }
+    }).finally(() => {
+      if (!cancelled) setCalendarTransactionsLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    calendarDate,
+    categoryIdsFilter,
+    debouncedSearchQuery,
+    effectiveEndDate,
+    effectiveStartDate,
+    searchAccountIds,
+    searchCategoryIds,
+    selectedAccountIds,
+    filterType,
+    refreshSignal,
+  ]);
 
   const fetchPage = async (targetPage: number, append: boolean) => {
     const seq = ++requestSeq.current;
@@ -1067,6 +1110,9 @@ export default function TransactionHistory({
         {calendarDate && (
           <TransactionCalendar
             initialDate={calendarDate}
+            transactions={calendarTransactions}
+            categories={categories}
+            transactionsLoading={calendarTransactionsLoading}
             onClose={() => setCalendarDate(null)}
             onSelect={(date) => {
               const dateKey = format(date, 'yyyy-MM-dd');

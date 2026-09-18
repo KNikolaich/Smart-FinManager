@@ -15,7 +15,17 @@ export async function list(req: any, res: any) {
     // No pagination params -> legacy behavior: return the plain array
     // (kept for any callers that haven't migrated, e.g. exports/AI context).
     if (q.page === undefined && q.pageSize === undefined) {
-      const result = await transactionsService.listTransactions(req.user.userId, { pageSize: UNPAGINATED_SENTINEL as any });
+      const result = await transactionsService.listTransactions(req.user.userId, {
+        pageSize: UNPAGINATED_SENTINEL as any,
+        startDate: q.startDate,
+        endDate: q.endDate,
+        type: q.type,
+        accountIds: parseIdList(q.accountIds),
+        categoryIds: parseIdList(q.categoryIds),
+        search: q.search,
+        searchCategoryIds: parseIdList(q.searchCategoryIds),
+        searchAccountIds: parseIdList(q.searchAccountIds),
+      });
       return res.json(result.transactions);
     }
 
