@@ -16,6 +16,7 @@ export default function CategorySelect({ categories, selectedCategoryId, onChang
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
+  const selectedOptionRef = useRef<HTMLButtonElement>(null);
 
   const selectedCategory = categories.find(c => c.id === selectedCategoryId);
   const parentCategory = selectedCategory?.parentId 
@@ -63,13 +64,28 @@ export default function CategorySelect({ categories, selectedCategoryId, onChang
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (!isOpen || !selectedCategoryId) return;
+
+    // The selected item may be below the visible part of a long category list.
+    // Wait until the animated list has mounted, then reveal and focus it.
+    const frame = requestAnimationFrame(() => {
+      const selectedOption = selectedOptionRef.current;
+      if (!selectedOption) return;
+      selectedOption.scrollIntoView({ block: 'nearest' });
+      selectedOption.focus({ preventScroll: true });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [isOpen, selectedCategoryId, groupedCategories]);
+
   return (
     <div ref={containerRef} className="relative w-full">
       {label && <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1 mb-1 block">{label}</label>}
       
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => setIsOpen(open => !open)}
         className="w-full bg-theme-surface border border-theme-base rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-left font-semibold flex items-center justify-between text-theme-main shadow-sm"
       >
         {selectedCategory ? (
@@ -130,6 +146,7 @@ export default function CategorySelect({ categories, selectedCategoryId, onChang
                   <div key={parent.id} className="mb-1 last:mb-0">
                     <button
                       type="button"
+                      ref={selectedCategoryId === parent.id ? selectedOptionRef : undefined}
                       onClick={() => {
                         onChange(parent.id);
                         setIsOpen(false);
@@ -151,6 +168,7 @@ export default function CategorySelect({ categories, selectedCategoryId, onChang
                           <button
                             key={child.id}
                             type="button"
+                            ref={selectedCategoryId === child.id ? selectedOptionRef : undefined}
                             onClick={() => {
                               onChange(child.id);
                               setIsOpen(false);
