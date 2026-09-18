@@ -20,7 +20,6 @@ import {
   History, 
   Settings as SettingsIcon, 
   MessageSquare, 
-  Calendar, 
   Save, 
   X, 
   Bold, 
@@ -651,11 +650,10 @@ export default function PlanPage({ accounts, categories, user, onRefresh, onOpen
           className={cn(
             "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
             activeTab === 'calendar'
-              ? "bg-purple-500 text-white border-purple-500 translate-y-[1px]"
+              ? "bg-orange-500 text-white border-orange-500 translate-y-[1px]"
               : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
           )}
         >
-          <Calendar size={12} className="inline mr-1" />
           <span>Календарь</span>
         </button>
         <button
