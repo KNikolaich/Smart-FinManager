@@ -84,6 +84,7 @@ export default function Dashboard({
         onOpenTransactionHistory={onOpenTransactionHistory}
         onOpenAddTransaction={onOpenAddTransaction}
         onEditTransaction={onEditTransaction}
+        onRefresh={onRefresh}
       />
 
       <GoalsSection

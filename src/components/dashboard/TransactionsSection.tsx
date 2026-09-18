@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Account, Category, Transaction } from '../../types';
-import { ChevronRight, Plus, Copy } from 'lucide-react';
-import { GenericContextMenu } from '../ui/GenericContextMenu';
+import { ChevronRight, Plus } from 'lucide-react';
 import { cn, getTransactionDisplayTitle } from '../../lib/utils';
 import { dateFromKey, formatTransactionDateHeading } from '../../lib/dateLabels';
+import { api } from '../../lib/api';
+import { TransactionContextMenu } from '../ui/TransactionContextMenu';
+import { DeleteTransactionDialog } from '../ui/DeleteTransactionDialog';
 
 interface TransactionsSectionProps {
   groupedTransactions: [string, Transaction[]][];
@@ -14,6 +16,7 @@ interface TransactionsSectionProps {
   onOpenTransactionHistory?: (filterProps?: any) => void;
   onOpenAddTransaction?: (initialData?: any) => void;
   onEditTransaction?: (t: Transaction) => void;
+  onRefresh?: () => void | Promise<void>;
 }
 
 export function TransactionsSection({
@@ -23,29 +26,27 @@ export function TransactionsSection({
   accounts,
   onOpenTransactionHistory,
   onOpenAddTransaction,
-  onEditTransaction
+  onEditTransaction,
+  onRefresh,
 }: TransactionsSectionProps) {
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, transaction: Transaction } | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<Transaction | null>(null);
+  const [deletingTransaction, setDeletingTransaction] = useState(false);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const handleContextMenuAction = (action: 'create' | 'copy') => {
-    if (!contextMenu) return;
+  const handleDeleteTransaction = async () => {
+    if (!deleteConfirmation) return;
 
-    if (action === 'create') {
-      onOpenAddTransaction?.({
-        createdAt: new Date().toISOString()
-      });
-    } else if (action === 'copy') {
-      const t = contextMenu.transaction;
-      onOpenAddTransaction?.({
-        type: t.type,
-        amount: t.amount,
-        accountId: t.accountId,
-        categoryId: t.categoryId,
-        description: t.description,
-        targetAccountId: t.targetAccountId,
-        createdAt: new Date().toISOString()
-      });
+    const transaction = deleteConfirmation;
+    setDeletingTransaction(true);
+    try {
+      await api.delete(`/transactions/${transaction.id}`);
+      setDeleteConfirmation(null);
+      await onRefresh?.();
+    } catch (error) {
+      console.error('Failed to delete transaction:', error);
+    } finally {
+      setDeletingTransaction(false);
     }
   };
 
@@ -175,24 +176,22 @@ export function TransactionsSection({
       </div>
 
       {contextMenu && (
-        <GenericContextMenu
+        <TransactionContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
+          transaction={contextMenu.transaction}
           onClose={() => setContextMenu(null)}
-          items={[
-            {
-              label: 'Добавить похожую',
-              icon: Plus,
-              onClick: () => handleContextMenuAction('create')
-            },
-            {
-              label: 'Копировать операцию',
-              icon: Copy,
-              onClick: () => handleContextMenuAction('copy')
-            }
-          ]}
+          onSimilar={data => onOpenAddTransaction?.(data)}
+          onDelete={() => setDeleteConfirmation(contextMenu.transaction)}
         />
       )}
+
+      <DeleteTransactionDialog
+        transaction={deleteConfirmation}
+        deleting={deletingTransaction}
+        onConfirm={handleDeleteTransaction}
+        onCancel={() => setDeleteConfirmation(null)}
+      />
     </section>
   );
 }
