@@ -102,6 +102,7 @@ export function AppModals({
           onClose={onCloseTransactionHistory}
           onEditTransaction={onEditTransaction}
           onOpenAddTransaction={onOpenAddTransactionWithData}
+          onRefresh={onUpdateTransaction}
           initialAccountId={transactionHistoryFilter.accountId}
           initialCategoryId={transactionHistoryFilter.categoryId}
           initialType={transactionHistoryFilter.type}
