@@ -36,12 +36,29 @@ export default function AddTransaction({ accounts, transactions, categories, cur
     initialData?.targetAccountId || (openedFromAI ? '' : accounts.find(a => !a.isArchived && a.id !== initialData?.accountId)?.id || accounts[1]?.id || accounts[0]?.id || '')
   );
   const [selectedCategoryId, setSelectedCategoryId] = useState(initialData?.categoryId || '');
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(initialData?.subcategoryId || null);
   const [description, setDescription] = useState(initialData?.description || '');
   const [date, setDate] = useState(initialData?.createdAt ? format(new Date(initialData.createdAt), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
   const [loading, setLoading] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [showPreview, setShowPreview] = useState(!!initialData?.description);
   const activeAccounts = accounts.filter(a => !a.isArchived);
+
+  const handleTypeChange = (nextType: TransactionType) => {
+    setType(nextType);
+
+    if (nextType === 'transfer') {
+      setSelectedCategoryId('');
+      setSelectedSubcategoryId(null);
+      return;
+    }
+
+    const selectedCategory = categories.find(category => category.id === selectedCategoryId);
+    if (!selectedCategory || selectedCategory.type !== nextType) {
+      setSelectedCategoryId('');
+      setSelectedSubcategoryId(null);
+    }
+  };
 
   // --- Cross-currency transfer state ---
   const sourceAccount = accounts.find(a => a.id === selectedAccountId);
@@ -116,6 +133,7 @@ export default function AddTransaction({ accounts, transactions, categories, cur
       accountId: selectedAccountId,
       targetAccountId: type === 'transfer' ? selectedTargetAccountId : undefined,
       categoryId: type !== 'transfer' ? selectedCategoryId : '',
+      subcategoryId: type !== 'transfer' ? selectedSubcategoryId : null,
       createdAt: finalCreatedAt,
       type
     };
@@ -132,6 +150,7 @@ export default function AddTransaction({ accounts, transactions, categories, cur
         accountId: selectedAccountId,
         targetAccountId: type === 'transfer' ? selectedTargetAccountId : null,
         categoryId: type !== 'transfer' ? selectedCategoryId : null,
+        subcategoryId: type !== 'transfer' ? selectedSubcategoryId : null,
         createdAt: finalCreatedAt,
         type
       });
@@ -161,9 +180,9 @@ export default function AddTransaction({ accounts, transactions, categories, cur
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <div className="flex flex-col gap-0.5 shrink-0 bg-theme-surface p-1.5 border-b border-theme-base">
             <div className="flex gap-1 bg-theme-main p-1 rounded-xl">
-              <button type="button" onClick={() => setType('expense')} className={cn("flex-1 py-1 px-3 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all", type === 'expense' ? "bg-theme-surface shadow-sm text-theme-primary" : "text-theme-muted")}>Расход</button>
-              <button type="button" onClick={() => setType('income')} className={cn("flex-1 py-1 px-3 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all", type === 'income' ? "bg-theme-surface shadow-sm text-theme-primary" : "text-theme-muted")}>Доход</button>
-              <button type="button" onClick={() => setType('transfer')} className={cn("flex-1 py-1 px-3 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all", type === 'transfer' ? "bg-theme-surface shadow-sm text-theme-primary" : "text-theme-muted")}>Перевод</button>
+              <button type="button" onClick={() => handleTypeChange('expense')} className={cn("flex-1 py-1 px-3 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all", type === 'expense' ? "bg-theme-surface shadow-sm text-theme-primary" : "text-theme-muted")}>Расход</button>
+              <button type="button" onClick={() => handleTypeChange('income')} className={cn("flex-1 py-1 px-3 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all", type === 'income' ? "bg-theme-surface shadow-sm text-theme-primary" : "text-theme-muted")}>Доход</button>
+              <button type="button" onClick={() => handleTypeChange('transfer')} className={cn("flex-1 py-1 px-3 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all", type === 'transfer' ? "bg-theme-surface shadow-sm text-theme-primary" : "text-theme-muted")}>Перевод</button>
             </div>
           </div>
 
@@ -315,7 +334,10 @@ export default function AddTransaction({ accounts, transactions, categories, cur
                   <CategorySelect
                     categories={categories}
                     selectedCategoryId={selectedCategoryId}
-                    onChange={setSelectedCategoryId}
+                    onChange={(id) => {
+                      setSelectedCategoryId(id);
+                      setSelectedSubcategoryId(null);
+                    }}
                     type={type}
                   />
                 </div>

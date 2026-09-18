@@ -3,7 +3,7 @@ import { Transaction, Category, Account, Currency } from '../types';
 import { accountCurrencySymbol } from '../lib/currencyUtils';
 import { addMonths, endOfMonth, format, startOfMonth, subMonths } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { X, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy, ChevronDown, ChevronLeft, ChevronRight, Search, Loader2, WifiOff, Clock } from 'lucide-react';
+import { X, ArrowUpRight, ArrowDownLeft, Filter, ArrowRightLeft, Plus, Copy, Trash2, AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, Search, Loader2, WifiOff, Clock } from 'lucide-react';
 import { GenericContextMenu } from './ui/GenericContextMenu';
 import { AnimatePresence } from 'motion/react';
 import { cn, getTransactionDisplayTitle } from '../lib/utils';
@@ -72,6 +72,7 @@ interface TransactionHistoryProps {
   onClose: () => void;
   onEditTransaction: (transaction: Transaction) => void;
   onOpenAddTransaction: (initialData?: any) => void;
+  onRefresh?: () => void | Promise<void>;
   initialAccountId?: string;
   initialCategoryId?: string;
   initialType?: 'all' | 'income' | 'expense';
@@ -91,6 +92,7 @@ export default function TransactionHistory({
   onClose, 
   onEditTransaction, 
   onOpenAddTransaction,
+  onRefresh,
   initialAccountId, 
   initialCategoryId,
   initialType = 'all',
@@ -223,6 +225,8 @@ export default function TransactionHistory({
   }, [categories, filterType, categorySearchQuery]);
 
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, transaction: Transaction } | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<Transaction | null>(null);
+  const [deletingTransaction, setDeletingTransaction] = useState(false);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   // By default the history is continuous across all months. A date range is
@@ -388,7 +392,30 @@ export default function TransactionHistory({
     setCustomEndDate(format(endOfMonth(month), 'yyyy-MM-dd'));
   };
 
-  const handleContextMenuAction = (action: 'create' | 'copy') => {
+  const handleDeleteTransaction = async () => {
+    if (!deleteConfirmation) return;
+
+    const transaction = deleteConfirmation;
+    setDeletingTransaction(true);
+    try {
+      await api.delete(`/transactions/${transaction.id}`);
+      setItems(prev => prev.filter(item => item.id !== transaction.id));
+      setTotal(prev => Math.max(0, prev - 1));
+      if (transaction.type === 'income') {
+        setTotalIncome(prev => prev - transaction.amount);
+      } else if (transaction.type === 'expense') {
+        setTotalExpense(prev => prev - transaction.amount);
+      }
+      setDeleteConfirmation(null);
+      await onRefresh?.();
+    } catch (error) {
+      console.error('Failed to delete transaction:', error);
+    } finally {
+      setDeletingTransaction(false);
+    }
+  };
+
+  const handleContextMenuAction = (action: 'create' | 'copy' | 'delete') => {
     if (!contextMenu) return;
 
     if (action === 'create') {
@@ -402,10 +429,13 @@ export default function TransactionHistory({
         exchangeRate: t.exchangeRate ?? null,
         accountId: t.accountId,
         categoryId: t.categoryId,
+        subcategoryId: t.subcategoryId ?? null,
         description: t.description,
         targetAccountId: t.targetAccountId,
-        createdAt: new Date().toISOString()
+        createdAt: t.createdAt
       });
+    } else if (action === 'delete') {
+      setDeleteConfirmation(contextMenu.transaction);
     }
   };
 
@@ -1079,17 +1109,68 @@ export default function TransactionHistory({
               onClose={() => setContextMenu(null)}
               items={[
                 {
-                  label: 'Добавить похожую',
+                  label: 'Добавить по текущему фильтру',
                   icon: Plus,
                   onClick: () => handleContextMenuAction('create')
                 },
                 {
-                  label: 'Копировать операцию',
+                  label: 'Сделать похожую',
                   icon: Copy,
                   onClick: () => handleContextMenuAction('copy')
+                },
+                {
+                  label: 'Удалить операцию',
+                  icon: Trash2,
+                  variant: 'danger',
+                  divider: true,
+                  onClick: () => handleContextMenuAction('delete')
                 }
               ]}
             />
+          )}
+
+          {deleteConfirmation && (
+            <div
+              className="fixed inset-0 z-[220] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+              role="presentation"
+              onClick={() => !deletingTransaction && setDeleteConfirmation(null)}
+            >
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="delete-transaction-title"
+                className="w-full max-w-sm rounded-3xl border border-theme-base bg-theme-surface p-6 text-center shadow-2xl"
+                onClick={event => event.stopPropagation()}
+              >
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-rose-500/10">
+                  <AlertTriangle className="h-7 w-7 text-rose-500" />
+                </div>
+                <h3 id="delete-transaction-title" className="mt-4 text-lg font-black text-theme-main">
+                  Удалить операцию?
+                </h3>
+                <p className="mt-2 text-sm text-theme-muted">
+                  Это действие нельзя будет отменить. Баланс счёта будет пересчитан автоматически.
+                </p>
+                <div className="mt-6 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDeleteTransaction}
+                    disabled={deletingTransaction}
+                    className="w-full rounded-2xl bg-rose-600 py-3.5 font-bold text-white shadow-lg shadow-rose-500/20 transition-all hover:bg-rose-700 disabled:opacity-50"
+                  >
+                    {deletingTransaction ? 'Удаление...' : 'Да, удалить'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirmation(null)}
+                    disabled={deletingTransaction}
+                    className="w-full rounded-2xl bg-theme-main py-3.5 font-bold text-theme-muted transition-all hover:bg-theme-base disabled:opacity-50"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {editingPendingTx && (
