@@ -23,6 +23,7 @@ import chatHistoryRoutes from "./server/routes/chatHistory.routes";
 import aiLogsRoutes from "./server/routes/aiLogs.routes";
 import aiProxyRoutes from "./server/routes/aiProxy.routes";
 import adminRoutes from "./server/routes/admin.routes";
+import todoistRoutes from "./server/routes/todoist.routes";
 
 const app = express();
 const httpServer = createHttpServer(app);
@@ -71,6 +72,7 @@ async function startServer() {
 
   // --- ADMIN ROUTES ---
   app.use(adminRoutes);
+app.use(todoistRoutes);
 
   // Catch-all for API routes to avoid falling through to SPA fallback
   app.all("/api/*", (req, res) => {

@@ -11,7 +11,9 @@ import {
   CashbackCategory,
   UserProfile,
   PlanNote,
-  PlanNotesPayload
+  PlanNotesPayload,
+  PlannedPayment,
+  PlannedPaymentStatus
 } from '../types';
 import { io } from 'socket.io-client';
 import { 
@@ -46,6 +48,7 @@ import CashbackTab from './CashbackTab';
 import Calculator from './Calculator';
 import CreditTab from './CreditTab';
 import { normalizePlanNotes } from '../lib/planNotes';
+import PaymentCalendarTab from './PaymentCalendarTab';
 
 interface PlanPageProps {
   accounts: Account[];
@@ -54,7 +57,7 @@ interface PlanPageProps {
   onRefresh?: () => void;
 }
 
-type TabType = 'now' | 'past' | 'config' | 'comment' | 'cashback' | 'credit';
+type TabType = 'now' | 'past' | 'config' | 'comment' | 'cashback' | 'credit' | 'calendar';
 
 const MONTHS = [
   'январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 
@@ -178,6 +181,9 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
   const [rowToDelete, setRowToDelete] = useState<string | null>(null);
   const [showCalculator, setShowCalculator] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | 'queued'>('saved');
+  const [calendarPayments, setCalendarPayments] = useState<PlannedPayment[]>([]);
+  const [calendarError, setCalendarError] = useState<string | null>(null);
+  const [todoistConnected, setTodoistConnected] = useState(false);
 
   // When network is restored, flip 'queued' → 'saved' (sync already fired in App.tsx)
   useEffect(() => {
@@ -244,6 +250,8 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
               setNotesSnapshot(payload.notes, payload.activeNoteId);
             } else if (type === 'credit') {
               (newData as any).credit = data;
+            } else if (type === 'calendar') {
+              setCalendarPayments(Array.isArray(data?.payments) ? data.payments : []);
             }
             return newData;
           });
@@ -276,6 +284,7 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
             comment: '',
             updatedAt: new Date().toISOString()
           });
+          if (type === 'calendar') setCalendarPayments([]);
           setLoadedTabs(prev => new Set(prev).add(type));
         }
       } catch (error) {
@@ -283,6 +292,11 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
         if (retries > 0) {
           await new Promise(resolve => setTimeout(resolve, 1000));
           await loadData(type, retries - 1);
+        } else {
+          if (type === 'calendar') {
+            setCalendarError('Не удалось загрузить календарь. Попробуйте ещё раз.');
+            setLoadedTabs(prev => new Set(prev).add(type));
+          }
         }
       }
     };
@@ -363,6 +377,100 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
       if (type === 'comment') {
         pendingCommentSavesRef.current = Math.max(0, pendingCommentSavesRef.current - 1);
       }
+    }
+  };
+
+  const saveCalendarPayments = async (payments: PlannedPayment[]) => {
+    setCalendarPayments(payments);
+    setCalendarError(null);
+    try {
+      await api.post('/plan-grid/calendar', { payments });
+      setSaveStatus(!navigator.onLine ? 'queued' : 'saved');
+    } catch (error) {
+      console.error('Error saving payment calendar:', error);
+      setCalendarError('Не удалось сохранить календарь. Попробуйте ещё раз.');
+      setSaveStatus('error');
+      throw error;
+    }
+  };
+
+  const todoistDueString = (payment: PlannedPayment) => {
+    if (payment.recurrence === 'monthly') return `every month starting ${payment.date}`;
+    if (payment.recurrence === 'quarterly') return `every 3 months starting ${payment.date}`;
+    if (payment.recurrence === 'yearly') return `every year starting ${payment.date}`;
+    return payment.date;
+  };
+
+  const handleCalendarPaymentChange = async (payment: PlannedPayment) => {
+    let nextPayment = payment;
+    const todoistPayload = {
+      content: `${payment.title} — ${Math.round(payment.amount).toLocaleString('ru-RU')} ₽`,
+      dueString: todoistDueString(payment),
+    };
+    if (payment.todoistLinked && payment.todoistTaskId) {
+      await api.put(`/todoist/tasks/${encodeURIComponent(payment.todoistTaskId)}`, todoistPayload);
+    } else if (payment.todoistLinked && !payment.todoistTaskId) {
+      const task = await api.post<any>('/todoist/tasks', todoistPayload);
+      nextPayment = { ...payment, todoistTaskId: task.id };
+      setTodoistConnected(true);
+    }
+
+    const next = calendarPayments.some(item => item.id === nextPayment.id)
+      ? calendarPayments.map(item => item.id === nextPayment.id ? nextPayment : item)
+      : [...calendarPayments, nextPayment];
+    await saveCalendarPayments(next);
+  };
+
+  const handleCalendarStatusChange = async (id: string, date: string, status: PlannedPaymentStatus) => {
+    const next = calendarPayments.map(payment => {
+      if (payment.id !== id) return payment;
+      const paidDates = new Set(payment.paidDates || []);
+      if (status === 'paid') paidDates.add(date);
+      else paidDates.delete(date);
+      return {
+        ...payment,
+        paidDates: Array.from(paidDates),
+        status: date === payment.date ? status : payment.status,
+      };
+    });
+    await saveCalendarPayments(next);
+  };
+
+  const handleCalendarPaymentDelete = async (id: string) => {
+    await saveCalendarPayments(calendarPayments.filter(payment => payment.id !== id));
+  };
+
+  const syncTodoist = async () => {
+    setCalendarError(null);
+    try {
+      const response = await api.get<any>('/todoist/tasks');
+      setTodoistConnected(true);
+      const tasks = Array.isArray(response?.results) ? response.results : [];
+      const imported = tasks
+        .filter((task: any) => task.due?.date)
+        .map((task: any) => {
+          const amountMatch = String(task.content || '').match(/(\d[\d\s.,]*)\s*(?:₽|руб)/i);
+          const amount = amountMatch ? Number(amountMatch[1].replace(/\s/g, '').replace(',', '.')) : 0;
+          return {
+            id: `todoist-${task.id}`,
+            title: task.content,
+            amount,
+            date: String(task.due.date).slice(0, 10),
+            recurrence: task.due.is_recurring ? 'monthly' : 'none',
+            status: 'pending',
+            paidDates: [],
+            todoistTaskId: task.id,
+            todoistLinked: true,
+            accountName: '',
+            color: 'orange',
+          } as PlannedPayment;
+        })
+        .filter((payment: PlannedPayment) => payment.amount > 0);
+      const local = calendarPayments.filter(payment => !payment.todoistTaskId);
+      await saveCalendarPayments([...local, ...imported]);
+    } catch (error) {
+      console.error('Todoist sync error:', error);
+      setCalendarError('Не удалось синхронизировать Todoist.');
     }
   };
 
@@ -577,7 +685,19 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
               : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
           )}
         >
-          <span>Кэшбек</span>
+         <span>Кэшбек</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('calendar')}
+          className={cn(
+            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            activeTab === 'calendar'
+              ? "bg-purple-500 text-white border-purple-500 translate-y-[1px]"
+              : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
+          )}
+        >
+          <Calendar size={12} className="inline mr-1" />
+          <span>Календарь</span>
         </button>
         <button
           onClick={() => setActiveTab('comment')}
@@ -615,7 +735,27 @@ export default function PlanPage({ accounts, categories, user, onRefresh }: Plan
       </div>
 
       <div className="bg-white p-0 border-none shadow-none overflow-hidden flex-1 flex flex-col">
-        {activeTab === 'cashback' ? (
+        {activeTab === 'calendar' ? (
+          <PaymentCalendarTab
+            payments={calendarPayments}
+            accounts={accounts}
+            loading={!loadedTabs.has('calendar')}
+            error={calendarError}
+            todoistConnected={todoistConnected}
+            onRetry={() => {
+              setCalendarError(null);
+              setLoadedTabs(prev => {
+                const next = new Set(prev);
+                next.delete('calendar');
+                return next;
+              });
+            }}
+            onTodoistSync={syncTodoist}
+            onStatusChange={handleCalendarStatusChange}
+            onPaymentChange={handleCalendarPaymentChange}
+            onPaymentDelete={handleCalendarPaymentDelete}
+          />
+        ) : activeTab === 'cashback' ? (
           <CashbackTab planData={planData} accounts={accounts} onSave={handleSaveCashback} />
         ) : activeTab === 'credit' ? (
           <CreditTab planData={planData} onSave={(newData) => savePlanData(newData, 'credit')} />

@@ -170,6 +170,24 @@ export interface PlanData {
   };
 }
 
+export type PlannedPaymentRecurrence = 'none' | 'monthly' | 'quarterly' | 'yearly';
+export type PlannedPaymentStatus = 'paid' | 'pending';
+
+export interface PlannedPayment {
+  id: string;
+  title: string;
+  amount: number;
+  date: string;
+  recurrence: PlannedPaymentRecurrence;
+  accountId?: string;
+  accountName?: string;
+  status: PlannedPaymentStatus;
+  paidDates?: string[];
+  todoistTaskId?: string;
+  todoistLinked?: boolean;
+  color?: 'plum' | 'blue' | 'orange';
+}
+
 export interface PlanNote {
   id: string;
   title: string;
