@@ -4,6 +4,13 @@ generated = []
 [[outputs]]
 id = "fSQiR0nMIYtfEP0V1FG_-"
 uri = "file://artifacts/smart-fin-manager-design-system/index.html"
-type = "text"
-title = "Smart-FinManager Design System — исправленный preview"
-description = "Самодостаточный визуальный каталог со встроенными токенами и темами. Корректно отображается в Preview и New Tab."
+type = "html"
+title = "Smart-FinManager — extracted design system"
+description = "Визуальный каталог извлечённой дизайн-системы: Nordic light, токены, типографика, геометрия, финансовые состояния, формы, навигация и offline-состояния. Переключатель тем доступен внутри каталога."
+logical_id = "c907f2db-d053-4e6d-9ce5-c4e042e588b0"
+content_hash = "sha256:48b786feb28e055af9f87b4ed5202a4de8e600afb4ac827c8cb1addd01c99d08"
+size = 23914
+mtime_ms = 1787155369883
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:fd036d12-a98b-4182-ad35-b28473a6761e/c907f2db-d053-4e6d-9ce5-c4e042e588b0/f6fffbda-d5c4-42d0-8caa-b08296473882"
+storage_version_token = "1789765103555560"
+content_type = "text/html"
