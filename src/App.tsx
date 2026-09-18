@@ -70,6 +70,8 @@ export default function App() {
   }>({});
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [initialTransactionData, setInitialTransactionData] = useState<any | null>(null);
+  const [aiTransactionDrafts, setAITransactionDrafts] = useState<any[]>([]);
+  const [aiTransactionDraftIndex, setAITransactionDraftIndex] = useState(0);
   const [showAILogs, setShowAILogs] = useState(false);
   const [showUserPage, setShowUserPage] = useState(false);
   const aiAssistantRef = useRef<AIAssistantHandle>(null);
@@ -81,6 +83,28 @@ export default function App() {
   const [initialGoalData, setInitialGoalData] = useState<{ name?: string; targetAmount?: number; deadline?: string } | undefined>(undefined);
 
   const { globalContextMenu, closeGlobalContextMenu } = useGlobalInputContextMenu();
+
+  const openAITransactionDrafts = useCallback((drafts: any[]) => {
+    if (drafts.length === 0) return;
+    setAITransactionDrafts(drafts);
+    setAITransactionDraftIndex(0);
+    setInitialTransactionData(drafts[0]);
+    setShowAddTransaction(true);
+  }, []);
+
+  const handleCloseAddTransaction = useCallback(() => {
+    const nextIndex = aiTransactionDraftIndex + 1;
+    if (aiTransactionDrafts.length > nextIndex) {
+      setAITransactionDraftIndex(nextIndex);
+      setInitialTransactionData(aiTransactionDrafts[nextIndex]);
+      return;
+    }
+
+    setAITransactionDrafts([]);
+    setAITransactionDraftIndex(0);
+    setShowAddTransaction(false);
+    setInitialTransactionData(null);
+  }, [aiTransactionDraftIndex, aiTransactionDrafts]);
 
   useEffect(() => {
     const savedTheme = safeStorage.getItem('theme') || 'theme-nordic';
@@ -258,6 +282,7 @@ export default function App() {
               setInitialTransactionData(data);
               setShowAddTransaction(true);
             }}
+            onOpenAddTransactions={openAITransactionDrafts}
             showToast={addToast}
           />
         );
@@ -325,9 +350,11 @@ export default function App() {
         }}
         showAddTransaction={showAddTransaction}
         initialTransactionData={initialTransactionData}
+        transactionDraftIndex={aiTransactionDraftIndex}
+        transactionDraftTotal={aiTransactionDrafts.length}
         transactions={transactions}
         userId={user.id}
-        onCloseAddTransaction={() => { setShowAddTransaction(false); setInitialTransactionData(null); }}
+        onCloseAddTransaction={handleCloseAddTransaction}
         onAddTransaction={refreshData}
         onOptimisticAdd={optimisticAddTransaction}
         editingTransaction={editingTransaction}

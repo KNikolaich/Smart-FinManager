@@ -28,6 +28,8 @@ interface AppModalsProps {
   // Add transaction
   showAddTransaction: boolean;
   initialTransactionData: any | null;
+  transactionDraftIndex: number;
+  transactionDraftTotal: number;
   transactions: Transaction[];
   userId: string;
   onCloseAddTransaction: () => void;
@@ -70,6 +72,8 @@ export function AppModals({
   onCloseTransactionHistory,
   showAddTransaction,
   initialTransactionData,
+  transactionDraftIndex,
+  transactionDraftTotal,
   transactions,
   userId,
   onCloseAddTransaction,
@@ -114,7 +118,9 @@ export function AppModals({
 
       {(showAddTransaction || initialTransactionData) && (
         <AddTransaction
-          key={initialTransactionData ? `copy-${initialTransactionData.createdAt}-${initialTransactionData.amount}` : 'new'}
+          key={initialTransactionData
+            ? `copy-${transactionDraftIndex}-${initialTransactionData.createdAt}-${initialTransactionData.amount}`
+            : 'new'}
           onComplete={onCloseAddTransaction}
           onAdd={onAddTransaction}
           onOptimisticAdd={onOptimisticAdd}
@@ -124,6 +130,9 @@ export function AppModals({
           currencies={currencies}
           userId={userId}
           initialData={initialTransactionData}
+          draftProgress={transactionDraftTotal > 1
+            ? { current: transactionDraftIndex + 1, total: transactionDraftTotal }
+            : undefined}
         />
       )}
 

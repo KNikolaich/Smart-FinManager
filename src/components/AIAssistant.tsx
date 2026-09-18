@@ -9,6 +9,7 @@ import { Account, Category, Transaction, Goal, Plan, Message } from '../types';
 import { SimpleMarkdown } from './ui/InteractiveMarkdown';
 import { cn } from '../lib/utils';
 import { normalizeTransactionDate } from '../lib/transactionDate';
+import { getAITransactionDrafts, isTransactionBatch } from '../lib/aiTransactions';
 
 interface AIAssistantProps {
   accounts: Account[];
@@ -21,6 +22,7 @@ interface AIAssistantProps {
   onRefresh?: () => void;
   onResult?: (result: any) => void;
   onOpenAddTransaction?: (initialData?: any) => void;
+  onOpenAddTransactions?: (initialData: any[]) => void;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
@@ -28,7 +30,7 @@ export interface AIAssistantHandle {
   handleVoiceInput: (onStart?: () => void, onEnd?: () => void) => void;
 }
 
-const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssistant({ accounts, categories, transactions, goals, plans, userId, onRedirectToCreateGoal, onRefresh, onResult, onOpenAddTransaction, showToast }, ref) {
+const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssistant({ accounts, categories, transactions, goals, plans, userId, onRedirectToCreateGoal, onRefresh, onResult, onOpenAddTransaction, onOpenAddTransactions, showToast }, ref) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -183,10 +185,70 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
     }
   };
 
-  const confirmAction = async (msgId: string, type: string, data: any, silent = false) => {
+  const openTransactionDrafts = (drafts: any[]) => {
+    const preparedDrafts = drafts.map(draft => ({
+      ...draft,
+      __fromAI: true,
+      createdAt: normalizeTransactionDate(draft.createdAt ?? draft.date),
+    }));
+
+    if (preparedDrafts.length === 0) return;
+    if (onOpenAddTransactions) {
+      onOpenAddTransactions(preparedDrafts);
+    } else {
+      onOpenAddTransaction?.(preparedDrafts[0]);
+    }
+  };
+
+  const confirmAction = async (msgId: string, type: string, data: any, silent = false, batchItem = false) => {
     try {
       if (!data) {
         throw new Error('Не удалось получить данные для выполнения операции.');
+      }
+
+      if (type === 'transaction' && isTransactionBatch(data)) {
+        const drafts = getAITransactionDrafts(data);
+        const incompleteDrafts: any[] = [];
+        let addedCount = 0;
+
+        for (const draft of drafts) {
+          const success = await confirmAction(msgId, 'transaction', draft, true, true);
+          if (success) {
+            addedCount += 1;
+          } else {
+            incompleteDrafts.push(draft);
+          }
+        }
+
+        if (addedCount > 0) onRefresh?.();
+        if (incompleteDrafts.length > 0) openTransactionDrafts(incompleteDrafts);
+
+        if (showToast) {
+          const addedLabel = `Добавлено операций: ${addedCount}`;
+          const incompleteLabel = incompleteDrafts.length > 0
+            ? `. Требуют уточнения: ${incompleteDrafts.length}`
+            : '';
+          showToast(`${addedLabel}${incompleteLabel}`, incompleteDrafts.length > 0 ? 'info' : 'success');
+        }
+
+        if (!silent) {
+          const message = messages.find(item => item.id === msgId);
+          if (message) {
+            const currentContent = typeof message.content === 'string'
+              ? message.content
+              : JSON.stringify(message.content);
+            const suffix = incompleteDrafts.length > 0
+              ? `\n\n✅ **Распознанные операции добавлены.**\n\n📝 **Операции, требующие уточнения, открыты в редакторе.**`
+              : `\n\n✅ **Добавлено операций: ${addedCount}.**`;
+            await api.put(`/chat-history/${msgId}`, {
+              type: 'text',
+              content: currentContent + suffix,
+            });
+            fetchHistory();
+          }
+        }
+
+        return incompleteDrafts.length === 0;
       }
 
       const normalizeLookupValue = (value?: string) => String(value || '').trim().toLocaleLowerCase();
@@ -296,8 +358,8 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
             createdAt
           });
         }
-        if (onRefresh) onRefresh();
-        if (silent && showToast) showToast('Операция добавлена', 'success');
+        if (onRefresh && !batchItem) onRefresh();
+        if (silent && showToast && !batchItem) showToast('Операция добавлена', 'success');
         return true;
       } else if (type === 'goal') {
         const name = data.name || data.title;
@@ -371,10 +433,20 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
     try {
       const result = await processUserMessage(userId, text, accounts, categories, currentAttachments, transactions);
 
-      const isTransactionDraft = result.data &&
-        ['income', 'expense', 'transfer'].includes(result.data.type) &&
-        result.data.amount !== undefined &&
-        result.data.amount !== null;
+      const transactionDrafts = getAITransactionDrafts(result.data);
+      const isTransactionDraft = transactionDrafts.some(draft =>
+        ['income', 'expense', 'transfer'].includes(draft.type) ||
+        draft.amount !== undefined ||
+        draft.accountId ||
+        draft.accountName ||
+        draft.targetAccountId ||
+        draft.targetAccountName ||
+        draft.categoryId ||
+        draft.categoryName ||
+        draft.description ||
+        draft.createdAt ||
+        draft.date
+      );
       const shouldHandleAsTransaction = result.intent === 'transaction' || (result.intent === 'unknown' && isTransactionDraft);
       
       if (result.data?.error_code === 'REGION_NOT_SUPPORTED') {
@@ -417,7 +489,19 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
           const isReceipt = currentAttachments.length > 0;
           if (!isReceipt) {
             const success = await confirmAction(savedMsg.id, 'transaction', result.data, true);
-            if (success) {
+            if (isTransactionBatch(result.data)) {
+              const currentContent = typeof assistantMessage.content === 'string'
+                ? assistantMessage.content
+                : JSON.stringify(assistantMessage.content);
+              const suffix = success
+                ? `\n\n✅ **Добавлено операций: ${transactionDrafts.length}.**`
+                : `\n\n✅ **Распознанные операции добавлены.**\n\n📝 **Остальные операции открыты в редакторе.**`;
+              await api.put(`/chat-history/${savedMsg.id}`, {
+                type: 'text',
+                content: currentContent + suffix,
+              });
+              fetchHistory();
+            } else if (success) {
               // Update message to remove buttons
               const currentContent = typeof assistantMessage.content === 'string' ? assistantMessage.content : JSON.stringify(assistantMessage.content);
               await api.put(`/chat-history/${savedMsg.id}`, {
@@ -425,15 +509,9 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
                 content: currentContent + '\n\n✅ **Операция добавлена.**'
               });
               fetchHistory();
-            } else {
+            } else if (!success && !isTransactionBatch(result.data)) {
               // Data incomplete - open form
-              if (onOpenAddTransaction) {
-                onOpenAddTransaction({
-                  ...result.data,
-                  __fromAI: true,
-                  createdAt: normalizeTransactionDate(result.data?.createdAt ?? result.data?.date)
-                });
-              }
+              openTransactionDrafts([result.data]);
             }
           }
           // If isReceipt is true, do nothing automatically; buttons are already present for manual confirmation

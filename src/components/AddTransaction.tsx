@@ -20,9 +20,10 @@ interface AddTransactionProps {
   onOptimisticAdd: (transaction: Transaction) => void;
   userId: string;
   initialData?: any;
+  draftProgress?: { current: number; total: number };
 }
 
-export default function AddTransaction({ accounts, transactions, categories, currencies, onComplete, onAdd, onOptimisticAdd, userId, initialData }: AddTransactionProps) {
+export default function AddTransaction({ accounts, transactions, categories, currencies, onComplete, onAdd, onOptimisticAdd, userId, initialData, draftProgress }: AddTransactionProps) {
   const openedFromAI = initialData?.__fromAI === true;
   const [type, setType] = useState<TransactionType>(initialData?.type || 'expense');
   const [amount, setAmount] = useState(() => {
@@ -167,7 +168,14 @@ export default function AddTransaction({ accounts, transactions, categories, cur
     <div className="fixed inset-0 z-[120] flex items-stretch lg:items-center justify-center p-0 lg:p-8 bg-black/40 backdrop-blur-sm">
       <div className="w-full max-w-lg bg-theme-surface overflow-hidden shadow-2xl flex flex-col relative h-full animate-in slide-in-from-bottom duration-300 lg:rounded-2xl">
         <div className="px-6 py-3 flex items-center justify-between shrink-0 relative z-10 border-b border-theme-base">
-          <h2 className="text-base font-bold text-theme-main">Новая операция</h2>
+          <h2 className="text-base font-bold text-theme-main">
+            Новая операция
+            {draftProgress && (
+              <span className="ml-2 text-xs font-medium text-theme-muted">
+                {draftProgress.current} из {draftProgress.total}
+              </span>
+            )}
+          </h2>
           <button 
             onClick={onComplete} 
             className="p-2.5 bg-theme-main/50 border border-theme-base text-theme-main rounded-xl shadow-md hover:bg-theme-main transition-all relative z-20 cursor-pointer"

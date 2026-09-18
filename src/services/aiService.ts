@@ -153,7 +153,10 @@ export const processUserMessage = async (
   - You MUST return the intent and data even if some parameters are missing, as long as you have identified the intent and at least ONE parameter.
   - Only set intent to "unknown" and ask for clarification if more than ONE required parameter is missing.
   - MONEY AMOUNTS IN RUSSIAN SPEECH: when a number is followed by "руб./рублей/₽" and there is no explicit mention of копейки, a dot or comma before a three-digit group is a thousands separator, not a decimal separator. For example, "30.015 руб" and "30,015 руб" mean 30015 rubles. Do not turn them into 30.015 rubles. Only use fractional rubles when the user explicitly says "копейки" or clearly dictates a fractional amount.
-  - For transaction intent, required fields in "data" are: type, amount, accountId, accountName, categoryId, createdAt.
+  - For transaction intent, required fields in each transaction are: type, amount, accountId, accountName, categoryId, createdAt.
+  - If the user describes several separate operations in one message, split them into separate transaction objects and return them together as data.transactions. Do not merge distinct actions joined by "и", "а также", "затем" or similar wording.
+  - Each item in data.transactions must be processed independently. Keep an item even when one or more fields are missing so the application can open an editor for that item; do not discard an operation just because another item is incomplete.
+  - For a single operation, keep the existing shape and return the transaction fields directly in data. For multiple operations, data must be an object with a transactions array.
   - TRANSACTION DATE:
     - Always return the transaction date in data.createdAt as YYYY-MM-DD or a valid ISO 8601 timestamp.
     - Resolve relative Russian dates from the current LOCAL date supplied in the user prompt: "сегодня", "вчера", "позавчера", "три дня назад", "на прошлой неделе".
@@ -176,12 +179,13 @@ export const processUserMessage = async (
   
   Data object requirements per intent:
   - transaction:
+      - for one operation: the fields below directly in data
+      - for multiple operations: data.transactions is an array of objects with these fields
       - type: "income", "expense", or "transfer" (required)
-      - amount: number (required)
-      - accountId: string (required)
-      - accountName: string (required)
-      - targetAccountId: string (required for transfers)
-      - categoryId: string (required)
+      - amount: number (required when stated)
+      - accountId/accountName: string (required when stated)
+      - targetAccountId/targetAccountName: string (required for transfers when stated)
+      - categoryId/categoryName: string (required when stated for income/expense)
       - description: string (optional)
       - createdAt: string (required; YYYY-MM-DD or ISO 8601, may be in the past or future)
   - goal:
@@ -210,10 +214,22 @@ REFERENCE DATA:
     const responseText = await callAI(systemInstruction, userPrompt, "json_object", imageData);
     const result = JSON.parse(responseText || "{}") as AIResponse;
 
-    if (result.data && ['transaction', 'income', 'expense', 'transfer'].includes(result.intent) || (
-      result.data && ['income', 'expense', 'transfer'].includes(result.data.type)
-    )) {
-      result.data.amount = normalizeRussianRublesAmount(text, result.data.amount);
+    const transactionDrafts = Array.isArray(result.data?.transactions)
+      ? result.data.transactions
+      : Array.isArray(result.data)
+        ? result.data
+        : [result.data];
+
+    if (
+      result.data &&
+      (['transaction', 'income', 'expense', 'transfer'].includes(result.intent) ||
+        transactionDrafts.some(draft => ['income', 'expense', 'transfer'].includes(draft?.type)))
+    ) {
+      transactionDrafts.forEach(draft => {
+        if (draft && typeof draft === 'object') {
+          draft.amount = normalizeRussianRublesAmount(text, draft.amount);
+        }
+      });
     }
 
     // Ensure message is a string to avoid React rendering errors
