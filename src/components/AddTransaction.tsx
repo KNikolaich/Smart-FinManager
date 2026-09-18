@@ -146,7 +146,7 @@ export default function AddTransaction({ accounts, transactions, categories, cur
 
   return (
     <div className="fixed inset-0 z-[120] flex items-stretch lg:items-center justify-center p-0 lg:p-8 bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-theme-surface overflow-hidden shadow-2xl flex flex-col relative h-full lg:h-auto lg:max-h-[90vh] animate-in slide-in-from-bottom duration-300 lg:rounded-2xl">
+      <div className="w-full max-w-lg bg-theme-surface overflow-hidden shadow-2xl flex flex-col relative h-full animate-in slide-in-from-bottom duration-300 lg:rounded-2xl">
         <div className="px-6 py-3 flex items-center justify-between shrink-0 relative z-10 border-b border-theme-base">
           <h2 className="text-base font-bold text-theme-main">Новая операция</h2>
           <button 
