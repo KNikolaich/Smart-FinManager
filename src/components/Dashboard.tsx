@@ -110,7 +110,21 @@ export default function Dashboard({
           />
         );
       case 'upcomingTasks':
-        return <UpcomingTasks variant="carousel" onTaskClick={onNavigateToCalendar} />;
+        return (
+          <UpcomingTasks
+            variant="carousel"
+            onTaskClick={onNavigateToCalendar}
+            onRequestTransaction={(item, onCompleted) => onOpenAddTransaction?.({
+              type: item.payment.transactionType,
+              amount: item.payment.amount,
+              accountId: item.payment.accountId || '',
+              categoryId: item.payment.categoryId || '',
+              description: item.payment.title,
+              createdAt: `${item.date}T12:00:00`,
+              __onTransactionCreated: onCompleted,
+            })}
+          />
+        );
       case 'goals':
         return (
           <GoalsSection

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CircleDashed, Pencil, Plus, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { PlannedPayment, PlannedPaymentRecurrence } from '../types';
@@ -17,6 +17,10 @@ interface UpcomingTasksProps {
   onTaskClick?: (date: string) => void;
   onAdd?: () => void;
   onToggleTask?: (item: PlannedPaymentOccurrence) => void;
+  onRequestTransaction?: (
+    item: PlannedPaymentOccurrence,
+    onCompleted: () => void | Promise<void>,
+  ) => void;
   onEditTask?: (item: PlannedPaymentOccurrence) => void;
   onDeleteTask?: (item: PlannedPaymentOccurrence) => void | Promise<void>;
 }
@@ -29,6 +33,7 @@ export default function UpcomingTasks({
   onTaskClick,
   onAdd,
   onToggleTask,
+  onRequestTransaction,
   onEditTask,
   onDeleteTask,
 }: UpcomingTasksProps) {
@@ -38,6 +43,9 @@ export default function UpcomingTasks({
   const [error, setError] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [dragOffset, setDragOffset] = useState(0);
+  const pointerStartX = useRef<number | null>(null);
+  const suppressClickRef = useRef(false);
 
   useEffect(() => {
     if (payments !== undefined) {
@@ -103,12 +111,56 @@ export default function UpcomingTasks({
     }
   };
 
+  const moveCarousel = (direction: -1 | 1) => {
+    setCarouselIndex(index => {
+      if (occurrences.length < 2) return index;
+      return (index + direction + occurrences.length) % occurrences.length;
+    });
+  };
+
+  const handleCarouselPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    pointerStartX.current = event.clientX;
+    suppressClickRef.current = false;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleCarouselPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (pointerStartX.current === null) return;
+    const offset = event.clientX - pointerStartX.current;
+    setDragOffset(offset);
+    if (Math.abs(offset) > 8) suppressClickRef.current = true;
+  };
+
+  const handleCarouselPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (pointerStartX.current === null) return;
+    const offset = event.clientX - pointerStartX.current;
+    if (Math.abs(offset) >= 50) moveCarousel(offset < 0 ? 1 : -1);
+    pointerStartX.current = null;
+    setDragOffset(0);
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+
+  const handleCarouselTaskClick = (date: string) => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    onTaskClick?.(date);
+  };
+
+  const handleCarouselCheckbox = (item: PlannedPaymentOccurrence) => {
+    if (onRequestTransaction) {
+      onRequestTransaction(item, () => toggleLocally(item));
+      return;
+    }
+    void toggleLocally(item);
+  };
+
   return (
     <section className="rounded-2xl border border-theme-base bg-theme-surface p-4" data-testid="upcoming-tasks">
       <header className="flex items-start justify-between gap-3 border-b border-theme-base pb-3">
         <div>
-          <p className="text-[10px] uppercase tracking-wider text-theme-muted font-bold">Планы</p>
-          <h3 className="text-lg font-bold text-theme-main mt-1">Предстоящие задачи</h3>
+          <p className="text-[10px] uppercase tracking-wider text-theme-muted font-bold">Предстоящие планы</p>
         </div>
         {onAdd && (
           <button type="button" aria-label="Запланировать задачу" onClick={onAdd} className="p-2 rounded-lg bg-theme-primary-light text-theme-primary">
@@ -127,55 +179,57 @@ export default function UpcomingTasks({
           Предстоящих задач нет
         </div>
       ) : variant === 'carousel' ? (
-        <div className="pt-3" data-testid="upcoming-tasks-carousel">
-          <article className={`relative overflow-hidden rounded-2xl border p-4 ${carouselTone(activeOccurrence)}`} data-testid={`upcoming-banner-${activeOccurrence.payment.id}-${activeOccurrence.date}`}>
-            <div className="flex items-start gap-3">
-              <button
-                type="button"
-                aria-label={`Отметить задачу: ${activeOccurrence.payment.title}`}
-                onClick={() => void toggleLocally(activeOccurrence)}
-                data-testid={`button-toggle-payment-${activeOccurrence.payment.id}-${activeOccurrence.date}`}
-                className="mt-0.5 w-6 h-6 rounded-lg border border-current/30 bg-white/70 flex items-center justify-center shrink-0"
-              />
-              <button
-                type="button"
-                onClick={() => onTaskClick?.(activeOccurrence.date)}
-                data-testid={`upcoming-task-link-${activeOccurrence.payment.id}-${activeOccurrence.date}`}
-                className="min-w-0 flex-1 text-left"
+        <div
+          className="relative min-h-[142px] pt-3 touch-pan-y select-none"
+          data-testid="upcoming-tasks-carousel"
+          onPointerDown={handleCarouselPointerDown}
+          onPointerMove={handleCarouselPointerMove}
+          onPointerUp={handleCarouselPointerUp}
+          onPointerCancel={handleCarouselPointerUp}
+        >
+          {[0, 1, 2].map(stackIndex => {
+            if (occurrences.length <= stackIndex) return null;
+            const occurrence = occurrences[(activeCarouselIndex + stackIndex) % occurrences.length];
+            const isActive = stackIndex === 0;
+            const stackStyle = isActive
+              ? { transform: `translateX(${dragOffset}px)`, zIndex: 30 }
+              : { transform: `translateY(${stackIndex * 8}px) scale(${1 - stackIndex * 0.04})`, zIndex: 30 - stackIndex };
+            return (
+              <article
+                key={`${occurrence.payment.id}-${occurrence.date}-${stackIndex}`}
+                className={`absolute inset-x-0 top-3 overflow-hidden rounded-2xl border p-4 transition-transform ${isActive ? carouselTone(occurrence) : 'border-theme-base bg-theme-main text-theme-muted'}`}
+                style={stackStyle}
+                data-testid={isActive ? `upcoming-banner-${occurrence.payment.id}-${occurrence.date}` : undefined}
+                aria-hidden={!isActive}
               >
-                <span className="block text-[10px] uppercase tracking-wider font-bold opacity-70">
-                  {carouselDateLabel(activeOccurrence.date, startDate)}
-                </span>
-                <strong className="mt-1 block text-base truncate">{activeOccurrence.payment.title}</strong>
-                <span className="mt-1 block text-xs opacity-75 truncate">
-                  {activeOccurrence.payment.transactionType === 'income' ? 'Доход' : 'Расход'} · {activeOccurrence.payment.categoryName || 'Без категории'} · {recurrenceLabel(activeOccurrence.payment.recurrence)} · {formatMoney(activeOccurrence.payment.amount)}
-                </span>
-              </button>
-            </div>
-          </article>
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <button
-              type="button"
-              aria-label="Предыдущая задача"
-              onClick={() => setCarouselIndex(index => index === 0 ? occurrences.length - 1 : index - 1)}
-              disabled={occurrences.length < 2}
-              className="rounded-lg border border-theme-base px-2.5 py-1 text-xs text-theme-muted disabled:opacity-40"
-            >
-              ←
-            </button>
-            <span className="text-[10px] text-theme-muted" data-testid="upcoming-tasks-position">
-              {activeCarouselIndex + 1} / {occurrences.length}
-            </span>
-            <button
-              type="button"
-              aria-label="Следующая задача"
-              onClick={() => setCarouselIndex(index => index === occurrences.length - 1 ? 0 : index + 1)}
-              disabled={occurrences.length < 2}
-              className="rounded-lg border border-theme-base px-2.5 py-1 text-xs text-theme-muted disabled:opacity-40"
-            >
-              →
-            </button>
-          </div>
+                <div className="flex items-start gap-3">
+                  {isActive && (
+                    <button
+                      type="button"
+                      aria-label={`Отметить задачу: ${occurrence.payment.title}`}
+                      onClick={() => handleCarouselCheckbox(occurrence)}
+                      data-testid={`button-toggle-payment-${occurrence.payment.id}-${occurrence.date}`}
+                      className="mt-0.5 w-6 h-6 rounded-lg border border-current/30 bg-white/70 flex items-center justify-center shrink-0"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => isActive && handleCarouselTaskClick(occurrence.date)}
+                    tabIndex={isActive ? 0 : -1}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <span className="block text-[10px] uppercase tracking-wider font-bold opacity-70">
+                      {carouselDateLabel(occurrence.date, startDate)}
+                    </span>
+                    <strong className="mt-1 block text-base truncate">{occurrence.payment.title}</strong>
+                    <span className="mt-1 block text-xs opacity-75 truncate">
+                      {occurrence.payment.transactionType === 'income' ? 'Доход' : 'Расход'} · {occurrence.payment.categoryName || 'Без категории'} · {recurrenceLabel(occurrence.payment.recurrence)} · {formatMoney(occurrence.payment.amount)}
+                    </span>
+                  </button>
+                </div>
+              </article>
+            );
+          })}
         </div>
       ) : (
         <div className="space-y-2 pt-3">
