@@ -39,6 +39,7 @@ interface DashboardProps {
   onOpenAddTransaction?: (initialData?: any) => void;
   onEditTransaction?: (t: Transaction) => void;
   onNavigateToCalendar?: (date: string) => void;
+  onOpenCalendar?: () => void;
   widgetOrder?: DashboardWidgetId[];
 }
 
@@ -60,6 +61,7 @@ export default function Dashboard({
   onOpenAddTransaction,
   onEditTransaction,
   onNavigateToCalendar,
+  onOpenCalendar,
   widgetOrder = DEFAULT_DASHBOARD_WIDGET_ORDER,
 }: DashboardProps) {
   const {
@@ -113,7 +115,7 @@ export default function Dashboard({
         return (
           <UpcomingTasks
             variant="carousel"
-            onTaskClick={onNavigateToCalendar}
+            onOpenCalendar={onOpenCalendar}
             onRequestTransaction={(item, onCompleted) => onOpenAddTransaction?.({
               type: item.payment.transactionType,
               amount: item.payment.amount,

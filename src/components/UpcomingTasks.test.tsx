@@ -75,8 +75,9 @@ describe('UpcomingTasks', () => {
     expect(screen.getByText('Сегодняшняя задача')).toBeTruthy();
   });
 
-  it('navigates to the task date when the active banner is clicked', () => {
+  it('uses the header controls instead of navigating from a banner tap', () => {
     const onTaskClick = vi.fn();
+    const onOpenCalendar = vi.fn();
     const payment = { ...makePayment(0), id: 'clickable-task', date: '2026-09-20' };
     render(
       <UpcomingTasks
@@ -84,12 +85,16 @@ describe('UpcomingTasks', () => {
         variant="carousel"
         startDate="2026-09-19"
         onTaskClick={onTaskClick}
+        onOpenCalendar={onOpenCalendar}
       />,
     );
 
     fireEvent.click(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20'));
+    fireEvent.click(screen.getByTestId('button-upcoming-calendar'));
+    fireEvent.click(screen.getByTestId('button-upcoming-start'));
 
-    expect(onTaskClick).toHaveBeenCalledWith('2026-09-20');
+    expect(onTaskClick).not.toHaveBeenCalled();
+    expect(onOpenCalendar).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20').className).toContain('bg-orange-50');
   });
 

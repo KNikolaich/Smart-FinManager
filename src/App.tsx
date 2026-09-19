@@ -22,6 +22,7 @@ import { AppModals } from './components/app/AppModals';
 
 import { cn } from './lib/utils';
 import { ToastContainer, ToastType } from './components/ui/Toast';
+import { getTodayKey } from './lib/plannedPaymentOccurrences';
 
 type Tab = 'dashboard' | 'plan' | 'analytics' | 'settings' | 'ai';
 
@@ -187,6 +188,10 @@ export default function App() {
     setActiveTab('plan');
   }, []);
 
+  const handleOpenCalendar = useCallback(() => {
+    handleNavigateToCalendar(getTodayKey());
+  }, [handleNavigateToCalendar]);
+
   const handleCalendarFocusHandled = useCallback(() => {
     setCalendarFocusDate(undefined);
   }, []);
@@ -243,6 +248,7 @@ export default function App() {
             }}
             onEditTransaction={setEditingTransaction}
             onNavigateToCalendar={handleNavigateToCalendar}
+            onOpenCalendar={handleOpenCalendar}
           />
         );
       case 'plan':
