@@ -79,7 +79,7 @@ export function TransactionsSection({
           </button>
         </div>
       </header>
-      <div className="mt-3 overflow-hidden rounded-2xl border border-theme-base bg-theme-main/20">
+      <div className="mt-3 -mx-4 -mb-4 overflow-hidden">
         {groupedTransactions.map(([dateKey, txs], groupIndex) => {
           const heading = formatTransactionDateHeading(dateKey);
           return (
