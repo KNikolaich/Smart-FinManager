@@ -207,20 +207,25 @@ export default function UpcomingTasks({
                 style={stackStyle}
                 data-testid={isActive ? `upcoming-banner-${occurrence.payment.id}-${occurrence.date}` : undefined}
                 aria-hidden={!isActive}
+                onClick={() => isActive && handleCarouselTaskClick(occurrence.date)}
               >
                 <div className="flex items-start gap-3">
                   {isActive && (
                     <button
                       type="button"
                       aria-label={`Отметить задачу: ${occurrence.payment.title}`}
-                      onClick={() => handleCarouselCheckbox(occurrence)}
+                      onPointerDown={event => event.stopPropagation()}
+                      onPointerUp={event => event.stopPropagation()}
+                      onClick={event => {
+                        event.stopPropagation();
+                        handleCarouselCheckbox(occurrence);
+                      }}
                       data-testid={`button-toggle-payment-${occurrence.payment.id}-${occurrence.date}`}
                       className="mt-0.5 w-6 h-6 rounded-lg border border-current/30 bg-white/70 flex items-center justify-center shrink-0"
                     />
                   )}
                   <button
                     type="button"
-                    onClick={() => isActive && handleCarouselTaskClick(occurrence.date)}
                     tabIndex={isActive ? 0 : -1}
                     className="min-w-0 flex-1 text-left"
                   >
@@ -306,17 +311,18 @@ export default function UpcomingTasks({
 }
 
 function occurrenceTone(item: PlannedPaymentOccurrence) {
+  if (item.date < getTodayKey()) return 'bg-rose-50 text-rose-700';
   return item.payment.transactionType === 'income'
     ? 'bg-lime-50 text-lime-700'
-    : 'bg-rose-50 text-rose-700';
+    : 'bg-orange-50 text-orange-700';
 }
 
 function carouselTone(item: PlannedPaymentOccurrence) {
-  if (item.date < getTodayKey()) return 'border-amber-200 bg-amber-50 text-amber-900';
+  if (item.date < getTodayKey()) return 'border-rose-200 bg-rose-50 text-rose-900';
   if (item.date === getTodayKey()) return 'border-theme-primary/30 bg-theme-primary-light text-theme-main';
   return item.payment.transactionType === 'income'
     ? 'border-lime-200 bg-lime-50 text-lime-900'
-    : 'border-sky-200 bg-sky-50 text-sky-900';
+    : 'border-orange-200 bg-orange-50 text-orange-900';
 }
 
 function formatTaskDate(date: string, startDate: string) {
