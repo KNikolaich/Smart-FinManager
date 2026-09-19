@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
+  CalendarCheck,
   CalendarDays,
   Check,
   ChevronDown,
@@ -173,34 +174,35 @@ export default function PaymentCalendarTab({
   }
 
   return (
-    <section className="p-3 sm:p-5 space-y-4 overflow-y-auto no-scrollbar h-full" data-testid="payment-calendar">
-      <header className="flex items-start gap-3">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-theme-primary-light text-theme-primary flex items-center justify-center shrink-0">
+    <section className="w-full min-w-0 p-2.5 sm:p-5 space-y-3 sm:space-y-4 overflow-x-hidden overflow-y-auto no-scrollbar h-full" data-testid="payment-calendar">
+      <header className="flex items-center gap-2">
+        <div className="w-10 h-10 rounded-xl bg-theme-primary-light text-theme-primary flex items-center justify-center shrink-0">
             <CalendarDays size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-[0.16em] font-bold text-theme-muted">Планы / календарь</p>
-            <div className="flex items-center gap-3 mt-1">
-              <p className="text-xs text-theme-muted">Регулярные операции и планы</p>
-              <button type="button" data-testid="button-add-payment" onClick={() => openCreate()} className="px-3 py-2 rounded-xl bg-theme-primary text-theme-on-primary text-xs font-bold flex items-center gap-2 hover:bg-theme-primary-dark shrink-0">
-                <Plus size={15} /> <span className="hidden sm:inline">Запланировать</span>
-              </button>
-            </div>
-          </div>
         </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] uppercase tracking-[0.12em] font-bold text-theme-muted truncate">Календарь будущих операций</p>
+          <p className="text-xs text-theme-muted truncate mt-1">Регулярные операции и планы</p>
+        </div>
+        <button
+          type="button"
+          aria-label="Запланировать операцию"
+          title="Запланировать операцию"
+          data-testid="button-add-payment"
+          onClick={() => openCreate()}
+          className="w-10 h-10 rounded-xl bg-theme-primary text-theme-on-primary flex items-center justify-center hover:bg-theme-primary-dark shrink-0"
+        >
+          <Plus size={20} />
+        </button>
       </header>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2">
-          <button type="button" aria-label="Предыдущий месяц" data-testid="button-previous-month" onClick={() => moveMonth(-1, cursor, setCursor, setSelectedDate)} className="p-2 rounded-lg border border-theme-base bg-theme-surface text-theme-muted"><ArrowLeft size={15} /></button>
-          <strong className="min-w-[125px] text-center text-sm capitalize text-theme-main">{MONTHS[cursor.getMonth()]} <span className="text-theme-muted font-normal">{cursor.getFullYear()}</span></strong>
-          <button type="button" aria-label="Следующий месяц" data-testid="button-next-month" onClick={() => moveMonth(1, cursor, setCursor, setSelectedDate)} className="p-2 rounded-lg border border-theme-base bg-theme-surface text-theme-muted"><ArrowRight size={15} /></button>
-          <button type="button" data-testid="button-today" onClick={() => { setCursor(new Date(now.getFullYear(), now.getMonth(), 1)); setSelectedDate(getTodayKey()); }} className="px-2.5 py-1.5 rounded-lg border border-theme-base text-[11px] font-bold text-theme-muted">Сегодня</button>
-        </div>
-        <label className="text-xs text-theme-muted">
+      <div className="flex min-w-0 w-full flex-nowrap items-center gap-1 overflow-x-auto no-scrollbar">
+        <button type="button" aria-label="Предыдущий месяц" data-testid="button-previous-month" onClick={() => moveMonth(-1, cursor, setCursor, setSelectedDate)} className="w-8 h-8 rounded-lg border border-theme-base bg-theme-surface text-theme-muted flex items-center justify-center shrink-0"><ArrowLeft size={15} /></button>
+        <strong className="min-w-[88px] flex-1 text-center text-xs sm:text-sm capitalize text-theme-main truncate">{MONTHS[cursor.getMonth()]} <span className="text-theme-muted font-normal">{cursor.getFullYear()}</span></strong>
+        <button type="button" aria-label="Следующий месяц" data-testid="button-next-month" onClick={() => moveMonth(1, cursor, setCursor, setSelectedDate)} className="w-8 h-8 rounded-lg border border-theme-base bg-theme-surface text-theme-muted flex items-center justify-center shrink-0"><ArrowRight size={15} /></button>
+        <button type="button" aria-label="Сегодня" title="Сегодня" data-testid="button-today" onClick={() => { setCursor(new Date(now.getFullYear(), now.getMonth(), 1)); setSelectedDate(getTodayKey()); }} className="w-8 h-8 rounded-lg border border-theme-base text-theme-muted flex items-center justify-center shrink-0"><CalendarCheck size={15} /></button>
+        <label className="shrink-0 text-xs text-theme-muted">
           <span className="sr-only">Фильтр записей</span>
-          <select data-testid="select-payment-filter" value={filter} onChange={event => setFilter(event.target.value as Filter)} className="rounded-lg border border-theme-base bg-theme-surface px-2 py-1.5 text-xs text-theme-main">
+          <select data-testid="select-payment-filter" value={filter} onChange={event => setFilter(event.target.value as Filter)} className="w-[90px] rounded-lg border border-theme-base bg-theme-surface px-1.5 py-1.5 text-[10px] sm:w-auto sm:px-2 sm:text-xs text-theme-main">
             <option value="all">Все записи</option>
             <option value="pending">Ожидают</option>
             <option value="paid">Выполнены</option>
@@ -216,12 +218,12 @@ export default function PaymentCalendarTab({
            <button type="button" data-testid="button-add-first-payment" onClick={() => openCreate(toDateKey(cursor))} className="px-3 py-2 rounded-xl bg-theme-primary text-theme-on-primary text-xs font-bold"><Plus size={14} className="inline mr-1" />Запланировать первую запись</button>
         </div>
       ) : (
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_300px] gap-3">
-          <div className="rounded-2xl border border-theme-base bg-theme-surface overflow-hidden">
-            <div className="grid grid-cols-7 border-b border-theme-base">
-              {WEEKDAYS.map((day, index) => <div key={day} className={`p-2 text-[10px] font-bold uppercase ${index > 4 ? 'text-theme-primary' : 'text-theme-muted'}`}>{day}</div>)}
+        <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_300px] gap-3">
+          <div className="min-w-0 rounded-2xl border border-theme-base bg-theme-surface overflow-hidden">
+            <div className="grid min-w-0 grid-cols-7 border-b border-theme-base">
+              {WEEKDAYS.map((day, index) => <div key={day} className={`min-w-0 p-1 sm:p-2 text-center text-[9px] sm:text-[10px] font-bold uppercase truncate ${index > 4 ? 'text-theme-primary' : 'text-theme-muted'}`}>{day}</div>)}
             </div>
-            <div className="grid grid-cols-7">
+            <div className="grid min-w-0 grid-cols-7">
               {getMonthCells(cursor).map(cell => {
                 const dayItems = byDate.get(cell.key) || [];
                 return (
@@ -230,7 +232,7 @@ export default function PaymentCalendarTab({
                     type="button"
                     data-testid={`calendar-day-${cell.key}`}
                     onClick={() => setSelectedDate(cell.key)}
-                    className={`min-h-[72px] sm:min-h-[106px] p-1.5 sm:p-2 text-left border-b border-r border-theme-base ${!cell.currentMonth ? 'bg-theme-main text-theme-muted' : 'bg-theme-surface'} ${selectedDate === cell.key ? 'ring-2 ring-inset ring-theme-primary bg-theme-primary-light' : 'hover:bg-theme-main'}`}
+                    className={`min-w-0 min-h-[60px] sm:min-h-[106px] p-1 sm:p-2 text-left border-b border-r border-theme-base ${!cell.currentMonth ? 'bg-theme-main text-theme-muted' : 'bg-theme-surface'} ${selectedDate === cell.key ? 'ring-2 ring-inset ring-theme-primary bg-theme-primary-light' : 'hover:bg-theme-main'}`}
                   >
                     <span className={`inline-flex min-w-6 h-6 items-center justify-center rounded-lg text-xs font-mono ${cell.key === getTodayKey() ? 'bg-theme-primary text-theme-on-primary' : 'text-theme-muted'}`}>{cell.day}</span>
                     <span className="block mt-1 space-y-1">
@@ -248,6 +250,7 @@ export default function PaymentCalendarTab({
             </div>
           </div>
 
+          <div className="min-w-0">
           <UpcomingTasks
             payments={payments}
             startDate={selectedDate}
@@ -270,6 +273,7 @@ export default function PaymentCalendarTab({
             }}
             onDeleteTask={item => onPaymentDelete?.(item.payment.id)}
           />
+          </div>
         </div>
       )}
 
