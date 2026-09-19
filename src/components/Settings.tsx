@@ -339,71 +339,71 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
         {/* Data Section */}
         <section className="space-y-3 mt-0 pt-0 pb-[6px]">
           <h4 className="text-xs font-bold text-theme-primary uppercase tracking-widest px-4">Данные</h4>
-          <div className="bg-white rounded-3xl border border-neutral-100 overflow-hidden shadow-sm">
+          <div className="bg-theme-surface rounded-3xl border border-theme-base overflow-hidden shadow-sm">
             <button 
               onClick={() => setShowCategoryManager(true)}
-              className="w-full px-6 py-2 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
+              className="w-full px-6 py-2 flex items-center gap-4 text-theme-main hover:bg-theme-main transition-colors border-b border-theme-base"
             >
               <div className="w-10 h-10 bg-theme-primary-light rounded-xl flex items-center justify-center">
                 <Tag className="w-5 h-5 text-theme-primary" />
               </div>
               <div className="text-left">
-                <p className="font-semibold text-sm">Категории</p>
-                <p className="text-xs text-neutral-400">Управление категориями операций</p>
+                <p className="font-semibold text-sm text-theme-main">Категории</p>
+                <p className="text-xs text-theme-muted">Управление категориями операций</p>
               </div>
             </button>
 
             <button 
               onClick={() => setShowAccountManager(true)}
-              className="w-full px-6 py-2 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
+              className="w-full px-6 py-2 flex items-center gap-4 text-theme-main hover:bg-theme-main transition-colors border-b border-theme-base"
             >
               <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center relative">
                 <CreditCard className="w-5 h-5 text-emerald-600 relative z-10" />
                 <CreditCard className="w-5 h-5 text-emerald-400 absolute translate-x-1 -translate-y-1 opacity-50" />
               </div>
               <div className="text-left">
-                <p className="font-semibold text-sm">Счета</p>
-                <p className="text-xs text-neutral-400">Управление вашими счетами</p>
+                <p className="font-semibold text-sm text-theme-main">Счета</p>
+                <p className="text-xs text-theme-muted">Управление вашими счетами</p>
               </div>
             </button>
 
             <button 
               onClick={() => setShowBalanceManager(true)}
-              className="w-full px-6 py-2 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
+              className="w-full px-6 py-2 flex items-center gap-4 text-theme-main hover:bg-theme-main transition-colors border-b border-theme-base"
             >
               <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-amber-600" />
               </div>
               <div className="text-left">
-                <p className="font-semibold text-sm">Баланс</p>
-                <p className="text-xs text-neutral-400">История общего баланса по месяцам</p>
+                <p className="font-semibold text-sm text-theme-main">Баланс</p>
+                <p className="text-xs text-theme-muted">История общего баланса по месяцам</p>
               </div>
             </button>
 
             <button 
               onClick={() => setShowCurrencyTable(true)}
-              className="w-full px-6 py-2 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
+              className="w-full px-6 py-2 flex items-center gap-4 text-theme-main hover:bg-theme-main transition-colors border-b border-theme-base"
             >
               <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
                 <ArrowRightLeft className="w-5 h-5 text-blue-600" />
               </div>
               <div className="text-left">
-                <p className="font-semibold text-sm">Валюты</p>
-                <p className="text-xs text-neutral-400">Справочник доступных валют</p>
+                <p className="font-semibold text-sm text-theme-main">Валюты</p>
+                <p className="text-xs text-theme-muted">Справочник доступных валют</p>
               </div>
             </button>
 
             {user.role === 'admin' && (
               <button 
                 onClick={() => setShowUserManager(true)}
-                className="w-full px-6 py-2 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
+                className="w-full px-6 py-2 flex items-center gap-4 text-theme-main hover:bg-theme-main transition-colors border-b border-theme-base"
               >
                 <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center">
                   <UserIcon className="w-5 h-5 text-rose-600" />
                 </div>
                 <div className="text-left">
-                  <p className="font-semibold text-sm">Пользователи</p>
-                  <p className="text-xs text-neutral-400">Управление всеми пользователями системы</p>
+                  <p className="font-semibold text-sm text-theme-main">Пользователи</p>
+                  <p className="text-xs text-theme-muted">Управление всеми пользователями системы</p>
                 </div>
               </button>
             )}
@@ -411,28 +411,28 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
             {user.role === 'admin' && (
               <button 
                 onClick={() => setDbMigrateOpen(true)}
-                className="w-full px-6 py-2 flex items-center gap-4 hover:bg-neutral-50 transition-colors border-b border-neutral-50"
+                className="w-full px-6 py-2 flex items-center gap-4 text-theme-main hover:bg-theme-main transition-colors border-b border-theme-base"
               >
                 <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center">
                   <Database className="w-5 h-5 text-violet-600" />
                 </div>
                 <div className="text-left">
-                  <p className="font-semibold text-sm">Обновление БД</p>
-                  <p className="text-xs text-neutral-400">Синхронизировать схему базы данных с кодом</p>
+                  <p className="font-semibold text-sm text-theme-main">Обновление БД</p>
+                  <p className="text-xs text-theme-muted">Синхронизировать схему базы данных с кодом</p>
                 </div>
               </button>
             )}
 
             <button 
               onClick={onShowLogs}
-              className="w-full px-6 py-2 flex items-center gap-4 hover:bg-neutral-50 transition-colors"
+              className="w-full px-6 py-2 flex items-center gap-4 text-theme-main hover:bg-theme-main transition-colors"
             >
               <div className="w-10 h-10 bg-neutral-900 rounded-xl flex items-center justify-center">
                 <Database className="w-5 h-5 text-white" />
               </div>
               <div className="text-left">
-                <p className="font-semibold text-sm">Логи AI</p>
-                <p className="text-xs text-neutral-400">История запросов и ответов ассистента</p>
+                <p className="font-semibold text-sm text-theme-main">Логи AI</p>
+                <p className="text-xs text-theme-muted">История запросов и ответов ассистента</p>
               </div>
             </button>
           </div>

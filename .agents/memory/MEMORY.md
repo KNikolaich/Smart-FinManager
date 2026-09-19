@@ -9,3 +9,4 @@
 - [Cross-currency transfers](cross-currency-transfers.md) — transfers debit `amount`, credit `targetAmount ?? amount`; rate fixed at op time; server re-validates client math everywhere (incl. import & offline cache).
 - [Vite watch loop on workflow logs](vite-watch-workflow-logs.md) — Replit's `.local/state/workflow-logs/**` dir sits inside the project root and must be excluded from Vite's file watcher or it causes an infinite reload loop.
 - [Avangard rate transport](avangard-rate-transport.md) — keep the verified reader fallback; direct TLS fails in Replit, and globally disabling certificate checks is not acceptable.
+- [Theme utility opacity](theme-utility-opacity.md) — custom semantic color utilities need explicit opacity variants to remain theme-aware in Tailwind output.
