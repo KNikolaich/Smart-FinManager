@@ -385,6 +385,16 @@ export async function deleteTransaction(userId: string, id: string) {
       });
     }
 
+    // A calendar occurrence can also have a manual completion marker. Once
+    // its linked transaction is deleted, the occurrence must become pending
+    // regardless of how it was completed before the transaction was created.
+    if (transaction.calendarOccurrenceId) {
+      await tx.calendarOccurrence.updateMany({
+        where: { id: transaction.calendarOccurrenceId },
+        data: { manuallyCompletedAt: null },
+      });
+    }
+
     await tx.transaction.deleteMany({ where: { id, userId } });
   });
 }

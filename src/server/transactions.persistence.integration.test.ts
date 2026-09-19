@@ -107,4 +107,47 @@ describeDatabase('cross-currency transfer persistence', () => {
     });
     expect(await balances()).toMatchObject({ [rubAccountId]: 14_600, [foreignAccountId]: -50 });
   });
+
+  it('clears the calendar completion when a linked transaction is deleted', async () => {
+    const calendarPlan = await prisma.calendarPlan.create({
+      data: {
+        userId,
+        title: 'Rent',
+        amount: 500,
+        date: new Date('2026-09-19T00:00:00.000Z'),
+        transactionType: 'expense',
+      },
+    });
+
+    const transaction = await createTransaction(userId, {
+      accountId: rubAccountId,
+      amount: 500,
+      type: 'expense',
+      description: 'Rent',
+      createdAt: '2026-09-19T12:00:00.000Z',
+      calendarPlanId: calendarPlan.id,
+      calendarDate: '2026-09-19',
+    });
+
+    const occurrence = await prisma.calendarOccurrence.findUniqueOrThrow({
+      where: {
+        calendarPlanId_date: {
+          calendarPlanId: calendarPlan.id,
+          date: new Date('2026-09-19T00:00:00.000Z'),
+        },
+      },
+    });
+    await prisma.calendarOccurrence.update({
+      where: { id: occurrence.id },
+      data: { manuallyCompletedAt: new Date() },
+    });
+
+    await deleteTransaction(userId, transaction.id);
+
+    const resetOccurrence = await prisma.calendarOccurrence.findUniqueOrThrow({
+      where: { id: occurrence.id },
+    });
+    expect(resetOccurrence.manuallyCompletedAt).toBeNull();
+    expect(await prisma.transaction.findUnique({ where: { id: transaction.id } })).toBeNull();
+  });
 });
