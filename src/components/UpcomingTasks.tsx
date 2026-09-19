@@ -170,7 +170,7 @@ export default function UpcomingTasks({
     <section className="rounded-2xl border border-theme-base bg-theme-surface p-4" data-testid="upcoming-tasks">
       <header className="flex items-center justify-between gap-2 border-b border-theme-base pb-2">
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-wider text-theme-muted font-bold truncate">Предстоящие планы</p>
+          <p className="text-[15px] uppercase tracking-wider text-theme-muted font-bold truncate">Предстоящие планы</p>
         </div>
         <div className="flex items-center gap-1">
           {variant === 'carousel' && (

@@ -86,7 +86,7 @@ export function AccountsSection({ accounts, allAccounts, currencies, onOpenTrans
     >
       <header className="flex items-center justify-between gap-2 border-b border-theme-base pb-2">
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-wider text-theme-muted font-bold truncate">Счета</p>
+          <p className="text-[15px] uppercase tracking-wider text-theme-muted font-bold truncate">Счета</p>
         </div>
         <div className="flex items-center gap-1">
           <button

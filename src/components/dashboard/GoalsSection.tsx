@@ -185,7 +185,7 @@ export function GoalsSection({ visible, goals, userId, initialGoalData, onCloseG
           >
             <header className="flex items-center justify-between gap-2 border-b border-theme-base pb-2">
               <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wider text-theme-muted font-bold truncate">Цели</p>
+                <p className="text-[15px] uppercase tracking-wider text-theme-muted font-bold truncate">Цели</p>
               </div>
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 cursor-pointer select-none">

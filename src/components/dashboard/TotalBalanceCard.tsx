@@ -45,11 +45,11 @@ export function TotalBalanceCard({
               <div className="w-full sm:max-w-[400px] flex-shrink-0">
                 <div className="mb-0 grid grid-cols-2 gap-1 px-2">
                   <div className="pt-0 pb-0 pr-0 text-center">
-                    <p className="text-theme-muted text-[10px] sm:text-xs font-bold uppercase tracking-wider">Общий баланс</p>
+                    <p className="text-theme-muted text-[15px] sm:text-[18px] font-bold uppercase tracking-wider">Общий баланс</p>
                     <h2 className="text-lg sm:text-xl font-bold">{totalBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })} ₽</h2>
                   </div>
                   <div className="text-center border-l border-theme-base pt-0 pb-0 pl-0">
-                    <p className="text-theme-muted text-[10px] sm:text-xs font-bold uppercase tracking-wider pb-[2px]">За прошедший месяц</p>
+                    <p className="text-theme-muted text-[15px] sm:text-[18px] font-bold uppercase tracking-wider pb-[2px]">За прошедший месяц</p>
                     <h2 className={cn(
                       "text-lg sm:text-xl font-bold pb-[5px]",
                       monthlyRollingBalance >= 0 ? "text-finance-income" : "text-finance-expense"
