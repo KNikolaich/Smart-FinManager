@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpToLine, CalendarDays, CircleDashed, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowUpToLine, CalendarDays, CircleDashed, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { PlannedPayment, PlannedPaymentRecurrence } from '../types';
 import {
@@ -123,14 +123,17 @@ export default function UpcomingTasks({
   };
 
   const goToStart = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setCarouselIndex(0);
-    setCarouselLimit(limit);
     const scrollContainer = event.currentTarget.closest('.overflow-y-auto');
     if (scrollContainer instanceof HTMLElement) {
       scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+  };
+
+  const resetCarousel = () => {
+    setCarouselIndex(0);
+    setCarouselLimit(limit);
   };
 
   const handleCarouselPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -165,11 +168,23 @@ export default function UpcomingTasks({
 
   return (
     <section className="rounded-2xl border border-theme-base bg-theme-surface p-4" data-testid="upcoming-tasks">
-      <header className="flex items-start justify-between gap-3 border-b border-theme-base pb-3">
-        <div>
-          <p className="text-[10px] uppercase tracking-wider text-theme-muted font-bold">Предстоящие планы</p>
+      <header className="flex items-center justify-between gap-2 border-b border-theme-base pb-2">
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-wider text-theme-muted font-bold truncate">Предстоящие планы</p>
         </div>
         <div className="flex items-center gap-1">
+          {variant === 'carousel' && (
+            <button
+              type="button"
+              aria-label="Показать первую операцию"
+              title="Показать первую операцию"
+              data-testid="button-upcoming-first"
+              onClick={resetCarousel}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-theme-muted hover:bg-theme-main"
+            >
+              <RefreshCw size={15} />
+            </button>
+          )}
           {variant === 'carousel' && (
             <button
               type="button"
@@ -177,7 +192,7 @@ export default function UpcomingTasks({
               title="В начало"
               data-testid="button-upcoming-start"
               onClick={goToStart}
-              className="p-2 rounded-lg text-theme-muted hover:bg-theme-main"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-theme-muted hover:bg-theme-main"
             >
               <ArrowUpToLine size={16} />
             </button>
@@ -189,7 +204,7 @@ export default function UpcomingTasks({
               title="Открыть календарь"
               data-testid="button-upcoming-calendar"
               onClick={onOpenCalendar}
-              className="p-2 rounded-lg text-theme-muted hover:bg-theme-main"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-theme-muted hover:bg-theme-main"
             >
               <CalendarDays size={16} />
             </button>

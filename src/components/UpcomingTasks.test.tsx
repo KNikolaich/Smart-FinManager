@@ -73,6 +73,10 @@ describe('UpcomingTasks', () => {
     fireEvent.pointerUp(carousel, { clientX: 120, pointerId: 1 });
 
     expect(screen.getByText('Сегодняшняя задача')).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId('button-upcoming-first'));
+
+    expect(screen.getByText('Просроченная задача')).toBeTruthy();
   });
 
   it('uses the header controls instead of navigating from a banner tap', () => {
@@ -90,6 +94,7 @@ describe('UpcomingTasks', () => {
     );
 
     fireEvent.click(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20'));
+    fireEvent.click(screen.getByTestId('button-upcoming-first'));
     fireEvent.click(screen.getByTestId('button-upcoming-calendar'));
     fireEvent.click(screen.getByTestId('button-upcoming-start'));
 
