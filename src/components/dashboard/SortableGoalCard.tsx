@@ -11,6 +11,7 @@ import { CSS } from '@dnd-kit/utilities';
 interface SortableGoalCardProps {
   goal: Goal;
   isEditing: boolean;
+  fillHeight?: boolean;
   onStartEdit: (goal: Goal) => void;
   onCancelEdit: () => void;
   onSave: (id: string, data: any) => void;
@@ -21,6 +22,7 @@ interface SortableGoalCardProps {
 export function SortableGoalCard({
   goal,
   isEditing,
+  fillHeight = false,
   onStartEdit,
   onCancelEdit,
   onSave,
@@ -73,7 +75,10 @@ export function SortableGoalCard({
       <div
         ref={setNodeRef}
         style={style}
-        className="bg-theme-surface rounded-2xl border-2 border-theme-primary p-4 shadow-xl space-y-4"
+        className={cn(
+          "bg-theme-surface rounded-2xl border-2 border-theme-primary p-4 shadow-xl space-y-4",
+          fillHeight && "h-full"
+        )}
       >
         <div className="flex justify-between items-center gap-2">
           <input
@@ -245,7 +250,8 @@ export function SortableGoalCard({
       className={cn(
         "bg-theme-surface rounded-2xl border border-theme-base overflow-hidden shadow-sm hover:shadow-md transition-all relative group",
         isDragging && "shadow-2xl scale-105 z-20",
-        goal.isCompleted && "opacity-75 bg-theme-main"
+        goal.isCompleted && "opacity-75 bg-theme-main",
+        fillHeight && "h-full"
       )}
       onPointerDown={(e) => {
         const timer = setTimeout(handleLongPress, 500);

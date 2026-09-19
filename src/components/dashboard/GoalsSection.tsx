@@ -241,7 +241,7 @@ export function GoalsSection({ visible, goals, userId, initialGoalData, onCloseG
                   strategy={rectSortingStrategy}
                 >
                   <div
-                    className="relative min-h-[320px] pt-3 touch-pan-y select-none"
+                    className="relative h-[352px] pt-3 touch-pan-y select-none"
                     data-testid="dashboard-goals-carousel"
                     onPointerDown={handleCarouselPointerDown}
                     onPointerMove={handleCarouselPointerMove}
@@ -255,12 +255,12 @@ export function GoalsSection({ visible, goals, userId, initialGoalData, onCloseG
                       const isActive = stackIndex === 0;
                       const stackStyle = isActive
                         ? { transform: `translateX(${dragOffset}px)`, zIndex: 30 }
-                        : { transform: `translateY(${stackIndex * 8}px) scale(${1 - stackIndex * 0.04})`, zIndex: 30 - stackIndex };
+                        : { transform: `translateY(${stackIndex * 8}px)`, zIndex: 30 - stackIndex };
 
                       return (
                         <div
                           key={`${goal.id}-${stackIndex}`}
-                          className="absolute inset-x-0 top-3"
+                          className="absolute inset-x-0 top-3 h-[320px]"
                           style={stackStyle}
                           data-testid={isActive ? `goal-banner-${goal.id}` : undefined}
                           aria-hidden={!isActive}
@@ -268,6 +268,7 @@ export function GoalsSection({ visible, goals, userId, initialGoalData, onCloseG
                           <SortableGoalCard
                             goal={goal}
                             isEditing={editingGoalId === goal.id}
+                            fillHeight
                             onStartEdit={(selectedGoal) => setEditingGoalId(selectedGoal.id)}
                             onCancelEdit={() => setEditingGoalId(null)}
                             onSave={handleSaveGoal}
