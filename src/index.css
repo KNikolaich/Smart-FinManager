@@ -68,17 +68,17 @@
 }
 .theme-midnight { 
   --primary: #6366f1; --primary-light: rgba(99, 102, 241, 0.2); --primary-dark: #4f46e5; --text-on-primary: #ffffff;
-  --bg-main: #0f172a; --bg-surface: #1e293b; --text-main: #f8fafc; --text-muted: #94a3b8; --border-color: #0c1222;
+  --bg-main: #0b1120; --bg-surface: #172033; --text-main: #f8fafc; --text-muted: #cbd5e1; --border-color: #334155;
   --input-bg: #0f172a;
 }
 .theme-carbon { 
   --primary: #10b981; --primary-light: rgba(16, 185, 129, 0.2); --primary-dark: #059669; --text-on-primary: #ffffff;
-  --bg-main: #121212; --bg-surface: #1e1e1e; --text-main: #e2e2e2; --text-muted: #a0a0a0; --border-color: #0a0a0a;
+  --bg-main: #0d0f10; --bg-surface: #1a1d1f; --text-main: #f3f4f6; --text-muted: #c4c9ce; --border-color: #3a4146;
   --input-bg: #262626;
 }
 .theme-oled { 
   --primary: #10b981; --primary-light: rgba(16, 185, 129, 0.1); --primary-dark: #059669; --text-on-primary: #ffffff;
-  --bg-main: #000000; --bg-surface: #0a0a0a; --text-main: #ffffff; --text-muted: #888888; --border-color: #050505;
+  --bg-main: #000000; --bg-surface: #0b0b0b; --text-main: #ffffff; --text-muted: #b8b8b8; --border-color: #2b2b2b;
   --input-bg: #111111;
 }
 .theme-nordic { 
@@ -91,16 +91,17 @@
 }
 .theme-forest-dark { 
   --primary: #22c55e; --primary-light: rgba(34, 197, 94, 0.15); --primary-dark: #16a34a; --text-on-primary: #ffffff;
-  --bg-main: #052e16; --bg-surface: #064e3b; --text-main: #f0fdf4; --text-muted: #86efac; --border-color: #03200f;
+  --bg-main: #031c10; --bg-surface: #073b2c; --text-main: #f0fdf4; --text-muted: #bbf7d0; --border-color: #17633f;
+  --input-bg: #052e16;
 }
 .theme-nocturnal { 
   --primary: #00d4ff; --primary-light: rgba(0, 212, 255, 0.15); --primary-dark: #008ab3; --text-on-primary: #000000;
-  --bg-main: #000000; --bg-surface: #0a0f14; --text-main: #f8fafc; --text-muted: #ff6b3d; --border-color: #121820;
+  --bg-main: #000000; --bg-surface: #0b1118; --text-main: #f8fafc; --text-muted: #b9c7d6; --border-color: #263545;
   --input-bg: #050a0f;
 }
 .theme-cyber {
   --primary: #00ffcc; --primary-light: rgba(0, 255, 204, 0.2); --primary-dark: #00b38f; --text-on-primary: #000000;
-  --bg-main: #050505; --bg-surface: #121212; --text-main: #00ffcc; --text-muted: #008877; --border-color: #rgba(0, 255, 204, 0.2);
+  --bg-main: #030606; --bg-surface: #101918; --text-main: #d7fff5; --text-muted: #8debd5; --border-color: rgba(0, 255, 204, 0.28);
   --input-bg: #000000;
 }
 
@@ -190,6 +191,68 @@ body {
 .text-neutral-600, .text-neutral-500, .text-neutral-400, .text-gray-600, .text-gray-500, .text-gray-400 { color: var(--text-muted); }
 .border-neutral-100, .border-neutral-50, .border-neutral-200, .border-gray-100, .border-gray-200, .border-gray-300 { border-color: var(--border-color); }
 .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl { --tw-shadow-color: rgba(0,0,0,0.3) !important; }
+
+/* Opacity utilities need the same semantic surfaces as their non-opacity
+ * counterparts. Without these rules, translucent white/neutral utilities
+ * remain visibly light inside dark themes. */
+.bg-white\/0 { background-color: transparent; }
+.bg-white\/5 { background-color: color-mix(in srgb, var(--surface-card) 5%, transparent); }
+.bg-white\/70 { background-color: color-mix(in srgb, var(--surface-card) 70%, transparent); }
+.bg-white\/80 { background-color: color-mix(in srgb, var(--surface-card) 80%, transparent); }
+.bg-neutral-50\/30 { background-color: color-mix(in srgb, var(--surface-input) 30%, transparent); }
+.bg-neutral-50\/50 { background-color: color-mix(in srgb, var(--surface-input) 50%, transparent); }
+.bg-neutral-50\/70 { background-color: color-mix(in srgb, var(--surface-input) 70%, transparent); }
+.bg-neutral-50\/90 { background-color: color-mix(in srgb, var(--surface-input) 90%, transparent); }
+.bg-neutral-100\/30 { background-color: color-mix(in srgb, var(--surface-page) 30%, transparent); }
+.bg-neutral-100\/50 { background-color: color-mix(in srgb, var(--surface-page) 50%, transparent); }
+.bg-neutral-100\/80 { background-color: color-mix(in srgb, var(--surface-page) 80%, transparent); }
+
+/* Keep status chips/cards readable without turning them into white blocks in
+ * dark themes. The status hue is preserved, but mixed into the current card
+ * surface instead of using a light pastel background. */
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .bg-rose-50,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .bg-rose-50\/50,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .bg-rose-100 {
+  background-color: color-mix(in srgb, #f43f5e 16%, var(--surface-card));
+}
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .bg-amber-50,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .bg-amber-50\/50,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .bg-yellow-50 {
+  background-color: color-mix(in srgb, #f59e0b 16%, var(--surface-card));
+}
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .bg-emerald-50,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .bg-green-50,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .bg-lime-50 {
+  background-color: color-mix(in srgb, #10b981 16%, var(--surface-card));
+}
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .bg-blue-50,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .bg-sky-50,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .bg-indigo-50 {
+  background-color: color-mix(in srgb, #3b82f6 16%, var(--surface-card));
+}
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .bg-purple-50,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .bg-violet-50 {
+  background-color: color-mix(in srgb, #8b5cf6 16%, var(--surface-card));
+}
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .bg-orange-50 {
+  background-color: color-mix(in srgb, #f97316 16%, var(--surface-card));
+}
+
+/* The 600/700 status text shades are designed for white backgrounds. Lift
+ * them for dark surfaces so small labels remain readable. */
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .text-rose-600,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .text-rose-700 { color: #fda4af; }
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .text-amber-600,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .text-amber-700 { color: #fcd34d; }
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .text-emerald-600,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .text-emerald-700,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .text-lime-700 { color: #6ee7b7; }
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .text-blue-600,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .text-blue-700 { color: #93c5fd; }
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .text-purple-600,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .text-purple-700,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .text-violet-600 { color: #c4b5fd; }
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .text-orange-700 { color: #fdba74; }
 
 /* Form Elements */
 input, select, textarea {
