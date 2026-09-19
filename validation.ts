@@ -178,6 +178,9 @@ export const transactionCreateSchema = z.object({
   type: transactionTypeEnum,
   categoryId: idString.optional().nullable(),
   subcategoryId: idString.optional().nullable(),
+  calendarOccurrenceId: idString.optional().nullable(),
+  calendarPlanId: idString.optional().nullable(),
+  calendarDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
   description: z.string().trim().max(500).optional().default(""),
   createdAt: optionalNullableDate,
 }).strict();

@@ -4,6 +4,9 @@ export interface PlannedPaymentOccurrence {
   payment: PlannedPayment;
   date: string;
   status: PlannedPaymentStatus;
+  occurrenceId?: string;
+  transactionId?: string | null;
+  manuallyCompleted?: boolean;
 }
 
 export function toDateKey(date: Date) {
@@ -48,10 +51,14 @@ export function getPaymentOccurrencesInRange(
               : date.getDate() === base.getDate() && date.getMonth() === base.getMonth();
 
     if (matches) {
+      const storedOccurrence = payment.occurrences?.find(item => item.date === dateKey);
       dates.push({
         payment,
         date: dateKey,
         status: getOccurrenceStatus(payment, dateKey),
+        occurrenceId: storedOccurrence?.id,
+        transactionId: storedOccurrence?.transactionId,
+        manuallyCompleted: storedOccurrence?.manuallyCompleted,
       });
     }
   }

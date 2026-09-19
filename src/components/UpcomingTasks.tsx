@@ -18,6 +18,7 @@ interface UpcomingTasksProps {
   onOpenCalendar?: () => void;
   onAdd?: () => void;
   onToggleTask?: (item: PlannedPaymentOccurrence) => void;
+  onManualToggleTask?: (item: PlannedPaymentOccurrence) => void | Promise<void>;
   onRequestTransaction?: (
     item: PlannedPaymentOccurrence,
     onCompleted: () => void | Promise<void>,
@@ -35,6 +36,7 @@ export default function UpcomingTasks({
   onOpenCalendar,
   onAdd,
   onToggleTask,
+  onManualToggleTask,
   onRequestTransaction,
   onEditTask,
   onDeleteTask,
@@ -315,7 +317,7 @@ export default function UpcomingTasks({
                     {formatTaskDate(item.date, startDate)} · {item.payment.transactionType === 'income' ? 'Доход' : 'Расход'} · {item.payment.categoryName || 'Без категории'} · {recurrenceLabel(item.payment.recurrence)} · {formatMoney(item.payment.amount)}
                   </span>
                 </button>
-                {(onEditTask || onDeleteTask) && (
+                {(onEditTask || onDeleteTask || onManualToggleTask) && (
                   <div className="relative shrink-0">
                     <button
                       type="button"
@@ -331,6 +333,11 @@ export default function UpcomingTasks({
                         {onEditTask && (
                           <button type="button" onClick={() => { setMenuFor(null); onEditTask(item); }} className="w-full text-left px-2 py-1.5 text-xs hover:bg-theme-main">
                             <Pencil size={12} className="inline mr-1" />Изменить
+                          </button>
+                        )}
+                        {onManualToggleTask && !item.transactionId && (
+                          <button type="button" onClick={() => { setMenuFor(null); void onManualToggleTask(item); }} className="w-full text-left px-2 py-1.5 text-xs hover:bg-theme-main">
+                            {item.manuallyCompleted ? 'Снять ручную отметку' : 'Отметить вручную'}
                           </button>
                         )}
                         {onDeleteTask && (

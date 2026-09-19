@@ -26,6 +26,7 @@ model User {
   transactions   Transaction[]
   goals          Goal[]
   planGrid       PlanGrid[]
+  calendarPlans  CalendarPlan[]
   chatMessages   ChatMessage[]
   aiLogs         AiLog[]
   balanceHistory BalanceHistory[]
@@ -54,6 +55,7 @@ model Account {
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[] @relation("AccountTransactions")
   targetTrans  Transaction[] @relation("TargetAccountTransactions")
+  calendarPlans CalendarPlan[]
 
   @@index([userId])
   @@map("accounts")
@@ -74,6 +76,7 @@ model Category {
   parent       Category?     @relation("CategoryToSubcategory", fields: [parentId], references: [id], onDelete: Cascade)
   children     Category[]    @relation("CategoryToSubcategory")
   transactions Transaction[]
+  calendarPlans CalendarPlan[]
 
   @@index([userId])
   @@index([parentId])
@@ -87,6 +90,7 @@ model Transaction {
   targetAccountId String?
   categoryId      String?
   subcategoryId   String?
+  calendarOccurrenceId String? @unique
   amount          Float
   // For cross-currency transfers: amount credited to the target account in
   // its own currency, and the RUB price of one unit of the exchanged foreign
@@ -102,6 +106,7 @@ model Transaction {
   account       Account   @relation("AccountTransactions", fields: [accountId], references: [id], onDelete: Cascade)
   targetAccount Account?  @relation("TargetAccountTransactions", fields: [targetAccountId], references: [id], onDelete: Cascade)
   category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  calendarOccurrence CalendarOccurrence? @relation(fields: [calendarOccurrenceId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([userId, createdAt])
@@ -141,6 +146,48 @@ model PlanGrid {
 
   @@unique([userId, type])
   @@map("plan_grids")
+}
+
+model CalendarPlan {
+  id              String   @id @default(uuid())
+  userId          String
+  title           String
+  amount          Float
+  date            DateTime @db.Date
+  recurrence      String   @default("none")
+  transactionType String   @default("expense")
+  accountId       String?
+  categoryId      String?
+  color           String?
+  archivedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account     Account?               @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  category    Category?              @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  occurrences CalendarOccurrence[]
+
+  @@index([userId, archivedAt])
+  @@index([accountId])
+  @@index([categoryId])
+  @@map("calendar_plans")
+}
+
+model CalendarOccurrence {
+  id                  String   @id @default(uuid())
+  calendarPlanId      String
+  date                DateTime @db.Date
+  manuallyCompletedAt DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  calendarPlan CalendarPlan @relation(fields: [calendarPlanId], references: [id], onDelete: Cascade)
+  transaction  Transaction?
+
+  @@unique([calendarPlanId, date])
+  @@index([date])
+  @@map("calendar_occurrences")
 }
 
 model Currency {

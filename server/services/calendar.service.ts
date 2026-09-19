@@ -1,0 +1,324 @@
+import { prisma } from "../prisma";
+
+const VALID_RECURRENCES = new Set([
+  "none",
+  "weekly",
+  "biweekly",
+  "monthly",
+  "quarterly",
+  "yearly",
+]);
+
+type LegacyPayment = {
+  id?: string;
+  title?: string;
+  amount?: number;
+  date?: string;
+  recurrence?: string;
+  transactionType?: string;
+  accountId?: string;
+  categoryId?: string;
+  color?: string;
+  status?: string;
+  paidDates?: string[];
+};
+
+function dateOnly(value: unknown) {
+  const raw = String(value || "").slice(0, 10);
+  const [year, month, day] = raw.split("-").map(Number);
+  if (!year || !month || !day) {
+    throw new Error("Некорректная дата календаря");
+  }
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function dateKey(value: Date) {
+  return value.toISOString().slice(0, 10);
+}
+
+function recurrence(value: unknown) {
+  return VALID_RECURRENCES.has(String(value)) ? String(value) : "none";
+}
+
+function transactionType(value: unknown) {
+  return value === "income" ? "income" : "expense";
+}
+
+async function migrateLegacyCalendar(userId: string) {
+  const legacy = await prisma.planGrid.findFirst({
+    where: { userId, type: "calendar" },
+  });
+  if (!legacy) return;
+
+  const payload = legacy.data as { payments?: LegacyPayment[] } | null;
+  if (!Array.isArray(payload?.payments)) {
+    await prisma.planGrid.delete({ where: { id: legacy.id } });
+    return;
+  }
+
+  await prisma.$transaction(async (tx) => {
+    for (const payment of payload.payments) {
+      await upsertPlan(tx, userId, payment);
+    }
+    await tx.planGrid.delete({ where: { id: legacy.id } });
+  });
+}
+
+async function upsertPlan(tx: any, userId: string, payment: LegacyPayment, strictReferences = false) {
+  const amount = Number(payment.amount);
+  if (!payment.title?.trim() || !Number.isFinite(amount) || amount <= 0 || !payment.date) {
+    return null;
+  }
+
+  const requestedId = typeof payment.id === "string" && payment.id.trim()
+    ? payment.id.trim()
+    : undefined;
+  const owned = requestedId
+    ? await tx.calendarPlan.findFirst({ where: { id: requestedId, userId } })
+    : null;
+  const occupiedByAnotherUser = requestedId && !owned
+    ? await tx.calendarPlan.findUnique({ where: { id: requestedId }, select: { id: true } })
+    : null;
+
+  let accountId = payment.accountId || null;
+  let categoryId = payment.categoryId || null;
+  if (accountId) {
+    const account = await tx.account.findFirst({ where: { id: accountId, userId } });
+    if (!account) {
+      if (strictReferences) {
+        const error: any = new Error("Счёт календаря не найден");
+        error.status = 400;
+        throw error;
+      }
+      accountId = null;
+    }
+  }
+  if (categoryId) {
+    const category = await tx.category.findFirst({ where: { id: categoryId, userId } });
+    if (!category) {
+      if (strictReferences) {
+        const error: any = new Error("Категория календаря не найдена");
+        error.status = 400;
+        throw error;
+      }
+      categoryId = null;
+    }
+  }
+
+  const data = {
+    title: payment.title.trim(),
+    amount,
+    date: dateOnly(payment.date),
+    recurrence: recurrence(payment.recurrence),
+    transactionType: transactionType(payment.transactionType),
+    accountId,
+    categoryId,
+    color: payment.color || null,
+    archivedAt: null,
+  };
+
+  const plan = owned
+    ? await tx.calendarPlan.update({ where: { id: owned.id }, data })
+    : await tx.calendarPlan.create({
+      data: {
+        ...data,
+        ...(requestedId && !occupiedByAnotherUser ? { id: requestedId } : {}),
+        userId,
+      },
+    });
+
+  // Existing paidDates are migrated as explicit manual completions. New
+  // operation-backed completions are represented by the transaction relation.
+  const paidDates = Array.isArray(payment.paidDates) ? payment.paidDates : [];
+  if (payment.status === "paid" && paidDates.length === 0) {
+    paidDates.push(payment.date);
+  }
+  for (const paidDate of paidDates) {
+    try {
+      await tx.calendarOccurrence.upsert({
+        where: {
+          calendarPlanId_date: {
+            calendarPlanId: plan.id,
+            date: dateOnly(paidDate),
+          },
+        },
+        update: {},
+        create: {
+          calendarPlanId: plan.id,
+          date: dateOnly(paidDate),
+          manuallyCompletedAt: new Date(),
+        },
+      });
+    } catch {
+      // Ignore malformed legacy dates; the rest of the calendar is still
+      // migrated and the user can recreate that occurrence from the UI.
+    }
+  }
+
+  return plan;
+}
+
+async function loadPlans(userId: string) {
+  return prisma.calendarPlan.findMany({
+    where: { userId, archivedAt: null },
+    include: {
+      account: { select: { name: true } },
+      category: { select: { name: true } },
+      occurrences: {
+        include: { transaction: { select: { id: true } } },
+        orderBy: { date: "asc" },
+      },
+    },
+    orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+  });
+}
+
+function serializePlan(plan: any) {
+  const occurrences = (plan.occurrences || []).map((item: any) => ({
+    id: item.id,
+    date: dateKey(item.date),
+    transactionId: item.transaction?.id || null,
+    manuallyCompleted: Boolean(item.manuallyCompletedAt),
+  }));
+  const paidDates = occurrences
+    .filter((item: any) => item.transactionId || item.manuallyCompleted)
+    .map((item: any) => item.date);
+
+  return {
+    id: plan.id,
+    title: plan.title,
+    amount: plan.amount,
+    date: dateKey(plan.date),
+    recurrence: plan.recurrence,
+    transactionType: plan.transactionType,
+    accountId: plan.accountId || undefined,
+    accountName: plan.account?.name,
+    categoryId: plan.categoryId || undefined,
+    categoryName: plan.category?.name,
+    status: paidDates.includes(dateKey(plan.date)) ? "paid" : "pending",
+    paidDates,
+    color: plan.color || undefined,
+    occurrences,
+  };
+}
+
+export async function listCalendar(userId: string) {
+  await migrateLegacyCalendar(userId);
+  return { payments: (await loadPlans(userId)).map(serializePlan) };
+}
+
+export async function replaceCalendar(userId: string, payments: LegacyPayment[]) {
+  await migrateLegacyCalendar(userId);
+
+  await prisma.$transaction(async (tx) => {
+    const retainedIds: string[] = [];
+    for (const payment of payments) {
+      const plan = await upsertPlan(tx, userId, payment, true);
+      if (plan) retainedIds.push(plan.id);
+    }
+
+    await tx.calendarPlan.updateMany({
+      where: {
+        userId,
+        archivedAt: null,
+        ...(retainedIds.length > 0 ? { id: { notIn: retainedIds } } : {}),
+      },
+      data: { archivedAt: new Date() },
+    });
+  });
+
+  return listCalendar(userId);
+}
+
+export async function setManualCompletion(
+  userId: string,
+  planId: string,
+  date: string,
+  completed: boolean,
+) {
+  const plan = await prisma.calendarPlan.findFirst({
+    where: { id: planId, userId, archivedAt: null },
+  });
+  if (!plan) {
+    const error: any = new Error("Запись календаря не найдена");
+    error.status = 404;
+    throw error;
+  }
+
+  const occurrence = await prisma.calendarOccurrence.upsert({
+    where: {
+      calendarPlanId_date: {
+        calendarPlanId: plan.id,
+        date: dateOnly(date),
+      },
+    },
+    update: { manuallyCompletedAt: completed ? new Date() : null },
+    create: {
+      calendarPlanId: plan.id,
+      date: dateOnly(date),
+      manuallyCompletedAt: completed ? new Date() : null,
+    },
+    include: { transaction: { select: { id: true } } },
+  });
+
+  return {
+    id: occurrence.id,
+    date: dateKey(occurrence.date),
+    transactionId: occurrence.transaction?.id || null,
+    manuallyCompleted: Boolean(occurrence.manuallyCompletedAt),
+  };
+}
+
+export async function assertOccurrenceOwned(
+  userId: string,
+  occurrenceId: string,
+  expectedDate?: string,
+) {
+  const occurrence = await prisma.calendarOccurrence.findFirst({
+    where: {
+      id: occurrenceId,
+      calendarPlan: { userId, archivedAt: null },
+    },
+    include: { calendarPlan: true },
+  });
+  if (!occurrence) {
+    const error: any = new Error("Вхождение календаря не найдено");
+    error.status = 400;
+    throw error;
+  }
+  if (expectedDate && dateKey(occurrence.date) !== expectedDate.slice(0, 10)) {
+    const error: any = new Error("Дата операции не совпадает с датой календаря");
+    error.status = 400;
+    throw error;
+  }
+  return occurrence;
+}
+
+export async function ensureOccurrenceOwned(
+  userId: string,
+  planId: string,
+  date: string,
+) {
+  const plan = await prisma.calendarPlan.findFirst({
+    where: { id: planId, userId, archivedAt: null },
+  });
+  if (!plan) {
+    const error: any = new Error("Запись календаря не найдена");
+    error.status = 400;
+    throw error;
+  }
+
+  return prisma.calendarOccurrence.upsert({
+    where: {
+      calendarPlanId_date: {
+        calendarPlanId: plan.id,
+        date: dateOnly(date),
+      },
+    },
+    update: {},
+    create: {
+      calendarPlanId: plan.id,
+      date: dateOnly(date),
+    },
+  });
+}

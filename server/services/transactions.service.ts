@@ -1,4 +1,5 @@
 import { prisma } from "../prisma";
+import { assertOccurrenceOwned, ensureOccurrenceOwned } from "./calendar.service";
 
 export interface TransactionListFilters {
   page?: number;
@@ -304,6 +305,12 @@ export async function createTransaction(userId: string, body: any) {
 
   const { account, targetAccount } = await validateReferences(userId, { accountId, targetAccountId, categoryId, subcategoryId });
   const { targetAmount, exchangeRate } = await resolveConversionFields(type, numAmount, body, account, targetAccount);
+  const transactionDate = createdAt ? new Date(createdAt) : new Date();
+  const calendarOccurrence = body.calendarOccurrenceId
+    ? await assertOccurrenceOwned(userId, body.calendarOccurrenceId, transactionDate.toISOString())
+    : body.calendarPlanId && body.calendarDate
+      ? await ensureOccurrenceOwned(userId, body.calendarPlanId, body.calendarDate)
+      : null;
 
   return prisma.$transaction(async (tx) => {
     const transaction = await tx.transaction.create({
@@ -318,7 +325,8 @@ export async function createTransaction(userId: string, body: any) {
         exchangeRate: type === 'transfer' ? exchangeRate : null,
         type,
         description: description || '',
-        createdAt: createdAt ? new Date(createdAt) : new Date()
+        createdAt: transactionDate,
+        calendarOccurrenceId: calendarOccurrence?.id || null,
       },
     });
 
@@ -400,6 +408,20 @@ export async function updateTransaction(userId: string, id: string, body: any) {
 
   const { account, targetAccount } = await validateReferences(userId, { accountId, targetAccountId, categoryId, subcategoryId });
   const { targetAmount, exchangeRate } = await resolveConversionFields(type, numAmount, body, account, targetAccount);
+  const transactionDate = createdAt ? new Date(createdAt) : new Date();
+  const hasOccurrenceField = Object.prototype.hasOwnProperty.call(body, "calendarOccurrenceId");
+  let calendarOccurrenceId = hasOccurrenceField
+    ? body.calendarOccurrenceId || null
+    : oldTransaction.calendarOccurrenceId || null;
+
+  if (calendarOccurrenceId) {
+    const occurrence = await assertOccurrenceOwned(userId, calendarOccurrenceId);
+    if (occurrence.date.toISOString().slice(0, 10) !== transactionDate.toISOString().slice(0, 10)) {
+      // Editing an operation's date must not leave it checked on the old
+      // calendar day. It can be linked again explicitly from the calendar.
+      calendarOccurrenceId = null;
+    }
+  }
 
   return prisma.$transaction(async (tx) => {
     // 1. Revert old balance changes
@@ -437,7 +459,8 @@ export async function updateTransaction(userId: string, id: string, body: any) {
         exchangeRate: type === 'transfer' ? exchangeRate : null,
         type,
         description: description || '',
-        createdAt: createdAt ? new Date(createdAt) : new Date()
+        createdAt: transactionDate,
+        calendarOccurrenceId,
       },
     });
 

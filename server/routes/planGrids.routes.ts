@@ -8,6 +8,7 @@ const router = Router();
 router.get("/api/plan-grids", authenticateToken, planGridsController.list);
 router.get("/api/plan-grid/:type", authenticateToken, planGridsController.getByType);
 router.post("/api/plan-grid/:type", authenticateToken, validateBody(planGridDataSchema), planGridsController.setByType);
+router.post("/api/plan-grid/calendar/:planId/occurrences/:date", authenticateToken, planGridsController.setCalendarOccurrence);
 router.post("/api/plan-grid", authenticateToken, validateBody(planGridBulkSchema), planGridsController.setBulk);
 
 export default router;

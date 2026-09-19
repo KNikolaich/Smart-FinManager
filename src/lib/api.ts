@@ -255,6 +255,11 @@ const handleResponse = async (res: Response) => {
 function applyMutationToCache(method: string, endpoint: string, data: any) {
   try {
     if (endpoint.startsWith('/plan-grid/')) {
+      // Occurrence actions have their own queued request and must not replace
+      // the cached full calendar with a { completed } payload.
+      if (endpoint.startsWith('/plan-grid/calendar/') && endpoint.includes('/occurrences/')) {
+        return;
+      }
       const type = endpoint.replace('/plan-grid/', '');
       safeStorage.setItem(`api_cache_/plan-grid/${type}`, JSON.stringify(data));
       return;

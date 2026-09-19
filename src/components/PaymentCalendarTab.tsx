@@ -267,6 +267,10 @@ export default function PaymentCalendarTab({
                 onStatusChange?.(item.payment.id, item.date, 'paid');
               }
             }}
+            onManualToggleTask={item => {
+              if (!onStatusChange) return;
+              void onStatusChange(item.payment.id, item.date, item.manuallyCompleted ? 'pending' : 'paid');
+            }}
             onEditTask={item => {
               setEditingPayment({ ...item.payment });
               setDialogMode('edit');

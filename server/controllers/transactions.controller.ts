@@ -51,6 +51,9 @@ export async function create(req: any, res: any) {
   try {
     const result = await transactionsService.createTransaction(req.user.userId, req.body);
     notifyUser(req.user.userId, "data:updated", { type: "transactions" });
+    if (req.body.calendarOccurrenceId) {
+      notifyUser(req.user.userId, "data:updated", { type: "plan-grid", planType: "calendar" });
+    }
     res.json(result);
   } catch (error: any) {
     console.error("Transaction Error:", error);
@@ -62,6 +65,7 @@ export async function remove(req: any, res: any) {
   try {
     await transactionsService.deleteTransaction(req.user.userId, req.params.id);
     notifyUser(req.user.userId, "data:updated", { type: "transactions" });
+    notifyUser(req.user.userId, "data:updated", { type: "plan-grid", planType: "calendar" });
     res.json({ success: true });
   } catch (error: any) {
     res.status(error.status || 500).json({ error: error.message });
@@ -72,6 +76,7 @@ export async function update(req: any, res: any) {
   try {
     const result = await transactionsService.updateTransaction(req.user.userId, req.params.id, req.body);
     notifyUser(req.user.userId, "data:updated", { type: "transactions" });
+    notifyUser(req.user.userId, "data:updated", { type: "plan-grid", planType: "calendar" });
     res.json(result);
   } catch (error: any) {
     console.error("Update Transaction Error:", error);

@@ -415,18 +415,38 @@ export default function PlanPage({
   };
 
   const handleCalendarStatusChange = async (id: string, date: string, status: PlannedPaymentStatus) => {
-    const next = calendarPayments.map(payment => {
+    const previous = calendarPayments;
+    const next = previous.map(payment => {
       if (payment.id !== id) return payment;
       const paidDates = new Set(payment.paidDates || []);
       if (status === 'paid') paidDates.add(date);
       else paidDates.delete(date);
+      const occurrences = [...(payment.occurrences || [])];
+      const existing = occurrences.find(item => item.date === date);
+      if (existing) {
+        existing.manuallyCompleted = status === 'paid';
+      } else {
+        occurrences.push({
+          id: `pending-${id}-${date}`,
+          date,
+          manuallyCompleted: status === 'paid',
+          transactionId: null,
+        });
+      }
       return {
         ...payment,
         paidDates: Array.from(paidDates),
+        occurrences,
         status: date === payment.date ? status : payment.status,
       };
     });
-    await saveCalendarPayments(next);
+    setCalendarPayments(next);
+    try {
+      await api.post(`/plan-grid/calendar/${id}/occurrences/${date}`, { completed: status === 'paid' });
+    } catch (error) {
+      setCalendarPayments(previous);
+      throw error;
+    }
   };
 
   const handleCalendarPaymentOperation = (payment: PlannedPayment, date: string) => {
@@ -438,7 +458,8 @@ export default function PlanPage({
       categoryId: payment.categoryId || '',
       description: payment.title,
       createdAt: `${date}T12:00:00`,
-      __onTransactionCreated: () => handleCalendarStatusChange(payment.id, date, 'paid'),
+      calendarPlanId: payment.id,
+      calendarDate: date,
     });
   };
 

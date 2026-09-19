@@ -153,7 +153,10 @@ export default function AddTransaction({ accounts, transactions, categories, cur
         categoryId: type !== 'transfer' ? selectedCategoryId : null,
         subcategoryId: type !== 'transfer' ? selectedSubcategoryId : null,
         createdAt: finalCreatedAt,
-        type
+        type,
+        calendarOccurrenceId: initialData?.calendarOccurrenceId || null,
+        calendarPlanId: initialData?.calendarPlanId || null,
+        calendarDate: initialData?.calendarDate || null,
       });
       onAdd();
       if (typeof initialData?.__onTransactionCreated === 'function') {

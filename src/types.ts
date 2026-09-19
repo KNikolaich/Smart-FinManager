@@ -59,6 +59,7 @@ export interface Transaction {
   targetAccountId?: string;
   categoryId: string;
   subcategoryId?: string;
+  calendarOccurrenceId?: string | null;
   amount: number;
   // Cross-currency transfers: amount credited to the target account in its
   // own currency and the fixed RUB price of one unit of the exchanged foreign
@@ -186,6 +187,12 @@ export interface PlannedPayment {
   accountName?: string;
   status: PlannedPaymentStatus;
   paidDates?: string[];
+  occurrences?: Array<{
+    id: string;
+    date: string;
+    transactionId?: string | null;
+    manuallyCompleted: boolean;
+  }>;
   color?: 'plum' | 'blue' | 'orange';
 }
 
