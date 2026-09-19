@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Account, Category, Transaction } from '../../types';
-import { ChevronRight, Plus } from 'lucide-react';
+import { History, Plus } from 'lucide-react';
 import { cn, getTransactionDisplayTitle } from '../../lib/utils';
 import { dateFromKey, formatTransactionDateHeading } from '../../lib/dateLabels';
 import { api } from '../../lib/api';
@@ -51,29 +51,35 @@ export function TransactionsSection({
   };
 
   return (
-    <section className="mb-4">
-      <div className="flex items-center justify-between mb-4">
-        <button
-          onClick={() => {
-            if (onOpenTransactionHistory) onOpenTransactionHistory();
-          }}
-          className="group flex items-center gap-2"
-        >
-          <h3 className="font-bold text-lg text-theme-main group-hover:text-theme-primary transition-colors" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.15)' }}>Операции</h3>
-          <ChevronRight className="w-4 h-4 text-theme-muted group-hover:text-theme-primary transition-all group-hover:translate-x-1" />
-        </button>
-        <button
-          onClick={() => {
-            if (onOpenAddTransaction) onOpenAddTransaction();
-          }}
-          aria-label="Добавить операцию"
-          className="flex items-center justify-center w-8 h-8 bg-theme-primary/10 border-2 border-theme-primary text-theme-primary rounded-full hover:bg-theme-primary hover:text-theme-on-primary shadow-md shadow-theme-primary/20 active:scale-95 transition-all font-bold"
-          title="Добавить операцию"
-        >
-          <Plus size={18} strokeWidth={3} />
-        </button>
+    <section className="rounded-2xl border border-theme-base bg-theme-surface p-4" data-testid="dashboard-transactions">
+      <header className="flex items-center justify-between gap-2 border-b border-theme-base pb-2">
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-wider text-theme-muted font-bold truncate">Операции</p>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onOpenAddTransaction?.()}
+            aria-label="Добавить операцию"
+            data-testid="button-dashboard-add-transaction"
+            className="w-8 h-8 rounded-lg bg-theme-primary-light text-theme-primary flex items-center justify-center hover:bg-theme-primary hover:text-theme-on-primary active:scale-95 transition-all"
+            title="Добавить операцию"
+          >
+            <Plus size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onOpenTransactionHistory?.()}
+            aria-label="Открыть историю операций"
+            data-testid="button-dashboard-transaction-history"
+            className="w-8 h-8 rounded-lg text-theme-muted flex items-center justify-center hover:bg-theme-main hover:text-theme-primary active:scale-95 transition-all"
+            title="Открыть историю операций"
+          >
+            <History size={16} />
+          </button>
+        </div>
       </div>
-      <div className="bg-theme-surface rounded-3xl border border-theme-base overflow-hidden shadow-soft">
+      <div className="mt-3 overflow-hidden rounded-2xl border border-theme-base bg-theme-main/20">
         {groupedTransactions.map(([dateKey, txs], groupIndex) => {
           const heading = formatTransactionDateHeading(dateKey);
           return (
