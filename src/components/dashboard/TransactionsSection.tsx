@@ -78,7 +78,7 @@ export function TransactionsSection({
             <History size={16} />
           </button>
         </div>
-      </div>
+      </header>
       <div className="mt-3 overflow-hidden rounded-2xl border border-theme-base bg-theme-main/20">
         {groupedTransactions.map(([dateKey, txs], groupIndex) => {
           const heading = formatTransactionDateHeading(dateKey);
