@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Account, Currency } from '../../types';
-import { Wallet, ChevronRight, CreditCard, Landmark, Edit2 } from 'lucide-react';
+import { Coins, CreditCard, Edit2, List, Tag, TrendingUp, Wallet, Landmark } from 'lucide-react';
 import { CoinStack } from '../CustomIcons';
 import AccountManager from '../AccountManager';
+import CategoryManager from '../CategoryManager';
+import BalanceManager from '../BalanceManager';
+import { CurrencyTable } from '../CurrencyTable';
 import { GenericContextMenu } from '../ui/GenericContextMenu';
 import { cn } from '../../lib/utils';
 
@@ -67,6 +70,9 @@ function CommentBadge({ comment, color, isNegative }: { comment: string; color?:
 
 export function AccountsSection({ accounts, allAccounts, currencies, onOpenTransactionHistory, onRefresh }: AccountsSectionProps) {
   const [showAccountManager, setShowAccountManager] = useState(false);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [showBalanceManager, setShowBalanceManager] = useState(false);
+  const [showCurrencyTable, setShowCurrencyTable] = useState(false);
   const [initialEditingAccountId, setInitialEditingAccountId] = useState<string | null>(null);
   const [accountContextMenu, setAccountContextMenu] = useState<{ x: number, y: number, account: Account } | null>(null);
 
@@ -75,82 +81,121 @@ export function AccountsSection({ accounts, allAccounts, currencies, onOpenTrans
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 }}
-      className="p-[1px] mb-6"
+      className="rounded-2xl border border-theme-base bg-theme-surface p-4"
+      data-testid="dashboard-accounts"
     >
-      <div className="flex items-center justify-between mb-1">
-        <button
-          onClick={() => setShowAccountManager(true)}
-          className="group flex items-center gap-2"
-        >
-          <h3 className="font-bold text-lg text-theme-main group-hover:text-theme-primary transition-colors" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.15)' }}>Счета</h3>
-          <ChevronRight className="w-4 h-4 text-theme-muted group-hover:text-theme-primary transition-all group-hover:translate-x-1" />
-        </button>
-      </div>
-      <div className="flex gap-3 overflow-x-auto pb-4 mx-0 px-2 no-scrollbar snap-x snap-mandatory">
-        <AnimatePresence>
-          {accounts.map((account, index) => {
-            const isNegative = account.balance < 0;
-            const Icon = account.type === 'card' ? CreditCard : account.type === 'bank' ? Landmark : account.type === 'cash' ? CoinStack : Wallet;
-            const hasColor = account.color && account.color !== '#000000';
+      <header className="flex items-center justify-between gap-2 border-b border-theme-base pb-2">
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-wider text-theme-muted font-bold truncate">Счета</p>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            aria-label="Открыть список счетов"
+            title="Список счетов"
+            data-testid="button-dashboard-account-list"
+            onClick={() => setShowAccountManager(true)}
+            className="w-8 h-8 rounded-lg text-theme-muted flex items-center justify-center hover:bg-theme-main hover:text-theme-primary active:scale-95 transition-all"
+          >
+            <List size={16} />
+          </button>
+          <button
+            type="button"
+            aria-label="Открыть список категорий"
+            title="Список категорий"
+            data-testid="button-dashboard-category-list"
+            onClick={() => setShowCategoryManager(true)}
+            className="w-8 h-8 rounded-lg text-theme-muted flex items-center justify-center hover:bg-theme-main hover:text-theme-primary active:scale-95 transition-all"
+          >
+            <Tag size={16} />
+          </button>
+          <button
+            type="button"
+            aria-label="Открыть баланс"
+            title="Баланс"
+            data-testid="button-dashboard-balance"
+            onClick={() => setShowBalanceManager(true)}
+            className="w-8 h-8 rounded-lg text-theme-muted flex items-center justify-center hover:bg-theme-main hover:text-theme-primary active:scale-95 transition-all"
+          >
+            <TrendingUp size={16} />
+          </button>
+          <button
+            type="button"
+            aria-label="Открыть валюты"
+            title="Валюты"
+            data-testid="button-dashboard-currencies"
+            onClick={() => setShowCurrencyTable(true)}
+            className="w-8 h-8 rounded-lg text-theme-muted flex items-center justify-center hover:bg-theme-main hover:text-theme-primary active:scale-95 transition-all"
+          >
+            <Coins size={16} />
+          </button>
+        </div>
+      </header>
+      <div className="mt-3 -mx-2 overflow-hidden">
+        <div className="flex gap-3 overflow-x-auto pb-1 px-2 no-scrollbar snap-x snap-mandatory">
+          <AnimatePresence>
+            {accounts.map((account, index) => {
+              const isNegative = account.balance < 0;
+              const Icon = account.type === 'card' ? CreditCard : account.type === 'bank' ? Landmark : account.type === 'cash' ? CoinStack : Wallet;
+              const hasColor = account.color && account.color !== '#000000';
 
-            return (
-              <motion.div
-                key={account.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.05 }}
-                onClick={() => {
-                  if (onOpenTransactionHistory) onOpenTransactionHistory(account.id);
-                }}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setAccountContextMenu({ x: e.clientX, y: e.clientY, account });
-                }}
-                className={cn(
-                  "min-w-[100px] flex-shrink-0 bg-theme-surface p-3 rounded-2xl border transition-all duration-300 snap-start relative cursor-pointer group shadow-sm",
-                  isNegative
-                    ? "border-rose-500/30 hover:shadow-rose-500/10 hover:bg-rose-500/5"
-                    : "border-theme-base hover:shadow-theme-primary/10 hover:bg-theme-primary/5"
-                )}
-              >
-                {/* Currency symbol */}
-                <div className="absolute top-3 right-3 text-[10px] font-bold text-theme-muted opacity-60">
-                  {currencies.find(c => c.iso === account.currency)?.symbol || account.currency}
-                </div>
-
-                {/* Comment badge — sits just below the currency symbol */}
-                {account.comment && (
-                  <CommentBadge
-                    comment={account.comment}
-                    color={account.color}
-                    isNegative={isNegative}
-                  />
-                )}
-
-                <div
+              return (
+                <motion.div
+                  key={account.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.05 }}
+                  onClick={() => {
+                    if (onOpenTransactionHistory) onOpenTransactionHistory(account.id);
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setAccountContextMenu({ x: e.clientX, y: e.clientY, account });
+                  }}
                   className={cn(
-                    "w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110",
-                    !hasColor && (isNegative ? "bg-rose-500/10" : "bg-theme-primary/10")
+                    "min-w-[100px] flex-shrink-0 bg-theme-surface p-3 rounded-2xl border transition-all duration-300 snap-start relative cursor-pointer group shadow-sm",
+                    isNegative
+                      ? "border-rose-500/30 hover:shadow-rose-500/10 hover:bg-rose-500/5"
+                      : "border-theme-base hover:shadow-theme-primary/10 hover:bg-theme-primary/5"
                   )}
-                  style={hasColor ? { backgroundColor: `${account.color}20` } : {}}
                 >
-                  <Icon
-                    className={cn("w-5 h-5", !hasColor && (isNegative ? "text-rose-500" : "text-theme-primary"))}
-                    style={hasColor ? { color: account.color } : {}}
-                  />
-                </div>
-                <p className="text-theme-muted group-hover:text-theme-main text-[10px] font-bold uppercase tracking-wide mb-1 truncate transition-colors">{account.name}</p>
-                <p className={cn("font-bold text-base truncate", isNegative ? "text-rose-500" : "text-theme-main")}>
-                  {account.balance.toLocaleString()}
-                </p>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-        {accounts.length === 0 && (
-          <p className="text-theme-muted text-sm italic">Нет добавленных счетов</p>
-        )}
+                  <div className="absolute top-3 right-3 text-[10px] font-bold text-theme-muted opacity-60">
+                    {currencies.find(c => c.iso === account.currency)?.symbol || account.currency}
+                  </div>
+
+                  {account.comment && (
+                    <CommentBadge
+                      comment={account.comment}
+                      color={account.color}
+                      isNegative={isNegative}
+                    />
+                  )}
+
+                  <div
+                    className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110",
+                      !hasColor && (isNegative ? "bg-rose-500/10" : "bg-theme-primary/10")
+                    )}
+                    style={hasColor ? { backgroundColor: `${account.color}20` } : {}}
+                  >
+                    <Icon
+                      className={cn("w-5 h-5", !hasColor && (isNegative ? "text-rose-500" : "text-theme-primary"))}
+                      style={hasColor ? { color: account.color } : {}}
+                    />
+                  </div>
+                  <p className="text-theme-muted group-hover:text-theme-main text-[10px] font-bold uppercase tracking-wide mb-1 truncate transition-colors">{account.name}</p>
+                  <p className={cn("font-bold text-base truncate", isNegative ? "text-rose-500" : "text-theme-main")}>
+                    {account.balance.toLocaleString()}
+                  </p>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+          {accounts.length === 0 && (
+            <p className="text-theme-muted text-sm italic">Нет добавленных счетов</p>
+          )}
+        </div>
       </div>
 
       {showAccountManager && (
@@ -163,6 +208,21 @@ export function AccountsSection({ accounts, allAccounts, currencies, onOpenTrans
           onRefresh={onRefresh}
           initialEditingId={initialEditingAccountId}
         />
+      )}
+      {showCategoryManager && (
+        <CategoryManager
+          onClose={() => setShowCategoryManager(false)}
+          onRefresh={onRefresh}
+        />
+      )}
+      {showBalanceManager && (
+        <BalanceManager
+          onClose={() => setShowBalanceManager(false)}
+          onRefresh={async () => { await onRefresh?.(); }}
+        />
+      )}
+      {showCurrencyTable && (
+        <CurrencyTable onClose={() => setShowCurrencyTable(false)} />
       )}
 
       {accountContextMenu && (
