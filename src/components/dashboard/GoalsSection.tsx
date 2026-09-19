@@ -63,7 +63,7 @@ export function GoalsSection({ visible, goals, userId, initialGoalData, onCloseG
 
   const displayedGoals = useMemo(() => {
     return [...goals]
-      .filter(g => showCompletedGoals ? g.isCompleted : !g.isCompleted)
+      .filter(g => showCompletedGoals || !g.isCompleted)
       .sort((a, b) => {
         const orderA = a.sortOrder ?? 9999;
         const orderB = b.sortOrder ?? 9999;
@@ -228,7 +228,7 @@ export function GoalsSection({ visible, goals, userId, initialGoalData, onCloseG
 
             {displayedGoals.length === 0 ? (
               <div className="mt-3 py-10 text-center text-xs text-theme-muted">
-                <p>{showCompletedGoals ? 'Нет завершенных целей' : 'Нет активных целей'}</p>
+                <p>{showCompletedGoals ? 'Целей пока нет' : 'Нет активных целей'}</p>
               </div>
             ) : (
               <DndContext
