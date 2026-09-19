@@ -44,7 +44,7 @@ describe('UpcomingTasks', () => {
     render(<UpcomingTasks variant="carousel" startDate="2026-09-19" />);
 
     await waitFor(() => expect(screen.getByText('Просроченная задача')).toBeTruthy());
-    expect(screen.getByTestId('upcoming-tasks-position').textContent).toContain('1 / 3');
+    expect(screen.queryByTestId('upcoming-tasks-position')).toBeNull();
 
     fireEvent.click(screen.getByTestId('button-toggle-payment-overdue-2026-09-17'));
 
@@ -58,5 +58,40 @@ describe('UpcomingTasks', () => {
 
     getSpy.mockRestore();
     postSpy.mockRestore();
+  });
+
+  it('moves to the next stacked banner with a horizontal swipe', () => {
+    const payments: PlannedPayment[] = [
+      { ...makePayment(0), id: 'overdue', title: 'Просроченная задача', date: '2026-09-17' },
+      { ...makePayment(1), id: 'today', title: 'Сегодняшняя задача', date: '2026-09-19' },
+    ];
+    render(<UpcomingTasks payments={payments} variant="carousel" startDate="2026-09-19" />);
+
+    const carousel = screen.getByTestId('upcoming-tasks-carousel');
+    fireEvent.pointerDown(carousel, { clientX: 220, pointerId: 1 });
+    fireEvent.pointerMove(carousel, { clientX: 120, pointerId: 1 });
+    fireEvent.pointerUp(carousel, { clientX: 120, pointerId: 1 });
+
+    expect(screen.getByText('Сегодняшняя задача')).toBeTruthy();
+  });
+
+  it('opens the transaction flow from the carousel checkbox', () => {
+    const onRequestTransaction = vi.fn();
+    const payment = { ...makePayment(0), id: 'task-to-complete', date: '2026-09-19' };
+    render(
+      <UpcomingTasks
+        payments={[payment]}
+        variant="carousel"
+        startDate="2026-09-19"
+        onRequestTransaction={onRequestTransaction}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('button-toggle-payment-task-to-complete-2026-09-19'));
+
+    expect(onRequestTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({ payment: expect.objectContaining({ id: 'task-to-complete' }) }),
+      expect.any(Function),
+    );
   });
 });

@@ -26,7 +26,7 @@ describe('PaymentCalendarTab', () => {
 
     expect(screen.getByTestId('payment-row-rent-2026-09-05')).toBeTruthy();
     expect(screen.getAllByText(/Ежемесячно/).length).toBeGreaterThan(0);
-    expect(screen.getByText('Предстоящие задачи')).toBeTruthy();
+    expect(screen.getByText('Предстоящие планы')).toBeTruthy();
   });
 
   it('toggles the selected occurrence status', () => {

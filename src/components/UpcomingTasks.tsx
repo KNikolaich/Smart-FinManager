@@ -121,7 +121,7 @@ export default function UpcomingTasks({
   const handleCarouselPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     pointerStartX.current = event.clientX;
     suppressClickRef.current = false;
-    event.currentTarget.setPointerCapture(event.pointerId);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
   };
 
   const handleCarouselPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -134,10 +134,16 @@ export default function UpcomingTasks({
   const handleCarouselPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
     if (pointerStartX.current === null) return;
     const offset = event.clientX - pointerStartX.current;
-    if (Math.abs(offset) >= 50) moveCarousel(offset < 0 ? 1 : -1);
+    if (Math.abs(offset) >= 50) {
+      suppressClickRef.current = true;
+      window.setTimeout(() => {
+        suppressClickRef.current = false;
+      }, 300);
+      moveCarousel(offset < 0 ? 1 : -1);
+    }
     pointerStartX.current = null;
     setDragOffset(0);
-    event.currentTarget.releasePointerCapture(event.pointerId);
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
   };
 
   const handleCarouselTaskClick = (date: string) => {
