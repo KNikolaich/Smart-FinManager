@@ -17,7 +17,7 @@
   --bg-main: #f8fafc;
   --bg-surface: #ffffff;
   --text-main: #0f172a;
-  --text-muted: #ff6b3d;
+  --text-muted: #64748b;
   --border-color: #e2e8f0;
   --input-bg: #f8fafc;
 
@@ -48,23 +48,28 @@
 
 .theme-light-green { 
   --primary: #10b981; --primary-light: #d1fae5; --primary-dark: #059669; --text-on-primary: #ffffff;
-  --bg-main: #f5f5f4; --bg-surface: #ffffff; --text-main: #111827; --text-muted: #6b7280; --border-color: #d1fae5;
+  --bg-main: #f5f5f4; --bg-surface: #ffffff; --text-main: #111827; --text-muted: #4b5563; --border-color: #d1fae5;
+  --input-bg: #fafaf9;
 }
 .theme-light-blue { 
   --primary: #3b82f6; --primary-light: #dbeafe; --primary-dark: #2563eb; --text-on-primary: #ffffff;
-  --bg-main: #f0f9ff; --bg-surface: #ffffff; --text-main: #111827; --text-muted: #64748b; --border-color: #e2e8f0;
+  --bg-main: #f0f9ff; --bg-surface: #ffffff; --text-main: #111827; --text-muted: #475569; --border-color: #e2e8f0;
+  --input-bg: #f8fbff;
 }
 .theme-light-ruby { 
   --primary: #e11d48; --primary-light: #fff1f2; --primary-dark: #be123c; --text-on-primary: #ffffff;
   --bg-main: #fff1f2; --bg-surface: #ffffff; --text-main: #111827; --text-muted: #9f1239; --border-color: #f1f5f9;
+  --input-bg: #fff7f8;
 }
 .theme-light-orange { 
   --primary: #f59e0b; --primary-light: #fffbeb; --primary-dark: #d97706; --text-on-primary: #ffffff;
-  --bg-main: #fffbeb; --bg-surface: #ffffff; --text-main: #111827; --text-muted: #b45309; --border-color: #f1f5f9;
+  --bg-main: #fffbeb; --bg-surface: #ffffff; --text-main: #111827; --text-muted: #92400e; --border-color: #f1f5f9;
+  --input-bg: #fffdf5;
 }
 .theme-light-violet { 
   --primary: #8b5cf6; --primary-light: #f5f3ff; --primary-dark: #7c3aed; --text-on-primary: #ffffff;
   --bg-main: #f5f3ff; --bg-surface: #ffffff; --text-main: #111827; --text-muted: #6d28d9; --border-color: #e5e7eb;
+  --input-bg: #faf9ff;
 }
 .theme-midnight { 
   --primary: #6366f1; --primary-light: rgba(99, 102, 241, 0.2); --primary-dark: #4f46e5; --text-on-primary: #ffffff;
@@ -83,11 +88,13 @@
 }
 .theme-nordic { 
   --primary: #0ea5e9; --primary-light: #e0f2fe; --primary-dark: #0284c7; --text-on-primary: #ffffff;
-  --bg-main: #f8fafc; --bg-surface: #ffffff; --text-main: #0f172a; --text-muted: #ff6b3d; --border-color: #e2e8f0;
+  --bg-main: #f8fafc; --bg-surface: #ffffff; --text-main: #0f172a; --text-muted: #64748b; --border-color: #e2e8f0;
+  --input-bg: #f8fafc;
 }
 .theme-bw { 
   --primary: #000000; --primary-light: #e5e7eb; --primary-dark: #000000; --text-on-primary: #ffffff;
-  --bg-main: #ffffff; --bg-surface: #ffffff; --text-main: #000000; --text-muted: #4b5563; --border-color: #000000;
+  --bg-main: #ffffff; --bg-surface: #ffffff; --text-main: #000000; --text-muted: #374151; --border-color: #000000;
+  --input-bg: #f9fafb;
 }
 .theme-forest-dark { 
   --primary: #22c55e; --primary-light: rgba(34, 197, 94, 0.15); --primary-dark: #16a34a; --text-on-primary: #ffffff;
@@ -207,7 +214,12 @@ body {
   color: var(--text-primary);
 }
 
-/* Base element overrides for dark mode compatibility */
+/* Base element overrides for light and dark mode compatibility. */
+.theme-light-green, .theme-light-blue, .theme-light-ruby, .theme-light-orange,
+.theme-light-violet, .theme-nordic, .theme-bw {
+  color-scheme: light;
+}
+
 .theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber {
   color-scheme: dark;
 }
@@ -232,7 +244,68 @@ body {
 .text-neutral-700 { color: var(--text-main); opacity: 0.8; }
 .text-neutral-600, .text-neutral-500, .text-neutral-400, .text-gray-600, .text-gray-500, .text-gray-400 { color: var(--text-muted); }
 .border-neutral-100, .border-neutral-50, .border-neutral-200, .border-gray-100, .border-gray-200, .border-gray-300 { border-color: var(--border-color); }
-.shadow-sm, .shadow-md, .shadow-lg, .shadow-xl { --tw-shadow-color: rgba(0,0,0,0.3) !important; }
+.shadow-sm, .shadow-md, .shadow-lg, .shadow-xl { --tw-shadow-color: rgba(15, 23, 42, 0.12) !important; }
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .shadow-sm,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .shadow-md,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .shadow-lg,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .shadow-xl {
+  --tw-shadow-color: rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Pastel palette utilities are useful accents in light themes, but become
+ * harsh light panels in dark themes. Keep their hue while anchoring them to
+ * the current dark card surface. */
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) :is(
+  .bg-rose-50, .bg-rose-100, .bg-red-50, .bg-red-100
+) { background-color: color-mix(in srgb, #f43f5e 16%, var(--surface-card)); }
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) :is(
+  .bg-amber-50, .bg-amber-100, .bg-yellow-50, .bg-yellow-100
+) { background-color: color-mix(in srgb, #f59e0b 16%, var(--surface-card)); }
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) :is(
+  .bg-emerald-50, .bg-emerald-100, .bg-green-50, .bg-green-100, .bg-lime-50, .bg-lime-100
+) { background-color: color-mix(in srgb, #10b981 16%, var(--surface-card)); }
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) :is(
+  .bg-blue-50, .bg-blue-100, .bg-sky-50, .bg-sky-100, .bg-indigo-50, .bg-indigo-100
+) { background-color: color-mix(in srgb, #3b82f6 16%, var(--surface-card)); }
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) :is(
+  .bg-purple-50, .bg-purple-100, .bg-violet-50, .bg-violet-100
+) { background-color: color-mix(in srgb, #8b5cf6 16%, var(--surface-card)); }
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) :is(
+  .bg-pink-50, .bg-pink-100, .bg-orange-50, .bg-orange-100
+) { background-color: color-mix(in srgb, #f97316 16%, var(--surface-card)); }
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) :is(
+  .bg-cyan-50, .bg-cyan-100, .bg-teal-50, .bg-teal-100
+) { background-color: color-mix(in srgb, #06b6d4 16%, var(--surface-card)); }
+
+/* Colored utility text is normally tuned for white backgrounds. Lift the
+ * shades used by cards and notices so every dark theme keeps readable text. */
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) :is(
+  .text-rose-500, .text-rose-600, .text-rose-700, .text-rose-800, .text-rose-900,
+  .text-red-500, .text-red-600, .text-red-700, .text-red-800, .text-red-900
+) { color: #fda4af; }
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) :is(
+  .text-amber-500, .text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900,
+  .text-yellow-500, .text-yellow-600, .text-yellow-700, .text-yellow-800, .text-yellow-900
+) { color: #fcd34d; }
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) :is(
+  .text-emerald-500, .text-emerald-600, .text-emerald-700, .text-emerald-800, .text-emerald-900,
+  .text-green-500, .text-green-600, .text-green-700, .text-green-800, .text-green-900,
+  .text-teal-500, .text-teal-600, .text-teal-700, .text-teal-800, .text-teal-900
+) { color: #6ee7b7; }
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) :is(
+  .text-blue-500, .text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900,
+  .text-sky-500, .text-sky-600, .text-sky-700, .text-sky-800, .text-sky-900,
+  .text-indigo-500, .text-indigo-600, .text-indigo-700, .text-indigo-800, .text-indigo-900
+) { color: #93c5fd; }
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) :is(
+  .text-purple-500, .text-purple-600, .text-purple-700, .text-purple-800, .text-purple-900,
+  .text-violet-500, .text-violet-600, .text-violet-700, .text-violet-800, .text-violet-900,
+  .text-pink-500, .text-pink-600, .text-pink-700, .text-pink-800, .text-pink-900
+) { color: #c4b5fd; }
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .text-orange-600,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .text-orange-700,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .text-orange-800,
+:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .text-orange-900 { color: #fdba74; }
 
 /* Opacity utilities need the same semantic surfaces as their non-opacity
  * counterparts. Without these rules, translucent white/neutral utilities
@@ -318,9 +391,13 @@ table tr.bg-gray-100 { background-color: var(--bg-main); }
 table th { color: var(--text-muted); border-color: var(--border-color); }
 table td { border-color: var(--border-color); }
 
-/* Apply theme colors */
-.theme-light-green, .theme-light-blue, .theme-light-orange, .theme-light-brown, .theme-light-gray { @apply text-neutral-900; }
-.theme-dark-1, .theme-dark-2, .theme-dark-3 { @apply text-white; }
+/* Apply the semantic foreground to the theme root instead of relying on
+ * obsolete theme names or Tailwind's fixed neutral palette. */
+.theme-light-green, .theme-light-blue, .theme-light-ruby, .theme-light-orange,
+.theme-light-violet, .theme-nordic, .theme-bw,
+.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber {
+  color: var(--text-primary);
+}
 
 /* Custom styles for Recharts tooltips */
 .recharts-tooltip-wrapper {
