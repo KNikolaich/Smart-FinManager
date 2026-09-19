@@ -1,9 +1,21 @@
+import { Fragment } from 'react';
 import { Account, Transaction, Goal, Category, Currency, BalanceHistory } from '../types';
 import { useDashboardMetrics } from '../hooks/useDashboardMetrics';
 import { TotalBalanceCard } from './dashboard/TotalBalanceCard';
 import { AccountsSection } from './dashboard/AccountsSection';
 import { TransactionsSection } from './dashboard/TransactionsSection';
 import { GoalsSection } from './dashboard/GoalsSection';
+import UpcomingTasks from './UpcomingTasks';
+
+export type DashboardWidgetId = 'balance' | 'accounts' | 'transactions' | 'upcomingTasks' | 'goals';
+
+export const DEFAULT_DASHBOARD_WIDGET_ORDER: DashboardWidgetId[] = [
+  'balance',
+  'accounts',
+  'transactions',
+  'upcomingTasks',
+  'goals',
+];
 
 interface DashboardProps {
   accounts: Account[];
@@ -26,6 +38,8 @@ interface DashboardProps {
   onOpenTransactionHistory?: (filterProps?: any) => void;
   onOpenAddTransaction?: (initialData?: any) => void;
   onEditTransaction?: (t: Transaction) => void;
+  onNavigateToCalendar?: (date: string) => void;
+  widgetOrder?: DashboardWidgetId[];
 }
 
 export default function Dashboard({
@@ -45,6 +59,8 @@ export default function Dashboard({
   onOpenTransactionHistory,
   onOpenAddTransaction,
   onEditTransaction,
+  onNavigateToCalendar,
+  widgetOrder = DEFAULT_DASHBOARD_WIDGET_ORDER,
 }: DashboardProps) {
   const {
     totalBalance,
@@ -56,45 +72,64 @@ export default function Dashboard({
     balanceTrend
   } = useDashboardMetrics(accounts, transactions, currencies, balanceHistory);
 
+  const renderWidget = (widgetId: DashboardWidgetId) => {
+    switch (widgetId) {
+      case 'balance':
+        return (
+          <TotalBalanceCard
+            visible={showTotalBalance}
+            totalBalance={totalBalance}
+            monthlyRollingBalance={monthlyRollingBalance}
+            monthlyStats={monthlyStats}
+            balanceTrend={balanceTrend}
+            onNavigateToAnalytics={onNavigateToAnalytics}
+            onOpenTransactionHistory={onOpenTransactionHistory}
+          />
+        );
+      case 'accounts':
+        return (
+          <AccountsSection
+            accounts={dashboardAccounts}
+            allAccounts={accounts}
+            currencies={currencies}
+            onOpenTransactionHistory={onOpenTransactionHistory}
+            onRefresh={onRefresh}
+          />
+        );
+      case 'transactions':
+        return (
+          <TransactionsSection
+            groupedTransactions={groupedTransactions}
+            hasTransactions={recentTransactions.length > 0}
+            categories={categories}
+            accounts={accounts}
+            onOpenTransactionHistory={onOpenTransactionHistory}
+            onOpenAddTransaction={onOpenAddTransaction}
+            onEditTransaction={onEditTransaction}
+            onRefresh={onRefresh}
+          />
+        );
+      case 'upcomingTasks':
+        return <UpcomingTasks onTaskClick={onNavigateToCalendar} />;
+      case 'goals':
+        return (
+          <GoalsSection
+            visible={showGoals}
+            goals={goals}
+            userId={userId}
+            initialGoalData={initialGoalData}
+            onCloseGoalManager={onCloseGoalManager}
+            onRefresh={onRefresh}
+          />
+        );
+    }
+  };
+
   return (
     <div className="pt-[10px] pb-[8px] px-1.5 sm:px-2 space-y-6">
-      <TotalBalanceCard
-        visible={showTotalBalance}
-        totalBalance={totalBalance}
-        monthlyRollingBalance={monthlyRollingBalance}
-        monthlyStats={monthlyStats}
-        balanceTrend={balanceTrend}
-        onNavigateToAnalytics={onNavigateToAnalytics}
-        onOpenTransactionHistory={onOpenTransactionHistory}
-      />
-
-      <AccountsSection
-        accounts={dashboardAccounts}
-        allAccounts={accounts}
-        currencies={currencies}
-        onOpenTransactionHistory={onOpenTransactionHistory}
-        onRefresh={onRefresh}
-      />
-
-      <TransactionsSection
-        groupedTransactions={groupedTransactions}
-        hasTransactions={recentTransactions.length > 0}
-        categories={categories}
-        accounts={accounts}
-        onOpenTransactionHistory={onOpenTransactionHistory}
-        onOpenAddTransaction={onOpenAddTransaction}
-        onEditTransaction={onEditTransaction}
-        onRefresh={onRefresh}
-      />
-
-      <GoalsSection
-        visible={showGoals}
-        goals={goals}
-        userId={userId}
-        initialGoalData={initialGoalData}
-        onCloseGoalManager={onCloseGoalManager}
-        onRefresh={onRefresh}
-      />
+      {widgetOrder.map(widgetId => (
+        <Fragment key={widgetId}>{renderWidget(widgetId)}</Fragment>
+      ))}
 
       {/* Bottom Bar Spacer */}
       <div className="h-10 lg:hidden shrink-0" />

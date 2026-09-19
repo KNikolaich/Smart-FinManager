@@ -55,6 +55,8 @@ interface PlanPageProps {
   user: UserProfile | null;
   onRefresh?: () => void;
   onOpenAddTransaction?: (data?: any) => void;
+  calendarFocusDate?: string;
+  onCalendarFocusHandled?: () => void;
 }
 
 type TabType = 'now' | 'past' | 'config' | 'comment' | 'cashback' | 'credit' | 'calendar';
@@ -115,8 +117,16 @@ const DEFAULT_CASHBACK_CATEGORIES: CashbackCategory[] = [
   { id: '35', name: 'Красота', color: '#4b0082' },
 ];
 
-export default function PlanPage({ accounts, categories, user, onRefresh, onOpenAddTransaction }: PlanPageProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('now');
+export default function PlanPage({
+  accounts,
+  categories,
+  user,
+  onRefresh,
+  onOpenAddTransaction,
+  calendarFocusDate,
+  onCalendarFocusHandled,
+}: PlanPageProps) {
+  const [activeTab, setActiveTab] = useState<TabType>(() => calendarFocusDate ? 'calendar' : 'now');
   const [planData, setPlanData] = useState<PlanData | null>(null);
   const [loadedTabs, setLoadedTabs] = useState<Set<TabType>>(new Set());
   const [editingCell, setEditingCell] = useState<{ rowId: string, subjectId: string } | null>(null);
@@ -183,6 +193,10 @@ export default function PlanPage({ accounts, categories, user, onRefresh, onOpen
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | 'queued'>('saved');
   const [calendarPayments, setCalendarPayments] = useState<PlannedPayment[]>([]);
   const [calendarError, setCalendarError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (calendarFocusDate) setActiveTab('calendar');
+  }, [calendarFocusDate]);
 
   // When network is restored, flip 'queued' → 'saved' (sync already fired in App.tsx)
   useEffect(() => {
@@ -711,6 +725,8 @@ export default function PlanPage({ accounts, categories, user, onRefresh, onOpen
             onRequestTransaction={handleCalendarPaymentOperation}
             onPaymentChange={handleCalendarPaymentChange}
             onPaymentDelete={handleCalendarPaymentDelete}
+            focusDate={calendarFocusDate}
+            onFocusDateHandled={onCalendarFocusHandled}
           />
         ) : activeTab === 'cashback' ? (
           <CashbackTab planData={planData} accounts={accounts} onSave={handleSaveCashback} />

@@ -52,6 +52,7 @@ export default function App() {
   } = useAppData({ user, addToast });
 
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [calendarFocusDate, setCalendarFocusDate] = useState<string | undefined>();
   const [analyticsOptions, setAnalyticsOptions] = useState<{
     type?: 'expense' | 'income';
     filterType?: 'month' | 'period' | 'all';
@@ -181,6 +182,15 @@ export default function App() {
     }
   };
 
+  const handleNavigateToCalendar = useCallback((date: string) => {
+    setCalendarFocusDate(date);
+    setActiveTab('plan');
+  }, []);
+
+  const handleCalendarFocusHandled = useCallback(() => {
+    setCalendarFocusDate(undefined);
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-theme-main">
@@ -232,6 +242,7 @@ export default function App() {
               setShowAddTransaction(true);
             }}
             onEditTransaction={setEditingTransaction}
+            onNavigateToCalendar={handleNavigateToCalendar}
           />
         );
       case 'plan':
@@ -245,6 +256,8 @@ export default function App() {
               setInitialTransactionData(data);
               setShowAddTransaction(true);
             }}
+            calendarFocusDate={calendarFocusDate}
+            onCalendarFocusHandled={handleCalendarFocusHandled}
           />
         );
       case 'analytics':

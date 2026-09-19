@@ -25,8 +25,8 @@ describe('PaymentCalendarTab', () => {
     fireEvent.click(screen.getByTestId('calendar-day-2026-09-05'));
 
     expect(screen.getByTestId('payment-row-rent-2026-09-05')).toBeTruthy();
-    expect(screen.getByText(/Ежемесячно/)).toBeTruthy();
-    expect(screen.getByText('Задачи активного дня')).toBeTruthy();
+    expect(screen.getAllByText(/Ежемесячно/).length).toBeGreaterThan(0);
+    expect(screen.getByText('Предстоящие задачи')).toBeTruthy();
   });
 
   it('toggles the selected occurrence status', () => {
