@@ -75,6 +75,24 @@ describe('UpcomingTasks', () => {
     expect(screen.getByText('Сегодняшняя задача')).toBeTruthy();
   });
 
+  it('navigates to the task date when the active banner is clicked', () => {
+    const onTaskClick = vi.fn();
+    const payment = { ...makePayment(0), id: 'clickable-task', date: '2026-09-20' };
+    render(
+      <UpcomingTasks
+        payments={[payment]}
+        variant="carousel"
+        startDate="2026-09-19"
+        onTaskClick={onTaskClick}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20'));
+
+    expect(onTaskClick).toHaveBeenCalledWith('2026-09-20');
+    expect(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20').className).toContain('bg-orange-50');
+  });
+
   it('opens the transaction flow from the carousel checkbox', () => {
     const onRequestTransaction = vi.fn();
     const payment = { ...makePayment(0), id: 'task-to-complete', date: '2026-09-19' };
