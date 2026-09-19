@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import { PlannedPayment, PlannedPaymentRecurrence } from '../types';
 import {
   getTodayKey,
+  getOutstandingPaymentOccurrences,
   getUpcomingPaymentOccurrences,
   PlannedPaymentOccurrence,
 } from '../lib/plannedPaymentOccurrences';
@@ -12,6 +13,7 @@ interface UpcomingTasksProps {
   payments?: PlannedPayment[];
   startDate?: string;
   limit?: number;
+  variant?: 'list' | 'carousel';
   onTaskClick?: (date: string) => void;
   onAdd?: () => void;
   onToggleTask?: (item: PlannedPaymentOccurrence) => void;
@@ -23,6 +25,7 @@ export default function UpcomingTasks({
   payments,
   startDate = getTodayKey(),
   limit = 7,
+  variant = 'list',
   onTaskClick,
   onAdd,
   onToggleTask,
@@ -30,9 +33,11 @@ export default function UpcomingTasks({
   onDeleteTask,
 }: UpcomingTasksProps) {
   const [loadedPayments, setLoadedPayments] = useState<PlannedPayment[]>([]);
+  const [localPayments, setLocalPayments] = useState<PlannedPayment[] | null>(null);
   const [loading, setLoading] = useState(payments === undefined);
   const [error, setError] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [carouselIndex, setCarouselIndex] = useState(0);
 
   useEffect(() => {
     if (payments !== undefined) {
@@ -60,11 +65,43 @@ export default function UpcomingTasks({
     };
   }, [payments]);
 
-  const sourcePayments = payments ?? loadedPayments;
+  useEffect(() => {
+    if (payments !== undefined) setLocalPayments(null);
+  }, [payments]);
+
+  const sourcePayments = localPayments ?? payments ?? loadedPayments;
   const occurrences = useMemo(
-    () => getUpcomingPaymentOccurrences(sourcePayments, startDate, limit),
-    [sourcePayments, startDate, limit],
+    () => variant === 'carousel'
+      ? getOutstandingPaymentOccurrences(sourcePayments, startDate, limit)
+      : getUpcomingPaymentOccurrences(sourcePayments, startDate, limit),
+    [sourcePayments, startDate, limit, variant],
   );
+  const activeCarouselIndex = occurrences.length === 0 ? 0 : Math.min(carouselIndex, occurrences.length - 1);
+  const activeOccurrence = occurrences[activeCarouselIndex];
+
+  useEffect(() => {
+    if (carouselIndex >= occurrences.length && occurrences.length > 0) {
+      setCarouselIndex(occurrences.length - 1);
+    }
+  }, [carouselIndex, occurrences.length]);
+
+  const toggleLocally = async (item: PlannedPaymentOccurrence) => {
+    if (onToggleTask) {
+      await onToggleTask(item);
+      return;
+    }
+    const previousPayments = sourcePayments;
+    const nextPayments = updatePaymentStatus(previousPayments, item);
+    if (payments !== undefined) setLocalPayments(nextPayments);
+    else setLoadedPayments(nextPayments);
+    try {
+      await api.post('/plan-grid/calendar', { payments: nextPayments });
+    } catch {
+      if (payments !== undefined) setLocalPayments(previousPayments);
+      else setLoadedPayments(previousPayments);
+      setError('Не удалось отметить задачу. Попробуйте ещё раз.');
+    }
+  };
 
   return (
     <section className="rounded-2xl border border-theme-base bg-theme-surface p-4" data-testid="upcoming-tasks">
@@ -89,6 +126,57 @@ export default function UpcomingTasks({
           <CircleDashed size={20} className="mx-auto mb-2" />
           Предстоящих задач нет
         </div>
+      ) : variant === 'carousel' ? (
+        <div className="pt-3" data-testid="upcoming-tasks-carousel">
+          <article className={`relative overflow-hidden rounded-2xl border p-4 ${carouselTone(activeOccurrence)}`} data-testid={`upcoming-banner-${activeOccurrence.payment.id}-${activeOccurrence.date}`}>
+            <div className="flex items-start gap-3">
+              <button
+                type="button"
+                aria-label={`Отметить задачу: ${activeOccurrence.payment.title}`}
+                onClick={() => void toggleLocally(activeOccurrence)}
+                data-testid={`button-toggle-payment-${activeOccurrence.payment.id}-${activeOccurrence.date}`}
+                className="mt-0.5 w-6 h-6 rounded-lg border border-current/30 bg-white/70 flex items-center justify-center shrink-0"
+              />
+              <button
+                type="button"
+                onClick={() => onTaskClick?.(activeOccurrence.date)}
+                data-testid={`upcoming-task-link-${activeOccurrence.payment.id}-${activeOccurrence.date}`}
+                className="min-w-0 flex-1 text-left"
+              >
+                <span className="block text-[10px] uppercase tracking-wider font-bold opacity-70">
+                  {carouselDateLabel(activeOccurrence.date, startDate)}
+                </span>
+                <strong className="mt-1 block text-base truncate">{activeOccurrence.payment.title}</strong>
+                <span className="mt-1 block text-xs opacity-75 truncate">
+                  {activeOccurrence.payment.transactionType === 'income' ? 'Доход' : 'Расход'} · {activeOccurrence.payment.categoryName || 'Без категории'} · {recurrenceLabel(activeOccurrence.payment.recurrence)} · {formatMoney(activeOccurrence.payment.amount)}
+                </span>
+              </button>
+            </div>
+          </article>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              aria-label="Предыдущая задача"
+              onClick={() => setCarouselIndex(index => index === 0 ? occurrences.length - 1 : index - 1)}
+              disabled={occurrences.length < 2}
+              className="rounded-lg border border-theme-base px-2.5 py-1 text-xs text-theme-muted disabled:opacity-40"
+            >
+              ←
+            </button>
+            <span className="text-[10px] text-theme-muted" data-testid="upcoming-tasks-position">
+              {activeCarouselIndex + 1} / {occurrences.length}
+            </span>
+            <button
+              type="button"
+              aria-label="Следующая задача"
+              onClick={() => setCarouselIndex(index => index === occurrences.length - 1 ? 0 : index + 1)}
+              disabled={occurrences.length < 2}
+              className="rounded-lg border border-theme-base px-2.5 py-1 text-xs text-theme-muted disabled:opacity-40"
+            >
+              →
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="space-y-2 pt-3">
           {occurrences.map(item => {
@@ -105,7 +193,7 @@ export default function UpcomingTasks({
                   <button
                     type="button"
                     aria-label={`Отметить задачу: ${item.payment.title}`}
-                    onClick={() => onToggleTask?.(item)}
+                    onClick={() => void toggleLocally(item)}
                     data-testid={`button-toggle-payment-${key}`}
                     className="w-5 h-5 rounded-md border border-neutral-300 bg-white/70 flex items-center justify-center shrink-0"
                   />
@@ -163,7 +251,16 @@ function occurrenceTone(item: PlannedPaymentOccurrence) {
     : 'bg-rose-50 text-rose-700';
 }
 
+function carouselTone(item: PlannedPaymentOccurrence) {
+  if (item.date < getTodayKey()) return 'border-amber-200 bg-amber-50 text-amber-900';
+  if (item.date === getTodayKey()) return 'border-theme-primary/30 bg-theme-primary-light text-theme-main';
+  return item.payment.transactionType === 'income'
+    ? 'border-lime-200 bg-lime-50 text-lime-900'
+    : 'border-sky-200 bg-sky-50 text-sky-900';
+}
+
 function formatTaskDate(date: string, startDate: string) {
+  if (date === getTodayKey()) return 'Сегодня';
   if (date === startDate) return 'Выбранный день';
   const taskDate = new Date(`${date}T12:00:00`);
   const today = new Date(`${getTodayKey()}T12:00:00`);
@@ -175,6 +272,24 @@ function formatTaskDate(date: string, startDate: string) {
 
 function formatMoney(amount: number) {
   return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(amount)} ₽`;
+}
+
+function carouselDateLabel(date: string, anchorDate: string) {
+  if (date < anchorDate) return `Просрочено · ${formatTaskDate(date, anchorDate)}`;
+  return formatTaskDate(date, anchorDate);
+}
+
+function updatePaymentStatus(payments: PlannedPayment[], item: PlannedPaymentOccurrence) {
+  return payments.map(payment => {
+    if (payment.id !== item.payment.id) return payment;
+    const paidDates = new Set(payment.paidDates || []);
+    paidDates.add(item.date);
+    return {
+      ...payment,
+      paidDates: Array.from(paidDates),
+      status: item.date === payment.date ? 'paid' as const : payment.status,
+    };
+  });
 }
 
 function recurrenceLabel(value: PlannedPaymentRecurrence) {

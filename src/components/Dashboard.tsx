@@ -110,7 +110,7 @@ export default function Dashboard({
           />
         );
       case 'upcomingTasks':
-        return <UpcomingTasks onTaskClick={onNavigateToCalendar} />;
+        return <UpcomingTasks variant="carousel" onTaskClick={onNavigateToCalendar} />;
       case 'goals':
         return (
           <GoalsSection

@@ -74,6 +74,22 @@ export function getUpcomingPaymentOccurrences(
     .slice(0, limit);
 }
 
+export function getOutstandingPaymentOccurrences(
+  payments: PlannedPayment[],
+  anchorKey = getTodayKey(),
+  limit = 7,
+) {
+  const anchor = parseDateKey(anchorKey);
+  const start = new Date(anchor.getFullYear() - 5, anchor.getMonth(), anchor.getDate());
+  const end = new Date(anchor.getFullYear() + 5, anchor.getMonth(), anchor.getDate());
+
+  return payments
+    .flatMap(payment => getPaymentOccurrencesInRange(payment, toDateKey(start), toDateKey(end)))
+    .filter(item => item.status !== 'paid')
+    .sort((a, b) => a.date.localeCompare(b.date) || a.payment.title.localeCompare(b.payment.title))
+    .slice(0, limit);
+}
+
 export function getOccurrenceStatus(payment: PlannedPayment, date: string): PlannedPaymentStatus {
   if (payment.paidDates) return payment.paidDates.includes(date) ? 'paid' : 'pending';
   return payment.status === 'paid' && date === payment.date ? 'paid' : 'pending';

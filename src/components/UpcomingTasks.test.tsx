@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import UpcomingTasks from './UpcomingTasks';
 import type { PlannedPayment } from '../types';
+import { api } from '../lib/api';
 
 const makePayment = (index: number): PlannedPayment => ({
   id: `task-${index}`,
@@ -29,5 +30,33 @@ describe('UpcomingTasks', () => {
 
     fireEvent.click(screen.getByTestId('upcoming-task-link-task-2-2026-09-20'));
     expect(onTaskClick).toHaveBeenCalledWith('2026-09-20');
+  });
+
+  it('prioritizes overdue tasks and replaces a completed banner', async () => {
+    const payments: PlannedPayment[] = [
+      { ...makePayment(0), id: 'overdue', title: 'Просроченная задача', date: '2026-09-17' },
+      { ...makePayment(1), id: 'today', title: 'Сегодняшняя задача', date: '2026-09-19' },
+      { ...makePayment(2), id: 'future', title: 'Будущая задача', date: '2026-09-20' },
+    ];
+    const getSpy = vi.spyOn(api, 'get').mockResolvedValue({ payments });
+    const postSpy = vi.spyOn(api, 'post').mockResolvedValue({});
+
+    render(<UpcomingTasks variant="carousel" startDate="2026-09-19" />);
+
+    await waitFor(() => expect(screen.getByText('Просроченная задача')).toBeTruthy());
+    expect(screen.getByTestId('upcoming-tasks-position').textContent).toContain('1 / 3');
+
+    fireEvent.click(screen.getByTestId('button-toggle-payment-overdue-2026-09-17'));
+
+    await waitFor(() => expect(screen.queryByText('Просроченная задача')).toBeNull());
+    expect(screen.getByText('Сегодняшняя задача')).toBeTruthy();
+    expect(postSpy).toHaveBeenCalledWith('/plan-grid/calendar', expect.objectContaining({
+      payments: expect.arrayContaining([
+        expect.objectContaining({ id: 'overdue', status: 'paid' }),
+      ]),
+    }));
+
+    getSpy.mockRestore();
+    postSpy.mockRestore();
   });
 });
