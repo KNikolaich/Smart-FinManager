@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Goal } from '../../types';
 import { Check, Plus } from 'lucide-react';
@@ -39,6 +39,9 @@ export function GoalsSection({ visible, goals, userId, initialGoalData, onCloseG
   const [showGoalManager, setShowGoalManager] = useState(!!initialGoalData);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   const [showCompletedGoals, setShowCompletedGoals] = useState(false);
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [dragOffset, setDragOffset] = useState(0);
+  const pointerStartX = useRef<number | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -71,6 +74,44 @@ export function GoalsSection({ visible, goals, userId, initialGoalData, onCloseG
         return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
       });
   }, [goals, showCompletedGoals]);
+
+  const activeCarouselIndex = displayedGoals.length === 0
+    ? 0
+    : Math.min(carouselIndex, displayedGoals.length - 1);
+
+  useEffect(() => {
+    if (carouselIndex >= displayedGoals.length && displayedGoals.length > 0) {
+      setCarouselIndex(displayedGoals.length - 1);
+    }
+  }, [carouselIndex, displayedGoals.length]);
+
+  const moveCarousel = (direction: -1 | 1) => {
+    setCarouselIndex(index => {
+      if (displayedGoals.length < 2) return index;
+      return Math.max(0, Math.min(index + direction, displayedGoals.length - 1));
+    });
+  };
+
+  const handleCarouselPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    pointerStartX.current = event.clientX;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handleCarouselPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (pointerStartX.current === null) return;
+    setDragOffset(event.clientX - pointerStartX.current);
+  };
+
+  const handleCarouselPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (pointerStartX.current === null) return;
+    const offset = event.clientX - pointerStartX.current;
+    if (Math.abs(offset) >= 50) {
+      moveCarousel(offset < 0 ? 1 : -1);
+    }
+    pointerStartX.current = null;
+    setDragOffset(0);
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+  };
 
   const handleCloseGoalManager = () => {
     setShowGoalManager(false);
@@ -135,42 +176,61 @@ export function GoalsSection({ visible, goals, userId, initialGoalData, onCloseG
       <AnimatePresence>
         {visible && (
           <motion.section
-            initial={{ height: 0, opacity: 0, marginBottom: 0 }}
-            animate={{ height: 'auto', opacity: 1, marginBottom: 24 }}
-            exit={{ height: 0, opacity: 0, marginBottom: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="overflow-hidden"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.25 }}
+            className="rounded-2xl border border-theme-base bg-theme-surface p-4"
+            data-testid="dashboard-goals"
           >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg text-theme-main" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.15)' }}>Цели</h3>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 cursor-pointer group select-none">
-                  <span className="text-[10px] font-bold text-theme-muted uppercase tracking-widest leading-none">Завершенные</span>
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowCompletedGoals(!showCompletedGoals);
+            <header className="flex items-center justify-between gap-2 border-b border-theme-base pb-2">
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wider text-theme-muted font-bold truncate">Цели</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <span className="text-[10px] uppercase tracking-wider text-theme-muted font-bold leading-none">Завершенные</span>
+                  <input
+                    type="checkbox"
+                    checked={showCompletedGoals}
+                    onChange={(event) => {
+                      setShowCompletedGoals(event.target.checked);
+                      setCarouselIndex(0);
                     }}
+                    aria-label="Показывать завершенные цели"
+                    data-testid="checkbox-dashboard-completed-goals"
+                    className="sr-only"
+                  />
+                  <span
+                    aria-hidden="true"
                     className={cn(
-                      "w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center shadow-md",
+                      "w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center shadow-sm",
                       showCompletedGoals
-                        ? "bg-theme-primary border-theme-primary text-white ring-2 ring-theme-primary/20"
-                        : "border-theme-muted/50 bg-theme-surface group-hover:border-theme-primary"
+                        ? "bg-theme-primary border-theme-primary text-theme-on-primary ring-2 ring-theme-primary/20"
+                        : "border-theme-muted/50 bg-theme-surface"
                     )}
                   >
-                    {showCompletedGoals && <Check className="w-3.5 h-3.5 stroke-[3] text-white" />}
-                  </div>
+                    {showCompletedGoals && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  </span>
                 </label>
                 <button
+                  type="button"
                   onClick={() => setShowGoalManager(true)}
-                  className="flex items-center justify-center w-8 h-8 bg-theme-primary/10 border-2 border-theme-primary text-theme-primary rounded-full hover:bg-theme-primary hover:text-theme-on-primary shadow-md shadow-theme-primary/20 active:scale-95 transition-all font-bold"
+                  aria-label="Добавить цель"
                   title="Добавить цель"
+                  data-testid="button-dashboard-add-goal"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-theme-primary-light text-theme-primary hover:bg-theme-primary hover:text-theme-on-primary active:scale-95 transition-all"
                 >
-                  <Plus size={18} strokeWidth={3} />
+                  <Plus size={16} strokeWidth={3} />
                 </button>
               </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-3">
+            </header>
+
+            {displayedGoals.length === 0 ? (
+              <div className="mt-3 py-10 text-center text-xs text-theme-muted">
+                <p>{showCompletedGoals ? 'Нет завершенных целей' : 'Нет активных целей'}</p>
+              </div>
+            ) : (
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -180,28 +240,47 @@ export function GoalsSection({ visible, goals, userId, initialGoalData, onCloseG
                   items={displayedGoals.map(g => g.id)}
                   strategy={rectSortingStrategy}
                 >
-                  {displayedGoals.map(goal => (
-                    <SortableGoalCard
-                      key={goal.id}
-                      goal={goal}
-                      isEditing={editingGoalId === goal.id}
-                      onStartEdit={(g) => setEditingGoalId(g.id)}
-                      onCancelEdit={() => setEditingGoalId(null)}
-                      onSave={handleSaveGoal}
-                      onDelete={handleDeleteGoal}
-                      onToggleComplete={handleToggleCompleteGoal}
-                    />
-                  ))}
+                  <div
+                    className="relative min-h-[320px] pt-3 touch-pan-y select-none"
+                    data-testid="dashboard-goals-carousel"
+                    onPointerDown={handleCarouselPointerDown}
+                    onPointerMove={handleCarouselPointerMove}
+                    onPointerUp={handleCarouselPointerUp}
+                    onPointerCancel={handleCarouselPointerUp}
+                  >
+                    {[0, 1, 2].map(stackIndex => {
+                      if (displayedGoals.length <= stackIndex) return null;
+                      const goal = displayedGoals[activeCarouselIndex + stackIndex];
+                      if (!goal) return null;
+                      const isActive = stackIndex === 0;
+                      const stackStyle = isActive
+                        ? { transform: `translateX(${dragOffset}px)`, zIndex: 30 }
+                        : { transform: `translateY(${stackIndex * 8}px) scale(${1 - stackIndex * 0.04})`, zIndex: 30 - stackIndex };
+
+                      return (
+                        <div
+                          key={`${goal.id}-${stackIndex}`}
+                          className="absolute inset-x-0 top-3"
+                          style={stackStyle}
+                          data-testid={isActive ? `goal-banner-${goal.id}` : undefined}
+                          aria-hidden={!isActive}
+                        >
+                          <SortableGoalCard
+                            goal={goal}
+                            isEditing={editingGoalId === goal.id}
+                            onStartEdit={(selectedGoal) => setEditingGoalId(selectedGoal.id)}
+                            onCancelEdit={() => setEditingGoalId(null)}
+                            onSave={handleSaveGoal}
+                            onDelete={handleDeleteGoal}
+                            onToggleComplete={handleToggleCompleteGoal}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
                 </SortableContext>
               </DndContext>
-              {displayedGoals.length === 0 && (
-                <div className="text-center py-8 bg-theme-main/10 rounded-2xl border border-dashed border-theme-base">
-                  <p className="text-theme-muted text-sm italic">
-                    {showCompletedGoals ? 'Нет завершенных целей' : 'Нет активных целей'}
-                  </p>
-                </div>
-              )}
-            </div>
+            )}
           </motion.section>
         )}
       </AnimatePresence>
