@@ -302,8 +302,8 @@ export default function UpcomingTasks({
   };
 
   return (
-    <section className="rounded-2xl border border-theme-base bg-theme-surface p-4" data-testid="upcoming-tasks">
-      <header className="flex items-center justify-between gap-2 border-b border-theme-base pb-2">
+    <section className={`w-full ${variant === 'carousel' ? 'max-w-md' : ''} rounded-2xl border border-theme-base bg-theme-surface p-4`} data-testid="upcoming-tasks">
+      <header className="flex items-center justify-between gap-2">
         {variant === 'carousel' && (
           onOpenCalendar ? (
             <button

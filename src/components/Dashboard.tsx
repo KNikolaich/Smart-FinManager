@@ -11,9 +11,9 @@ export type DashboardWidgetId = 'balance' | 'accounts' | 'transactions' | 'upcom
 
 export const DEFAULT_DASHBOARD_WIDGET_ORDER: DashboardWidgetId[] = [
   'balance',
+  'upcomingTasks',
   'accounts',
   'transactions',
-  'upcomingTasks',
   'goals',
 ];
 
