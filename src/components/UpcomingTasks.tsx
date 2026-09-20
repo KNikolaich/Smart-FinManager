@@ -28,6 +28,7 @@ interface UpcomingTasksProps {
   ) => void;
   onEditTask?: (item: PlannedPaymentOccurrence) => void;
   onDeleteTask?: (item: PlannedPaymentOccurrence) => void | Promise<void>;
+  className?: string;
 }
 
 export default function UpcomingTasks({
@@ -45,6 +46,7 @@ export default function UpcomingTasks({
   onRequestTransaction,
   onEditTask,
   onDeleteTask,
+  className,
 }: UpcomingTasksProps) {
   const [loadedPayments, setLoadedPayments] = useState<PlannedPayment[]>([]);
   const [localPayments, setLocalPayments] = useState<PlannedPayment[] | null>(null);
@@ -302,7 +304,7 @@ export default function UpcomingTasks({
   };
 
   return (
-    <section className={`w-full ${variant === 'carousel' ? 'max-w-md' : ''} rounded-2xl border border-theme-base bg-theme-surface p-4`} data-testid="upcoming-tasks">
+    <section className={`w-full ${variant === 'carousel' ? 'max-w-md' : ''} rounded-2xl border border-theme-base bg-theme-surface p-4 ${className || ''}`} data-testid="upcoming-tasks">
       <header className="flex items-center justify-between gap-2">
         {variant === 'carousel' && (
           onOpenCalendar ? (

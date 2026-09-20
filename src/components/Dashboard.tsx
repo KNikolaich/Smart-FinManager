@@ -74,7 +74,7 @@ export default function Dashboard({
     balanceTrend
   } = useDashboardMetrics(accounts, transactions, currencies, balanceHistory);
 
-  const renderWidget = (widgetId: DashboardWidgetId) => {
+  const renderWidget = (widgetId: DashboardWidgetId, options: { stretch?: boolean } = {}) => {
     switch (widgetId) {
       case 'balance':
         return (
@@ -96,6 +96,7 @@ export default function Dashboard({
             currencies={currencies}
             onOpenTransactionHistory={onOpenTransactionHistory}
             onRefresh={onRefresh}
+            className={options.stretch ? 'h-full' : undefined}
           />
         );
       case 'transactions':
@@ -115,6 +116,7 @@ export default function Dashboard({
         return (
           <UpcomingTasks
             variant="carousel"
+            className={options.stretch ? 'h-full' : undefined}
             onOpenCalendar={onOpenCalendar}
             onRequestTransaction={(item, onCompleted) => onOpenAddTransaction?.({
               type: item.payment.transactionType,
@@ -141,11 +143,33 @@ export default function Dashboard({
     }
   };
 
+  const renderedWidgets = [];
+  for (let index = 0; index < widgetOrder.length; index += 1) {
+    const widgetId = widgetOrder[index];
+    const nextWidgetId = widgetOrder[index + 1];
+
+    if (widgetId === 'upcomingTasks' && nextWidgetId === 'accounts') {
+      renderedWidgets.push(
+        <div
+          key="upcoming-tasks-and-accounts"
+          className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]"
+        >
+          {renderWidget('upcomingTasks', { stretch: true })}
+          {renderWidget('accounts', { stretch: true })}
+        </div>
+      );
+      index += 1;
+      continue;
+    }
+
+    renderedWidgets.push(
+      <Fragment key={widgetId}>{renderWidget(widgetId)}</Fragment>
+    );
+  }
+
   return (
     <div className="pt-[10px] pb-[8px] px-1.5 sm:px-2 space-y-6">
-      {widgetOrder.map(widgetId => (
-        <Fragment key={widgetId}>{renderWidget(widgetId)}</Fragment>
-      ))}
+      {renderedWidgets}
 
       {/* Bottom Bar Spacer */}
       <div className="h-10 lg:hidden shrink-0" />

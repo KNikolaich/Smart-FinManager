@@ -16,6 +16,7 @@ interface AccountsSectionProps {
   currencies: Currency[];
   onOpenTransactionHistory?: (filterProps?: any) => void;
   onRefresh?: () => void;
+  className?: string;
 }
 
 // Badge shown only when account has a comment.
@@ -68,7 +69,7 @@ function CommentBadge({ comment, color, isNegative }: { comment: string; color?:
   );
 }
 
-export function AccountsSection({ accounts, allAccounts, currencies, onOpenTransactionHistory, onRefresh }: AccountsSectionProps) {
+export function AccountsSection({ accounts, allAccounts, currencies, onOpenTransactionHistory, onRefresh, className }: AccountsSectionProps) {
   const [showAccountManager, setShowAccountManager] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showBalanceManager, setShowBalanceManager] = useState(false);
@@ -81,10 +82,10 @@ export function AccountsSection({ accounts, allAccounts, currencies, onOpenTrans
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 }}
-      className="rounded-2xl border border-theme-base bg-theme-surface p-4"
+      className={cn("rounded-2xl border border-theme-base bg-theme-surface p-4", className)}
       data-testid="dashboard-accounts"
     >
-      <header className="flex items-center justify-between gap-2 border-b border-theme-base pb-2">
+      <header className="flex items-center justify-between gap-2">
         <button
           type="button"
           aria-label="Открыть список счетов"
