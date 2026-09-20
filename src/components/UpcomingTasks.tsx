@@ -376,7 +376,7 @@ function occurrenceTone(item: PlannedPaymentOccurrence) {
   if (item.date < getTodayKey()) return 'bg-red-100 text-red-800';
   return item.payment.transactionType === 'income'
     ? 'bg-lime-50 text-lime-700'
-    : 'bg-pink-100 text-pink-800';
+    : 'bg-pink-50 text-pink-700';
 }
 
 function carouselTone(item: PlannedPaymentOccurrence, isPulsing = false) {
@@ -385,7 +385,7 @@ function carouselTone(item: PlannedPaymentOccurrence, isPulsing = false) {
   }
   return item.payment.transactionType === 'income'
     ? 'border-lime-200 bg-lime-50 text-lime-900'
-    : 'border-pink-200 bg-pink-100 text-pink-900';
+    : 'border-pink-200 bg-pink-50 text-pink-800';
 }
 
 function occurrenceKey(item: PlannedPaymentOccurrence) {

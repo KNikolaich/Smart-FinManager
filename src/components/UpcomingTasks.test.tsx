@@ -99,7 +99,7 @@ describe('UpcomingTasks', () => {
 
     expect(onTaskClick).not.toHaveBeenCalled();
     expect(onOpenCalendar).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20').className).toContain('bg-pink-100');
+    expect(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20').className).toContain('bg-pink-50');
   });
 
   it('pulses overdue banners until the user taps them', () => {

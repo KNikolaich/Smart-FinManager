@@ -42,7 +42,7 @@ interface PaymentCalendarTabProps {
   onFocusDateHandled?: () => void;
 }
 
-type Filter = 'all' | 'pending' | 'paid';
+type Filter = 'all' | 'pending' | 'overdue' | 'paid';
 type DialogMode = 'create' | 'edit' | null;
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -121,7 +121,11 @@ export default function PaymentCalendarTab({
     },
     [payments, cursor],
   );
-  const visibleOccurrences = occurrences.filter(item => filter === 'all' || item.status === filter);
+  const visibleOccurrences = occurrences.filter(item => {
+    if (filter === 'all') return true;
+    if (filter === 'overdue') return item.status !== 'paid' && item.date < getTodayKey();
+    return item.status === filter;
+  });
   const byDate = new Map<string, PlannedPaymentOccurrence[]>();
   visibleOccurrences.forEach(item => byDate.set(item.date, [...(byDate.get(item.date) || []), item]));
   const openCreate = (date = selectedDate) => {
@@ -180,8 +184,7 @@ export default function PaymentCalendarTab({
             <CalendarDays size={20} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] uppercase tracking-[0.12em] font-bold text-theme-muted truncate">Календарь будущих операций</p>
-          <p className="text-xs text-theme-muted truncate mt-1">Регулярные операции и планы</p>
+          <p className="text-[10px] uppercase tracking-[0.12em] font-bold text-theme-muted truncate">Календарный план</p>
         </div>
         <button
           type="button"
@@ -196,15 +199,19 @@ export default function PaymentCalendarTab({
       </header>
 
       <div className="flex min-w-0 w-full flex-nowrap items-center gap-1 overflow-x-auto no-scrollbar">
-        <button type="button" aria-label="Предыдущий месяц" data-testid="button-previous-month" onClick={() => moveMonth(-1, cursor, setCursor, setSelectedDate)} className="w-8 h-8 rounded-lg border border-theme-base bg-theme-surface text-theme-muted flex items-center justify-center shrink-0"><ArrowLeft size={15} /></button>
-        <strong className="min-w-[88px] flex-1 text-center text-xs sm:text-sm capitalize text-theme-main truncate">{MONTHS[cursor.getMonth()]} <span className="text-theme-muted font-normal">{cursor.getFullYear()}</span></strong>
-        <button type="button" aria-label="Следующий месяц" data-testid="button-next-month" onClick={() => moveMonth(1, cursor, setCursor, setSelectedDate)} className="w-8 h-8 rounded-lg border border-theme-base bg-theme-surface text-theme-muted flex items-center justify-center shrink-0"><ArrowRight size={15} /></button>
+        <div className="flex items-center gap-1 shrink-0">
+          <button type="button" aria-label="Предыдущий месяц" data-testid="button-previous-month" onClick={() => moveMonth(-1, cursor, setCursor, setSelectedDate)} className="w-8 h-8 rounded-lg border border-theme-base bg-theme-surface text-theme-muted flex items-center justify-center shrink-0"><ArrowLeft size={15} /></button>
+          <strong className="min-w-[88px] text-center text-xs sm:text-sm capitalize text-theme-main truncate">{MONTHS[cursor.getMonth()]} <span className="text-theme-muted font-normal">{cursor.getFullYear()}</span></strong>
+          <button type="button" aria-label="Следующий месяц" data-testid="button-next-month" onClick={() => moveMonth(1, cursor, setCursor, setSelectedDate)} className="w-8 h-8 rounded-lg border border-theme-base bg-theme-surface text-theme-muted flex items-center justify-center shrink-0"><ArrowRight size={15} /></button>
+        </div>
+        <div className="flex-1 min-w-3" aria-hidden="true" />
         <button type="button" aria-label="Сегодня" title="Сегодня" data-testid="button-today" onClick={() => { setCursor(new Date(now.getFullYear(), now.getMonth(), 1)); setSelectedDate(getTodayKey()); }} className="w-8 h-8 rounded-lg border border-theme-base text-theme-muted flex items-center justify-center shrink-0"><CalendarCheck size={15} /></button>
         <label className="shrink-0 text-xs text-theme-muted">
           <span className="sr-only">Фильтр записей</span>
           <select data-testid="select-payment-filter" value={filter} onChange={event => setFilter(event.target.value as Filter)} className="w-[90px] rounded-lg border border-theme-base bg-theme-surface px-1.5 py-1.5 text-[10px] sm:w-auto sm:px-2 sm:text-xs text-theme-main">
             <option value="all">Все записи</option>
             <option value="pending">Ожидают</option>
+            <option value="overdue">Просрочены</option>
             <option value="paid">Выполнены</option>
           </select>
         </label>
@@ -307,12 +314,12 @@ function occurrenceTone(item: PlannedPaymentOccurrence) {
   if (item.status === 'paid') return 'bg-neutral-100 text-neutral-400 opacity-80';
   return item.payment.transactionType === 'income'
     ? 'bg-lime-50 text-lime-700'
-    : 'bg-rose-50 text-rose-700';
+    : 'bg-pink-50 text-pink-700';
 }
 
 function occurrenceDotTone(item: PlannedPaymentOccurrence) {
   if (item.status === 'paid') return 'bg-neutral-300';
-  return item.payment.transactionType === 'income' ? 'bg-lime-500' : 'bg-rose-500';
+  return item.payment.transactionType === 'income' ? 'bg-lime-500' : 'bg-pink-300';
 }
 
 function PaymentDialog({ mode, payment, accounts, categories, onChange, onClose, onSave, saveError }: { mode: 'create' | 'edit'; payment: PlannedPayment; accounts: Array<{ id: string; name: string }>; categories: Category[]; onChange: (payment: PlannedPayment) => void; onClose: () => void; onSave: () => void; saveError?: string | null }) {

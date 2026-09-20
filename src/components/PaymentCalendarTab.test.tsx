@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PaymentCalendarTab from './PaymentCalendarTab';
 import type { PlannedPayment } from '../types';
@@ -39,6 +39,18 @@ describe('PaymentCalendarTab', () => {
     fireEvent.click(screen.getByTestId('button-toggle-payment-rent-2026-09-05'));
 
     expect(onStatusChange).toHaveBeenCalledWith('rent', '2026-09-05', 'paid');
+  });
+
+  it('filters the calendar to overdue occurrences', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 18, 12));
+    const futurePayment = { ...payment, id: 'future', title: 'Будущий платёж', date: '2026-09-20' };
+    render(<PaymentCalendarTab payments={[payment, futurePayment]} accounts={[]} />);
+
+    fireEvent.change(screen.getByTestId('select-payment-filter'), { target: { value: 'overdue' } });
+
+    expect(within(screen.getByTestId('calendar-day-2026-09-05')).getByText('Аренда')).toBeTruthy();
+    expect(within(screen.getByTestId('calendar-day-2026-09-20')).queryByText('Будущий платёж')).toBeNull();
   });
 
   it('supports weekly and biweekly occurrences and opens a transaction draft', () => {
