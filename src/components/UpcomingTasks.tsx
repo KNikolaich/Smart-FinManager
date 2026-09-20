@@ -49,7 +49,9 @@ export default function UpcomingTasks({
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [carouselLimit, setCarouselLimit] = useState(limit);
   const [dragOffset, setDragOffset] = useState(0);
+  const [quietOverdue, setQuietOverdue] = useState<Set<string>>(new Set());
   const pointerStartX = useRef<number | null>(null);
+  const suppressCarouselClick = useRef(false);
 
   useEffect(() => {
     if (payments !== undefined) {
@@ -131,6 +133,7 @@ export default function UpcomingTasks({
 
   const handleCarouselPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     pointerStartX.current = event.clientX;
+    suppressCarouselClick.current = false;
     event.currentTarget.setPointerCapture?.(event.pointerId);
   };
 
@@ -145,6 +148,7 @@ export default function UpcomingTasks({
     const offset = event.clientX - pointerStartX.current;
     if (Math.abs(offset) >= 50) {
       moveCarousel(offset < 0 ? 1 : -1);
+      suppressCarouselClick.current = true;
     }
     pointerStartX.current = null;
     setDragOffset(0);
@@ -157,6 +161,17 @@ export default function UpcomingTasks({
       return;
     }
     void toggleLocally(item);
+  };
+
+  const quietOverdueOccurrence = (item: PlannedPaymentOccurrence) => {
+    if (item.date >= getTodayKey()) return;
+    const key = occurrenceKey(item);
+    setQuietOverdue(current => {
+      if (current.has(key)) return current;
+      const next = new Set(current);
+      next.add(key);
+      return next;
+    });
   };
 
   return (
@@ -223,16 +238,25 @@ export default function UpcomingTasks({
             const occurrence = occurrences[activeCarouselIndex + stackIndex];
             if (!occurrence) return null;
             const isActive = stackIndex === 0;
+             const key = occurrenceKey(occurrence);
+             const isPulsing = isActive && occurrence.date < getTodayKey() && !quietOverdue.has(key);
             const stackStyle = isActive
               ? { transform: `translateX(${dragOffset}px)`, zIndex: 30 }
               : { transform: `translateY(${stackIndex * 8}px) scale(${1 - stackIndex * 0.04})`, zIndex: 30 - stackIndex };
             return (
               <article
                 key={`${occurrence.payment.id}-${occurrence.date}-${stackIndex}`}
-                className={`absolute inset-x-0 top-3 overflow-hidden rounded-2xl border p-4 transition-transform ${isActive ? carouselTone(occurrence) : 'border-theme-base bg-theme-main text-theme-muted'}`}
+                className={`absolute inset-x-0 top-3 overflow-hidden rounded-2xl border p-4 transition-transform ${isActive ? carouselTone(occurrence, isPulsing) : 'border-theme-base bg-theme-main text-theme-muted'}`}
                 style={stackStyle}
                 data-testid={isActive ? `upcoming-banner-${occurrence.payment.id}-${occurrence.date}` : undefined}
                 aria-hidden={!isActive}
+                onClick={() => {
+                  if (suppressCarouselClick.current) {
+                    suppressCarouselClick.current = false;
+                    return;
+                  }
+                  if (isActive) quietOverdueOccurrence(occurrence);
+                }}
               >
                 <div className="flex items-start gap-3">
                   {isActive && (
@@ -243,6 +267,7 @@ export default function UpcomingTasks({
                       onPointerUp={event => event.stopPropagation()}
                       onClick={event => {
                         event.stopPropagation();
+                        quietOverdueOccurrence(occurrence);
                         handleCarouselCheckbox(occurrence);
                       }}
                       data-testid={`button-toggle-payment-${occurrence.payment.id}-${occurrence.date}`}
@@ -256,9 +281,13 @@ export default function UpcomingTasks({
                     <span className="block text-[10px] uppercase tracking-wider font-bold opacity-70">
                       {carouselDateLabel(occurrence.date, startDate)}
                     </span>
-                    <strong className="mt-1 block text-base truncate">{occurrence.payment.title}</strong>
-                    <span className="mt-1 block text-xs opacity-75 truncate">
-                      {occurrence.payment.transactionType === 'income' ? 'Доход' : 'Расход'} · {occurrence.payment.categoryName || 'Без категории'} · {recurrenceLabel(occurrence.payment.recurrence)} · {formatMoney(occurrence.payment.amount)}
+                    <strong className="mt-1 block text-sm sm:text-base leading-tight break-words">
+                      <span>{formatMoney(occurrence.payment.amount)}</span>{' '}
+                      <span aria-hidden="true">·</span>{' '}
+                      <span>{occurrence.payment.title}</span>
+                    </strong>
+                    <span className="mt-1 block text-xs opacity-75 leading-snug break-words">
+                      {occurrence.payment.categoryName || 'Без категории'} · {recurrenceLabel(occurrence.payment.recurrence)} · {carouselDateLabel(occurrence.date, startDate)}
                     </span>
                   </div>
                 </div>
@@ -293,9 +322,13 @@ export default function UpcomingTasks({
                   className="min-w-0 flex-1 text-left"
                   data-testid={`upcoming-task-link-${key}`}
                 >
-                  <strong className="block text-xs truncate">{item.payment.title}</strong>
-                  <span className="block text-[10px] opacity-75 truncate">
-                    {formatTaskDate(item.date, startDate)} · {item.payment.transactionType === 'income' ? 'Доход' : 'Расход'} · {item.payment.categoryName || 'Без категории'} · {recurrenceLabel(item.payment.recurrence)} · {formatMoney(item.payment.amount)}
+                    <strong className="block text-xs leading-tight break-words">
+                    <span>{formatMoney(item.payment.amount)}</span>{' '}
+                    <span aria-hidden="true">·</span>{' '}
+                    <span>{item.payment.title}</span>
+                    </strong>
+                    <span className="block text-[10px] opacity-75 leading-snug break-words">
+                      {formatTaskDate(item.date, startDate)} · {item.payment.categoryName || 'Без категории'} · {recurrenceLabel(item.payment.recurrence)}
                   </span>
                 </button>
                 {(onEditTask || onDeleteTask || onManualToggleTask) && (
@@ -340,18 +373,23 @@ export default function UpcomingTasks({
 }
 
 function occurrenceTone(item: PlannedPaymentOccurrence) {
-  if (item.date < getTodayKey()) return 'bg-rose-50 text-rose-700';
+  if (item.date < getTodayKey()) return 'bg-red-100 text-red-800';
   return item.payment.transactionType === 'income'
     ? 'bg-lime-50 text-lime-700'
-    : 'bg-orange-50 text-orange-700';
+    : 'bg-pink-100 text-pink-800';
 }
 
-function carouselTone(item: PlannedPaymentOccurrence) {
-  if (item.date < getTodayKey()) return 'border-rose-200 bg-rose-50 text-rose-900';
-  if (item.date === getTodayKey()) return 'border-theme-primary/30 bg-theme-primary-light text-theme-main';
+function carouselTone(item: PlannedPaymentOccurrence, isPulsing = false) {
+  if (item.date < getTodayKey()) {
+    return `border-red-300 bg-red-100 text-red-900${isPulsing ? ' animate-overdue-pulse' : ''}`;
+  }
   return item.payment.transactionType === 'income'
     ? 'border-lime-200 bg-lime-50 text-lime-900'
-    : 'border-orange-200 bg-orange-50 text-orange-900';
+    : 'border-pink-200 bg-pink-100 text-pink-900';
+}
+
+function occurrenceKey(item: PlannedPaymentOccurrence) {
+  return `${item.payment.id}-${item.date}`;
 }
 
 function formatTaskDate(date: string, startDate: string) {

@@ -99,7 +99,20 @@ describe('UpcomingTasks', () => {
 
     expect(onTaskClick).not.toHaveBeenCalled();
     expect(onOpenCalendar).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20').className).toContain('bg-theme-primary-light');
+    expect(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20').className).toContain('bg-pink-100');
+  });
+
+  it('pulses overdue banners until the user taps them', () => {
+    const payment = { ...makePayment(0), id: 'overdue-pulse', date: '2026-09-19' };
+    render(<UpcomingTasks payments={[payment]} variant="carousel" startDate="2026-09-19" />);
+
+    const banner = screen.getByTestId('upcoming-banner-overdue-pulse-2026-09-19');
+    expect(banner.className).toContain('animate-overdue-pulse');
+    expect(banner.className).toContain('bg-red-100');
+
+    fireEvent.click(banner);
+
+    expect(banner.className).not.toContain('animate-overdue-pulse');
   });
 
   it('opens the transaction flow from the carousel checkbox', () => {

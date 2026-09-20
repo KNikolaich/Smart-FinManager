@@ -194,6 +194,25 @@
 
   .ring-theme-primary\/20 { --tw-ring-color: color-mix(in srgb, var(--color-action) 20%, transparent); }
   .ring-theme-primary\/30 { --tw-ring-color: color-mix(in srgb, var(--color-action) 30%, transparent); }
+
+  .animate-overdue-pulse {
+    animation: overdue-pulse 2s ease-out infinite;
+  }
+}
+
+@keyframes overdue-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgb(239 68 68 / 0.4);
+  }
+  65% {
+    box-shadow: 0 0 0 10px rgb(239 68 68 / 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-overdue-pulse {
+    animation: none;
+  }
 }
 
 /* Hide number input arrows */
