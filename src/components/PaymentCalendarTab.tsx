@@ -222,15 +222,7 @@ export default function PaymentCalendarTab({
         </label>
       </div>
 
-      {occurrences.length === 0 ? (
-        <div className="min-h-[340px] border border-dashed border-theme-base rounded-2xl bg-theme-surface flex flex-col items-center justify-center text-center px-5">
-          <CalendarDays className="text-theme-primary mb-3" size={30} />
-          <h3 className="text-lg font-bold text-theme-main">В этом месяце нет запланированных записей</h3>
-          <p className="text-xs text-theme-muted max-w-sm mt-2 mb-4">Добавьте регулярную операцию или другой план — он появится в календаре.</p>
-           <button type="button" data-testid="button-add-first-payment" onClick={() => openCreate(toDateKey(cursor))} className="px-3 py-2 rounded-xl bg-theme-primary text-theme-on-primary text-xs font-bold"><Plus size={14} className="inline mr-1" />Запланировать первую запись</button>
-        </div>
-      ) : (
-        <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_300px] gap-3">
+      <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_300px] gap-3">
           <div className="min-w-0 rounded-2xl border border-theme-base bg-theme-surface overflow-hidden">
             <div className="grid min-w-0 grid-cols-7 border-b border-theme-base">
               {WEEKDAYS.map((day, index) => <div key={day} className={`min-w-0 p-1 sm:p-2 text-center text-[9px] sm:text-[10px] font-bold uppercase truncate ${index > 4 ? 'text-theme-primary' : 'text-theme-muted'}`}>{day}</div>)}
@@ -293,8 +285,7 @@ export default function PaymentCalendarTab({
             onDeleteTask={item => onPaymentDelete?.(item.payment.id)}
           />
           </div>
-        </div>
-      )}
+      </div>
 
       {dialogMode && editingPayment && (
         <PaymentDialog

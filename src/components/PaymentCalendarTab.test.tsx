@@ -95,7 +95,7 @@ describe('PaymentCalendarTab', () => {
     const onPaymentChange = vi.fn();
     render(<PaymentCalendarTab payments={[]} accounts={[]} onPaymentChange={onPaymentChange} />);
 
-    fireEvent.click(screen.getByTestId('button-add-first-payment'));
+    fireEvent.click(screen.getByTestId('button-add-payment'));
     expect(screen.getByText('Новая запись')).toBeTruthy();
     expect(screen.getByTestId('button-save-payment').textContent).toContain('Запланировать');
     expect(screen.queryByText(/Todoist/i)).toBeNull();
@@ -108,6 +108,22 @@ describe('PaymentCalendarTab', () => {
       amount: 900,
       recurrence: 'none',
     }));
+  });
+
+  it('keeps an empty calendar grid while showing plans outside the current month', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 18, 12));
+    const plansOutsideMonth: PlannedPayment[] = [
+      { ...payment, id: 'past-plan', title: 'Прошлый план', date: '2026-08-31', recurrence: 'none' },
+      { ...payment, id: 'future-plan', title: 'Будущий план', date: '2026-10-01', recurrence: 'none' },
+    ];
+    render(<PaymentCalendarTab payments={plansOutsideMonth} accounts={[]} />);
+
+    expect(screen.getByTestId('calendar-day-2026-09-01')).toBeTruthy();
+    expect(screen.queryByText('В этом месяце нет запланированных записей')).toBeNull();
+    expect(screen.queryByText(/Добавьте регулярную операцию/)).toBeNull();
+    expect(screen.getByTestId('payment-row-past-plan-2026-08-31')).toBeTruthy();
+    expect(screen.getByTestId('payment-row-future-plan-2026-10-01')).toBeTruthy();
   });
 
   it('opens the focused task in the edit form from the header', () => {
