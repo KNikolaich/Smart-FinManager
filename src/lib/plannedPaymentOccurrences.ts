@@ -112,7 +112,9 @@ export function getPaymentOccurrencesForFilter(
   const start = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
   const end = new Date(anchor.getFullYear() + 5, anchor.getMonth(), anchor.getDate());
 
-  if (filter === 'pending') {
+  if (filter === 'all' || filter === 'paid') {
+    start.setFullYear(start.getFullYear() - 5);
+  } else if (filter === 'pending') {
     const pendingStart = anchor > today ? anchor : today;
     start.setTime(pendingStart.getTime());
   } else if (filter === 'overdue') {
