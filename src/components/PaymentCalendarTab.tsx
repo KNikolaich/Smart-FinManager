@@ -244,7 +244,7 @@ export default function PaymentCalendarTab({
                     type="button"
                     data-testid={`calendar-day-${cell.key}`}
                     onClick={() => { setSelectedDate(cell.key); setListStartDate(cell.key); }}
-                    className={`min-w-0 min-h-[60px] sm:min-h-[106px] p-1 sm:p-2 text-left ${selectedDate === cell.key ? 'border-2 border-dashed border-theme-primary bg-theme-primary-light' : 'border-b border-r border-theme-base hover:bg-theme-main'} ${!cell.currentMonth ? 'bg-theme-main text-theme-muted' : 'bg-theme-surface'}`}
+                    className={`min-w-0 min-h-[60px] sm:min-h-[106px] p-1 sm:p-2 text-left border-b border-r border-theme-base ${!cell.currentMonth ? 'bg-theme-main text-theme-muted' : 'bg-theme-surface'} ${selectedDate === cell.key ? 'ring-2 ring-inset ring-theme-primary bg-theme-primary-light' : 'hover:bg-theme-main'}`}
                   >
                     <span className={`inline-flex min-w-6 h-6 items-center justify-center rounded-lg text-xs font-mono ${cell.key === getTodayKey() ? 'bg-theme-primary text-theme-on-primary' : 'text-theme-muted'}`}>{cell.day}</span>
                     <span className="block mt-1 space-y-1">

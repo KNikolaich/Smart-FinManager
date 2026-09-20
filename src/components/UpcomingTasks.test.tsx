@@ -79,7 +79,7 @@ describe('UpcomingTasks', () => {
     expect(screen.getByText('Просроченная задача')).toBeTruthy();
   });
 
-  it('does not render the removed title or calendar button in the header', () => {
+  it('renders the calendar title and button in the dashboard carousel header', () => {
     const onTaskClick = vi.fn();
     const onOpenCalendar = vi.fn();
     const payment = { ...makePayment(0), id: 'clickable-task', date: '2026-09-20' };
@@ -95,10 +95,11 @@ describe('UpcomingTasks', () => {
 
     fireEvent.click(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20'));
     fireEvent.click(screen.getByTestId('button-upcoming-first'));
+    fireEvent.click(screen.getByTestId('button-upcoming-calendar'));
 
     expect(onTaskClick).not.toHaveBeenCalled();
-    expect(screen.queryByText('Предстоящие планы')).toBeNull();
-    expect(screen.queryByTestId('button-upcoming-calendar')).toBeNull();
+    expect(screen.getByText('Предстоящие планы')).toBeTruthy();
+    expect(onOpenCalendar).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20').className).toContain('bg-pink-50');
   });
 
@@ -143,6 +144,15 @@ describe('UpcomingTasks', () => {
     expect(screen.getByText('Выполненная')).toBeTruthy();
     expect(screen.queryByText('Предстоящая')).toBeNull();
     vi.useRealTimers();
+  });
+
+  it('renders completed list tasks in the neutral tone', () => {
+    const paid = { ...makePayment(0), id: 'paid-tone', title: 'Серая выполненная', date: '2026-09-20', paidDates: ['2026-09-20'] };
+    render(<UpcomingTasks payments={[paid]} startDate="2026-09-20" filter="paid" />);
+
+    expect(screen.getByTestId('payment-row-paid-tone-2026-09-20').className).toContain('bg-neutral-100');
+    expect(screen.getByTestId('payment-row-paid-tone-2026-09-20').className).not.toContain('bg-red-100');
+    expect(screen.getByTestId('payment-row-paid-tone-2026-09-20').className).not.toContain('bg-lime-50');
   });
 
   it('pulses overdue banners until the user taps them', () => {

@@ -116,7 +116,7 @@ describe('PaymentCalendarTab', () => {
     render(<PaymentCalendarTab payments={[payment]} accounts={[]} />);
 
     fireEvent.click(screen.getByTestId('calendar-day-2026-09-05'));
-    expect(screen.getByTestId('calendar-day-2026-09-05').className).toContain('border-dashed');
+    expect(screen.getByTestId('calendar-day-2026-09-05').className).toContain('ring-2');
     fireEvent.click(screen.getByTestId('button-upcoming-edit'));
 
     expect(screen.getByRole('dialog')).toBeTruthy();
