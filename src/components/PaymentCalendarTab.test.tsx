@@ -54,6 +54,29 @@ describe('PaymentCalendarTab', () => {
     expect(onStatusChange).toHaveBeenCalledWith('rent', '2026-09-05', 'paid');
   });
 
+  it('updates the plan immediately when a transaction is created from its checkbox', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 18, 12));
+    const onRequestTransaction = vi.fn();
+    const onTransactionCreated = vi.fn();
+    render(
+      <PaymentCalendarTab
+        payments={[payment]}
+        accounts={[]}
+        onRequestTransaction={onRequestTransaction}
+        onTransactionCreated={onTransactionCreated}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('calendar-day-2026-09-05'));
+    fireEvent.click(screen.getByTestId('button-toggle-payment-rent-2026-09-05'));
+
+    const onCreated = onRequestTransaction.mock.calls[0][2] as (transactionId: string) => void;
+    onCreated('transaction-rent');
+
+    expect(onTransactionCreated).toHaveBeenCalledWith('rent', '2026-09-05', 'transaction-rent');
+  });
+
   it('filters the calendar to overdue occurrences', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 18, 12));
@@ -83,7 +106,7 @@ describe('PaymentCalendarTab', () => {
     fireEvent.click(screen.getByTestId('calendar-day-2026-09-16'));
     expect(screen.getByTestId('payment-row-weekly-2026-09-16')).toBeTruthy();
     fireEvent.click(screen.getByTestId('button-toggle-payment-weekly-2026-09-16'));
-    expect(onRequestTransaction).toHaveBeenCalledWith(weekly, '2026-09-16');
+    expect(onRequestTransaction).toHaveBeenCalledWith(weekly, '2026-09-16', expect.any(Function));
 
     fireEvent.click(screen.getByTestId('calendar-day-2026-09-18'));
     expect(screen.getByTestId('payment-row-biweekly-2026-09-18')).toBeTruthy();

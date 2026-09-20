@@ -143,7 +143,7 @@ export default function AddTransaction({ accounts, transactions, categories, cur
     onComplete();
 
     try {
-      await api.post('/transactions', {
+      const createdTransaction = await api.post<{ id?: string }>('/transactions', {
         amount: finalAmount,
         targetAmount: finalTargetAmount ?? null,
         exchangeRate: finalRate ?? null,
@@ -160,7 +160,7 @@ export default function AddTransaction({ accounts, transactions, categories, cur
       });
       onAdd();
       if (typeof initialData?.__onTransactionCreated === 'function') {
-        void initialData.__onTransactionCreated();
+        void initialData.__onTransactionCreated(createdTransaction);
       }
     } catch (err: any) {
       console.error('Error adding transaction:', err);

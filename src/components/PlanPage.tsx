@@ -449,7 +449,11 @@ export default function PlanPage({
     }
   };
 
-  const handleCalendarPaymentOperation = (payment: PlannedPayment, date: string) => {
+  const handleCalendarPaymentOperation = (
+    payment: PlannedPayment,
+    date: string,
+    onCreated?: (transactionId: string) => void,
+  ) => {
     const transactionType = payment.transactionType || 'expense';
     onOpenAddTransaction?.({
       type: transactionType,
@@ -460,6 +464,9 @@ export default function PlanPage({
       createdAt: `${date}T12:00:00`,
       calendarPlanId: payment.id,
       calendarDate: date,
+      __onTransactionCreated: (transaction?: { id?: string }) => {
+        if (transaction?.id) onCreated?.(transaction.id);
+      },
     });
   };
 
@@ -773,6 +780,7 @@ export default function PlanPage({
             }}
             onStatusChange={handleCalendarStatusChange}
             onRequestTransaction={handleCalendarPaymentOperation}
+            onTransactionCreated={handleCalendarTransactionCreated}
             onPaymentChange={handleCalendarPaymentChange}
             onPaymentDelete={handleCalendarPaymentDelete}
             focusDate={calendarFocusDate}
