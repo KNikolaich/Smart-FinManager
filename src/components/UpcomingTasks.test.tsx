@@ -99,7 +99,7 @@ describe('UpcomingTasks', () => {
 
     expect(onTaskClick).not.toHaveBeenCalled();
     expect(onOpenCalendar).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20').className).toContain('bg-orange-50');
+    expect(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20').className).toContain('bg-theme-primary-light');
   });
 
   it('opens the transaction flow from the carousel checkbox', () => {
