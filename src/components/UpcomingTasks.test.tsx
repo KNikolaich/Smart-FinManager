@@ -120,6 +120,8 @@ describe('UpcomingTasks', () => {
     fireEvent.click(screen.getByTestId('button-upcoming-edit'));
     fireEvent.click(screen.getByTestId('button-upcoming-manual-toggle'));
     fireEvent.click(screen.getByTestId('button-upcoming-delete'));
+    expect(onDeleteTask).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('button-upcoming-delete-confirm'));
 
     expect(onEditTask).toHaveBeenCalledWith(expect.objectContaining({ date: '2026-09-18' }));
     expect(onManualToggleTask).toHaveBeenCalledWith(expect.objectContaining({ date: '2026-09-18' }));
@@ -168,6 +170,52 @@ describe('UpcomingTasks', () => {
     expect(screen.getByText('Прошлый план')).toBeTruthy();
     expect(screen.getByText('Будущий план')).toBeTruthy();
     vi.useRealTimers();
+  });
+
+  it('marks transaction-backed tasks and prevents creating a second transaction', () => {
+    const onToggleTask = vi.fn();
+    const payment = {
+      ...makePayment(0),
+      id: 'transaction-backed',
+      date: '2026-09-18',
+      paidDates: ['2026-09-18'],
+      occurrences: [{
+        id: 'occurrence-transaction-backed',
+        date: '2026-09-18',
+        transactionId: 'transaction-1',
+        manuallyCompleted: false,
+      }],
+    };
+    render(<UpcomingTasks payments={[payment]} startDate="2026-09-18" onToggleTask={onToggleTask} />);
+
+    const checkbox = screen.getByTestId('button-toggle-payment-transaction-backed-2026-09-18');
+    expect((checkbox as HTMLButtonElement).disabled).toBe(true);
+    expect(checkbox.querySelector('svg')).toBeTruthy();
+    fireEvent.click(checkbox);
+    expect(onToggleTask).not.toHaveBeenCalled();
+  });
+
+  it('allows a manually completed task to be completed through a transaction', () => {
+    const onToggleTask = vi.fn();
+    const payment = {
+      ...makePayment(0),
+      id: 'manual-first',
+      date: '2026-09-18',
+      paidDates: ['2026-09-18'],
+      occurrences: [{
+        id: 'occurrence-manual-first',
+        date: '2026-09-18',
+        transactionId: null,
+        manuallyCompleted: true,
+      }],
+    };
+    render(<UpcomingTasks payments={[payment]} startDate="2026-09-18" onToggleTask={onToggleTask} />);
+
+    fireEvent.click(screen.getByTestId('button-toggle-payment-manual-first-2026-09-18'));
+    expect(onToggleTask).toHaveBeenCalledWith(expect.objectContaining({
+      manuallyCompleted: true,
+      transactionId: null,
+    }));
   });
 
   it('pulses overdue banners until the user taps them', () => {

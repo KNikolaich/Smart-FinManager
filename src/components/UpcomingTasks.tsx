@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, CircleDashed, Hand, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { CalendarDays, Check, CircleDashed, Hand, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { PlannedPayment, PlannedPaymentRecurrence } from '../types';
 import {
@@ -54,6 +54,7 @@ export default function UpcomingTasks({
   const [carouselLimit, setCarouselLimit] = useState(limit);
   const [listWindow, setListWindow] = useState({ start: 0, end: 50 });
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
+  const [deleteConfirmKey, setDeleteConfirmKey] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [quietOverdue, setQuietOverdue] = useState<Set<string>>(new Set());
   const pointerStartX = useRef<number | null>(null);
@@ -113,6 +114,15 @@ export default function UpcomingTasks({
       || occurrences[0],
     [occurrences, focusedDate, focusedKey, startDate],
   );
+  const focusedIsCompleted = Boolean(
+    focusedOccurrence
+    && (focusedOccurrence.status === 'paid'
+      || focusedOccurrence.manuallyCompleted
+      || focusedOccurrence.transactionId),
+  );
+  const isDeleteConfirmationOpen = Boolean(
+    focusedOccurrence && deleteConfirmKey === occurrenceKey(focusedOccurrence),
+  );
 
   useEffect(() => {
     const startDateChanged = previousStartDate.current !== startDate;
@@ -142,6 +152,10 @@ export default function UpcomingTasks({
     listRef.current?.scrollTo?.({ top: 0 });
   }, [filter, startDate, variant, sourcePayments.length]);
 
+  useEffect(() => {
+    setDeleteConfirmKey(null);
+  }, [focusedKey]);
+
   useLayoutEffect(() => {
     if (previousListHeight.current === null || !listRef.current) return;
     const element = listRef.current;
@@ -156,6 +170,7 @@ export default function UpcomingTasks({
   }, [carouselIndex, occurrences.length]);
 
   const toggleLocally = async (item: PlannedPaymentOccurrence) => {
+    if (item.transactionId) return;
     if (onToggleTask) {
       await onToggleTask(item);
       return;
@@ -213,6 +228,16 @@ export default function UpcomingTasks({
     if (element.scrollHeight - element.scrollTop - element.clientHeight < 120) loadMore();
   };
 
+  const requestDelete = () => {
+    if (focusedOccurrence) setDeleteConfirmKey(occurrenceKey(focusedOccurrence));
+  };
+
+  const confirmDelete = async () => {
+    if (!focusedOccurrence || !onDeleteTask) return;
+    await onDeleteTask(focusedOccurrence);
+    setDeleteConfirmKey(null);
+  };
+
   const handleCarouselPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     pointerStartX.current = event.clientX;
     suppressCarouselClick.current = false;
@@ -238,6 +263,7 @@ export default function UpcomingTasks({
   };
 
   const handleCarouselCheckbox = (item: PlannedPaymentOccurrence) => {
+    if (item.transactionId) return;
     if (onRequestTransaction) {
       onRequestTransaction(item, () => toggleLocally(item));
       return;
@@ -297,19 +323,27 @@ export default function UpcomingTasks({
             </button>
           )}
           {onEditTask && (
-            <button type="button" aria-label="Редактировать сфокусированную задачу" title="Редактировать" data-testid="button-upcoming-edit" disabled={!focusedOccurrence} onClick={() => focusedOccurrence && onEditTask(focusedOccurrence)} className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none">
+            <button type="button" aria-label="Редактировать сфокусированную задачу" title={focusedIsCompleted ? 'Выполненный план нельзя редактировать' : 'Редактировать'} data-testid="button-upcoming-edit" disabled={!focusedOccurrence || focusedIsCompleted} onClick={() => focusedOccurrence && !focusedIsCompleted && onEditTask(focusedOccurrence)} className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none">
               <Pencil size={15} />
             </button>
           )}
           {onManualToggleTask && (
-            <button type="button" aria-label={focusedOccurrence?.manuallyCompleted ? 'Снять ручную отметку' : 'Отметить вручную'} title={focusedOccurrence?.manuallyCompleted ? 'Снять ручную отметку' : 'Отметить вручную'} data-testid="button-upcoming-manual-toggle" disabled={!focusedOccurrence || Boolean(focusedOccurrence.transactionId)} onClick={() => focusedOccurrence && void onManualToggleTask(focusedOccurrence)} className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none">
+            <button type="button" aria-label={focusedOccurrence?.manuallyCompleted ? 'Снять ручную отметку' : 'Отметить вручную'} title={focusedIsCompleted ? 'Выполненный план нельзя менять вручную' : focusedOccurrence?.manuallyCompleted ? 'Снять ручную отметку' : 'Отметить вручную'} data-testid="button-upcoming-manual-toggle" disabled={!focusedOccurrence || focusedIsCompleted} onClick={() => focusedOccurrence && !focusedIsCompleted && void onManualToggleTask(focusedOccurrence)} className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none">
               <Hand size={15} />
             </button>
           )}
           {onDeleteTask && (
-            <button type="button" aria-label="Удалить сфокусированную задачу" title="Удалить" data-testid="button-upcoming-delete" disabled={!focusedOccurrence} onClick={() => focusedOccurrence && void onDeleteTask(focusedOccurrence)} className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 disabled:opacity-30 disabled:pointer-events-none">
-              <Trash2 size={15} />
-            </button>
+            isDeleteConfirmationOpen ? (
+              <div className="inline-flex items-center gap-1 rounded-lg bg-rose-50 px-1 py-1 text-[10px] text-rose-700">
+                <span className="px-1">Удалить?</span>
+                <button type="button" data-testid="button-upcoming-delete-confirm" onClick={() => void confirmDelete()} className="rounded-md bg-rose-600 px-2 py-1 font-bold text-white hover:bg-rose-700">Да</button>
+                <button type="button" data-testid="button-upcoming-delete-cancel" onClick={() => setDeleteConfirmKey(null)} className="rounded-md px-2 py-1 font-bold hover:bg-rose-100">Нет</button>
+              </div>
+            ) : (
+              <button type="button" aria-label="Удалить сфокусированную задачу" title="Удалить" data-testid="button-upcoming-delete" disabled={!focusedOccurrence} onClick={requestDelete} className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 disabled:opacity-30 disabled:pointer-events-none">
+                <Trash2 size={15} />
+              </button>
+            )
           )}
         </div>
       </header>
@@ -362,7 +396,9 @@ export default function UpcomingTasks({
                   {isActive && (
                     <button
                       type="button"
-                      aria-label={`Отметить задачу: ${occurrence.payment.title}`}
+                      aria-label={occurrence.transactionId ? `Операция уже создана: ${occurrence.payment.title}` : `Отметить задачу: ${occurrence.payment.title}`}
+                      title={occurrence.transactionId ? 'Операция уже создана' : 'Создать операцию'}
+                      disabled={Boolean(occurrence.transactionId)}
                       onPointerDown={event => event.stopPropagation()}
                       onPointerUp={event => event.stopPropagation()}
                       onClick={event => {
@@ -371,8 +407,10 @@ export default function UpcomingTasks({
                         handleCarouselCheckbox(occurrence);
                       }}
                       data-testid={`button-toggle-payment-${occurrence.payment.id}-${occurrence.date}`}
-                      className="mt-0.5 w-6 h-6 rounded-lg border border-current/30 bg-white/70 flex items-center justify-center shrink-0"
-                    />
+                      className={`mt-0.5 w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 disabled:cursor-not-allowed ${occurrence.transactionId ? 'border-neutral-300 bg-neutral-100 text-neutral-400' : 'border-current/30 bg-white/70'}`}
+                    >
+                      {occurrence.transactionId && <Check size={14} strokeWidth={3} aria-hidden="true" />}
+                    </button>
                   )}
                   <div
                     tabIndex={isActive ? 0 : -1}
@@ -416,11 +454,15 @@ export default function UpcomingTasks({
                 {canToggle && (
                   <button
                     type="button"
-                    aria-label={`Отметить задачу: ${item.payment.title}`}
+                    aria-label={item.transactionId ? `Операция уже создана: ${item.payment.title}` : `Отметить задачу: ${item.payment.title}`}
+                    title={item.transactionId ? 'Операция уже создана' : 'Создать операцию'}
+                    disabled={Boolean(item.transactionId)}
                     onClick={() => void toggleLocally(item)}
                     data-testid={`button-toggle-payment-${key}`}
-                    className="w-5 h-5 rounded-md border border-neutral-300 bg-white/70 flex items-center justify-center shrink-0"
-                  />
+                    className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 disabled:cursor-not-allowed ${item.transactionId ? 'border-neutral-300 bg-neutral-100 text-neutral-400' : 'border-neutral-300 bg-white/70'}`}
+                  >
+                    {item.transactionId && <Check size={13} strokeWidth={3} aria-hidden="true" />}
+                  </button>
                 )}
                 <button
                   type="button"

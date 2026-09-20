@@ -275,6 +275,7 @@ export default function PaymentCalendarTab({
               setSelectedDate(date);
             }}
             onToggleTask={item => {
+              if (item.transactionId) return;
               if (onRequestTransaction) {
                 onRequestTransaction(item.payment, item.date);
               } else {
