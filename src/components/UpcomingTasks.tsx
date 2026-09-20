@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpToLine, CalendarDays, CircleDashed, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { CalendarDays, CircleDashed, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { PlannedPayment, PlannedPaymentRecurrence } from '../types';
 import {
@@ -124,15 +124,6 @@ export default function UpcomingTasks({
     });
   };
 
-  const goToStart = (event: React.MouseEvent<HTMLButtonElement>) => {
-    const scrollContainer = event.currentTarget.closest('.overflow-y-auto');
-    if (scrollContainer instanceof HTMLElement) {
-      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
   const resetCarousel = () => {
     setCarouselIndex(0);
     setCarouselLimit(limit);
@@ -171,9 +162,23 @@ export default function UpcomingTasks({
   return (
     <section className="rounded-2xl border border-theme-base bg-theme-surface p-4" data-testid="upcoming-tasks">
       <header className="flex items-center justify-between gap-2 border-b border-theme-base pb-2">
-        <div className="min-w-0">
-          <p className="text-[15px] uppercase tracking-wider text-theme-muted font-bold truncate">Предстоящие планы</p>
-        </div>
+        {onOpenCalendar ? (
+          <button
+            type="button"
+            aria-label="Открыть календарь предстоящих планов"
+            data-testid="button-upcoming-calendar"
+            onClick={onOpenCalendar}
+            className="min-w-0 inline-flex items-center gap-2 rounded-lg text-theme-muted hover:text-theme-primary active:scale-95 transition-all text-left"
+          >
+            <span className="text-[15px] uppercase tracking-wider font-bold truncate">Предстоящие планы</span>
+            <CalendarDays size={16} className="shrink-0" aria-hidden="true" />
+          </button>
+        ) : (
+          <div className="min-w-0 inline-flex items-center gap-2 text-theme-muted">
+            <span className="text-[15px] uppercase tracking-wider font-bold truncate">Предстоящие планы</span>
+            <CalendarDays size={16} className="shrink-0" aria-hidden="true" />
+          </div>
+        )}
         <div className="flex items-center gap-1">
           {variant === 'carousel' && (
             <button
@@ -185,30 +190,6 @@ export default function UpcomingTasks({
               className="w-8 h-8 rounded-lg flex items-center justify-center text-theme-muted hover:bg-theme-main"
             >
               <RefreshCw size={15} />
-            </button>
-          )}
-          {variant === 'carousel' && (
-            <button
-              type="button"
-              aria-label="В начало"
-              title="В начало"
-              data-testid="button-upcoming-start"
-              onClick={goToStart}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-theme-muted hover:bg-theme-main"
-            >
-              <ArrowUpToLine size={16} />
-            </button>
-          )}
-          {onOpenCalendar && (
-            <button
-              type="button"
-              aria-label="Открыть календарь"
-              title="Открыть календарь"
-              data-testid="button-upcoming-calendar"
-              onClick={onOpenCalendar}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-theme-muted hover:bg-theme-main"
-            >
-              <CalendarDays size={16} />
             </button>
           )}
           {onAdd && (

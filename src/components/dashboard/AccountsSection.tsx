@@ -85,20 +85,17 @@ export function AccountsSection({ accounts, allAccounts, currencies, onOpenTrans
       data-testid="dashboard-accounts"
     >
       <header className="flex items-center justify-between gap-2 border-b border-theme-base pb-2">
-        <div className="min-w-0">
-          <p className="text-[15px] uppercase tracking-wider text-theme-muted font-bold truncate">Счета</p>
-        </div>
+        <button
+          type="button"
+          aria-label="Открыть список счетов"
+          data-testid="button-dashboard-account-list"
+          onClick={() => setShowAccountManager(true)}
+          className="min-w-0 inline-flex items-center gap-2 rounded-lg text-theme-muted hover:text-theme-primary active:scale-95 transition-all text-left"
+        >
+          <span className="text-[15px] uppercase tracking-wider font-bold truncate">Счета</span>
+          <List size={16} className="shrink-0" aria-hidden="true" />
+        </button>
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            aria-label="Открыть список счетов"
-            title="Список счетов"
-            data-testid="button-dashboard-account-list"
-            onClick={() => setShowAccountManager(true)}
-            className="w-8 h-8 rounded-lg text-theme-muted flex items-center justify-center hover:bg-theme-main hover:text-theme-primary active:scale-95 transition-all"
-          >
-            <List size={16} />
-          </button>
           <button
             type="button"
             aria-label="Открыть список категорий"

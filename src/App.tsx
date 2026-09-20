@@ -183,6 +183,18 @@ export default function App() {
     }
   };
 
+  const handleDashboardClick = () => {
+    if (activeTab !== 'dashboard') {
+      setActiveTab('dashboard');
+      return;
+    }
+
+    document.querySelector<HTMLElement>('[data-app-scroll-container]')?.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  };
+
   const handleNavigateToCalendar = useCallback((date: string) => {
     setCalendarFocusDate(date);
     setActiveTab('plan');
@@ -333,12 +345,15 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
-        <div className={cn(
+        <div
+          data-app-scroll-container
+          className={cn(
           "absolute inset-0 overflow-y-auto no-scrollbar px-[2px] pt-0",
           activeTab === 'plan'
             ? "portrait:pb-12 landscape:pb-0"
             : "pb-24 md:pb-0 landscape:pb-0"
-        )}>
+          )}
+        >
           <div className="max-w-7xl mx-auto h-full landscape:max-w-none">
             <AnimatePresence mode="wait">
               <motion.div
@@ -361,6 +376,7 @@ export default function App() {
       <BottomNav
         activeTab={activeTab}
         onChangeTab={setActiveTab}
+        onDashboardClick={handleDashboardClick}
         onWalletClick={handleWalletOrLogoClick}
         showUserPage={showUserPage}
         onOpenUserPage={() => setShowUserPage(true)}

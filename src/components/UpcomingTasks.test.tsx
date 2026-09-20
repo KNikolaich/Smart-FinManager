@@ -96,7 +96,6 @@ describe('UpcomingTasks', () => {
     fireEvent.click(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20'));
     fireEvent.click(screen.getByTestId('button-upcoming-first'));
     fireEvent.click(screen.getByTestId('button-upcoming-calendar'));
-    fireEvent.click(screen.getByTestId('button-upcoming-start'));
 
     expect(onTaskClick).not.toHaveBeenCalled();
     expect(onOpenCalendar).toHaveBeenCalledTimes(1);

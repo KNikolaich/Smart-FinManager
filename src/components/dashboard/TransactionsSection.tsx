@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Account, Category, Transaction } from '../../types';
-import { History, Plus } from 'lucide-react';
+import { List, Plus } from 'lucide-react';
 import { cn, getTransactionDisplayTitle } from '../../lib/utils';
 import { dateFromKey, formatTransactionDateHeading } from '../../lib/dateLabels';
 import { api } from '../../lib/api';
@@ -53,9 +53,16 @@ export function TransactionsSection({
   return (
     <section className="rounded-2xl border border-theme-base bg-theme-surface p-4" data-testid="dashboard-transactions">
       <header className="flex items-center justify-between gap-2 border-b border-theme-base pb-2">
-        <div className="min-w-0">
-          <p className="text-[15px] uppercase tracking-wider text-theme-muted font-bold truncate">Операции</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => onOpenTransactionHistory?.()}
+          aria-label="Открыть историю операций"
+          data-testid="button-dashboard-transaction-history"
+          className="min-w-0 inline-flex items-center gap-2 rounded-lg text-theme-muted hover:text-theme-primary active:scale-95 transition-all text-left"
+        >
+          <span className="text-[15px] uppercase tracking-wider font-bold truncate">Операции</span>
+          <List size={16} className="shrink-0" aria-hidden="true" />
+        </button>
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -66,16 +73,6 @@ export function TransactionsSection({
             title="Добавить операцию"
           >
             <Plus size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onOpenTransactionHistory?.()}
-            aria-label="Открыть историю операций"
-            data-testid="button-dashboard-transaction-history"
-            className="w-8 h-8 rounded-lg text-theme-muted flex items-center justify-center hover:bg-theme-main hover:text-theme-primary active:scale-95 transition-all"
-            title="Открыть историю операций"
-          >
-            <History size={16} />
           </button>
         </div>
       </header>
