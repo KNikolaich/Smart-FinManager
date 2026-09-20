@@ -6,21 +6,6 @@ import GoalManager from '../GoalManager';
 import { SortableGoalCard } from './SortableGoalCard';
 import { api } from '../../lib/api';
 import { cn } from '../../lib/utils';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  rectSortingStrategy
-} from '@dnd-kit/sortable';
 
 interface GoalsSectionProps {
   visible: boolean;
@@ -42,17 +27,6 @@ export function GoalsSection({ visible, goals, userId, initialGoalData, onCloseG
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [dragOffset, setDragOffset] = useState(0);
   const pointerStartX = useRef<number | null>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   // Sync showGoalManager with initialGoalData (for creation from UserPage)
   useEffect(() => {
@@ -116,26 +90,6 @@ export function GoalsSection({ visible, goals, userId, initialGoalData, onCloseG
   const handleCloseGoalManager = () => {
     setShowGoalManager(false);
     if (onCloseGoalManager) onCloseGoalManager();
-  };
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      const oldIndex = displayedGoals.findIndex((g: Goal) => g.id === active.id);
-      const newIndex = displayedGoals.findIndex((g: Goal) => g.id === over.id);
-
-      const newOrderedGoals = arrayMove(displayedGoals, oldIndex, newIndex);
-
-      try {
-        const updates = newOrderedGoals.map((goal, index) => {
-          return api.put(`/goals/${goal.id}`, { sortOrder: index });
-        });
-        await Promise.all(updates);
-        onRefresh?.();
-      } catch (error) {
-        console.error('Error updating goal order:', error);
-      }
-    }
   };
 
   const handleSaveGoal = async (id: string, data: any) => {
@@ -231,56 +185,45 @@ export function GoalsSection({ visible, goals, userId, initialGoalData, onCloseG
                 <p>{showCompletedGoals ? 'Целей пока нет' : 'Нет активных целей'}</p>
               </div>
             ) : (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
+              <div
+                className="relative h-[352px] pt-3 touch-pan-y select-none"
+                data-testid="dashboard-goals-carousel"
+                onPointerDown={handleCarouselPointerDown}
+                onPointerMove={handleCarouselPointerMove}
+                onPointerUp={handleCarouselPointerUp}
+                onPointerCancel={handleCarouselPointerUp}
               >
-                <SortableContext
-                  items={displayedGoals.map(g => g.id)}
-                  strategy={rectSortingStrategy}
-                >
-                  <div
-                    className="relative h-[352px] pt-3 touch-pan-y select-none"
-                    data-testid="dashboard-goals-carousel"
-                    onPointerDown={handleCarouselPointerDown}
-                    onPointerMove={handleCarouselPointerMove}
-                    onPointerUp={handleCarouselPointerUp}
-                    onPointerCancel={handleCarouselPointerUp}
-                  >
-                    {[0, 1, 2].map(stackIndex => {
-                      if (displayedGoals.length <= stackIndex) return null;
-                      const goal = displayedGoals[activeCarouselIndex + stackIndex];
-                      if (!goal) return null;
-                      const isActive = stackIndex === 0;
-                      const stackStyle = isActive
-                        ? { transform: `translateX(${dragOffset}px)`, zIndex: 30 }
-                        : { transform: `translateY(${stackIndex * 8}px)`, zIndex: 30 - stackIndex };
+                {[0, 1, 2].map(stackIndex => {
+                  if (displayedGoals.length <= stackIndex) return null;
+                  const goal = displayedGoals[activeCarouselIndex + stackIndex];
+                  if (!goal) return null;
+                  const isActive = stackIndex === 0;
+                  const stackStyle = isActive
+                    ? { transform: `translateX(${dragOffset}px)`, zIndex: 30 }
+                    : { transform: `translateY(${stackIndex * 8}px)`, zIndex: 30 - stackIndex };
 
-                      return (
-                        <div
-                          key={`${goal.id}-${stackIndex}`}
-                          className="absolute inset-x-0 top-3 h-[320px]"
-                          style={stackStyle}
-                          data-testid={isActive ? `goal-banner-${goal.id}` : undefined}
-                          aria-hidden={!isActive}
-                        >
-                          <SortableGoalCard
-                            goal={goal}
-                            isEditing={editingGoalId === goal.id}
-                            fillHeight
-                            onStartEdit={(selectedGoal) => setEditingGoalId(selectedGoal.id)}
-                            onCancelEdit={() => setEditingGoalId(null)}
-                            onSave={handleSaveGoal}
-                            onDelete={handleDeleteGoal}
-                            onToggleComplete={handleToggleCompleteGoal}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </SortableContext>
-              </DndContext>
+                  return (
+                    <div
+                      key={`${goal.id}-${stackIndex}`}
+                      className="absolute inset-x-0 top-3 h-[320px]"
+                      style={stackStyle}
+                      data-testid={isActive ? `goal-banner-${goal.id}` : undefined}
+                      aria-hidden={!isActive}
+                    >
+                      <SortableGoalCard
+                        goal={goal}
+                        isEditing={editingGoalId === goal.id}
+                        fillHeight
+                        onStartEdit={(selectedGoal) => setEditingGoalId(selectedGoal.id)}
+                        onCancelEdit={() => setEditingGoalId(null)}
+                        onSave={handleSaveGoal}
+                        onDelete={handleDeleteGoal}
+                        onToggleComplete={handleToggleCompleteGoal}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </motion.section>
         )}
