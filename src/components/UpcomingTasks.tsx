@@ -163,6 +163,25 @@ export default function UpcomingTasks({
     previousListHeight.current = null;
   }, [listWindow.start, listWindow.end]);
 
+  useLayoutEffect(() => {
+    if (variant !== 'list' || !focusedKey || !listRef.current) return;
+    const element = listRef.current;
+    const target = Array.from(element.querySelectorAll<HTMLElement>('[data-upcoming-task]'))
+      .find(item => item.dataset.upcomingTask === focusedKey);
+    if (!target) return;
+
+    const targetTop = target.offsetTop - element.offsetTop;
+    const targetCenter = targetTop + target.offsetHeight / 2;
+    const nextTop = Math.max(0, targetCenter - element.clientHeight / 2);
+    if (Math.abs(element.scrollTop - nextTop) < 4) return;
+
+    if (typeof element.scrollTo === 'function') {
+      element.scrollTo({ top: nextTop, behavior: 'smooth' });
+    } else {
+      element.scrollTop = nextTop;
+    }
+  }, [focusedKey, listWindow.start, listWindow.end, occurrences.length, variant]);
+
   useEffect(() => {
     if (carouselIndex >= occurrences.length && occurrences.length > 0) {
       setCarouselIndex(occurrences.length - 1);

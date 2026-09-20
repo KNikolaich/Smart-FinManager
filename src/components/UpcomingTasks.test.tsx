@@ -172,6 +172,54 @@ describe('UpcomingTasks', () => {
     vi.useRealTimers();
   });
 
+  it('scrolls the selected list task into view when the calendar date changes', () => {
+    const scrollTo = vi.fn();
+    const originalScrollTo = HTMLElement.prototype.scrollTo;
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      value: scrollTo,
+    });
+
+    try {
+      const payments = [
+        { ...makePayment(0), id: 'selected-before', date: '2026-09-18' },
+        { ...makePayment(1), id: 'selected-after', date: '2026-09-19' },
+      ];
+      const { rerender } = render(
+        <UpcomingTasks
+          payments={payments}
+          startDate="2026-09-18"
+          focusedDate="2026-09-18"
+        />,
+      );
+      const list = screen.getByTestId('upcoming-tasks-list');
+      const selectedTask = screen.getByTestId('payment-row-selected-after');
+      Object.defineProperties(list, {
+        clientHeight: { configurable: true, value: 100 },
+        offsetTop: { configurable: true, value: 0 },
+      });
+      Object.defineProperties(selectedTask, {
+        offsetTop: { configurable: true, value: 200 },
+        offsetHeight: { configurable: true, value: 40 },
+      });
+
+      rerender(
+        <UpcomingTasks
+          payments={payments}
+          startDate="2026-09-19"
+          focusedDate="2026-09-19"
+        />,
+      );
+
+      expect(scrollTo.mock.calls.some(([options]) => options?.behavior === 'smooth')).toBe(true);
+    } finally {
+      Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+        configurable: true,
+        value: originalScrollTo,
+      });
+    }
+  });
+
   it('marks transaction-backed tasks and prevents creating a second transaction', () => {
     const onToggleTask = vi.fn();
     const payment = {
