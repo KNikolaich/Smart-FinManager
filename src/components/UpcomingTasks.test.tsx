@@ -193,7 +193,7 @@ describe('UpcomingTasks', () => {
         />,
       );
       const list = screen.getByTestId('upcoming-tasks-list');
-      const selectedTask = screen.getByTestId('payment-row-selected-after');
+      const selectedTask = screen.getByTestId('payment-row-selected-after-2026-09-19');
       Object.defineProperties(list, {
         clientHeight: { configurable: true, value: 100 },
         offsetTop: { configurable: true, value: 0 },
