@@ -26,7 +26,20 @@ describe('PaymentCalendarTab', () => {
 
     expect(screen.getByTestId('payment-row-rent-2026-09-05')).toBeTruthy();
     expect(screen.getAllByText(/Ежемесячно/).length).toBeGreaterThan(0);
-    expect(screen.getByText('Предстоящие планы')).toBeTruthy();
+    expect(screen.getByText('Календарный план')).toBeTruthy();
+  });
+
+  it('shows occurrences in the visible spillover days from adjacent months', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 18, 12));
+    const adjacentPayments: PlannedPayment[] = [
+      { ...payment, id: 'previous-month', title: 'Конец прошлого месяца', date: '2026-08-31', recurrence: 'none' },
+      { ...payment, id: 'next-month', title: 'Начало следующего месяца', date: '2026-10-01', recurrence: 'none' },
+    ];
+    render(<PaymentCalendarTab payments={adjacentPayments} accounts={[]} />);
+
+    expect(within(screen.getByTestId('calendar-day-2026-08-31')).getByText('Конец прошлого месяца')).toBeTruthy();
+    expect(within(screen.getByTestId('calendar-day-2026-10-01')).getByText('Начало следующего месяца')).toBeTruthy();
   });
 
   it('toggles the selected occurrence status', () => {
@@ -97,16 +110,16 @@ describe('PaymentCalendarTab', () => {
     }));
   });
 
-  it('closes the context menu before opening the edit form', () => {
+  it('opens the focused task in the edit form from the header', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 18, 12));
     render(<PaymentCalendarTab payments={[payment]} accounts={[]} />);
 
     fireEvent.click(screen.getByTestId('calendar-day-2026-09-05'));
-    fireEvent.click(screen.getByTestId('button-payment-menu-rent-2026-09-05'));
-    fireEvent.click(screen.getByText('Изменить'));
+    expect(screen.getByTestId('calendar-day-2026-09-05').className).toContain('border-dashed');
+    fireEvent.click(screen.getByTestId('button-upcoming-edit'));
 
-    expect(screen.queryByText('Удалить')).toBeNull();
-    expect(screen.getByRole('dialog').className).toContain('h-full');
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(screen.getByRole('dialog').textContent).toContain('Изменить');
   });
 });

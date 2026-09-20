@@ -15,7 +15,7 @@ const makePayment = (index: number): PlannedPayment => ({
 });
 
 describe('UpcomingTasks', () => {
-  it('shows up to seven tasks and navigates from the task text', () => {
+  it('shows the first page of tasks and navigates from the task text', () => {
     const onTaskClick = vi.fn();
     render(
       <UpcomingTasks
@@ -25,8 +25,8 @@ describe('UpcomingTasks', () => {
       />,
     );
 
-    expect(screen.getAllByTestId(/payment-row-task-/)).toHaveLength(7);
-    expect(screen.queryByText('Задача 7')).toBeNull();
+    expect(screen.getAllByTestId(/payment-row-task-/)).toHaveLength(8);
+    expect(screen.getByText('Задача 7')).toBeTruthy();
 
     fireEvent.click(screen.getByTestId('upcoming-task-link-task-2-2026-09-20'));
     expect(onTaskClick).toHaveBeenCalledWith('2026-09-20');
@@ -79,7 +79,7 @@ describe('UpcomingTasks', () => {
     expect(screen.getByText('Просроченная задача')).toBeTruthy();
   });
 
-  it('uses the header controls instead of navigating from a banner tap', () => {
+  it('does not render the removed title or calendar button in the header', () => {
     const onTaskClick = vi.fn();
     const onOpenCalendar = vi.fn();
     const payment = { ...makePayment(0), id: 'clickable-task', date: '2026-09-20' };
@@ -95,11 +95,54 @@ describe('UpcomingTasks', () => {
 
     fireEvent.click(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20'));
     fireEvent.click(screen.getByTestId('button-upcoming-first'));
-    fireEvent.click(screen.getByTestId('button-upcoming-calendar'));
 
     expect(onTaskClick).not.toHaveBeenCalled();
-    expect(onOpenCalendar).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Предстоящие планы')).toBeNull();
+    expect(screen.queryByTestId('button-upcoming-calendar')).toBeNull();
     expect(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20').className).toContain('bg-pink-50');
+  });
+
+  it('uses header actions for the focused list task', () => {
+    const onEditTask = vi.fn();
+    const onManualToggleTask = vi.fn();
+    const onDeleteTask = vi.fn();
+    render(
+      <UpcomingTasks
+        payments={[makePayment(0)]}
+        startDate="2026-09-18"
+        onEditTask={onEditTask}
+        onManualToggleTask={onManualToggleTask}
+        onDeleteTask={onDeleteTask}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('button-upcoming-edit'));
+    fireEvent.click(screen.getByTestId('button-upcoming-manual-toggle'));
+    fireEvent.click(screen.getByTestId('button-upcoming-delete'));
+
+    expect(onEditTask).toHaveBeenCalledWith(expect.objectContaining({ date: '2026-09-18' }));
+    expect(onManualToggleTask).toHaveBeenCalledWith(expect.objectContaining({ date: '2026-09-18' }));
+    expect(onDeleteTask).toHaveBeenCalledWith(expect.objectContaining({ date: '2026-09-18' }));
+  });
+
+  it('applies the selected status filter to the list', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 20, 12));
+    const overdue = { ...makePayment(0), id: 'overdue-list', title: 'Просроченная', date: '2026-09-19' };
+    const pending = { ...makePayment(1), id: 'pending-list', title: 'Предстоящая', date: '2026-09-21' };
+    const paid = { ...makePayment(2), id: 'paid-list', title: 'Выполненная', date: '2026-09-22', paidDates: ['2026-09-22'] };
+    const { rerender } = render(
+      <UpcomingTasks payments={[overdue, pending, paid]} startDate="2026-09-20" filter="pending" />,
+    );
+
+    expect(screen.getByText('Предстоящая')).toBeTruthy();
+    expect(screen.queryByText('Просроченная')).toBeNull();
+    expect(screen.queryByText('Выполненная')).toBeNull();
+
+    rerender(<UpcomingTasks payments={[overdue, pending, paid]} startDate="2026-09-20" filter="paid" />);
+    expect(screen.getByText('Выполненная')).toBeTruthy();
+    expect(screen.queryByText('Предстоящая')).toBeNull();
+    vi.useRealTimers();
   });
 
   it('pulses overdue banners until the user taps them', () => {

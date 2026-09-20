@@ -9,6 +9,8 @@ export interface PlannedPaymentOccurrence {
   manuallyCompleted?: boolean;
 }
 
+export type PlannedPaymentFilter = 'all' | 'pending' | 'overdue' | 'paid';
+
 export function toDateKey(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
@@ -95,6 +97,39 @@ export function getOutstandingPaymentOccurrences(
     .filter(item => item.status !== 'paid')
     .sort((a, b) => a.date.localeCompare(b.date) || a.payment.title.localeCompare(b.payment.title))
     .slice(0, limit);
+}
+
+export function getPaymentOccurrencesForFilter(
+  payments: PlannedPayment[],
+  anchorKey = getTodayKey(),
+  filter: PlannedPaymentFilter = 'all',
+  limit = 50,
+  offset = 0,
+) {
+  const anchor = parseDateKey(anchorKey);
+  const todayKey = getTodayKey();
+  const today = parseDateKey(todayKey);
+  const start = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+  const end = new Date(anchor.getFullYear() + 5, anchor.getMonth(), anchor.getDate());
+
+  if (filter === 'pending') {
+    const pendingStart = anchor > today ? anchor : today;
+    start.setTime(pendingStart.getTime());
+  } else if (filter === 'overdue') {
+    const overdueEnd = anchor < today ? anchor : today;
+    end.setTime(overdueEnd.getTime());
+  }
+
+  return payments
+    .flatMap(payment => getPaymentOccurrencesInRange(payment, toDateKey(start), toDateKey(end)))
+    .filter(item => {
+      if (filter === 'all') return true;
+      if (filter === 'overdue') return item.status === 'pending' && item.date < todayKey;
+      if (filter === 'pending') return item.status === 'pending' && item.date >= todayKey;
+      return item.status === 'paid';
+    })
+    .sort((a, b) => a.date.localeCompare(b.date) || a.payment.title.localeCompare(b.payment.title))
+    .slice(offset, offset + limit);
 }
 
 export function getOccurrenceStatus(payment: PlannedPayment, date: string): PlannedPaymentStatus {

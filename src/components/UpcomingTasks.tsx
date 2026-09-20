@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, CircleDashed, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { CircleDashed, Hand, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { PlannedPayment, PlannedPaymentRecurrence } from '../types';
 import {
   getTodayKey,
   getOutstandingPaymentOccurrences,
-  getUpcomingPaymentOccurrences,
+  getPaymentOccurrencesForFilter,
+  PlannedPaymentFilter,
   PlannedPaymentOccurrence,
 } from '../lib/plannedPaymentOccurrences';
 
 interface UpcomingTasksProps {
   payments?: PlannedPayment[];
   startDate?: string;
+  filter?: PlannedPaymentFilter;
+  focusedDate?: string;
   limit?: number;
   variant?: 'list' | 'carousel';
   onTaskClick?: (date: string) => void;
@@ -30,6 +33,8 @@ interface UpcomingTasksProps {
 export default function UpcomingTasks({
   payments,
   startDate = getTodayKey(),
+  filter = 'all',
+  focusedDate,
   limit = 7,
   variant = 'list',
   onTaskClick,
@@ -45,13 +50,15 @@ export default function UpcomingTasks({
   const [localPayments, setLocalPayments] = useState<PlannedPayment[] | null>(null);
   const [loading, setLoading] = useState(payments === undefined);
   const [error, setError] = useState<string | null>(null);
-  const [menuFor, setMenuFor] = useState<string | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [carouselLimit, setCarouselLimit] = useState(limit);
+  const [listPage, setListPage] = useState(1);
+  const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [quietOverdue, setQuietOverdue] = useState<Set<string>>(new Set());
   const pointerStartX = useRef<number | null>(null);
   const suppressCarouselClick = useRef(false);
+  const previousStartDate = useRef(startDate);
 
   useEffect(() => {
     if (payments !== undefined) {
@@ -84,13 +91,51 @@ export default function UpcomingTasks({
   }, [payments]);
 
   const sourcePayments = localPayments ?? payments ?? loadedPayments;
-  const occurrences = useMemo(
+
+  const pageSize = 50;
+  const loadedOccurrences = useMemo(
     () => variant === 'carousel'
       ? getOutstandingPaymentOccurrences(sourcePayments, startDate, carouselLimit)
-      : getUpcomingPaymentOccurrences(sourcePayments, startDate, limit),
-    [sourcePayments, startDate, limit, carouselLimit, variant],
+      : getPaymentOccurrencesForFilter(sourcePayments, startDate, filter, pageSize * listPage + 1),
+    [sourcePayments, startDate, filter, listPage, carouselLimit, variant],
   );
+  const hasMore = variant === 'list' && loadedOccurrences.length > pageSize * listPage;
+  const occurrences = variant === 'list'
+    ? loadedOccurrences.slice(0, pageSize * listPage)
+    : loadedOccurrences;
   const activeCarouselIndex = occurrences.length === 0 ? 0 : Math.min(carouselIndex, occurrences.length - 1);
+  const focusedOccurrence = useMemo(
+    () => occurrences.find(item => occurrenceKey(item) === focusedKey)
+      || occurrences.find(item => item.date === (focusedDate || startDate))
+      || occurrences[0],
+    [occurrences, focusedDate, focusedKey, startDate],
+  );
+
+  useEffect(() => {
+    const startDateChanged = previousStartDate.current !== startDate;
+    if (startDateChanged) {
+      previousStartDate.current = startDate;
+      setListPage(1);
+    }
+    if (variant === 'list' && startDateChanged) {
+      const next = occurrences.find(item => item.date === startDate) || occurrences[0];
+      setFocusedKey(next ? occurrenceKey(next) : null);
+      return;
+    }
+    if (variant === 'carousel') {
+      const active = occurrences[activeCarouselIndex];
+      if (active) setFocusedKey(occurrenceKey(active));
+      return;
+    }
+    if (!occurrences.some(item => occurrenceKey(item) === focusedKey)) {
+      const next = occurrences.find(item => item.date === startDate) || occurrences[0];
+      setFocusedKey(next ? occurrenceKey(next) : null);
+    }
+  }, [activeCarouselIndex, occurrences, startDate, variant, focusedKey]);
+
+  useEffect(() => {
+    setListPage(1);
+  }, [filter]);
   useEffect(() => {
     if (carouselIndex >= occurrences.length && occurrences.length > 0) {
       setCarouselIndex(occurrences.length - 1);
@@ -129,6 +174,15 @@ export default function UpcomingTasks({
   const resetCarousel = () => {
     setCarouselIndex(0);
     setCarouselLimit(limit);
+  };
+
+  const loadMore = () => {
+    if (hasMore) setListPage(current => current + 1);
+  };
+
+  const handleListScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    const element = event.currentTarget;
+    if (element.scrollHeight - element.scrollTop - element.clientHeight < 120) loadMore();
   };
 
   const handleCarouselPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -176,24 +230,7 @@ export default function UpcomingTasks({
 
   return (
     <section className="rounded-2xl border border-theme-base bg-theme-surface p-4" data-testid="upcoming-tasks">
-      <header className="flex items-center justify-between gap-2 border-b border-theme-base pb-2">
-        {onOpenCalendar ? (
-          <button
-            type="button"
-            aria-label="Открыть календарь предстоящих планов"
-            data-testid="button-upcoming-calendar"
-            onClick={onOpenCalendar}
-            className="min-w-0 inline-flex items-center gap-2 rounded-lg text-theme-muted hover:text-theme-primary active:scale-95 transition-all text-left"
-          >
-            <span className="text-[15px] uppercase tracking-wider font-bold truncate">Предстоящие планы</span>
-            <CalendarDays size={16} className="shrink-0" aria-hidden="true" />
-          </button>
-        ) : (
-          <div className="min-w-0 inline-flex items-center gap-2 text-theme-muted">
-            <span className="text-[15px] uppercase tracking-wider font-bold truncate">Предстоящие планы</span>
-            <CalendarDays size={16} className="shrink-0" aria-hidden="true" />
-          </div>
-        )}
+      <header className="flex items-center justify-end gap-2 border-b border-theme-base pb-2">
         <div className="flex items-center gap-1">
           {variant === 'carousel' && (
             <button
@@ -210,6 +247,21 @@ export default function UpcomingTasks({
           {onAdd && (
             <button type="button" aria-label="Запланировать задачу" onClick={onAdd} className="p-2 rounded-lg bg-theme-primary-light text-theme-primary">
               <Plus size={16} />
+            </button>
+          )}
+          {onEditTask && (
+            <button type="button" aria-label="Редактировать сфокусированную задачу" title="Редактировать" data-testid="button-upcoming-edit" disabled={!focusedOccurrence} onClick={() => focusedOccurrence && onEditTask(focusedOccurrence)} className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none">
+              <Pencil size={15} />
+            </button>
+          )}
+          {onManualToggleTask && (
+            <button type="button" aria-label={focusedOccurrence?.manuallyCompleted ? 'Снять ручную отметку' : 'Отметить вручную'} title={focusedOccurrence?.manuallyCompleted ? 'Снять ручную отметку' : 'Отметить вручную'} data-testid="button-upcoming-manual-toggle" disabled={!focusedOccurrence || Boolean(focusedOccurrence.transactionId)} onClick={() => focusedOccurrence && void onManualToggleTask(focusedOccurrence)} className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none">
+              <Hand size={15} />
+            </button>
+          )}
+          {onDeleteTask && (
+            <button type="button" aria-label="Удалить сфокусированную задачу" title="Удалить" data-testid="button-upcoming-delete" disabled={!focusedOccurrence} onClick={() => focusedOccurrence && void onDeleteTask(focusedOccurrence)} className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 disabled:opacity-30 disabled:pointer-events-none">
+              <Trash2 size={15} />
             </button>
           )}
         </div>
@@ -256,6 +308,7 @@ export default function UpcomingTasks({
                     return;
                   }
                   if (isActive) quietOverdueOccurrence(occurrence);
+                  if (isActive) setFocusedKey(key);
                 }}
               >
                 <div className="flex items-start gap-3">
@@ -296,14 +349,15 @@ export default function UpcomingTasks({
           })}
         </div>
       ) : (
-        <div className="space-y-2 pt-3">
+          <div className="max-h-[min(65vh,620px)] overflow-y-auto space-y-2 pt-3 pr-1" onScroll={handleListScroll} data-testid="upcoming-tasks-list">
           {occurrences.map(item => {
             const key = `${item.payment.id}-${item.date}`;
             const canToggle = Boolean(onToggleTask);
+              const isFocused = item.date === focusedOccurrence?.date;
             return (
               <article
                 key={key}
-                className={`flex items-center gap-2 rounded-xl px-2 py-2 ${occurrenceTone(item)}`}
+                  className={`flex items-center gap-2 rounded-xl px-2 py-2 border ${isFocused ? 'border-dashed border-theme-primary' : 'border-transparent'} ${occurrenceTone(item)}`}
                 data-testid={`payment-row-${key}`}
                 data-upcoming-task={key}
               >
@@ -318,7 +372,7 @@ export default function UpcomingTasks({
                 )}
                 <button
                   type="button"
-                  onClick={() => onTaskClick?.(item.date)}
+                    onClick={() => { setFocusedKey(key); onTaskClick?.(item.date); }}
                   className="min-w-0 flex-1 text-left"
                   data-testid={`upcoming-task-link-${key}`}
                 >
@@ -331,41 +385,14 @@ export default function UpcomingTasks({
                       {formatTaskDate(item.date, startDate)} · {item.payment.categoryName || 'Без категории'} · {recurrenceLabel(item.payment.recurrence)}
                   </span>
                 </button>
-                {(onEditTask || onDeleteTask || onManualToggleTask) && (
-                  <div className="relative shrink-0">
-                    <button
-                      type="button"
-                      aria-label={`Действия: ${item.payment.title}`}
-                      onClick={() => setMenuFor(menuFor === key ? null : key)}
-                      data-testid={`button-payment-menu-${key}`}
-                      className="p-1.5 rounded-lg opacity-60 hover:bg-black/5"
-                    >
-                      •••
-                    </button>
-                    {menuFor === key && (
-                      <div className="absolute right-0 top-8 z-10 w-28 p-1 rounded-lg border border-theme-base bg-theme-surface shadow-lg">
-                        {onEditTask && (
-                          <button type="button" onClick={() => { setMenuFor(null); onEditTask(item); }} className="w-full text-left px-2 py-1.5 text-xs hover:bg-theme-main">
-                            <Pencil size={12} className="inline mr-1" />Изменить
-                          </button>
-                        )}
-                        {onManualToggleTask && !item.transactionId && (
-                          <button type="button" onClick={() => { setMenuFor(null); void onManualToggleTask(item); }} className="w-full text-left px-2 py-1.5 text-xs hover:bg-theme-main">
-                            {item.manuallyCompleted ? 'Снять ручную отметку' : 'Отметить вручную'}
-                          </button>
-                        )}
-                        {onDeleteTask && (
-                          <button type="button" onClick={() => { setMenuFor(null); void onDeleteTask(item); }} className="w-full text-left px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50">
-                            <Trash2 size={12} className="inline mr-1" />Удалить
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
               </article>
             );
           })}
+          {hasMore && (
+            <button type="button" data-testid="button-upcoming-load-more" onClick={loadMore} className="w-full rounded-xl border border-dashed border-theme-base px-3 py-2 text-xs text-theme-muted hover:bg-theme-main">
+              Загрузить ещё
+            </button>
+          )}
         </div>
       )}
     </section>

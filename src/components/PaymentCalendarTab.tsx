@@ -23,6 +23,7 @@ import {
   getPaymentOccurrencesInRange,
   getTodayKey,
   parseDateKey,
+  PlannedPaymentFilter,
   PlannedPaymentOccurrence,
   toDateKey,
 } from '../lib/plannedPaymentOccurrences';
@@ -42,7 +43,7 @@ interface PaymentCalendarTabProps {
   onFocusDateHandled?: () => void;
 }
 
-type Filter = 'all' | 'pending' | 'overdue' | 'paid';
+type Filter = PlannedPaymentFilter;
 type DialogMode = 'create' | 'edit' | null;
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -99,6 +100,7 @@ export default function PaymentCalendarTab({
   const now = new Date();
   const [cursor, setCursor] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState(getTodayKey());
+  const [listStartDate, setListStartDate] = useState(getTodayKey());
   const [filter, setFilter] = useState<Filter>('all');
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [editingPayment, setEditingPayment] = useState<PlannedPayment | null>(null);
@@ -110,16 +112,19 @@ export default function PaymentCalendarTab({
     if (Number.isNaN(nextDate.getTime())) return;
     setCursor(new Date(nextDate.getFullYear(), nextDate.getMonth(), 1));
     setSelectedDate(focusDate);
+    setListStartDate(focusDate);
     onFocusDateHandled?.();
   }, [focusDate, onFocusDateHandled]);
 
+  const monthCells = useMemo(() => getMonthCells(cursor), [cursor]);
   const occurrences = useMemo<PlannedPaymentOccurrence[]>(
     () => {
-      const monthStart = toDateKey(new Date(cursor.getFullYear(), cursor.getMonth(), 1));
-      const monthEnd = toDateKey(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0));
-      return payments.flatMap(payment => getPaymentOccurrencesInRange(payment, monthStart, monthEnd));
+      const calendarStart = monthCells[0]?.key;
+      const calendarEnd = monthCells[monthCells.length - 1]?.key;
+      if (!calendarStart || !calendarEnd) return [];
+      return payments.flatMap(payment => getPaymentOccurrencesInRange(payment, calendarStart, calendarEnd));
     },
-    [payments, cursor],
+    [payments, monthCells],
   );
   const visibleOccurrences = occurrences.filter(item => {
     if (filter === 'all') return true;
@@ -200,12 +205,12 @@ export default function PaymentCalendarTab({
 
       <div className="flex min-w-0 w-full flex-nowrap items-center gap-1 overflow-x-auto no-scrollbar">
         <div className="flex items-center gap-1 shrink-0">
-          <button type="button" aria-label="Предыдущий месяц" data-testid="button-previous-month" onClick={() => moveMonth(-1, cursor, setCursor, setSelectedDate)} className="w-8 h-8 rounded-lg border border-theme-base bg-theme-surface text-theme-muted flex items-center justify-center shrink-0"><ArrowLeft size={15} /></button>
+          <button type="button" aria-label="Предыдущий месяц" data-testid="button-previous-month" onClick={() => moveMonth(-1, cursor, setCursor, setSelectedDate, setListStartDate)} className="w-8 h-8 rounded-lg border border-theme-base bg-theme-surface text-theme-muted flex items-center justify-center shrink-0"><ArrowLeft size={15} /></button>
           <strong className="min-w-[88px] text-center text-xs sm:text-sm capitalize text-theme-main truncate">{MONTHS[cursor.getMonth()]} <span className="text-theme-muted font-normal">{cursor.getFullYear()}</span></strong>
-          <button type="button" aria-label="Следующий месяц" data-testid="button-next-month" onClick={() => moveMonth(1, cursor, setCursor, setSelectedDate)} className="w-8 h-8 rounded-lg border border-theme-base bg-theme-surface text-theme-muted flex items-center justify-center shrink-0"><ArrowRight size={15} /></button>
+          <button type="button" aria-label="Следующий месяц" data-testid="button-next-month" onClick={() => moveMonth(1, cursor, setCursor, setSelectedDate, setListStartDate)} className="w-8 h-8 rounded-lg border border-theme-base bg-theme-surface text-theme-muted flex items-center justify-center shrink-0"><ArrowRight size={15} /></button>
         </div>
         <div className="flex-1 min-w-3" aria-hidden="true" />
-        <button type="button" aria-label="Сегодня" title="Сегодня" data-testid="button-today" onClick={() => { setCursor(new Date(now.getFullYear(), now.getMonth(), 1)); setSelectedDate(getTodayKey()); }} className="w-8 h-8 rounded-lg border border-theme-base text-theme-muted flex items-center justify-center shrink-0"><CalendarCheck size={15} /></button>
+        <button type="button" aria-label="Сегодня" title="Сегодня" data-testid="button-today" onClick={() => { setCursor(new Date(now.getFullYear(), now.getMonth(), 1)); setSelectedDate(getTodayKey()); setListStartDate(getTodayKey()); }} className="w-8 h-8 rounded-lg border border-theme-base text-theme-muted flex items-center justify-center shrink-0"><CalendarCheck size={15} /></button>
         <label className="shrink-0 text-xs text-theme-muted">
           <span className="sr-only">Фильтр записей</span>
           <select data-testid="select-payment-filter" value={filter} onChange={event => setFilter(event.target.value as Filter)} className="w-[90px] rounded-lg border border-theme-base bg-theme-surface px-1.5 py-1.5 text-[10px] sm:w-auto sm:px-2 sm:text-xs text-theme-main">
@@ -231,15 +236,15 @@ export default function PaymentCalendarTab({
               {WEEKDAYS.map((day, index) => <div key={day} className={`min-w-0 p-1 sm:p-2 text-center text-[9px] sm:text-[10px] font-bold uppercase truncate ${index > 4 ? 'text-theme-primary' : 'text-theme-muted'}`}>{day}</div>)}
             </div>
             <div className="grid min-w-0 grid-cols-7">
-              {getMonthCells(cursor).map(cell => {
+              {monthCells.map(cell => {
                 const dayItems = byDate.get(cell.key) || [];
                 return (
                   <button
                     key={cell.key}
                     type="button"
                     data-testid={`calendar-day-${cell.key}`}
-                    onClick={() => setSelectedDate(cell.key)}
-                    className={`min-w-0 min-h-[60px] sm:min-h-[106px] p-1 sm:p-2 text-left border-b border-r border-theme-base ${!cell.currentMonth ? 'bg-theme-main text-theme-muted' : 'bg-theme-surface'} ${selectedDate === cell.key ? 'ring-2 ring-inset ring-theme-primary bg-theme-primary-light' : 'hover:bg-theme-main'}`}
+                    onClick={() => { setSelectedDate(cell.key); setListStartDate(cell.key); }}
+                    className={`min-w-0 min-h-[60px] sm:min-h-[106px] p-1 sm:p-2 text-left ${selectedDate === cell.key ? 'border-2 border-dashed border-theme-primary bg-theme-primary-light' : 'border-b border-r border-theme-base hover:bg-theme-main'} ${!cell.currentMonth ? 'bg-theme-main text-theme-muted' : 'bg-theme-surface'}`}
                   >
                     <span className={`inline-flex min-w-6 h-6 items-center justify-center rounded-lg text-xs font-mono ${cell.key === getTodayKey() ? 'bg-theme-primary text-theme-on-primary' : 'text-theme-muted'}`}>{cell.day}</span>
                     <span className="block mt-1 space-y-1">
@@ -260,7 +265,9 @@ export default function PaymentCalendarTab({
           <div className="min-w-0">
           <UpcomingTasks
             payments={payments}
-            startDate={selectedDate}
+            startDate={listStartDate}
+            filter={filter}
+            focusedDate={selectedDate}
             onAdd={() => openCreate()}
             onTaskClick={date => {
               const nextDate = parseDateKey(date);
@@ -304,10 +311,12 @@ export default function PaymentCalendarTab({
   );
 }
 
-function moveMonth(offset: number, cursor: Date, setCursor: (date: Date) => void, setSelectedDate: (key: string) => void) {
+function moveMonth(offset: number, cursor: Date, setCursor: (date: Date) => void, setSelectedDate: (key: string) => void, setListStartDate: (key: string) => void) {
   const next = new Date(cursor.getFullYear(), cursor.getMonth() + offset, 1);
   setCursor(next);
-  setSelectedDate(toDateKey(next));
+  const nextKey = toDateKey(next);
+  setSelectedDate(nextKey);
+  setListStartDate(nextKey);
 }
 
 function occurrenceTone(item: PlannedPaymentOccurrence) {
