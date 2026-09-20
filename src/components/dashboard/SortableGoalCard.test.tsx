@@ -38,6 +38,18 @@ describe('SortableGoalCard', () => {
     expect(props.onStartEdit).toHaveBeenCalledWith(goal);
   });
 
+  it('saves from the top-right action while editing', () => {
+    const { props } = renderCard();
+
+    fireEvent.click(screen.getByTestId('button-save-goal-goal-1'));
+
+    expect(props.onSave).toHaveBeenCalledWith(goal.id, expect.objectContaining({
+      name: goal.name,
+      targetAmount: goal.targetAmount,
+      currentAmount: goal.currentAmount,
+    }));
+  });
+
   it('confirms completing a goal from the modal', () => {
     const { props } = renderCard();
 

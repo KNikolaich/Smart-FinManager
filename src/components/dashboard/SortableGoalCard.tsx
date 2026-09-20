@@ -80,6 +80,21 @@ export function SortableGoalCard({
             onChange={(e) => setEditDeadline(e.target.value)}
             className="w-32 bg-theme-main rounded-lg px-2 py-1 text-[10px] outline-none focus:ring-2 ring-theme-primary/20 text-theme-main"
           />
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleSaveWithCheck();
+            }}
+            className="shrink-0 w-9 h-9 flex items-center justify-center bg-theme-primary text-theme-on-primary rounded-lg shadow-lg shadow-theme-primary/20 hover:bg-theme-primary-dark transition-all"
+            aria-label="Сохранить цель"
+            title="Сохранить"
+            data-testid={`button-save-goal-${goal.id}`}
+          >
+            <Save size={16} />
+          </button>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -155,19 +170,6 @@ export function SortableGoalCard({
             >
               <Check size={14} />
               <span className="ml-1.5 text-[10px] uppercase tracking-wide">Выполнено</span>
-            </button>
-            <button
-              type="button"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleSaveWithCheck();
-              }}
-              className="w-9 h-9 flex items-center justify-center bg-theme-primary text-theme-on-primary rounded-lg shadow-lg shadow-theme-primary/20 hover:bg-theme-primary-dark transition-all"
-              aria-label="Сохранить цель"
-              title="Сохранить"
-            >
-              <Save size={16} />
             </button>
           </div>
         </div>
@@ -285,7 +287,12 @@ export function SortableGoalCard({
           </div>
           <button
             type="button"
-            onClick={() => onStartEdit(goal)}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onStartEdit(goal);
+            }}
             className="shrink-0 p-2 rounded-lg text-theme-muted hover:bg-theme-primary-light hover:text-theme-primary active:scale-95 transition-all"
             aria-label={`Редактировать цель: ${goal.name}`}
             title="Редактировать цель"
