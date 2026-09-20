@@ -287,7 +287,7 @@ export default function UpcomingTasks({
                       <span>{occurrence.payment.title}</span>
                     </strong>
                     <span className="mt-1 block text-xs opacity-75 leading-snug break-words">
-                      {occurrence.payment.categoryName || 'Без категории'} · {recurrenceLabel(occurrence.payment.recurrence)} · {carouselDateLabel(occurrence.date, startDate)}
+                      {occurrence.payment.categoryName || 'Без категории'} · {recurrenceLabel(occurrence.payment.recurrence)}
                     </span>
                   </div>
                 </div>
