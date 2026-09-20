@@ -463,6 +463,35 @@ export default function PlanPage({
     });
   };
 
+  const handleCalendarTransactionCreated = (paymentId: string, date: string, transactionId: string) => {
+    setCalendarPayments(current => current.map(payment => {
+      if (payment.id !== paymentId) return payment;
+
+      const paidDates = new Set(payment.paidDates || []);
+      paidDates.add(date);
+      const occurrences = [...(payment.occurrences || [])];
+      const existing = occurrences.find(item => item.date === date);
+      if (existing) {
+        existing.transactionId = transactionId;
+        existing.manuallyCompleted = false;
+      } else {
+        occurrences.push({
+          id: `pending-${paymentId}-${date}`,
+          date,
+          manuallyCompleted: false,
+          transactionId,
+        });
+      }
+
+      return {
+        ...payment,
+        paidDates: Array.from(paidDates),
+        occurrences,
+        status: date === payment.date ? 'paid' : payment.status,
+      };
+    }));
+  };
+
   const handleCalendarPaymentDelete = async (id: string) => {
     await saveCalendarPayments(calendarPayments.filter(payment => payment.id !== id));
   };

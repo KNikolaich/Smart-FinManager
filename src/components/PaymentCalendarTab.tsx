@@ -36,7 +36,8 @@ interface PaymentCalendarTabProps {
   error?: string | null;
   onRetry?: () => void;
   onStatusChange?: (id: string, date: string, status: PlannedPaymentStatus) => void;
-  onRequestTransaction?: (payment: PlannedPayment, date: string) => void;
+  onRequestTransaction?: (payment: PlannedPayment, date: string, onCreated?: (transactionId: string) => void) => void;
+  onTransactionCreated?: (paymentId: string, date: string, transactionId: string) => void;
   onPaymentChange?: (payment: PlannedPayment) => void | Promise<void>;
   onPaymentDelete?: (id: string) => void | Promise<void>;
   focusDate?: string;
@@ -92,6 +93,7 @@ export default function PaymentCalendarTab({
   onRetry,
   onStatusChange,
   onRequestTransaction,
+  onTransactionCreated,
   onPaymentChange,
   onPaymentDelete,
   focusDate,
@@ -269,7 +271,9 @@ export default function PaymentCalendarTab({
             onToggleTask={item => {
               if (item.transactionId) return;
               if (onRequestTransaction) {
-                onRequestTransaction(item.payment, item.date);
+                onRequestTransaction(item.payment, item.date, transactionId => {
+                  onTransactionCreated?.(item.payment.id, item.date, transactionId);
+                });
               } else {
                 onStatusChange?.(item.payment.id, item.date, 'paid');
               }
