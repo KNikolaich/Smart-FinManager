@@ -335,12 +335,12 @@ export default function UpcomingTasks({
           {onDeleteTask && (
             isDeleteConfirmationOpen ? (
               <div className="inline-flex items-center gap-1 rounded-lg bg-rose-50 px-1 py-1 text-[10px] text-rose-700">
-                <span className="px-1">Удалить?</span>
+                <span className="px-1">Отключить с этой даты?</span>
                 <button type="button" data-testid="button-upcoming-delete-confirm" onClick={() => void confirmDelete()} className="rounded-md bg-rose-600 px-2 py-1 font-bold text-white hover:bg-rose-700">Да</button>
                 <button type="button" data-testid="button-upcoming-delete-cancel" onClick={() => setDeleteConfirmKey(null)} className="rounded-md px-2 py-1 font-bold hover:bg-rose-100">Нет</button>
               </div>
             ) : (
-              <button type="button" aria-label="Удалить сфокусированную задачу" title="Удалить" data-testid="button-upcoming-delete" disabled={!focusedOccurrence} onClick={requestDelete} className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 disabled:opacity-30 disabled:pointer-events-none">
+              <button type="button" aria-label="Отключить план с даты сфокусированной задачи" title="Отключить план с этой даты" data-testid="button-upcoming-delete" disabled={!focusedOccurrence} onClick={requestDelete} className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 disabled:opacity-30 disabled:pointer-events-none">
                 <Trash2 size={15} />
               </button>
             )

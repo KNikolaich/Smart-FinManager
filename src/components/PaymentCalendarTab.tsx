@@ -39,7 +39,7 @@ interface PaymentCalendarTabProps {
   onRequestTransaction?: (payment: PlannedPayment, date: string, onCreated?: (transactionId: string) => void) => void;
   onTransactionCreated?: (paymentId: string, date: string, transactionId: string) => void;
   onPaymentChange?: (payment: PlannedPayment) => void | Promise<void>;
-  onPaymentDelete?: (id: string) => void | Promise<void>;
+  onPaymentDelete?: (id: string, date: string) => void | Promise<void>;
   focusDate?: string;
   onFocusDateHandled?: () => void;
 }
@@ -151,6 +151,7 @@ export default function PaymentCalendarTab({
       accountName: account?.name || '',
       status: 'pending',
       paidDates: [],
+      disableFrom: null,
       color: 'plum',
     });
     setDialogMode('create');
@@ -286,7 +287,7 @@ export default function PaymentCalendarTab({
               setEditingPayment({ ...item.payment });
               setDialogMode('edit');
             }}
-            onDeleteTask={item => onPaymentDelete?.(item.payment.id)}
+            onDeleteTask={item => onPaymentDelete?.(item.payment.id, item.date)}
           />
           </div>
       </div>
@@ -344,6 +345,19 @@ function PaymentDialog({ mode, payment, accounts, categories, onChange, onClose,
             <label className="block text-xs font-bold text-theme-muted">Повторение<select data-testid="select-payment-recurrence" value={payment.recurrence} onChange={event => set('recurrence', event.target.value as PlannedPaymentRecurrence)} className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main">{RECURRENCES.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
             <label className="block text-xs font-bold text-theme-muted">Счёт<select data-testid="select-payment-account" value={payment.accountId || ''} onChange={event => { const account = accounts.find(item => item.id === event.target.value); onChange({ ...payment, accountId: account?.id, accountName: account?.name || '' }); }} className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main"><option value="">Не выбран</option>{accounts.map(account => <option key={account.id} value={account.id}>{account.name}</option>)}</select></label>
           </div>
+           {mode === 'edit' && (
+             <label className="block text-xs font-bold text-theme-muted">
+               Отключать с даты
+               <input
+                 data-testid="input-payment-disable-from"
+                 type="date"
+                 value={payment.disableFrom || ''}
+                 onChange={event => set('disableFrom', event.target.value || null)}
+                 className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main"
+               />
+               <span className="mt-1 block text-[10px] font-normal text-theme-muted">Вхождения до этой даты включительно останутся в истории.</span>
+             </label>
+           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="block text-xs font-bold text-theme-muted">Тип операции<select data-testid="select-payment-type" value={transactionType} onChange={event => { const nextType = event.target.value as 'expense' | 'income'; const category = categories.find(item => item.type === nextType); onChange({ ...payment, transactionType: nextType, categoryId: category?.id, categoryName: category?.name }); }} className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main"><option value="expense">Расход</option><option value="income">Доход</option></select></label>
             <CategorySelect

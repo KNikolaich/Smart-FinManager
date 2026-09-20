@@ -499,8 +499,10 @@ export default function PlanPage({
     }));
   };
 
-  const handleCalendarPaymentDelete = async (id: string) => {
-    await saveCalendarPayments(calendarPayments.filter(payment => payment.id !== id));
+  const handleCalendarPaymentDelete = async (id: string, date: string) => {
+    await saveCalendarPayments(calendarPayments.map(payment => (
+      payment.id === id ? { ...payment, disableFrom: date } : payment
+    )));
   };
 
   const handleManualSave = () => {

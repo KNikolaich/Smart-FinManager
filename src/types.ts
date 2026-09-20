@@ -185,6 +185,7 @@ export interface PlannedPayment {
   categoryName?: string;
   accountId?: string;
   accountName?: string;
+  disableFrom?: string | null;
   status: PlannedPaymentStatus;
   paidDates?: string[];
   occurrences?: Array<{

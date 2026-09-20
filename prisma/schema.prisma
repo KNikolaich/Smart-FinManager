@@ -159,6 +159,7 @@ model CalendarPlan {
   accountId       String?
   categoryId      String?
   color           String?
+  disableFrom     DateTime? @db.Date
   archivedAt      DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

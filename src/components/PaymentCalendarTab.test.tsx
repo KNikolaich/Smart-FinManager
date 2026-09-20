@@ -42,6 +42,25 @@ describe('PaymentCalendarTab', () => {
     expect(within(screen.getByTestId('calendar-day-2026-10-01')).getByText('Начало следующего месяца')).toBeTruthy();
   });
 
+  it('stops generating recurring occurrences after the inclusive disable date', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 18, 12));
+    const disabledPayment = {
+      ...payment,
+      id: 'disabled-rent',
+      date: '2026-09-02',
+      recurrence: 'weekly' as const,
+      disableFrom: '2026-09-16',
+    };
+    render(<PaymentCalendarTab payments={[disabledPayment]} accounts={[]} />);
+
+    fireEvent.click(screen.getByTestId('calendar-day-2026-09-16'));
+    expect(screen.getByTestId('payment-row-disabled-rent-2026-09-16')).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId('calendar-day-2026-09-23'));
+    expect(screen.queryByTestId('payment-row-disabled-rent-2026-09-23')).toBeNull();
+  });
+
   it('toggles the selected occurrence status', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 18, 12));
@@ -160,5 +179,18 @@ describe('PaymentCalendarTab', () => {
 
     expect(screen.getByRole('dialog')).toBeTruthy();
     expect(screen.getByRole('dialog').textContent).toContain('Изменить');
+  });
+
+  it('passes the focused occurrence date when disabling a plan', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 18, 12));
+    const onPaymentDelete = vi.fn();
+    render(<PaymentCalendarTab payments={[payment]} accounts={[]} onPaymentDelete={onPaymentDelete} />);
+
+    fireEvent.click(screen.getByTestId('calendar-day-2026-09-05'));
+    fireEvent.click(screen.getByTestId('button-upcoming-delete'));
+    fireEvent.click(screen.getByTestId('button-upcoming-delete-confirm'));
+
+    expect(onPaymentDelete).toHaveBeenCalledWith('rent', '2026-09-05');
   });
 });

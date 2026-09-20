@@ -19,6 +19,7 @@ type LegacyPayment = {
   accountId?: string;
   categoryId?: string;
   color?: string;
+  disableFrom?: string | null;
   status?: string;
   paidDates?: string[];
 };
@@ -114,6 +115,7 @@ async function upsertPlan(tx: any, userId: string, payment: LegacyPayment, stric
     accountId,
     categoryId,
     color: payment.color || null,
+    disableFrom: payment.disableFrom ? dateOnly(payment.disableFrom) : null,
     archivedAt: null,
   };
 
@@ -197,6 +199,7 @@ function serializePlan(plan: any) {
     categoryName: plan.category?.name,
     status: paidDates.includes(dateKey(plan.date)) ? "paid" : "pending",
     paidDates,
+    disableFrom: plan.disableFrom ? dateKey(plan.disableFrom) : null,
     color: plan.color || undefined,
     occurrences,
   };
@@ -245,17 +248,24 @@ export async function setManualCompletion(
     throw error;
   }
 
+  const occurrenceDate = dateOnly(date);
+  if (plan.disableFrom && occurrenceDate > plan.disableFrom) {
+    const error: any = new Error("План отключён с этой даты");
+    error.status = 400;
+    throw error;
+  }
+
   const occurrence = await prisma.calendarOccurrence.upsert({
     where: {
       calendarPlanId_date: {
         calendarPlanId: plan.id,
-        date: dateOnly(date),
+        date: occurrenceDate,
       },
     },
     update: { manuallyCompletedAt: completed ? new Date() : null },
     create: {
       calendarPlanId: plan.id,
-      date: dateOnly(date),
+      date: occurrenceDate,
       manuallyCompletedAt: completed ? new Date() : null,
     },
     include: { transaction: { select: { id: true } } },
@@ -308,17 +318,24 @@ export async function ensureOccurrenceOwned(
     throw error;
   }
 
+  const occurrenceDate = dateOnly(date);
+  if (plan.disableFrom && occurrenceDate > plan.disableFrom) {
+    const error: any = new Error("План отключён с этой даты");
+    error.status = 400;
+    throw error;
+  }
+
   return prisma.calendarOccurrence.upsert({
     where: {
       calendarPlanId_date: {
         calendarPlanId: plan.id,
-        date: dateOnly(date),
+        date: occurrenceDate,
       },
     },
     update: {},
     create: {
       calendarPlanId: plan.id,
-      date: dateOnly(date),
+      date: occurrenceDate,
     },
   });
 }

@@ -37,6 +37,7 @@ export function getPaymentOccurrencesInRange(
   for (const date = new Date(start.getFullYear(), start.getMonth(), start.getDate()); date <= end; date.setDate(date.getDate() + 1)) {
     const dateKey = toDateKey(date);
     if (dateKey < payment.date) continue;
+    if (payment.disableFrom && dateKey > payment.disableFrom) continue;
 
     const monthDistance = (date.getFullYear() - base.getFullYear()) * 12 + date.getMonth() - base.getMonth();
     const dayDistance = Math.round((date.getTime() - base.getTime()) / 86400000);
