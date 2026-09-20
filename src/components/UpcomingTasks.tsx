@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CircleDashed, Hand, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { CalendarDays, CircleDashed, Hand, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { PlannedPayment, PlannedPaymentRecurrence } from '../types';
 import {
