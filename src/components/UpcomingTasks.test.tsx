@@ -155,6 +155,21 @@ describe('UpcomingTasks', () => {
     expect(screen.getByTestId('payment-row-paid-tone-2026-09-20').className).not.toContain('bg-lime-50');
   });
 
+  it('keeps the list touch-scrollable without a visible scrollbar and includes past tasks', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 20, 12));
+    const past = { ...makePayment(0), id: 'past-list', title: 'Прошлый план', date: '2026-09-10' };
+    const future = { ...makePayment(1), id: 'future-list', title: 'Будущий план', date: '2026-09-25' };
+    render(<UpcomingTasks payments={[past, future]} startDate="2026-09-20" />);
+
+    const list = screen.getByTestId('upcoming-tasks-list');
+    expect(list.className).toContain('no-scrollbar');
+    expect(list.className).toContain('touch-pan-y');
+    expect(screen.getByText('Прошлый план')).toBeTruthy();
+    expect(screen.getByText('Будущий план')).toBeTruthy();
+    vi.useRealTimers();
+  });
+
   it('pulses overdue banners until the user taps them', () => {
     const payment = { ...makePayment(0), id: 'overdue-pulse', date: '2026-09-19' };
     render(<UpcomingTasks payments={[payment]} variant="carousel" startDate="2026-09-19" />);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, CircleDashed, Hand, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { PlannedPayment, PlannedPaymentRecurrence } from '../types';
@@ -52,13 +52,15 @@ export default function UpcomingTasks({
   const [error, setError] = useState<string | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [carouselLimit, setCarouselLimit] = useState(limit);
-  const [listPage, setListPage] = useState(1);
+  const [listWindow, setListWindow] = useState({ start: 0, end: 50 });
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [quietOverdue, setQuietOverdue] = useState<Set<string>>(new Set());
   const pointerStartX = useRef<number | null>(null);
   const suppressCarouselClick = useRef(false);
   const previousStartDate = useRef(startDate);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const previousListHeight = useRef<number | null>(null);
 
   useEffect(() => {
     if (payments !== undefined) {
@@ -96,12 +98,13 @@ export default function UpcomingTasks({
   const loadedOccurrences = useMemo(
     () => variant === 'carousel'
       ? getOutstandingPaymentOccurrences(sourcePayments, startDate, carouselLimit)
-      : getPaymentOccurrencesForFilter(sourcePayments, startDate, filter, pageSize * listPage + 1),
-    [sourcePayments, startDate, filter, listPage, carouselLimit, variant],
+      : getPaymentOccurrencesForFilter(sourcePayments, startDate, filter, Number.MAX_SAFE_INTEGER),
+    [sourcePayments, startDate, filter, carouselLimit, variant],
   );
-  const hasMore = variant === 'list' && loadedOccurrences.length > pageSize * listPage;
+  const hasPrevious = variant === 'list' && listWindow.start > 0;
+  const hasMore = variant === 'list' && listWindow.end < loadedOccurrences.length;
   const occurrences = variant === 'list'
-    ? loadedOccurrences.slice(0, pageSize * listPage)
+    ? loadedOccurrences.slice(listWindow.start, listWindow.end)
     : loadedOccurrences;
   const activeCarouselIndex = occurrences.length === 0 ? 0 : Math.min(carouselIndex, occurrences.length - 1);
   const focusedOccurrence = useMemo(
@@ -115,7 +118,6 @@ export default function UpcomingTasks({
     const startDateChanged = previousStartDate.current !== startDate;
     if (startDateChanged) {
       previousStartDate.current = startDate;
-      setListPage(1);
     }
     if (variant === 'list' && startDateChanged) {
       const next = occurrences.find(item => item.date === startDate) || occurrences[0];
@@ -134,8 +136,19 @@ export default function UpcomingTasks({
   }, [activeCarouselIndex, occurrences, startDate, variant, focusedKey]);
 
   useEffect(() => {
-    setListPage(1);
-  }, [filter]);
+    if (variant !== 'list') return;
+    setListWindow(getInitialListWindow(loadedOccurrences, startDate, pageSize));
+    previousListHeight.current = null;
+    listRef.current?.scrollTo?.({ top: 0 });
+  }, [filter, startDate, variant, sourcePayments.length]);
+
+  useLayoutEffect(() => {
+    if (previousListHeight.current === null || !listRef.current) return;
+    const element = listRef.current;
+    element.scrollTop += element.scrollHeight - previousListHeight.current;
+    previousListHeight.current = null;
+  }, [listWindow.start, listWindow.end]);
+
   useEffect(() => {
     if (carouselIndex >= occurrences.length && occurrences.length > 0) {
       setCarouselIndex(occurrences.length - 1);
@@ -177,11 +190,26 @@ export default function UpcomingTasks({
   };
 
   const loadMore = () => {
-    if (hasMore) setListPage(current => current + 1);
+    if (hasMore) {
+      setListWindow(current => ({
+        ...current,
+        end: Math.min(loadedOccurrences.length, current.end + pageSize),
+      }));
+    }
+  };
+
+  const loadPrevious = () => {
+    if (!hasPrevious || !listRef.current || previousListHeight.current !== null) return;
+    previousListHeight.current = listRef.current.scrollHeight;
+    setListWindow(current => ({
+      ...current,
+      start: Math.max(0, current.start - pageSize),
+    }));
   };
 
   const handleListScroll = (event: React.UIEvent<HTMLDivElement>) => {
     const element = event.currentTarget;
+    if (element.scrollTop < 120) loadPrevious();
     if (element.scrollHeight - element.scrollTop - element.clientHeight < 120) loadMore();
   };
 
@@ -368,7 +396,12 @@ export default function UpcomingTasks({
           })}
         </div>
       ) : (
-          <div className="max-h-[min(65vh,620px)] overflow-y-auto space-y-2 pt-3 pr-1" onScroll={handleListScroll} data-testid="upcoming-tasks-list">
+          <div ref={listRef} className="max-h-[min(65vh,620px)] overflow-y-auto no-scrollbar overscroll-contain touch-pan-y space-y-2 pt-3 pr-1" onScroll={handleListScroll} data-testid="upcoming-tasks-list">
+          {hasPrevious && (
+            <button type="button" data-testid="button-upcoming-load-previous" onClick={loadPrevious} className="w-full rounded-xl border border-dashed border-theme-base px-3 py-2 text-xs text-theme-muted hover:bg-theme-main">
+              Показать более ранние
+            </button>
+          )}
           {occurrences.map(item => {
             const key = `${item.payment.id}-${item.date}`;
             const canToggle = Boolean(onToggleTask);
@@ -482,4 +515,24 @@ function recurrenceLabel(value: PlannedPaymentRecurrence) {
     yearly: 'Ежегодно',
   };
   return labels[value];
+}
+
+function getInitialListWindow(
+  occurrences: PlannedPaymentOccurrence[],
+  anchorDate: string,
+  pageSize: number,
+) {
+  if (occurrences.length === 0) return { start: 0, end: 0 };
+
+  const firstOccurrenceAtOrAfterAnchor = occurrences.findIndex(item => item.date >= anchorDate);
+  const anchorIndex = firstOccurrenceAtOrAfterAnchor >= 0
+    ? firstOccurrenceAtOrAfterAnchor
+    : occurrences.length - 1;
+  const maxStart = Math.max(0, occurrences.length - pageSize);
+  const start = Math.max(0, Math.min(anchorIndex - Math.floor(pageSize / 2), maxStart));
+
+  return {
+    start,
+    end: Math.min(occurrences.length, start + pageSize),
+  };
 }
