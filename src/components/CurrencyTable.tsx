@@ -13,8 +13,9 @@ const dateTime = (value?: string) => value ? new Date(value).toLocaleString('ru-
 const isCrypto = (currency: Currency) => CRYPTO_ISOS.has(currency.iso.trim().toUpperCase()) || currency.rateSource === 'coingecko';
 
 export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
-  const [currencies, setCurrencies] = useState<Currency[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedCurrencies = currencyService.getCachedCurrencies();
+  const [currencies, setCurrencies] = useState<Currency[]>(() => cachedCurrencies || []);
+  const [loading, setLoading] = useState(cachedCurrencies === null);
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingCurrency, setEditingCurrency] = useState<Currency | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -24,7 +25,8 @@ export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) =
   const [loadError, setLoadError] = useState(false);
   const [rateUpdateMessage, setRateUpdateMessage] = useState<string | null>(null);
 
-  const fetchCurrencies = async () => {
+  const fetchCurrencies = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     setLoadError(false);
     try {
       const data = await currencyService.getCurrencies();
@@ -44,7 +46,9 @@ export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) =
       } catch (err) { console.error('Error fetching user:', err); }
     };
     init();
-    fetchCurrencies();
+    if (!currencyService.hasFreshCache('/currencies')) {
+      void fetchCurrencies(cachedCurrencies === null);
+    }
   }, []);
 
   const isAdmin = user?.role === 'admin';
@@ -87,13 +91,13 @@ export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) =
   };
 
   if (loading) return <div className="p-4 text-theme-muted text-sm animate-pulse">Загрузка валют...</div>;
-  if (loadError) return <div className="p-6 text-center text-theme-muted"><p className="text-sm font-bold">Не удалось загрузить валюты</p><button data-testid="button-retry-currencies" onClick={fetchCurrencies} className="mt-3 rounded-lg bg-theme-primary px-4 py-2 text-[10px] font-black uppercase text-theme-on-primary">Повторить</button></div>;
+  if (loadError && currencies.length === 0) return <div className="p-6 text-center text-theme-muted"><p className="text-sm font-bold">Не удалось загрузить валюты</p><button data-testid="button-retry-currencies" onClick={() => void fetchCurrencies(true)} className="mt-3 rounded-lg bg-theme-primary px-4 py-2 text-[10px] font-black uppercase text-theme-on-primary">Повторить</button></div>;
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-0 backdrop-blur-xl lg:p-8">
       <div className="relative flex h-full w-full flex-col overflow-hidden bg-theme-main shadow-2xl lg:h-auto lg:max-w-4xl lg:rounded-xl lg:border border-neutral-100">
         <div className="flex shrink-0 items-center justify-between border-b border-neutral-100 bg-theme-surface/10 px-4 py-4 sm:px-6">
-          <div><h3 className="text-sm font-black uppercase text-theme-main">Валюты</h3><p className="mt-1 text-[10px] text-theme-muted">Банковские котировки и крипторынок</p></div>
+          <div><h3 className="text-sm font-black uppercase text-theme-main">Валюты</h3></div>
           <div className="flex items-center gap-2">
             {isAdmin && <><button data-testid="button-refresh-bank-rates" onClick={handleUpdateRates} disabled={updatingRates} className="flex items-center gap-1.5 rounded-lg border border-neutral-100 bg-theme-surface px-3 py-2 text-[8px] font-black uppercase tracking-widest text-theme-muted disabled:opacity-50"><RefreshCw size={12} className={updatingRates ? 'animate-spin' : ''} />{updatingRates ? 'Обновление' : 'Обновить'}</button><button data-testid="button-add-currency" onClick={() => { setEditingCurrency(null); setShowFormModal(true); }} className="flex h-10 w-10 items-center justify-center rounded-lg bg-theme-primary text-theme-on-primary"><Plus size={18} /></button></>}
             {onClose && <button data-testid="button-close-currencies" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-xl border border-theme-base bg-theme-main/50"><X size={18} /></button>}
@@ -116,10 +120,37 @@ export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) =
 
 function RateHistoryChart({ iso }: { iso: string }) {
   const [periodIndex, setPeriodIndex] = useState(1);
-  const [history, setHistory] = useState<RateHistoryResponse | null>(null);
-  const [error, setError] = useState(false);
   const days = PERIODS[periodIndex];
-  useEffect(() => { let cancelled = false; setHistory(null); setError(false); currencyService.getRateHistory(iso, days).then(data => { if (!cancelled) setHistory(data); }).catch(() => { if (!cancelled) setError(true); }); return () => { cancelled = true; }; }, [iso, days]);
+  const [history, setHistory] = useState<RateHistoryResponse | null>(() => currencyService.getCachedRateHistory(iso, days));
+  const [error, setError] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    const endpoint = `/currencies/history/${encodeURIComponent(iso)}?days=${days}`;
+    const cached = currencyService.getCachedRateHistory(iso, days);
+    setHistory(cached);
+    setError(false);
+
+    const load = async (attempt = 0) => {
+      if (currencyService.hasFreshCache(endpoint) && cached) return;
+      try {
+        const data = await currencyService.getRateHistory(iso, days);
+        if (cancelled) return;
+        setHistory(data);
+        if (data.refreshing && attempt < 5) {
+          retryTimer = setTimeout(() => void load(attempt + 1), 1500);
+        }
+      } catch {
+        if (!cancelled && !cached) setError(true);
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
+    };
+  }, [iso, days]);
   const points = history?.points || [];
   const chartPoints = useMemo(() => points.map(p => ({ ...p, label: new Date(p.timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) })), [points]);
   const market = history?.quoteType === 'market' || history?.source === 'coingecko';
@@ -134,8 +165,8 @@ function RateHistoryChart({ iso }: { iso: string }) {
     : null;
   const ChangeIcon = (market ? change?.direction === 'up' ? ArrowUpRight : change?.direction === 'down' ? ArrowDownRight : Minus : spreadChange == null || spreadChange === 0 ? Minus : spreadChange > 0 ? ArrowUpRight : ArrowDownRight);
   if (error) return <div className="py-6 text-center text-xs font-bold text-theme-muted">История пока недоступна. Попробуйте ещё раз позже.</div>;
-   return <div><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><div className="text-[10px] font-black uppercase tracking-widest text-theme-muted">{iso} → RUB · {days} дней</div><div className="mt-1 text-[9px] text-theme-muted">{history ? (market ? 'CoinGecko · рыночная цена' : 'Авангард · безналичный курс') : 'Загрузка источника...'}</div></div><div className="flex items-center gap-1"><button aria-label="Увеличить график" data-testid={`button-period-previous-${iso}`} disabled={periodIndex === 0} onClick={() => setPeriodIndex(i => Math.max(0, i - 1))} className="rounded border border-theme-base p-1.5 text-theme-muted disabled:opacity-30"><Plus size={14} /></button><span className="min-w-12 text-center text-[10px] font-black text-theme-main">{days} дн.</span><button aria-label="Уменьшить график" data-testid={`button-period-next-${iso}`} disabled={periodIndex === PERIODS.length - 1} onClick={() => setPeriodIndex(i => Math.min(PERIODS.length - 1, i + 1))} className="rounded border border-theme-base p-1.5 text-theme-muted disabled:opacity-30"><Minus size={14} /></button></div></div>
-     {history === null ? <div className="h-48 animate-pulse rounded-lg bg-theme-surface" /> : points.length < 2 ? <div className="rounded-lg border border-dashed border-theme-base px-4 py-10 text-center text-xs text-theme-muted">История накапливается. Для выбранного периода пока недостаточно котировок.</div> : <><div className="mb-2 flex flex-wrap items-center gap-4 text-[10px] font-bold">{market ? <><span className="text-theme-primary">Рыночная цена</span>{change && <span className="ml-auto flex items-center gap-1 text-theme-muted"><ChangeIcon size={13} />{money(change.absolute)} ₽{change.percent == null ? '' : ` · ${change.percent > 0 ? '+' : ''}${change.percent.toFixed(2)}%`}</span>}</> : <><span className="text-finance-income">Покупка</span><span className="text-finance-expense">Продажа</span>{currentSpread != null && <span className="ml-auto flex items-center gap-1 text-theme-muted"><ChangeIcon size={13} />Спред {money(currentSpread)} ₽{spreadChangePercent == null ? '' : ` · ${spreadChangePercent > 0 ? '+' : ''}${spreadChangePercent.toFixed(2)}%`}</span>}</>}</div><div className="h-48 w-full"><ResponsiveContainer width="100%" height="100%"><LineChart data={chartPoints} margin={{ top: 5, right: 8, bottom: 0, left: 0 }}><CartesianGrid strokeDasharray="3 3" strokeOpacity={.18} /><XAxis dataKey="label" tick={{ fontSize: 9 }} minTickGap={24} /><YAxis domain={[min - pad, max + pad]} tick={{ fontSize: 9 }} width={52} tickFormatter={v => money(Number(v))} /><Tooltip content={market ? <MarketTooltip /> : <BankTooltip />} />{market ? <Line type="monotone" dataKey="rate" name="Рыночная цена" stroke="#5678c7" strokeWidth={2} dot={false} activeDot={{ r: 4 }} /> : <><Line type="monotone" dataKey="buyRate" name="Покупка" stroke="#169b73" strokeWidth={2} dot={false} activeDot={{ r: 4 }} /><Line type="monotone" dataKey="sellRate" name="Продажа" stroke="#d05b58" strokeWidth={2} dot={false} activeDot={{ r: 4 }} /></>}</LineChart></ResponsiveContainer></div></>}</div>;
+   return <div><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><div className="text-[10px] font-black uppercase tracking-widest text-theme-muted">{iso} → RUB · {days} дней</div></div><div className="flex items-center gap-1"><button aria-label="Увеличить график" data-testid={`button-period-previous-${iso}`} disabled={periodIndex === 0} onClick={() => setPeriodIndex(i => Math.max(0, i - 1))} className="rounded border border-theme-base p-1.5 text-theme-muted disabled:opacity-30"><Plus size={14} /></button><span className="min-w-12 text-center text-[10px] font-black text-theme-main">{days} дн.</span><button aria-label="Уменьшить график" data-testid={`button-period-next-${iso}`} disabled={periodIndex === PERIODS.length - 1} onClick={() => setPeriodIndex(i => Math.min(PERIODS.length - 1, i + 1))} className="rounded border border-theme-base p-1.5 text-theme-muted disabled:opacity-30"><Minus size={14} /></button></div></div>
+      {history === null ? <div className="h-48 animate-pulse rounded-lg bg-theme-surface" /> : points.length < 2 ? <div className="rounded-lg border border-dashed border-theme-base px-4 py-10 text-center text-xs text-theme-muted">История накапливается. Для выбранного периода пока недостаточно котировок.</div> : <><div className="mb-2 flex flex-wrap items-center gap-4 text-[10px] font-bold">{market ? <><span className="text-theme-primary">Рыночная цена</span>{change && <span className="ml-auto flex items-center gap-1 text-theme-muted"><ChangeIcon size={13} />{money(change.absolute)} ₽{change.percent == null ? '' : ` · ${change.percent > 0 ? '+' : ''}${change.percent.toFixed(2)}%`}</span>}</> : <><span className="text-finance-income">Покупка</span><span className="text-finance-expense">Продажа</span>{currentSpread != null && <span className="ml-auto flex items-center gap-1 text-theme-muted"><ChangeIcon size={13} />Спред {money(currentSpread)} ₽{spreadChangePercent == null ? '' : ` · ${spreadChangePercent > 0 ? '+' : ''}${spreadChangePercent.toFixed(2)}%`}</span>}</>}</div><div className="h-56 w-full sm:h-64"><ResponsiveContainer width="100%" height="100%"><LineChart data={chartPoints} margin={{ top: 5, right: 8, bottom: 0, left: 0 }}><CartesianGrid strokeDasharray="3 3" strokeOpacity={.18} /><XAxis dataKey="label" tick={{ fontSize: 9 }} minTickGap={24} /><YAxis domain={[min - pad, max + pad]} tick={{ fontSize: 9 }} width={52} tickFormatter={v => money(Number(v))} /><Tooltip content={market ? <MarketTooltip /> : <BankTooltip />} />{market ? <Line type="monotone" dataKey="rate" name="Рыночная цена" stroke="#5678c7" strokeWidth={2} dot={false} activeDot={{ r: 4 }} /> : <><Line type="monotone" dataKey="buyRate" name="Покупка" stroke="#169b73" strokeWidth={2} dot={false} activeDot={{ r: 4 }} /><Line type="monotone" dataKey="sellRate" name="Продажа" stroke="#d05b58" strokeWidth={2} dot={false} activeDot={{ r: 4 }} /></>}</LineChart></ResponsiveContainer></div></>}</div>;
 }
 
 function MarketTooltip({ active, payload, label }: any) {

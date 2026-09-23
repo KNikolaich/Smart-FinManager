@@ -120,6 +120,14 @@ function moscowDateValue(now = new Date()) {
   return new Date(Date.UTC(year, month - 1, day));
 }
 
+function isSameMoscowDate(left: Date, right = new Date()) {
+  const leftParts = getMoscowDateParts(left);
+  const rightParts = getMoscowDateParts(right);
+  return leftParts.year === rightParts.year
+    && leftParts.month === rightParts.month
+    && leftParts.day === rightParts.day;
+}
+
 function parseQuoteTimestamp(content: string) {
   const match = content.match(/Действительно на(?:\s|<[^>]+>)*(\d{2}):(\d{2}),\s*(\d{2})\.(\d{2})\.(\d{4})/i);
   if (!match) return new Date();
@@ -498,14 +506,6 @@ export async function getRateHistory(iso: string, days: number) {
     };
   }
 
-  try {
-    await refreshBankRates(false);
-  } catch (error: any) {
-    // Existing snapshots remain useful when the upstream site is temporarily
-    // unavailable. An empty result below still gives the UI an honest state.
-    console.warn("Could not refresh Avangard rates before history query:", error.message);
-  }
-
   const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const snapshots = await prisma.currencyRateSnapshot.findMany({
     where: {
@@ -516,12 +516,21 @@ export async function getRateHistory(iso: string, days: number) {
     },
     orderBy: { quotedAt: "asc" },
   });
+  const hasTodaySnapshot = snapshots.some(point => isSameMoscowDate(point.quotedAt));
+  if (!hasTodaySnapshot) {
+    // Return the local history immediately. The upstream request can be slow,
+    // so it must not block already persisted chart data.
+    void refreshBankRates(false).catch((error: any) => {
+      console.warn("Could not refresh Avangard rates in background:", error.message);
+    });
+  }
 
   return {
     iso: code,
     days,
     source: "avangard",
     quoteType: "cashless",
+    refreshing: !hasTodaySnapshot,
     points: snapshots.map(point => {
       const spread = point.sellRate - point.buyRate;
       return {

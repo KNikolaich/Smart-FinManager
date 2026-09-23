@@ -1,4 +1,4 @@
-import { api } from '../lib/api';
+import { api, getCacheTimestamp, safeStorage } from '../lib/api';
 import { Currency } from '../types';
 
 export interface RateHistoryPoint {
@@ -39,6 +39,7 @@ export interface RateHistoryResponse {
   source: string;
   quoteType: string;
   points: RateHistoryPoint[];
+  refreshing?: boolean;
 }
 
 export interface RateChange {
@@ -70,13 +71,42 @@ export function getRateChange(points: RateHistoryPoint[]): RateChange | null {
 }
 
 export const currencyService = {
-  async getCurrencies(): Promise<Currency[]> {
+  getCachedCurrencies(): Currency[] | null {
+    const raw = safeStorage.getItem('api_cache_/currencies');
+    if (!raw) return null;
     try {
-      return await api.get('/currencies');
-    } catch (error) {
-      console.error('Error fetching currencies:', error);
-      return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
     }
+  },
+
+  getCachedRateHistory(iso: string, days: number): RateHistoryResponse | null {
+    const endpoint = `/currencies/history/${encodeURIComponent(iso)}?days=${days}`;
+    const raw = safeStorage.getItem(`api_cache_${endpoint}`);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' && Array.isArray(parsed.points) ? parsed : null;
+    } catch {
+      return null;
+    }
+  },
+
+  hasFreshCache(endpoint: string): boolean {
+    const timestamp = getCacheTimestamp(endpoint);
+    if (timestamp === null) return false;
+    const dateKey = (date: Date) => [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0'),
+    ].join('-');
+    return dateKey(new Date(timestamp)) === dateKey(new Date());
+  },
+
+  async getCurrencies(): Promise<Currency[]> {
+    return await api.get('/currencies');
   },
 
   subscribeToCurrencies(callback: (currencies: Currency[]) => void) {
