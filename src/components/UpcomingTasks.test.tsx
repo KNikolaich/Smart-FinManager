@@ -292,7 +292,7 @@ describe('UpcomingTasks', () => {
     const list = screen.getByTestId('upcoming-tasks-list');
     const firstRow = list.querySelector('[data-testid^="payment-row-"]');
 
-    expect(firstRow).toHaveAttribute('data-testid', 'payment-row-focused-overdue-2026-10-01');
+    expect(firstRow?.getAttribute('data-testid')).toBe('payment-row-focused-overdue-2026-10-01');
     expect(screen.getByText('Первая просрочка')).toBeTruthy();
     expect(screen.queryByText('Прошлый план 0')).toBeNull();
     expect(screen.getByTestId('button-upcoming-load-previous')).toBeTruthy();

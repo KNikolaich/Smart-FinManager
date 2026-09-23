@@ -63,7 +63,6 @@ export default function UpcomingTasks({
   const pointerStartX = useRef<number | null>(null);
   const suppressCarouselClick = useRef(false);
   const previousStartDate = useRef(startDate);
-  const listInitialFocusResolved = useRef(false);
   const listRef = useRef<HTMLDivElement | null>(null);
   const previousListHeight = useRef<number | null>(null);
 
@@ -154,8 +153,7 @@ export default function UpcomingTasks({
 
   useEffect(() => {
     if (variant !== 'list') return;
-    const useDefaultFocus = !listInitialFocusResolved.current && loadedOccurrences.length > 0;
-    const initialFocus = useDefaultFocus
+    const initialFocus = loadedOccurrences.length > 0
       ? getDefaultFocusOccurrence(loadedOccurrences, startDate)
       : undefined;
     setListWindow(getInitialListWindow(
@@ -164,7 +162,6 @@ export default function UpcomingTasks({
       startDate,
       pageSize,
     ));
-    if (useDefaultFocus) listInitialFocusResolved.current = true;
     previousListHeight.current = null;
     listRef.current?.scrollTo?.({ top: 0 });
   }, [filter, startDate, variant, sourcePayments.length]);
@@ -636,8 +633,7 @@ function getInitialListWindow(
     : firstOccurrenceAtOrAfterAnchor >= 0
       ? firstOccurrenceAtOrAfterAnchor
     : occurrences.length - 1;
-  const maxStart = Math.max(0, occurrences.length - pageSize);
-  const start = Math.max(0, Math.min(anchorIndex, maxStart));
+  const start = Math.max(0, Math.min(anchorIndex, occurrences.length - 1));
 
   return {
     start,

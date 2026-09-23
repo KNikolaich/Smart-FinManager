@@ -11,3 +11,4 @@
 - [Avangard rate transport](avangard-rate-transport.md) — keep the verified reader fallback; direct TLS fails in Replit, and globally disabling certificate checks is not acceptable.
 - [Theme utility opacity](theme-utility-opacity.md) — custom semantic color utilities need explicit opacity variants to remain theme-aware in Tailwind output.
 - [Theme contrast roles](theme-contrast-roles.md) — every theme must define page/card/input surfaces, primary text, muted text, borders, and color-scheme explicitly.
+- [Upcoming plan list positioning](upcoming-plan-list-positioning.md) — open the calendar list with the focused incomplete occurrence as the first visible row; keep history reachable above it.
