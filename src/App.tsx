@@ -5,7 +5,9 @@ import { useAppData } from './hooks/useAppData';
 import { useAuth } from './hooks/useAuth';
 import { useGlobalInputContextMenu } from './hooks/useGlobalInputContextMenu';
 import { api, safeStorage, syncOfflineQueue } from './lib/api';
-import { Transaction } from './types';
+import { DashboardLayoutSettings, Transaction, UserProfile } from './types';
+import { getDashboardLayout } from './lib/dashboardLayout';
+import { useDashboardDevice } from './hooks/useDashboardDevice';
 
 // Import components directly to avoid lazy loading issues in preview
 import Dashboard from './components/Dashboard';
@@ -39,6 +41,7 @@ export default function App() {
   }, []);
 
   const { user, setUser, loading, handleLogout } = useAuth(addToast);
+  const dashboardDevice = useDashboardDevice();
   const {
     accounts,
     transactions,
@@ -198,6 +201,15 @@ export default function App() {
     setCalendarFocusDate(undefined);
   }, []);
 
+  const handleSaveDashboardLayout = useCallback(async (dashboard: DashboardLayoutSettings) => {
+    if (!user) return;
+    const updatedUser = await api.put<UserProfile>('/auth/me', {
+      settings: { dashboard },
+    });
+    setUser(updatedUser);
+    addToast('Настройки дашборда сохранены', 'success');
+  }, [addToast, setUser, user]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-theme-main">
@@ -211,6 +223,8 @@ export default function App() {
       <Auth onAuth={setUser} />
     );
   }
+
+  const dashboardLayout = getDashboardLayout(user.settings, dashboardDevice);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -249,6 +263,8 @@ export default function App() {
             onEditTransaction={setEditingTransaction}
             onNavigateToCalendar={handleNavigateToCalendar}
             onOpenCalendar={handleOpenCalendar}
+            widgetOrder={dashboardLayout.order}
+            widgetVisibility={dashboardLayout.visibility}
           />
         );
       case 'plan':
@@ -292,7 +308,7 @@ export default function App() {
           />
         );
       case 'settings':
-        return <Settings user={user} accounts={accounts} onLogout={handleLogout} onShowLogs={() => setShowAILogs(true)} onRefresh={refreshData} />;
+        return <Settings user={user} accounts={accounts} onLogout={handleLogout} onShowLogs={() => setShowAILogs(true)} onRefresh={refreshData} onSaveDashboardLayout={handleSaveDashboardLayout} />;
       case 'ai':
         return (
           <AIAssistant

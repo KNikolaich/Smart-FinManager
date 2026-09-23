@@ -1,21 +1,15 @@
 import { Fragment } from 'react';
-import { Account, Transaction, Goal, Category, Currency, BalanceHistory } from '../types';
+import { Account, Transaction, Goal, Category, Currency, BalanceHistory, DashboardWidgetId } from '../types';
 import { useDashboardMetrics } from '../hooks/useDashboardMetrics';
 import { TotalBalanceCard } from './dashboard/TotalBalanceCard';
 import { AccountsSection } from './dashboard/AccountsSection';
 import { TransactionsSection } from './dashboard/TransactionsSection';
 import { GoalsSection } from './dashboard/GoalsSection';
 import UpcomingTasks from './UpcomingTasks';
+import { DEFAULT_DASHBOARD_WIDGET_ORDER } from '../lib/dashboardLayout';
 
-export type DashboardWidgetId = 'balance' | 'accounts' | 'transactions' | 'upcomingTasks' | 'goals';
-
-export const DEFAULT_DASHBOARD_WIDGET_ORDER: DashboardWidgetId[] = [
-  'balance',
-  'upcomingTasks',
-  'accounts',
-  'transactions',
-  'goals',
-];
+export type { DashboardWidgetId };
+export { DEFAULT_DASHBOARD_WIDGET_ORDER };
 
 interface DashboardProps {
   accounts: Account[];
@@ -39,6 +33,7 @@ interface DashboardProps {
   onNavigateToCalendar?: (date: string) => void;
   onOpenCalendar?: () => void;
   widgetOrder?: DashboardWidgetId[];
+  widgetVisibility?: Partial<Record<DashboardWidgetId, boolean>>;
 }
 
 export default function Dashboard({
@@ -59,6 +54,7 @@ export default function Dashboard({
   onNavigateToCalendar,
   onOpenCalendar,
   widgetOrder = DEFAULT_DASHBOARD_WIDGET_ORDER,
+  widgetVisibility = {},
 }: DashboardProps) {
   const {
     totalBalance,
@@ -137,10 +133,11 @@ export default function Dashboard({
     }
   };
 
+  const visibleWidgetOrder = widgetOrder.filter(widgetId => widgetVisibility[widgetId] !== false);
   const renderedWidgets = [];
-  for (let index = 0; index < widgetOrder.length; index += 1) {
-    const widgetId = widgetOrder[index];
-    const nextWidgetId = widgetOrder[index + 1];
+  for (let index = 0; index < visibleWidgetOrder.length; index += 1) {
+    const widgetId = visibleWidgetOrder[index];
+    const nextWidgetId = visibleWidgetOrder[index + 1];
 
     if (widgetId === 'upcomingTasks' && nextWidgetId === 'accounts') {
       renderedWidgets.push(

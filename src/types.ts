@@ -1,9 +1,24 @@
 export type TransactionType = 'income' | 'expense' | 'transfer';
 export type AccountType = 'card' | 'cash' | 'bank' | 'credit';
 
+export type DashboardWidgetId = 'upcomingTasks' | 'accounts' | 'transactions' | 'balance' | 'goals';
+export type DashboardDevice = 'desktop' | 'tablet' | 'mobile';
+
+export interface DashboardDeviceLayout {
+  order: DashboardWidgetId[];
+  visibility: Record<DashboardWidgetId, boolean>;
+}
+
+export interface DashboardLayoutSettings {
+  desktop: DashboardDeviceLayout;
+  tablet: DashboardDeviceLayout;
+  mobile: DashboardDeviceLayout;
+}
+
 export interface UserSettings {
   showTotalBalance: boolean;
   lastNudgeTime?: string;
+  dashboard?: DashboardLayoutSettings;
 }
 
 export interface UserProfile {

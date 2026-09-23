@@ -59,8 +59,8 @@ export async function getMe(req: any, res: any) {
 
 export async function updateMe(req: any, res: any) {
   try {
-    const { displayName, photoURL } = req.body;
-    const result = await authService.updateMe(req.user.userId, displayName, photoURL);
+    const { displayName, photoURL, settings } = req.body;
+    const result = await authService.updateMe(req.user.userId, displayName, photoURL, settings);
     res.json(result);
   } catch (error: any) {
     res.status(500).json({ error: error.message });

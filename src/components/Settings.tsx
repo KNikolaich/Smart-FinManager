@@ -1,4 +1,4 @@
-import { LogOut, User as UserIcon, Database, Shield, Github, Info, Sparkles, CheckCircle2, Eraser, Trash2, AlertTriangle, Tag, FileDown, FileUp, X, ArrowRightLeft, AlertCircle, Copy, Palette, ArrowUp, CreditCard, TrendingUp, RefreshCw, ServerCrash, CircleCheck } from 'lucide-react';
+import { LogOut, User as UserIcon, Database, Shield, Github, Info, Sparkles, CheckCircle2, Eraser, Trash2, AlertTriangle, Tag, FileDown, FileUp, X, ArrowRightLeft, AlertCircle, Copy, Palette, ArrowUp, CreditCard, TrendingUp, RefreshCw, ServerCrash, CircleCheck, LayoutDashboard } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { api } from '../lib/api';
 import { clsx, type ClassValue } from 'clsx';
@@ -12,7 +12,8 @@ import { useDataManagement } from '../hooks/useDataManagement';
 import { APP_VERSION } from '../version';
 import { safeStorage } from '../lib/api';
 
-import { UserProfile, Account } from '../types';
+import { DashboardLayoutSettings, UserProfile, Account } from '../types';
+import { DashboardLayoutEditor } from './settings/DashboardLayoutEditor';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -24,14 +25,16 @@ interface SettingsProps {
   onLogout: () => void;
   onShowLogs: () => void;
   onRefresh: () => void;
+  onSaveDashboardLayout: (dashboard: DashboardLayoutSettings) => Promise<void>;
 }
 
-export default function Settings({ user, accounts, onLogout, onShowLogs, onRefresh }: SettingsProps) {
+export default function Settings({ user, accounts, onLogout, onShowLogs, onRefresh, onSaveDashboardLayout }: SettingsProps) {
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showAccountManager, setShowAccountManager] = useState(false);
   const [showCurrencyTable, setShowCurrencyTable] = useState(false);
   const [showBalanceManager, setShowBalanceManager] = useState(false);
   const [showUserManager, setShowUserManager] = useState(false);
+  const [showDashboardLayoutEditor, setShowDashboardLayoutEditor] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentTheme, setCurrentTheme] = useState(safeStorage.getItem('theme') || 'theme-nordic');
 
@@ -156,6 +159,13 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
         )}
         {showUserManager && (
           <UserManager onClose={() => setShowUserManager(false)} />
+        )}
+        {showDashboardLayoutEditor && (
+          <DashboardLayoutEditor
+            value={user.settings?.dashboard}
+            onClose={() => setShowDashboardLayoutEditor(false)}
+            onSave={onSaveDashboardLayout}
+          />
         )}
         
         {showLogModal && (
@@ -494,6 +504,20 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
                 </div>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setShowDashboardLayoutEditor(true)}
+              className="w-full px-6 py-4 flex items-center gap-4 text-left hover:bg-theme-main transition-colors border-b border-neutral-50"
+            >
+              <div className="w-10 h-10 bg-theme-primary-light rounded-xl flex items-center justify-center">
+                <LayoutDashboard className="w-5 h-5 text-theme-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-sm text-theme-main">Настройка дашборда</p>
+                <p className="text-xs text-theme-muted">Видимость и порядок блоков отдельно для устройств</p>
+              </div>
+            </button>
 
             <div className="w-full px-6 py-2 flex items-center gap-4 border-b border-neutral-50">
               <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">

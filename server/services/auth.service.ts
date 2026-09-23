@@ -147,10 +147,28 @@ export async function getMe(userId: string) {
   return { id: user.id, email: user.email, displayName: user.displayName, photoURL: user.photoURL, role: user.role, settings: user.settings };
 }
 
-export async function updateMe(userId: string, displayName: string | null | undefined, photoURL: string | null | undefined) {
+export async function updateMe(
+  userId: string,
+  displayName: string | null | undefined,
+  photoURL: string | null | undefined,
+  settings?: Record<string, unknown>,
+) {
+  const data: any = { displayName, photoURL };
+
+  if (settings !== undefined) {
+    const current = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { settings: true },
+    });
+    const currentSettings = current?.settings && typeof current.settings === "object" && !Array.isArray(current.settings)
+      ? current.settings
+      : {};
+    data.settings = { ...currentSettings, ...settings };
+  }
+
   const user = await prisma.user.update({
     where: { id: userId },
-    data: { displayName, photoURL },
+    data,
   });
   return { id: user.id, email: user.email, displayName: user.displayName, photoURL: user.photoURL, role: user.role, settings: user.settings };
 }

@@ -129,9 +129,36 @@ export const verifyPasswordSchema = z.object({
   password: z.string().min(1).max(200),
 });
 
+const dashboardWidgetIdSchema = z.enum(["upcomingTasks", "accounts", "transactions", "balance", "goals"]);
+const dashboardVisibilitySchema = z.object({
+  upcomingTasks: z.boolean(),
+  accounts: z.boolean(),
+  transactions: z.boolean(),
+  balance: z.boolean(),
+  goals: z.boolean(),
+}).strict();
+const dashboardDeviceLayoutSchema = z.object({
+  order: z.array(dashboardWidgetIdSchema).length(5).refine(
+    (order) => new Set(order).size === 5,
+    { message: "Порядок компонентов должен содержать каждый компонент ровно один раз" },
+  ),
+  visibility: dashboardVisibilitySchema,
+}).strict();
+const dashboardLayoutSettingsSchema = z.object({
+  desktop: dashboardDeviceLayoutSchema,
+  tablet: dashboardDeviceLayoutSchema,
+  mobile: dashboardDeviceLayoutSchema,
+}).strict();
+const userSettingsSchema = z.object({
+  showTotalBalance: z.boolean().optional(),
+  lastNudgeTime: z.string().max(100).optional(),
+  dashboard: dashboardLayoutSettingsSchema.optional(),
+}).strict();
+
 export const updateProfileSchema = z.object({
   displayName: z.string().trim().max(120).optional().nullable(),
   photoURL: z.string().trim().max(2048).optional().nullable(),
+  settings: userSettingsSchema.optional(),
 }).strict();
 
 // --- Accounts ---
