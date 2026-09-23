@@ -22,6 +22,7 @@ import UpcomingTasks from './UpcomingTasks';
 import {
   getPaymentOccurrencesInRange,
   getTodayKey,
+  isPaymentOccurrenceOverdue,
   parseDateKey,
   PlannedPaymentFilter,
   PlannedPaymentOccurrence,
@@ -130,7 +131,7 @@ export default function PaymentCalendarTab({
   );
   const visibleOccurrences = occurrences.filter(item => {
     if (filter === 'all') return true;
-    if (filter === 'overdue') return item.status !== 'paid' && item.date < getTodayKey();
+    if (filter === 'overdue') return item.status !== 'paid' && isPaymentOccurrenceOverdue(item.date);
     return item.status === filter;
   });
   const byDate = new Map<string, PlannedPaymentOccurrence[]>();
@@ -318,6 +319,7 @@ function moveMonth(offset: number, cursor: Date, setCursor: (date: Date) => void
 
 function occurrenceTone(item: PlannedPaymentOccurrence) {
   if (item.status === 'paid') return 'bg-neutral-100 text-neutral-400 opacity-80';
+  if (isPaymentOccurrenceOverdue(item.date)) return 'bg-red-100 text-red-800';
   return item.payment.transactionType === 'income'
     ? 'bg-lime-50 text-lime-700'
     : 'bg-pink-50 text-pink-700';
@@ -325,6 +327,7 @@ function occurrenceTone(item: PlannedPaymentOccurrence) {
 
 function occurrenceDotTone(item: PlannedPaymentOccurrence) {
   if (item.status === 'paid') return 'bg-neutral-300';
+  if (isPaymentOccurrenceOverdue(item.date)) return 'bg-red-500';
   return item.payment.transactionType === 'income' ? 'bg-lime-500' : 'bg-pink-300';
 }
 

@@ -6,6 +6,7 @@ import {
   getTodayKey,
   getOutstandingPaymentOccurrences,
   getPaymentOccurrencesForFilter,
+  isPaymentOccurrenceOverdue,
   PlannedPaymentFilter,
   PlannedPaymentOccurrence,
 } from '../lib/plannedPaymentOccurrences';
@@ -293,7 +294,7 @@ export default function UpcomingTasks({
   };
 
   const quietOverdueOccurrence = (item: PlannedPaymentOccurrence) => {
-    if (item.date >= getTodayKey()) return;
+    if (!isPaymentOccurrenceOverdue(item.date)) return;
     const key = occurrenceKey(item);
     setQuietOverdue(current => {
       if (current.has(key)) return current;
@@ -393,7 +394,7 @@ export default function UpcomingTasks({
             if (!occurrence) return null;
             const isActive = stackIndex === 0;
              const key = occurrenceKey(occurrence);
-             const isPulsing = isActive && occurrence.date < getTodayKey() && !quietOverdue.has(key);
+             const isPulsing = isActive && isPaymentOccurrenceOverdue(occurrence.date) && !quietOverdue.has(key);
             const stackStyle = isActive
               ? { transform: `translateX(${dragOffset}px)`, zIndex: 30 }
               : { transform: `translateY(${stackIndex * 8}px) scale(${1 - stackIndex * 0.04})`, zIndex: 30 - stackIndex };
@@ -516,14 +517,14 @@ export default function UpcomingTasks({
 
 function occurrenceTone(item: PlannedPaymentOccurrence) {
   if (item.status === 'paid') return 'bg-neutral-100 text-neutral-400 opacity-80';
-  if (item.date < getTodayKey()) return 'bg-red-100 text-red-800';
+  if (isPaymentOccurrenceOverdue(item.date)) return 'bg-red-100 text-red-800';
   return item.payment.transactionType === 'income'
     ? 'bg-lime-50 text-lime-700'
     : 'bg-pink-50 text-pink-700';
 }
 
 function carouselTone(item: PlannedPaymentOccurrence, isPulsing = false) {
-  if (item.date < getTodayKey()) {
+  if (isPaymentOccurrenceOverdue(item.date)) {
     return `border-red-300 bg-red-100 text-red-900${isPulsing ? ' animate-overdue-pulse' : ''}`;
   }
   return item.payment.transactionType === 'income'
@@ -551,7 +552,7 @@ function formatMoney(amount: number) {
 }
 
 function carouselDateLabel(date: string, anchorDate: string) {
-  if (date < anchorDate) return `Просрочено · ${formatTaskDate(date, anchorDate)}`;
+  if (isPaymentOccurrenceOverdue(date)) return `Просрочено · ${formatTaskDate(date, anchorDate)}`;
   return formatTaskDate(date, anchorDate);
 }
 

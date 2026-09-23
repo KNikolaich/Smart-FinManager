@@ -100,12 +100,23 @@ describe('PaymentCalendarTab', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 18, 12));
     const futurePayment = { ...payment, id: 'future', title: 'Будущий платёж', date: '2026-09-20' };
-    render(<PaymentCalendarTab payments={[payment, futurePayment]} accounts={[]} />);
+    const todayPayment = { ...payment, id: 'today', title: 'Сегодняшний платёж', date: '2026-09-18', recurrence: 'none' as const };
+    render(<PaymentCalendarTab payments={[payment, todayPayment, futurePayment]} accounts={[]} />);
 
     fireEvent.change(screen.getByTestId('select-payment-filter'), { target: { value: 'overdue' } });
 
     expect(within(screen.getByTestId('calendar-day-2026-09-05')).getByText('Аренда')).toBeTruthy();
+    expect(within(screen.getByTestId('calendar-day-2026-09-18')).getByText('Сегодняшний платёж')).toBeTruthy();
     expect(within(screen.getByTestId('calendar-day-2026-09-20')).queryByText('Будущий платёж')).toBeNull();
+  });
+
+  it('uses the overdue color for an occurrence scheduled today', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 18, 12));
+    const todayPayment = { ...payment, id: 'today-tone', title: 'Сегодня красным', date: '2026-09-18', recurrence: 'none' as const };
+    render(<PaymentCalendarTab payments={[todayPayment]} accounts={[]} />);
+
+    expect(within(screen.getByTestId('calendar-day-2026-09-18')).getByText('Сегодня красным').className).toContain('bg-red-100');
   });
 
   it('supports weekly and biweekly occurrences and opens a transaction draft', () => {

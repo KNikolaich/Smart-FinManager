@@ -24,6 +24,10 @@ export function getTodayKey() {
   return toDateKey(new Date());
 }
 
+export function isPaymentOccurrenceOverdue(dateKey: string, todayKey = getTodayKey()) {
+  return dateKey <= todayKey;
+}
+
 export function getPaymentOccurrencesInRange(
   payment: PlannedPayment,
   startKey: string,
@@ -116,9 +120,11 @@ export function getPaymentOccurrencesForFilter(
   if (filter === 'all' || filter === 'paid') {
     start.setFullYear(start.getFullYear() - 5);
   } else if (filter === 'pending') {
-    const pendingStart = anchor > today ? anchor : today;
+    const pendingStart = anchor > today ? anchor : new Date(today);
+    if (pendingStart <= today) pendingStart.setDate(pendingStart.getDate() + 1);
     start.setTime(pendingStart.getTime());
   } else if (filter === 'overdue') {
+    start.setFullYear(start.getFullYear() - 5);
     const overdueEnd = anchor < today ? anchor : today;
     end.setTime(overdueEnd.getTime());
   }
@@ -127,8 +133,8 @@ export function getPaymentOccurrencesForFilter(
     .flatMap(payment => getPaymentOccurrencesInRange(payment, toDateKey(start), toDateKey(end)))
     .filter(item => {
       if (filter === 'all') return true;
-      if (filter === 'overdue') return item.status === 'pending' && item.date < todayKey;
-      if (filter === 'pending') return item.status === 'pending' && item.date >= todayKey;
+      if (filter === 'overdue') return item.status === 'pending' && isPaymentOccurrenceOverdue(item.date, todayKey);
+      if (filter === 'pending') return item.status === 'pending' && item.date > todayKey;
       return item.status === 'paid';
     })
     .sort((a, b) => a.date.localeCompare(b.date) || a.payment.title.localeCompare(b.payment.title))

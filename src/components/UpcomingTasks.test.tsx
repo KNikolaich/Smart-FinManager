@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import UpcomingTasks from './UpcomingTasks';
 import type { PlannedPayment } from '../types';
 import { api } from '../lib/api';
@@ -15,6 +15,8 @@ const makePayment = (index: number): PlannedPayment => ({
 });
 
 describe('UpcomingTasks', () => {
+  afterEach(() => vi.useRealTimers());
+
   it('shows the first page of tasks and navigates from the task text', () => {
     const onTaskClick = vi.fn();
     render(
@@ -80,6 +82,8 @@ describe('UpcomingTasks', () => {
   });
 
   it('renders the calendar title and button in the dashboard carousel header', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 19, 12));
     const onTaskClick = vi.fn();
     const onOpenCalendar = vi.fn();
     const payment = { ...makePayment(0), id: 'clickable-task', date: '2026-09-20' };
@@ -132,20 +136,26 @@ describe('UpcomingTasks', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 20, 12));
     const overdue = { ...makePayment(0), id: 'overdue-list', title: 'Просроченная', date: '2026-09-19' };
+    const today = { ...makePayment(0), id: 'today-list', title: 'Сегодняшняя', date: '2026-09-20' };
     const pending = { ...makePayment(1), id: 'pending-list', title: 'Предстоящая', date: '2026-09-21' };
     const paid = { ...makePayment(2), id: 'paid-list', title: 'Выполненная', date: '2026-09-22', paidDates: ['2026-09-22'] };
     const { rerender } = render(
-      <UpcomingTasks payments={[overdue, pending, paid]} startDate="2026-09-20" filter="pending" />,
+      <UpcomingTasks payments={[overdue, today, pending, paid]} startDate="2026-09-20" filter="pending" />,
     );
 
     expect(screen.getByText('Предстоящая')).toBeTruthy();
     expect(screen.queryByText('Просроченная')).toBeNull();
+    expect(screen.queryByText('Сегодняшняя')).toBeNull();
     expect(screen.queryByText('Выполненная')).toBeNull();
 
-    rerender(<UpcomingTasks payments={[overdue, pending, paid]} startDate="2026-09-20" filter="paid" />);
+    rerender(<UpcomingTasks payments={[overdue, today, pending, paid]} startDate="2026-09-20" filter="overdue" />);
+    expect(screen.getByText('Просроченная')).toBeTruthy();
+    expect(screen.getByText('Сегодняшняя')).toBeTruthy();
+    expect(screen.queryByText('Предстоящая')).toBeNull();
+
+    rerender(<UpcomingTasks payments={[overdue, today, pending, paid]} startDate="2026-09-20" filter="paid" />);
     expect(screen.getByText('Выполненная')).toBeTruthy();
     expect(screen.queryByText('Предстоящая')).toBeNull();
-    vi.useRealTimers();
   });
 
   it('renders completed list tasks in the neutral tone', () => {
@@ -267,6 +277,8 @@ describe('UpcomingTasks', () => {
   });
 
   it('pulses overdue banners until the user taps them', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 19, 12));
     const payment = { ...makePayment(0), id: 'overdue-pulse', date: '2026-09-19' };
     render(<UpcomingTasks payments={[payment]} variant="carousel" startDate="2026-09-19" />);
 
