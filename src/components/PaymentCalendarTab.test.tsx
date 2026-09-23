@@ -163,6 +163,22 @@ describe('PaymentCalendarTab', () => {
     }));
   });
 
+  it('opens the same edit form for a payment requested from the dashboard', () => {
+    const onInitialPaymentEditHandled = vi.fn();
+    render(
+      <PaymentCalendarTab
+        payments={[payment]}
+        accounts={[]}
+        initialPaymentToEdit={payment}
+        onInitialPaymentEditHandled={onInitialPaymentEditHandled}
+      />,
+    );
+
+    expect(screen.getByText('Изменить')).toBeTruthy();
+    expect((screen.getByTestId('input-payment-title') as HTMLInputElement).value).toBe('Аренда');
+    expect(onInitialPaymentEditHandled).toHaveBeenCalledTimes(1);
+  });
+
   it('lets a plan repeat on selected weekdays and keeps the account picker grouped', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 21, 12));

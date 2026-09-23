@@ -48,6 +48,8 @@ interface PaymentCalendarTabProps {
   onPaymentDelete?: (id: string, date: string) => void | Promise<void>;
   focusDate?: string;
   onFocusDateHandled?: () => void;
+  initialPaymentToEdit?: PlannedPayment | null;
+  onInitialPaymentEditHandled?: () => void;
 }
 
 type Filter = PlannedPaymentFilter;
@@ -106,6 +108,8 @@ export default function PaymentCalendarTab({
   onPaymentDelete,
   focusDate,
   onFocusDateHandled,
+  initialPaymentToEdit,
+  onInitialPaymentEditHandled,
 }: PaymentCalendarTabProps) {
   const now = new Date();
   const [cursor, setCursor] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
@@ -125,6 +129,19 @@ export default function PaymentCalendarTab({
     setListStartDate(focusDate);
     onFocusDateHandled?.();
   }, [focusDate, onFocusDateHandled]);
+
+  useEffect(() => {
+    if (!initialPaymentToEdit || loading) return;
+    const nextDate = parseDateKey(initialPaymentToEdit.date);
+    if (!Number.isNaN(nextDate.getTime())) {
+      setCursor(new Date(nextDate.getFullYear(), nextDate.getMonth(), 1));
+      setSelectedDate(initialPaymentToEdit.date);
+      setListStartDate(initialPaymentToEdit.date);
+      setEditingPayment({ ...initialPaymentToEdit });
+      setDialogMode('edit');
+    }
+    onInitialPaymentEditHandled?.();
+  }, [initialPaymentToEdit, loading, onInitialPaymentEditHandled]);
 
   const monthCells = useMemo(() => getMonthCells(cursor), [cursor]);
   const occurrences = useMemo<PlannedPaymentOccurrence[]>(

@@ -340,6 +340,19 @@ export default function UpcomingTasks({
           )
         )}
         <div className="flex items-center gap-1">
+          {variant === 'carousel' && onEditTask && (
+            <button
+              type="button"
+              aria-label="Редактировать текущий план"
+              title={focusedIsCompleted ? 'Выполненный план нельзя редактировать' : 'Редактировать текущий план'}
+              data-testid="button-upcoming-edit"
+              disabled={!focusedOccurrence || focusedIsCompleted}
+              onClick={() => focusedOccurrence && !focusedIsCompleted && onEditTask(focusedOccurrence)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <Pencil size={15} />
+            </button>
+          )}
           {variant === 'carousel' && (
             <button
               type="button"
@@ -357,7 +370,7 @@ export default function UpcomingTasks({
               <Plus size={16} />
             </button>
           )}
-          {onEditTask && (
+          {variant !== 'carousel' && onEditTask && (
             <button type="button" aria-label="Редактировать сфокусированную задачу" title={focusedIsCompleted ? 'Выполненный план нельзя редактировать' : 'Редактировать'} data-testid="button-upcoming-edit" disabled={!focusedOccurrence || focusedIsCompleted} onClick={() => focusedOccurrence && !focusedIsCompleted && onEditTask(focusedOccurrence)} className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none">
               <Pencil size={15} />
             </button>

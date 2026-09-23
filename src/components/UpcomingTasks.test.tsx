@@ -107,6 +107,28 @@ describe('UpcomingTasks', () => {
     expect(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20').className).toContain('bg-pink-50');
   });
 
+  it('places the current-plan edit button before refresh in the carousel header', () => {
+    const onEditTask = vi.fn();
+    const payment = { ...makePayment(0), id: 'editable-task' };
+    render(
+      <UpcomingTasks
+        payments={[payment]}
+        variant="carousel"
+        startDate="2026-09-18"
+        onEditTask={onEditTask}
+      />,
+    );
+
+    const editButton = screen.getByTestId('button-upcoming-edit');
+    const refreshButton = screen.getByTestId('button-upcoming-first');
+    expect(editButton.compareDocumentPosition(refreshButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    fireEvent.click(editButton);
+    expect(onEditTask).toHaveBeenCalledWith(expect.objectContaining({
+      payment,
+    }));
+  });
+
   it('uses header actions for the focused list task', () => {
     const onEditTask = vi.fn();
     const onManualToggleTask = vi.fn();

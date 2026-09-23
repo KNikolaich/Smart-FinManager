@@ -5,7 +5,8 @@ import { useAppData } from './hooks/useAppData';
 import { useAuth } from './hooks/useAuth';
 import { useGlobalInputContextMenu } from './hooks/useGlobalInputContextMenu';
 import { api, safeStorage, syncOfflineQueue } from './lib/api';
-import { DashboardLayoutSettings, Transaction, UserProfile } from './types';
+import { DashboardLayoutSettings, PlannedPayment, Transaction, UserProfile } from './types';
+import type { PlannedPaymentOccurrence } from './lib/plannedPaymentOccurrences';
 import { getDashboardLayout } from './lib/dashboardLayout';
 import { useDashboardDevice } from './hooks/useDashboardDevice';
 
@@ -57,6 +58,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [calendarFocusDate, setCalendarFocusDate] = useState<string | undefined>();
+  const [calendarPaymentToEdit, setCalendarPaymentToEdit] = useState<PlannedPayment | null>(null);
   const [analyticsOptions, setAnalyticsOptions] = useState<{
     type?: 'expense' | 'income';
     filterType?: 'month' | 'period' | 'all';
@@ -197,6 +199,16 @@ export default function App() {
     handleNavigateToCalendar(getTodayKey());
   }, [handleNavigateToCalendar]);
 
+  const handleEditDashboardPlan = useCallback((item: PlannedPaymentOccurrence) => {
+    setCalendarPaymentToEdit({ ...item.payment });
+    setCalendarFocusDate(item.date);
+    setActiveTab('plan');
+  }, []);
+
+  const handleCalendarPaymentEditHandled = useCallback(() => {
+    setCalendarPaymentToEdit(null);
+  }, []);
+
   const handleCalendarFocusHandled = useCallback(() => {
     setCalendarFocusDate(undefined);
   }, []);
@@ -263,6 +275,7 @@ export default function App() {
             onEditTransaction={setEditingTransaction}
             onNavigateToCalendar={handleNavigateToCalendar}
             onOpenCalendar={handleOpenCalendar}
+            onEditUpcomingTask={handleEditDashboardPlan}
             widgetOrder={dashboardLayout.order}
             widgetVisibility={dashboardLayout.visibility}
             widgetSpans={dashboardLayout.spans}
@@ -282,6 +295,8 @@ export default function App() {
             }}
             calendarFocusDate={calendarFocusDate}
             onCalendarFocusHandled={handleCalendarFocusHandled}
+            calendarPaymentToEdit={calendarPaymentToEdit}
+            onCalendarPaymentEditHandled={handleCalendarPaymentEditHandled}
           />
         );
       case 'analytics':

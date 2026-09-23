@@ -1,4 +1,5 @@
 import { Account, Transaction, Goal, Category, Currency, BalanceHistory, DashboardWidgetId } from '../types';
+import type { PlannedPaymentOccurrence } from '../lib/plannedPaymentOccurrences';
 import { useDashboardMetrics } from '../hooks/useDashboardMetrics';
 import { TotalBalanceCard } from './dashboard/TotalBalanceCard';
 import { AccountsSection } from './dashboard/AccountsSection';
@@ -31,6 +32,7 @@ interface DashboardProps {
   onEditTransaction?: (t: Transaction) => void;
   onNavigateToCalendar?: (date: string) => void;
   onOpenCalendar?: () => void;
+  onEditUpcomingTask?: (item: PlannedPaymentOccurrence) => void;
   widgetOrder?: DashboardWidgetId[];
   widgetVisibility?: Partial<Record<DashboardWidgetId, boolean>>;
   widgetSpans?: Partial<Record<DashboardWidgetId, number>>;
@@ -53,6 +55,7 @@ export default function Dashboard({
   onEditTransaction,
   onNavigateToCalendar,
   onOpenCalendar,
+  onEditUpcomingTask,
   widgetOrder = DEFAULT_DASHBOARD_WIDGET_ORDER,
   widgetVisibility = {},
   widgetSpans = {},
@@ -113,6 +116,7 @@ export default function Dashboard({
             variant="carousel"
             className={stretchClass}
             onOpenCalendar={onOpenCalendar}
+            onEditTask={onEditUpcomingTask}
             onRequestTransaction={(item, onCompleted) => onOpenAddTransaction?.({
               type: item.payment.transactionType,
               amount: item.payment.amount,

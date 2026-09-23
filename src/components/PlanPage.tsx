@@ -59,6 +59,8 @@ interface PlanPageProps {
   onOpenAddTransaction?: (data?: any) => void;
   calendarFocusDate?: string;
   onCalendarFocusHandled?: () => void;
+  calendarPaymentToEdit?: PlannedPayment | null;
+  onCalendarPaymentEditHandled?: () => void;
 }
 
 type TabType = 'now' | 'past' | 'config' | 'comment' | 'cashback' | 'credit' | 'calendar';
@@ -128,8 +130,12 @@ export default function PlanPage({
   onOpenAddTransaction,
   calendarFocusDate,
   onCalendarFocusHandled,
+  calendarPaymentToEdit,
+  onCalendarPaymentEditHandled,
 }: PlanPageProps) {
-  const [activeTab, setActiveTab] = useState<TabType>(() => calendarFocusDate ? 'calendar' : 'now');
+  const [activeTab, setActiveTab] = useState<TabType>(() => (
+    calendarFocusDate || calendarPaymentToEdit ? 'calendar' : 'now'
+  ));
   const [planData, setPlanData] = useState<PlanData | null>(null);
   const [loadedTabs, setLoadedTabs] = useState<Set<TabType>>(new Set());
   const [editingCell, setEditingCell] = useState<{ rowId: string, subjectId: string } | null>(null);
@@ -198,8 +204,8 @@ export default function PlanPage({
   const [calendarError, setCalendarError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (calendarFocusDate) setActiveTab('calendar');
-  }, [calendarFocusDate]);
+    if (calendarFocusDate || calendarPaymentToEdit) setActiveTab('calendar');
+  }, [calendarFocusDate, calendarPaymentToEdit]);
 
   // When network is restored, flip 'queued' → 'saved' (sync already fired in App.tsx)
   useEffect(() => {
@@ -791,6 +797,8 @@ export default function PlanPage({
             onPaymentDelete={handleCalendarPaymentDelete}
             focusDate={calendarFocusDate}
             onFocusDateHandled={onCalendarFocusHandled}
+            initialPaymentToEdit={calendarPaymentToEdit}
+            onInitialPaymentEditHandled={onCalendarPaymentEditHandled}
           />
         ) : activeTab === 'cashback' ? (
           <CashbackTab planData={planData} accounts={accounts} onSave={handleSaveCashback} />
