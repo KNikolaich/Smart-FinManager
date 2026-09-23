@@ -96,15 +96,20 @@ export const CurrencyTable: React.FC<{ onClose?: () => void }> = ({ onClose }) =
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-0 backdrop-blur-xl lg:p-8">
       <div className="relative flex h-full w-full flex-col overflow-hidden bg-theme-main shadow-2xl lg:h-auto lg:max-w-4xl lg:rounded-xl lg:border border-neutral-100">
-        <div className="flex shrink-0 items-center justify-between border-b border-neutral-100 bg-theme-surface/10 px-4 py-4 sm:px-6">
-          <div><h3 className="text-sm font-black uppercase text-theme-main">Валюты</h3></div>
+         <div className="flex shrink-0 items-center justify-between border-b border-neutral-100 bg-theme-surface/10 px-4 py-4 sm:px-6">
+           <div className="flex min-w-0 items-center gap-3">
+             <h3 className="shrink-0 text-sm font-black uppercase text-theme-main">Валюты</h3>
+             <div className="min-w-0 text-[9px] font-bold leading-tight text-theme-muted">
+               <div>Фиат — {dateTime(fiatUpdatedAt)}</div>
+               <div>Крипта — {dateTime(cryptoUpdatedAt)}</div>
+             </div>
+           </div>
           <div className="flex items-center gap-2">
             {isAdmin && <><button data-testid="button-refresh-bank-rates" onClick={handleUpdateRates} disabled={updatingRates} className="flex items-center gap-1.5 rounded-lg border border-neutral-100 bg-theme-surface px-3 py-2 text-[8px] font-black uppercase tracking-widest text-theme-muted disabled:opacity-50"><RefreshCw size={12} className={updatingRates ? 'animate-spin' : ''} />{updatingRates ? 'Обновление' : 'Обновить'}</button><button data-testid="button-add-currency" onClick={() => { setEditingCurrency(null); setShowFormModal(true); }} className="flex h-10 w-10 items-center justify-center rounded-lg bg-theme-primary text-theme-on-primary"><Plus size={18} /></button></>}
             {onClose && <button data-testid="button-close-currencies" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-xl border border-theme-base bg-theme-main/50"><X size={18} /></button>}
           </div>
         </div>
         <div className="flex-1 overflow-y-auto bg-theme-main p-3 sm:p-6">
-           <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-theme-base bg-theme-surface px-3 py-2 text-[10px] font-bold text-theme-muted"><span>Фиат — <b className="text-theme-main">Авангард, безналичный</b> · {dateTime(fiatUpdatedAt)}</span><span>Крипто — <b className="text-theme-main">CoinGecko, рыночная цена</b> · {dateTime(cryptoUpdatedAt)}</span></div>
            {rateUpdateMessage && <div role="status" className="mb-3 rounded-lg border border-theme-base bg-theme-surface px-3 py-2 text-xs font-bold text-theme-muted">{rateUpdateMessage}</div>}
           {currencies.length === 0 ? <div className="rounded-xl border border-dashed border-theme-base px-5 py-12 text-center"><p className="text-sm font-bold text-theme-main">Валют пока нет</p><p className="mt-1 text-xs text-theme-muted">Добавьте валюту вручную или обновите банковские курсы.</p></div> :
              <div className="overflow-hidden rounded-lg border border-neutral-50 shadow-sm"><table className="w-full table-fixed border-collapse text-left"><thead><tr className="border-b border-neutral-50 bg-theme-surface/50 text-[9px] font-black uppercase tracking-wider text-theme-muted"><th className="w-[42%] px-3 py-3 sm:px-5">Валюта</th><th className="px-2 py-3">Покупка</th><th className="px-2 py-3">Продажа</th><th className="w-9 px-1 py-3"></th></tr></thead><tbody className="divide-y divide-neutral-50 bg-white">
