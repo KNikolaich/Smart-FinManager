@@ -1,11 +1,10 @@
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { subMonths } from 'date-fns';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { cn } from '../../lib/utils';
 
 interface TotalBalanceCardProps {
-  visible: boolean;
   totalBalance: number;
   monthlyRollingBalance: number;
   monthlyStats: { income: number; expense: number };
@@ -15,7 +14,6 @@ interface TotalBalanceCardProps {
 }
 
 export function TotalBalanceCard({
-  visible,
   totalBalance,
   monthlyRollingBalance,
   monthlyStats,
@@ -24,15 +22,12 @@ export function TotalBalanceCard({
   onOpenTransactionHistory
 }: TotalBalanceCardProps) {
   return (
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          initial={{ height: 0, opacity: 0.3, marginBottom: 0 }}
-          animate={{ height: 'auto', opacity: 0.7, marginBottom: 24 }}
-          exit={{ height: 0, opacity: 0.3, marginBottom: 0 }}
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
-          className="overflow-hidden"
-        >
+    <motion.div
+      initial={{ opacity: 0.3 }}
+      animate={{ opacity: 0.7 }}
+      transition={{ duration: 0.3, ease: 'easeInOut' }}
+      className="overflow-hidden mb-6"
+    >
           <div
             onClick={() => onNavigateToAnalytics?.({
               filterType: 'period',
@@ -134,8 +129,6 @@ export function TotalBalanceCard({
             {/* Hover effect overlay */}
             <div className="absolute inset-0 bg-white/0 group-hover:bg-white/5 transition-colors pointer-events-none" />
           </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    </motion.div>
   );
 }

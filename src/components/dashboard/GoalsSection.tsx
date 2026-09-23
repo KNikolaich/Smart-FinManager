@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { Goal } from '../../types';
 import { Check, Plus } from 'lucide-react';
 import GoalManager from '../GoalManager';
@@ -8,7 +8,6 @@ import { api } from '../../lib/api';
 import { cn } from '../../lib/utils';
 
 interface GoalsSectionProps {
-  visible: boolean;
   goals: Goal[];
   userId: string;
   initialGoalData?: {
@@ -20,7 +19,7 @@ interface GoalsSectionProps {
   onRefresh?: () => void;
 }
 
-export function GoalsSection({ visible, goals, userId, initialGoalData, onCloseGoalManager, onRefresh }: GoalsSectionProps) {
+export function GoalsSection({ goals, userId, initialGoalData, onCloseGoalManager, onRefresh }: GoalsSectionProps) {
   const [showGoalManager, setShowGoalManager] = useState(!!initialGoalData);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   const [showCompletedGoals, setShowCompletedGoals] = useState(false);
@@ -127,16 +126,13 @@ export function GoalsSection({ visible, goals, userId, initialGoalData, onCloseG
 
   return (
     <>
-      <AnimatePresence>
-        {visible && (
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={{ duration: 0.25 }}
-            className="rounded-2xl border border-theme-base bg-theme-surface p-4"
-            data-testid="dashboard-goals"
-          >
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25 }}
+        className="rounded-2xl border border-theme-base bg-theme-surface p-4"
+        data-testid="dashboard-goals"
+      >
             <header className="flex items-center justify-between gap-2 border-b border-theme-base pb-2">
               <div className="min-w-0">
                 <p className="text-[15px] uppercase tracking-wider text-theme-muted font-bold truncate">Цели</p>
@@ -225,9 +221,7 @@ export function GoalsSection({ visible, goals, userId, initialGoalData, onCloseG
                 })}
               </div>
             )}
-          </motion.section>
-        )}
-      </AnimatePresence>
+      </motion.section>
 
       {showGoalManager && (
         <GoalManager

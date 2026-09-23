@@ -25,8 +25,6 @@ interface DashboardProps {
   currencies: Currency[];
   balanceHistory: BalanceHistory[];
   userId: string;
-  showTotalBalance: boolean;
-  showGoals: boolean;
   initialGoalData?: {
     name?: string;
     targetAmount?: number;
@@ -51,8 +49,6 @@ export default function Dashboard({
   currencies,
   balanceHistory,
   userId,
-  showTotalBalance,
-  showGoals,
   initialGoalData,
   onCloseGoalManager,
   onRefresh,
@@ -79,7 +75,6 @@ export default function Dashboard({
       case 'balance':
         return (
           <TotalBalanceCard
-            visible={showTotalBalance}
             totalBalance={totalBalance}
             monthlyRollingBalance={monthlyRollingBalance}
             monthlyStats={monthlyStats}
@@ -132,7 +127,6 @@ export default function Dashboard({
       case 'goals':
         return (
           <GoalsSection
-            visible={showGoals}
             goals={goals}
             userId={userId}
             initialGoalData={initialGoalData}

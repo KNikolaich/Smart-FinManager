@@ -4,7 +4,7 @@ import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { useAppData } from './hooks/useAppData';
 import { useAuth } from './hooks/useAuth';
 import { useGlobalInputContextMenu } from './hooks/useGlobalInputContextMenu';
-import { api, syncOfflineQueue, safeStorage } from './lib/api';
+import { api, syncOfflineQueue } from './lib/api';
 import { Transaction } from './types';
 
 // Import components directly to avoid lazy loading issues in preview
@@ -78,10 +78,6 @@ export default function App() {
   const [showUserPage, setShowUserPage] = useState(false);
   const aiAssistantRef = useRef<AIAssistantHandle>(null);
 
-  const [showTotalBalance, setShowTotalBalance] = useState(() => {
-    const saved = safeStorage.getItem('showTotalBalance');
-    return saved !== null ? JSON.parse(saved) : true;
-  });
   const [initialGoalData, setInitialGoalData] = useState<{ name?: string; targetAmount?: number; deadline?: string } | undefined>(undefined);
 
   const { globalContextMenu, closeGlobalContextMenu } = useGlobalInputContextMenu();
@@ -112,10 +108,6 @@ export default function App() {
     const savedTheme = safeStorage.getItem('theme') || 'theme-nordic';
     document.body.classList.add(savedTheme);
   }, []);
-
-  useEffect(() => {
-    safeStorage.setItem('showTotalBalance', JSON.stringify(showTotalBalance));
-  }, [showTotalBalance]);
 
   const handleAIResult = async (result: any) => {
     if (result.intent === 'transaction') {
@@ -175,11 +167,9 @@ export default function App() {
     }
   }, [addToast, refreshData]));
 
-  const handleWalletOrLogoClick = () => {
+  const handleLogoClick = () => {
     if (activeTab !== 'dashboard') {
       setActiveTab('dashboard');
-    } else {
-      setShowTotalBalance(!showTotalBalance);
     }
   };
 
@@ -234,8 +224,6 @@ export default function App() {
             currencies={currencies}
             balanceHistory={balanceHistory}
             userId={user.id}
-            showTotalBalance={showTotalBalance}
-            showGoals={showTotalBalance}
             initialGoalData={initialGoalData}
             onCloseGoalManager={() => setInitialGoalData(undefined)}
             onRefresh={refreshData}
@@ -335,10 +323,10 @@ export default function App() {
   };
 
   return (
-    <div className="h-[100dvh] bg-theme-main flex flex-col landscape:flex-row-reverse overflow-hidden">
+    <div className="h-[100dvh] bg-theme-main flex flex-col max-md:landscape:flex-row-reverse overflow-hidden">
       <AppHeader
         activeTab={activeTab}
-        onLogoClick={handleWalletOrLogoClick}
+        onLogoClick={handleLogoClick}
         isOnline={isOnline}
         showUserPage={showUserPage}
         onOpenUserPage={() => setShowUserPage(true)}
@@ -351,11 +339,11 @@ export default function App() {
           className={cn(
           "absolute inset-0 overflow-y-auto no-scrollbar px-[2px] pt-0",
           activeTab === 'plan'
-            ? "portrait:pb-24 landscape:pb-0"
-            : "pb-24 md:pb-0 landscape:pb-0"
+            ? "max-md:portrait:pb-24 max-md:landscape:pb-0"
+            : "pb-24 md:pb-0 max-md:landscape:pb-0"
           )}
         >
-          <div className="max-w-7xl mx-auto h-full landscape:max-w-none">
+          <div className="max-w-7xl mx-auto h-full max-md:landscape:max-w-none">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
@@ -378,7 +366,6 @@ export default function App() {
         activeTab={activeTab}
         onChangeTab={setActiveTab}
         onDashboardClick={handleDashboardClick}
-        onWalletClick={handleWalletOrLogoClick}
         showUserPage={showUserPage}
         onOpenUserPage={() => setShowUserPage(true)}
         isOnline={isOnline}

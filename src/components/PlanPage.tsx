@@ -967,7 +967,7 @@ export default function PlanPage({
                 </div>
 
                 {/* Config Section embedded at the bottom of NOW tab */}
-                <div className="border-t border-neutral-100 pt-6 pb-6 landscape:pb-0 space-y-4 max-w-xl">
+                <div className="border-t border-neutral-100 pt-6 pb-6 max-md:landscape:pb-0 space-y-4 max-w-xl">
                   <h3 className="text-sm font-bold text-neutral-400 uppercase tracking-wider">Настройки таблицы</h3>
                   
                   <div className="space-y-4">
