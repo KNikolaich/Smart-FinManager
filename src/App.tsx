@@ -4,7 +4,7 @@ import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { useAppData } from './hooks/useAppData';
 import { useAuth } from './hooks/useAuth';
 import { useGlobalInputContextMenu } from './hooks/useGlobalInputContextMenu';
-import { api, syncOfflineQueue } from './lib/api';
+import { api, safeStorage, syncOfflineQueue } from './lib/api';
 import { Transaction } from './types';
 
 // Import components directly to avoid lazy loading issues in preview
