@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, Check, CircleDashed, Hand, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { CalendarDays, Check, CircleDashed, Copy, Hand, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { PlannedPayment, PlannedPaymentRecurrence } from '../types';
 import {
@@ -28,6 +28,7 @@ interface UpcomingTasksProps {
     onCompleted: () => void | Promise<void>,
   ) => void;
   onEditTask?: (item: PlannedPaymentOccurrence) => void;
+  onCopyTask?: (item: PlannedPaymentOccurrence) => void;
   onDeleteTask?: (item: PlannedPaymentOccurrence) => void | Promise<void>;
   className?: string;
 }
@@ -46,6 +47,7 @@ export default function UpcomingTasks({
   onManualToggleTask,
   onRequestTransaction,
   onEditTask,
+  onCopyTask,
   onDeleteTask,
   className,
 }: UpcomingTasksProps) {
@@ -358,6 +360,11 @@ export default function UpcomingTasks({
           {onEditTask && (
             <button type="button" aria-label="Редактировать сфокусированную задачу" title={focusedIsCompleted ? 'Выполненный план нельзя редактировать' : 'Редактировать'} data-testid="button-upcoming-edit" disabled={!focusedOccurrence || focusedIsCompleted} onClick={() => focusedOccurrence && !focusedIsCompleted && onEditTask(focusedOccurrence)} className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none">
               <Pencil size={15} />
+            </button>
+          )}
+          {onCopyTask && (
+            <button type="button" aria-label="Скопировать сфокусированный план" title="Скопировать план" data-testid="button-upcoming-copy" disabled={!focusedOccurrence} onClick={() => focusedOccurrence && onCopyTask(focusedOccurrence)} className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none">
+              <Copy size={15} />
             </button>
           )}
           {onManualToggleTask && (

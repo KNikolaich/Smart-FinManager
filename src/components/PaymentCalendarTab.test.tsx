@@ -221,6 +221,36 @@ describe('PaymentCalendarTab', () => {
     expect(screen.getByRole('dialog').textContent).toContain('Изменить');
   });
 
+  it('opens a completed plan copy as a new record dated today', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 18, 12));
+    const onPaymentChange = vi.fn();
+    const completedPayment: PlannedPayment = {
+      ...payment,
+      id: 'completed-rent',
+      date: '2026-09-05',
+      paidDates: ['2026-09-05'],
+      status: 'pending',
+    };
+    render(<PaymentCalendarTab payments={[completedPayment]} accounts={[]} onPaymentChange={onPaymentChange} />);
+
+    fireEvent.click(screen.getByTestId('button-upcoming-copy'));
+
+    expect(screen.getByRole('dialog').textContent).toContain('Новая запись');
+    expect((screen.getByTestId('input-payment-date') as HTMLInputElement).value).toBe('2026-09-18');
+    fireEvent.click(screen.getByTestId('button-save-payment'));
+
+    expect(onPaymentChange).toHaveBeenCalledWith(expect.objectContaining({
+      id: expect.not.stringMatching(/^completed-rent$/),
+      title: 'Аренда',
+      date: '2026-09-18',
+      status: 'pending',
+      paidDates: [],
+      occurrences: [],
+      disableFrom: null,
+    }));
+  });
+
   it('passes the focused occurrence date when disabling a plan', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 18, 12));

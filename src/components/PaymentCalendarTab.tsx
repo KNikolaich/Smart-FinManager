@@ -295,6 +295,19 @@ export default function PaymentCalendarTab({
               setEditingPayment({ ...item.payment });
               setDialogMode('edit');
             }}
+             onCopyTask={item => {
+               setSaveError(null);
+               setEditingPayment({
+                 ...item.payment,
+                 id: `payment-${Date.now()}`,
+                 date: getTodayKey(),
+                 status: 'pending',
+                 paidDates: [],
+                 occurrences: [],
+                 disableFrom: null,
+               });
+               setDialogMode('create');
+             }}
             onDeleteTask={item => onPaymentDelete?.(item.payment.id, item.date)}
           />
           </div>

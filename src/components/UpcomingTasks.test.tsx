@@ -132,6 +132,27 @@ describe('UpcomingTasks', () => {
     expect(onDeleteTask).toHaveBeenCalledWith(expect.objectContaining({ date: '2026-09-18' }));
   });
 
+  it('allows copying a completed focused task', () => {
+    const onCopyTask = vi.fn();
+    const completed = {
+      ...makePayment(0),
+      id: 'completed-copy',
+      title: 'Выполненный план',
+      date: '2026-09-10',
+      paidDates: ['2026-09-10'],
+    };
+    render(<UpcomingTasks payments={[completed]} startDate="2026-09-20" onCopyTask={onCopyTask} />);
+
+    const copyButton = screen.getByTestId('button-upcoming-copy') as HTMLButtonElement;
+    expect(copyButton.disabled).toBe(false);
+    fireEvent.click(copyButton);
+
+    expect(onCopyTask).toHaveBeenCalledWith(expect.objectContaining({
+      date: '2026-09-10',
+      payment: expect.objectContaining({ id: 'completed-copy' }),
+    }));
+  });
+
   it('applies the selected status filter to the list', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 20, 12));
