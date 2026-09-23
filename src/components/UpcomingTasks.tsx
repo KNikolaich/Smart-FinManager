@@ -63,6 +63,7 @@ export default function UpcomingTasks({
   const pointerStartX = useRef<number | null>(null);
   const suppressCarouselClick = useRef(false);
   const previousStartDate = useRef(startDate);
+  const listInitialFocusResolved = useRef(false);
   const listRef = useRef<HTMLDivElement | null>(null);
   const previousListHeight = useRef<number | null>(null);
 
@@ -113,7 +114,10 @@ export default function UpcomingTasks({
   const activeCarouselIndex = occurrences.length === 0 ? 0 : Math.min(carouselIndex, occurrences.length - 1);
   const focusedOccurrence = useMemo(
     () => occurrences.find(item => occurrenceKey(item) === focusedKey)
-      || occurrences.find(item => item.date === (focusedDate || startDate))
+      || (focusedDate && focusedDate !== getTodayKey()
+        ? occurrences.find(item => item.date === focusedDate)
+        : undefined)
+      || getDefaultFocusOccurrence(occurrences, startDate)
       || occurrences[0],
     [occurrences, focusedDate, focusedKey, startDate],
   );
@@ -143,14 +147,19 @@ export default function UpcomingTasks({
       return;
     }
     if (!occurrences.some(item => occurrenceKey(item) === focusedKey)) {
-      const next = occurrences.find(item => item.date === startDate) || occurrences[0];
+      const next = getDefaultFocusOccurrence(occurrences, startDate);
       setFocusedKey(next ? occurrenceKey(next) : null);
     }
   }, [activeCarouselIndex, occurrences, startDate, variant, focusedKey]);
 
   useEffect(() => {
     if (variant !== 'list') return;
-    setListWindow(getInitialListWindow(loadedOccurrences, startDate, pageSize));
+    const useDefaultFocus = !listInitialFocusResolved.current && loadedOccurrences.length > 0;
+    const initialFocus = useDefaultFocus
+      ? getDefaultFocusOccurrence(loadedOccurrences, startDate)
+      : undefined;
+    setListWindow(getInitialListWindow(loadedOccurrences, initialFocus?.date || startDate, pageSize));
+    if (useDefaultFocus) listInitialFocusResolved.current = true;
     previousListHeight.current = null;
     listRef.current?.scrollTo?.({ top: 0 });
   }, [filter, startDate, variant, sourcePayments.length]);
@@ -534,6 +543,29 @@ function carouselTone(item: PlannedPaymentOccurrence, isPulsing = false) {
 
 function occurrenceKey(item: PlannedPaymentOccurrence) {
   return `${item.payment.id}-${item.date}`;
+}
+
+function isCompletedOccurrence(item: PlannedPaymentOccurrence) {
+  return Boolean(
+    item.status === 'paid'
+      || item.manuallyCompleted
+      || item.transactionId,
+  );
+}
+
+function getDefaultFocusOccurrence(
+  occurrences: PlannedPaymentOccurrence[],
+  anchorDate: string,
+) {
+  const incomplete = occurrences.filter(item => !isCompletedOccurrence(item));
+  const firstOverdue = incomplete.find(item => isPaymentOccurrenceOverdue(item.date));
+  if (firstOverdue) return firstOverdue;
+
+  const todayKey = getTodayKey();
+  return incomplete.find(item => item.date >= todayKey)
+    || incomplete.find(item => item.date >= anchorDate)
+    || incomplete[0]
+    || occurrences[0];
 }
 
 function formatTaskDate(date: string, startDate: string) {

@@ -464,7 +464,7 @@ export default function PlanPage({
       accountId: payment.accountId || '',
       categoryId: payment.categoryId || '',
       description: payment.title,
-      createdAt: `${date}T12:00:00`,
+      createdAt: new Date().toISOString(),
       calendarPlanId: payment.id,
       calendarDate: date,
       __onTransactionCreated: (transaction?: { id?: string }) => {
