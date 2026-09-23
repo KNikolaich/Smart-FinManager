@@ -119,7 +119,7 @@ export default function Dashboard({
               accountId: item.payment.accountId || '',
               categoryId: item.payment.categoryId || '',
               description: item.payment.title,
-              createdAt: `${item.date}T12:00:00`,
+              createdAt: new Date().toISOString(),
               __onTransactionCreated: onCompleted,
             })}
           />
