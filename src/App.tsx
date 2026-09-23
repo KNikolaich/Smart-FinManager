@@ -265,6 +265,7 @@ export default function App() {
             onOpenCalendar={handleOpenCalendar}
             widgetOrder={dashboardLayout.order}
             widgetVisibility={dashboardLayout.visibility}
+            widgetSpans={dashboardLayout.spans}
           />
         );
       case 'plan':

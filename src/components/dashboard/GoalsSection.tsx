@@ -17,9 +17,10 @@ interface GoalsSectionProps {
   };
   onCloseGoalManager?: () => void;
   onRefresh?: () => void;
+  className?: string;
 }
 
-export function GoalsSection({ goals, userId, initialGoalData, onCloseGoalManager, onRefresh }: GoalsSectionProps) {
+export function GoalsSection({ goals, userId, initialGoalData, onCloseGoalManager, onRefresh, className }: GoalsSectionProps) {
   const [showGoalManager, setShowGoalManager] = useState(!!initialGoalData);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   const [showCompletedGoals, setShowCompletedGoals] = useState(false);
@@ -130,7 +131,7 @@ export function GoalsSection({ goals, userId, initialGoalData, onCloseGoalManage
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="rounded-2xl border border-theme-base bg-theme-surface p-4"
+        className={cn("h-full rounded-2xl border border-theme-base bg-theme-surface p-4", className)}
         data-testid="dashboard-goals"
       >
             <header className="flex items-center justify-between gap-2 border-b border-theme-base pb-2">

@@ -17,6 +17,7 @@ interface TransactionsSectionProps {
   onOpenAddTransaction?: (initialData?: any) => void;
   onEditTransaction?: (t: Transaction) => void;
   onRefresh?: () => void | Promise<void>;
+  className?: string;
 }
 
 export function TransactionsSection({
@@ -28,6 +29,7 @@ export function TransactionsSection({
   onOpenAddTransaction,
   onEditTransaction,
   onRefresh,
+  className,
 }: TransactionsSectionProps) {
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, transaction: Transaction } | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<Transaction | null>(null);
@@ -51,7 +53,7 @@ export function TransactionsSection({
   };
 
   return (
-    <section className="rounded-2xl border border-theme-base bg-theme-surface p-4" data-testid="dashboard-transactions">
+    <section className={cn("h-full rounded-2xl border border-theme-base bg-theme-surface p-4", className)} data-testid="dashboard-transactions">
       <header className="flex items-center justify-between gap-2 border-b border-theme-base pb-2">
         <button
           type="button"

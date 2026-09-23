@@ -1,4 +1,3 @@
-import { Fragment } from 'react';
 import { Account, Transaction, Goal, Category, Currency, BalanceHistory, DashboardWidgetId } from '../types';
 import { useDashboardMetrics } from '../hooks/useDashboardMetrics';
 import { TotalBalanceCard } from './dashboard/TotalBalanceCard';
@@ -34,6 +33,7 @@ interface DashboardProps {
   onOpenCalendar?: () => void;
   widgetOrder?: DashboardWidgetId[];
   widgetVisibility?: Partial<Record<DashboardWidgetId, boolean>>;
+  widgetSpans?: Partial<Record<DashboardWidgetId, number>>;
 }
 
 export default function Dashboard({
@@ -55,6 +55,7 @@ export default function Dashboard({
   onOpenCalendar,
   widgetOrder = DEFAULT_DASHBOARD_WIDGET_ORDER,
   widgetVisibility = {},
+  widgetSpans = {},
 }: DashboardProps) {
   const {
     totalBalance,
@@ -67,6 +68,7 @@ export default function Dashboard({
   } = useDashboardMetrics(accounts, transactions, currencies, balanceHistory);
 
   const renderWidget = (widgetId: DashboardWidgetId, options: { stretch?: boolean } = {}) => {
+    const stretchClass = options.stretch ? 'h-full' : undefined;
     switch (widgetId) {
       case 'balance':
         return (
@@ -77,6 +79,7 @@ export default function Dashboard({
             balanceTrend={balanceTrend}
             onNavigateToAnalytics={onNavigateToAnalytics}
             onOpenTransactionHistory={onOpenTransactionHistory}
+            className={stretchClass}
           />
         );
       case 'accounts':
@@ -87,7 +90,7 @@ export default function Dashboard({
             currencies={currencies}
             onOpenTransactionHistory={onOpenTransactionHistory}
             onRefresh={onRefresh}
-            className={options.stretch ? 'h-full' : undefined}
+            className={stretchClass}
           />
         );
       case 'transactions':
@@ -101,13 +104,14 @@ export default function Dashboard({
             onOpenAddTransaction={onOpenAddTransaction}
             onEditTransaction={onEditTransaction}
             onRefresh={onRefresh}
+            className={stretchClass}
           />
         );
       case 'upcomingTasks':
         return (
           <UpcomingTasks
             variant="carousel"
-            className={options.stretch ? 'h-full' : undefined}
+            className={stretchClass}
             onOpenCalendar={onOpenCalendar}
             onRequestTransaction={(item, onCompleted) => onOpenAddTransaction?.({
               type: item.payment.transactionType,
@@ -128,6 +132,7 @@ export default function Dashboard({
             initialGoalData={initialGoalData}
             onCloseGoalManager={onCloseGoalManager}
             onRefresh={onRefresh}
+            className={stretchClass}
           />
         );
     }
@@ -135,31 +140,21 @@ export default function Dashboard({
 
   const visibleWidgetOrder = widgetOrder.filter(widgetId => widgetVisibility[widgetId] !== false);
   const renderedWidgets = [];
-  for (let index = 0; index < visibleWidgetOrder.length; index += 1) {
-    const widgetId = visibleWidgetOrder[index];
-    const nextWidgetId = visibleWidgetOrder[index + 1];
-
-    if (widgetId === 'upcomingTasks' && nextWidgetId === 'accounts') {
-      renderedWidgets.push(
-        <div
-          key="upcoming-tasks-and-accounts"
-          className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]"
-        >
-          {renderWidget('upcomingTasks', { stretch: true })}
-          {renderWidget('accounts', { stretch: true })}
-        </div>
-      );
-      index += 1;
-      continue;
-    }
-
+  for (const widgetId of visibleWidgetOrder) {
+    const span = Math.max(1, Math.min(12, Math.round(widgetSpans[widgetId] ?? 12)));
     renderedWidgets.push(
-      <Fragment key={widgetId}>{renderWidget(widgetId)}</Fragment>
+      <div
+        key={widgetId}
+        className="min-w-0 h-full"
+        style={{ gridColumn: `span ${span} / span ${span}` }}
+      >
+        {renderWidget(widgetId, { stretch: true })}
+      </div>
     );
   }
 
   return (
-    <div className="pt-[10px] pb-[8px] px-1.5 sm:px-2 space-y-6">
+    <div className="grid grid-cols-12 items-stretch gap-6 pt-[10px] pb-[8px] px-1.5 sm:px-2">
       {renderedWidgets}
 
       {/* Bottom Bar Spacer */}

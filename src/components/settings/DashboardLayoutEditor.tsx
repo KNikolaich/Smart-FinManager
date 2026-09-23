@@ -18,6 +18,7 @@ import {
 } from '../../lib/dashboardLayout';
 import {
   DashboardDevice,
+  DashboardColumnSpan,
   DashboardLayoutSettings,
   DashboardWidgetId,
 } from '../../types';
@@ -80,6 +81,19 @@ export function DashboardLayoutEditor({ value, onClose, onSave }: DashboardLayou
         },
       };
     });
+  };
+
+  const updateSpan = (widgetId: DashboardWidgetId, span: DashboardColumnSpan) => {
+    setDraft(current => ({
+      ...current,
+      [activeDevice]: {
+        ...current[activeDevice],
+        spans: {
+          ...current[activeDevice].spans,
+          [widgetId]: span,
+        },
+      },
+    }));
   };
 
   const handleSave = async () => {
@@ -160,7 +174,7 @@ export function DashboardLayoutEditor({ value, onClose, onSave }: DashboardLayou
           <section className="mt-6">
             <div className="mb-3">
               <h4 className="text-xs font-black uppercase tracking-widest text-theme-primary">Порядок компонентов</h4>
-              <p className="mt-1 text-xs text-theme-muted">Порядок настраивается отдельно для каждого устройства.</p>
+              <p className="mt-1 text-xs text-theme-muted">Порядок и ширина настраиваются отдельно для каждого устройства.</p>
             </div>
 
             <div className="mb-3 flex gap-2 overflow-x-auto rounded-2xl bg-theme-surface p-1">
@@ -205,6 +219,18 @@ export function DashboardLayoutEditor({ value, onClose, onSave }: DashboardLayou
                       <p className="truncate text-sm font-bold text-theme-main">{widget.label}</p>
                       {!isVisible && <p className="text-[10px] font-bold text-theme-muted">Скрыт на этом устройстве</p>}
                     </div>
+                    <select
+                      value={activeLayout.spans[widgetId]}
+                      onChange={event => updateSpan(widgetId, Number(event.target.value) as DashboardColumnSpan)}
+                      aria-label={`Ширина «${widget.label}» на устройстве «${activeDeviceMeta.label}»`}
+                      className="shrink-0 rounded-lg border border-theme-base bg-theme-main px-2 py-1.5 text-[10px] font-bold text-theme-main outline-none focus:ring-1 ring-theme-primary/30"
+                    >
+                      {Array.from({ length: 12 }, (_, index) => index + 1).map(span => (
+                        <option key={span} value={span}>
+                          {span === 12 ? '1 — весь ряд' : `${span}/12`}
+                        </option>
+                      ))}
+                    </select>
                     <div className="flex items-center gap-1">
                       <button
                         type="button"

@@ -1,6 +1,7 @@
 import {
   DashboardDevice,
   DashboardDeviceLayout,
+  DashboardColumnSpan,
   DashboardLayoutSettings,
   DashboardWidgetId,
   UserSettings,
@@ -19,11 +20,11 @@ export const DASHBOARD_WIDGETS: ReadonlyArray<{
 ];
 
 export const DEFAULT_DASHBOARD_WIDGET_ORDER: DashboardWidgetId[] = [
-  'balance',
-  'upcomingTasks',
   'accounts',
+  'upcomingTasks',
   'transactions',
   'goals',
+  'balance',
 ];
 
 const DEFAULT_WIDGET_VISIBILITY: Record<DashboardWidgetId, boolean> = {
@@ -34,11 +35,39 @@ const DEFAULT_WIDGET_VISIBILITY: Record<DashboardWidgetId, boolean> = {
   goals: true,
 };
 
+const DEFAULT_WIDGET_SPANS: Record<DashboardDevice, Record<DashboardWidgetId, DashboardColumnSpan>> = {
+  desktop: {
+    accounts: 8,
+    upcomingTasks: 4,
+    transactions: 12,
+    goals: 4,
+    balance: 8,
+  },
+  tablet: {
+    upcomingTasks: 12,
+    accounts: 12,
+    transactions: 12,
+    balance: 12,
+    goals: 12,
+  },
+  mobile: {
+    upcomingTasks: 12,
+    accounts: 12,
+    transactions: 12,
+    balance: 12,
+    goals: 12,
+  },
+};
+
+function isDashboardColumnSpan(value: unknown): value is DashboardColumnSpan {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 12;
+}
+
 function isDashboardWidgetId(value: unknown): value is DashboardWidgetId {
   return DASHBOARD_WIDGETS.some(widget => widget.id === value);
 }
 
-function normalizeDeviceLayout(value: unknown): DashboardDeviceLayout {
+function normalizeDeviceLayout(value: unknown, device: DashboardDevice): DashboardDeviceLayout {
   const candidate = value && typeof value === 'object' ? value as Partial<DashboardDeviceLayout> : {};
   const sourceOrder = Array.isArray(candidate.order) ? candidate.order : [];
   const order = Array.from(new Set(sourceOrder.filter(isDashboardWidgetId)));
@@ -58,22 +87,35 @@ function normalizeDeviceLayout(value: unknown): DashboardDeviceLayout {
     }
   }
 
-  return { order, visibility };
+  const rawSpans = candidate.spans && typeof candidate.spans === 'object'
+    ? candidate.spans as Partial<Record<DashboardWidgetId, unknown>>
+    : {};
+  const spans = { ...DEFAULT_WIDGET_SPANS[device] };
+
+  for (const widget of DASHBOARD_WIDGETS) {
+    if (isDashboardColumnSpan(rawSpans[widget.id])) {
+      spans[widget.id] = rawSpans[widget.id] as DashboardColumnSpan;
+    }
+  }
+
+  return { order, visibility, spans };
 }
 
 export function getDefaultDashboardLayoutSettings(): DashboardLayoutSettings {
   return {
-    desktop: normalizeDeviceLayout(undefined),
-    tablet: normalizeDeviceLayout(undefined),
-    mobile: normalizeDeviceLayout(undefined),
+    desktop: normalizeDeviceLayout(undefined, 'desktop'),
+    tablet: normalizeDeviceLayout(undefined, 'tablet'),
+    mobile: normalizeDeviceLayout(undefined, 'mobile'),
   };
 }
 
-export function normalizeDashboardLayoutSettings(value?: Partial<DashboardLayoutSettings> | null): DashboardLayoutSettings {
+export function normalizeDashboardLayoutSettings(
+  value?: Partial<Record<DashboardDevice, Partial<DashboardDeviceLayout>>> | null,
+): DashboardLayoutSettings {
   return {
-    desktop: normalizeDeviceLayout(value?.desktop),
-    tablet: normalizeDeviceLayout(value?.tablet),
-    mobile: normalizeDeviceLayout(value?.mobile),
+    desktop: normalizeDeviceLayout(value?.desktop, 'desktop'),
+    tablet: normalizeDeviceLayout(value?.tablet, 'tablet'),
+    mobile: normalizeDeviceLayout(value?.mobile, 'mobile'),
   };
 }
 

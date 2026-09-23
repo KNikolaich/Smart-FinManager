@@ -11,6 +11,7 @@ interface TotalBalanceCardProps {
   balanceTrend: { name: string; month: string; balance: number }[];
   onNavigateToAnalytics?: (options?: any) => void;
   onOpenTransactionHistory?: (filterProps?: any) => void;
+  className?: string;
 }
 
 export function TotalBalanceCard({
@@ -19,21 +20,22 @@ export function TotalBalanceCard({
   monthlyStats,
   balanceTrend,
   onNavigateToAnalytics,
-  onOpenTransactionHistory
+  onOpenTransactionHistory,
+  className,
 }: TotalBalanceCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0.3 }}
       animate={{ opacity: 0.7 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className="overflow-hidden mb-6"
+      className={cn("h-full overflow-hidden", className)}
     >
           <div
             onClick={() => onNavigateToAnalytics?.({
               filterType: 'period',
               periodRange: { start: subMonths(new Date(), 1), end: new Date() }
             })}
-            className="bg-theme-surface rounded-3xl p-4 text-theme-main border border-theme-base shadow-soft cursor-pointer group relative overflow-hidden"
+            className="h-full bg-theme-surface rounded-3xl p-4 text-theme-main border border-theme-base shadow-soft cursor-pointer group relative overflow-hidden"
           >
             <div className="relative z-10 flex flex-col sm:flex-row items-center gap-6">
               {/* Left Side: Stats (Max Width 400px) */}

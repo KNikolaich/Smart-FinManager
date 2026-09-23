@@ -137,12 +137,20 @@ const dashboardVisibilitySchema = z.object({
   balance: z.boolean(),
   goals: z.boolean(),
 }).strict();
+const dashboardSpansSchema = z.object({
+  upcomingTasks: z.number().int().min(1).max(12),
+  accounts: z.number().int().min(1).max(12),
+  transactions: z.number().int().min(1).max(12),
+  balance: z.number().int().min(1).max(12),
+  goals: z.number().int().min(1).max(12),
+}).strict();
 const dashboardDeviceLayoutSchema = z.object({
   order: z.array(dashboardWidgetIdSchema).length(5).refine(
     (order) => new Set(order).size === 5,
     { message: "Порядок компонентов должен содержать каждый компонент ровно один раз" },
   ),
   visibility: dashboardVisibilitySchema,
+  spans: dashboardSpansSchema,
 }).strict();
 const dashboardLayoutSettingsSchema = z.object({
   desktop: dashboardDeviceLayoutSchema,

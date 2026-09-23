@@ -3,10 +3,12 @@ export type AccountType = 'card' | 'cash' | 'bank' | 'credit';
 
 export type DashboardWidgetId = 'upcomingTasks' | 'accounts' | 'transactions' | 'balance' | 'goals';
 export type DashboardDevice = 'desktop' | 'tablet' | 'mobile';
+export type DashboardColumnSpan = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
 export interface DashboardDeviceLayout {
   order: DashboardWidgetId[];
   visibility: Record<DashboardWidgetId, boolean>;
+  spans: Record<DashboardWidgetId, DashboardColumnSpan>;
 }
 
 export interface DashboardLayoutSettings {

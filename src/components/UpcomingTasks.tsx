@@ -318,7 +318,7 @@ export default function UpcomingTasks({
   };
 
   return (
-    <section className={`w-full ${variant === 'carousel' ? 'max-w-md' : ''} rounded-2xl border border-theme-base bg-theme-surface p-4 ${className || ''}`} data-testid="upcoming-tasks">
+    <section className={`h-full w-full ${variant === 'carousel' ? 'max-w-md' : ''} rounded-2xl border border-theme-base bg-theme-surface p-4 ${className || ''}`} data-testid="upcoming-tasks">
       <header className="flex items-center justify-between gap-2">
         {variant === 'carousel' && (
           onOpenCalendar ? (
@@ -399,7 +399,7 @@ export default function UpcomingTasks({
         </div>
       ) : variant === 'carousel' ? (
         <div
-          className="relative min-h-[142px] pt-3 touch-pan-y select-none"
+          className="relative min-h-[142px] max-md:min-h-[116px] pt-3 touch-pan-y select-none"
           data-testid="upcoming-tasks-carousel"
           onPointerDown={handleCarouselPointerDown}
           onPointerMove={handleCarouselPointerMove}
