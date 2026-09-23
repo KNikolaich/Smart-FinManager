@@ -262,6 +262,42 @@ describe('UpcomingTasks', () => {
     }));
   });
 
+  it('opens the list at the focused task and keeps earlier tasks above the initial window', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 2, 12));
+    const completedPast = Array.from({ length: 30 }, (_, index) => {
+      const day = String(index + 1).padStart(2, '0');
+      return {
+        ...makePayment(index),
+        id: `completed-past-${index}`,
+        title: `Прошлый план ${index}`,
+        date: `2026-09-${day}`,
+        paidDates: [`2026-09-${day}`],
+      };
+    });
+    const focusedOverdue = {
+      ...makePayment(30),
+      id: 'focused-overdue',
+      title: 'Первая просрочка',
+      date: '2026-10-01',
+    };
+
+    render(
+      <UpcomingTasks
+        payments={[...completedPast, focusedOverdue]}
+        startDate="2026-10-02"
+      />,
+    );
+
+    const list = screen.getByTestId('upcoming-tasks-list');
+    const firstRow = list.querySelector('[data-testid^="payment-row-"]');
+
+    expect(firstRow).toHaveAttribute('data-testid', 'payment-row-focused-overdue-2026-10-01');
+    expect(screen.getByText('Первая просрочка')).toBeTruthy();
+    expect(screen.queryByText('Прошлый план 0')).toBeNull();
+    expect(screen.getByTestId('button-upcoming-load-previous')).toBeTruthy();
+  });
+
   it('scrolls the selected list task into view when the calendar date changes', () => {
     const scrollTo = vi.fn();
     const originalScrollTo = HTMLElement.prototype.scrollTo;

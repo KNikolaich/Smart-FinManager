@@ -158,7 +158,12 @@ export default function UpcomingTasks({
     const initialFocus = useDefaultFocus
       ? getDefaultFocusOccurrence(loadedOccurrences, startDate)
       : undefined;
-    setListWindow(getInitialListWindow(loadedOccurrences, initialFocus?.date || startDate, pageSize));
+    setListWindow(getInitialListWindow(
+      loadedOccurrences,
+      initialFocus,
+      startDate,
+      pageSize,
+    ));
     if (useDefaultFocus) listInitialFocusResolved.current = true;
     previousListHeight.current = null;
     listRef.current?.scrollTo?.({ top: 0 });
@@ -616,17 +621,23 @@ function recurrenceLabel(value: PlannedPaymentRecurrence) {
 
 function getInitialListWindow(
   occurrences: PlannedPaymentOccurrence[],
+  focusOccurrence: PlannedPaymentOccurrence | undefined,
   anchorDate: string,
   pageSize: number,
 ) {
   if (occurrences.length === 0) return { start: 0, end: 0 };
 
+  const focusIndex = focusOccurrence
+    ? occurrences.findIndex(item => occurrenceKey(item) === occurrenceKey(focusOccurrence))
+    : -1;
   const firstOccurrenceAtOrAfterAnchor = occurrences.findIndex(item => item.date >= anchorDate);
-  const anchorIndex = firstOccurrenceAtOrAfterAnchor >= 0
-    ? firstOccurrenceAtOrAfterAnchor
+  const anchorIndex = focusIndex >= 0
+    ? focusIndex
+    : firstOccurrenceAtOrAfterAnchor >= 0
+      ? firstOccurrenceAtOrAfterAnchor
     : occurrences.length - 1;
   const maxStart = Math.max(0, occurrences.length - pageSize);
-  const start = Math.max(0, Math.min(anchorIndex - Math.floor(pageSize / 2), maxStart));
+  const start = Math.max(0, Math.min(anchorIndex, maxStart));
 
   return {
     start,
