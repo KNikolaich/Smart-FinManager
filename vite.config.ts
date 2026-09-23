@@ -45,11 +45,21 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
-             if (id.includes('node_modules')) {
-                if (id.includes('openai')) return 'ai'
-                if (id.includes('recharts') || id.includes('chart')) return 'charts'
-                return 'vendor'
-              }
+            const normalizedId = id.replaceAll('\\', '/')
+            if (!normalizedId.includes('/node_modules/')) return
+
+            if (normalizedId.includes('/recharts/') || normalizedId.includes('/victory/')) return 'charts'
+            if (normalizedId.includes('/lucide-react/')) return 'icons'
+            if (normalizedId.includes('/xlsx/')) return 'spreadsheet'
+            if (normalizedId.includes('/sql.js/')) return 'sql'
+            if (normalizedId.includes('/openai/') || normalizedId.includes('/@google/genai/')) return 'ai'
+            if (
+              normalizedId.includes('/react/')
+              || normalizedId.includes('/react-dom/')
+              || normalizedId.includes('/scheduler/')
+            ) return 'react'
+
+            return 'vendor'
           },
         },
       },

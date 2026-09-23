@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { lazy, Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { useAppData } from './hooks/useAppData';
@@ -12,10 +12,6 @@ import { useDashboardDevice } from './hooks/useDashboardDevice';
 
 // Import components directly to avoid lazy loading issues in preview
 import Dashboard from './components/Dashboard';
-import PlanPage from './components/PlanPage';
-import Analytics from './components/Analytics';
-import Settings from './components/Settings';
-import AIAssistant from './components/AIAssistant';
 import type { AIAssistantHandle } from './components/AIAssistant';
 import Auth from './components/Auth';
 
@@ -28,6 +24,19 @@ import { ToastContainer, ToastType } from './components/ui/Toast';
 import { getTodayKey } from './lib/plannedPaymentOccurrences';
 
 type Tab = 'dashboard' | 'plan' | 'analytics' | 'settings' | 'ai';
+
+const LazyPlanPage = lazy(() => import('./components/PlanPage'));
+const LazyAnalytics = lazy(() => import('./components/Analytics'));
+const LazySettings = lazy(() => import('./components/Settings'));
+const LazyAIAssistant = lazy(() => import('./components/AIAssistant'));
+
+function SectionLoadingState() {
+  return (
+    <div className="flex min-h-[240px] h-full items-center justify-center bg-theme-main">
+      <div className="h-9 w-9 animate-spin rounded-full border-2 border-theme-base border-t-theme-primary" />
+    </div>
+  );
+}
 
 export default function App() {
   const [toasts, setToasts] = useState<{ id: string; message: string; type: ToastType }[]>([]);
@@ -283,7 +292,7 @@ export default function App() {
         );
       case 'plan':
         return (
-          <PlanPage
+          <LazyPlanPage
             accounts={accounts}
             transactions={transactions}
             categories={categories}
@@ -301,7 +310,7 @@ export default function App() {
         );
       case 'analytics':
         return (
-          <Analytics
+          <LazyAnalytics
             transactions={transactions}
             categories={categories}
             accounts={accounts}
@@ -324,10 +333,10 @@ export default function App() {
           />
         );
       case 'settings':
-        return <Settings user={user} accounts={accounts} onLogout={handleLogout} onShowLogs={() => setShowAILogs(true)} onRefresh={refreshData} onSaveDashboardLayout={handleSaveDashboardLayout} />;
+        return <LazySettings user={user} accounts={accounts} onLogout={handleLogout} onShowLogs={() => setShowAILogs(true)} onRefresh={refreshData} onSaveDashboardLayout={handleSaveDashboardLayout} />;
       case 'ai':
         return (
-          <AIAssistant
+          <LazyAIAssistant
             ref={aiAssistantRef as any}
             accounts={accounts}
             categories={categories}
@@ -385,7 +394,9 @@ export default function App() {
                 transition={{ duration: 0.25, ease: "easeOut" }}
                 className="h-full"
               >
-                {renderContent()}
+                <Suspense fallback={<SectionLoadingState />}>
+                  {renderContent()}
+                </Suspense>
               </motion.div>
             </AnimatePresence>
           </div>

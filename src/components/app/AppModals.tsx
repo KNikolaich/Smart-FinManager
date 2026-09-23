@@ -1,10 +1,12 @@
-import TransactionHistory from '../TransactionHistory';
-import AddTransaction from '../AddTransaction';
-import EditTransaction from '../EditTransaction';
-import UserPage from '../UserPage';
-import AILogs from '../AILogs';
+import { lazy, Suspense } from 'react';
 import { GenericContextMenu } from '../ui/GenericContextMenu';
 import { Account, Category, Currency, Transaction, UserProfile } from '../../types';
+
+const LazyTransactionHistory = lazy(() => import('../TransactionHistory'));
+const LazyAddTransaction = lazy(() => import('../AddTransaction'));
+const LazyEditTransaction = lazy(() => import('../EditTransaction'));
+const LazyUserPage = lazy(() => import('../UserPage'));
+const LazyAILogs = lazy(() => import('../AILogs'));
 
 interface TransactionHistoryFilter {
   categoryId?: string;
@@ -97,73 +99,75 @@ export function AppModals({
 }: AppModalsProps) {
   return (
     <>
-      {showTransactionHistory && (
-        <TransactionHistory
-          categories={categories}
-          accounts={accounts}
-          currencies={currencies}
-          refreshSignal={dataVersion}
-          onClose={onCloseTransactionHistory}
-          onEditTransaction={onEditTransaction}
-          onOpenAddTransaction={onOpenAddTransactionWithData}
-          onRefresh={onUpdateTransaction}
-          initialAccountId={transactionHistoryFilter.accountId}
-          initialCategoryId={transactionHistoryFilter.categoryId}
-          initialType={transactionHistoryFilter.type}
-          initialStartDate={transactionHistoryFilter.startDate}
-          initialEndDate={transactionHistoryFilter.endDate}
-          initialSelectedMonth={transactionHistoryFilter.selectedMonth}
-        />
-      )}
+      <Suspense fallback={null}>
+        {showTransactionHistory && (
+          <LazyTransactionHistory
+            categories={categories}
+            accounts={accounts}
+            currencies={currencies}
+            refreshSignal={dataVersion}
+            onClose={onCloseTransactionHistory}
+            onEditTransaction={onEditTransaction}
+            onOpenAddTransaction={onOpenAddTransactionWithData}
+            onRefresh={onUpdateTransaction}
+            initialAccountId={transactionHistoryFilter.accountId}
+            initialCategoryId={transactionHistoryFilter.categoryId}
+            initialType={transactionHistoryFilter.type}
+            initialStartDate={transactionHistoryFilter.startDate}
+            initialEndDate={transactionHistoryFilter.endDate}
+            initialSelectedMonth={transactionHistoryFilter.selectedMonth}
+          />
+        )}
 
-      {(showAddTransaction || initialTransactionData) && (
-        <AddTransaction
-          key={initialTransactionData
-            ? `copy-${transactionDraftIndex}-${initialTransactionData.createdAt}-${initialTransactionData.amount}`
-            : 'new'}
-          onComplete={onCloseAddTransaction}
-          onAdd={onAddTransaction}
-          onOptimisticAdd={onOptimisticAdd}
-          accounts={accounts}
-          transactions={transactions}
-          categories={categories}
-          currencies={currencies}
-          userId={userId}
-          initialData={initialTransactionData}
-          draftProgress={transactionDraftTotal > 1
-            ? { current: transactionDraftIndex + 1, total: transactionDraftTotal }
-            : undefined}
-        />
-      )}
+        {(showAddTransaction || initialTransactionData) && (
+          <LazyAddTransaction
+            key={initialTransactionData
+              ? `copy-${transactionDraftIndex}-${initialTransactionData.createdAt}-${initialTransactionData.amount}`
+              : 'new'}
+            onComplete={onCloseAddTransaction}
+            onAdd={onAddTransaction}
+            onOptimisticAdd={onOptimisticAdd}
+            accounts={accounts}
+            transactions={transactions}
+            categories={categories}
+            currencies={currencies}
+            userId={userId}
+            initialData={initialTransactionData}
+            draftProgress={transactionDraftTotal > 1
+              ? { current: transactionDraftIndex + 1, total: transactionDraftTotal }
+              : undefined}
+          />
+        )}
 
-      {editingTransaction && (
-        <EditTransaction
-          transaction={editingTransaction}
-          accounts={accounts}
-          transactions={transactions}
-          categories={categories}
-          currencies={currencies}
-          onClose={onCloseEditTransaction}
-          onUpdate={onUpdateTransaction}
-        />
-      )}
+        {editingTransaction && (
+          <LazyEditTransaction
+            transaction={editingTransaction}
+            accounts={accounts}
+            transactions={transactions}
+            categories={categories}
+            currencies={currencies}
+            onClose={onCloseEditTransaction}
+            onUpdate={onUpdateTransaction}
+          />
+        )}
 
-      {showUserPage && (
-        <UserPage
-          user={user}
-          onLogout={onLogout}
-          onClose={onCloseUserPage}
-          onUpdateUser={onUpdateUser}
-          onRefresh={onRefresh}
-        />
-      )}
+        {showUserPage && (
+          <LazyUserPage
+            user={user}
+            onLogout={onLogout}
+            onClose={onCloseUserPage}
+            onUpdateUser={onUpdateUser}
+            onRefresh={onRefresh}
+          />
+        )}
 
-      {showAILogs && (
-        <AILogs
-          userId={user.id}
-          onClose={onCloseAILogs}
-        />
-      )}
+        {showAILogs && (
+          <LazyAILogs
+            userId={user.id}
+            onClose={onCloseAILogs}
+          />
+        )}
+      </Suspense>
 
       {globalContextMenu && (
         <GenericContextMenu
