@@ -267,6 +267,7 @@ export default function App() {
         return (
           <PlanPage
             accounts={accounts}
+            transactions={transactions}
             categories={categories}
             user={user}
             onRefresh={refreshData}
@@ -350,7 +351,7 @@ export default function App() {
           className={cn(
           "absolute inset-0 overflow-y-auto no-scrollbar px-[2px] pt-0",
           activeTab === 'plan'
-            ? "portrait:pb-12 landscape:pb-0"
+            ? "portrait:pb-24 landscape:pb-0"
             : "pb-24 md:pb-0 landscape:pb-0"
           )}
         >

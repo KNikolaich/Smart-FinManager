@@ -13,7 +13,10 @@ interface AppHeaderProps {
 
 export function AppHeader({ activeTab, onLogoClick, isOnline, showUserPage, onOpenUserPage }: AppHeaderProps) {
   return (
-    <header className="relative px-6 h-16 md:h-20 flex items-center justify-between bg-theme-surface/80 backdrop-blur-md border-b border-theme-base shrink-0 z-50 sticky top-0 transition-all landscape:hidden">
+    <header className={cn(
+      "relative px-6 h-16 md:h-20 flex items-center justify-between bg-theme-surface/80 backdrop-blur-md border-b border-theme-base shrink-0 z-50 sticky top-0 transition-all landscape:hidden",
+      activeTab === 'plan' && "portrait:hidden"
+    )}>
       <button
         type="button"
         aria-label="Открыть главную страницу"

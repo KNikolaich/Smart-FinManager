@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PaymentCalendarTab from './PaymentCalendarTab';
-import type { PlannedPayment } from '../types';
+import type { Account, PlannedPayment } from '../types';
 
 const payment: PlannedPayment = {
   id: 'rent',
@@ -161,6 +161,35 @@ describe('PaymentCalendarTab', () => {
       amount: 900,
       recurrence: 'none',
     }));
+  });
+
+  it('lets a plan repeat on selected weekdays and keeps the account picker grouped', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 21, 12));
+    const account: Account = {
+      id: 'account-1',
+      userId: 'user-1',
+      name: 'Основная карта',
+      type: 'card',
+      balance: 12345,
+      currency: 'RUB',
+      showOnDashboard: true,
+      showInTotals: true,
+    };
+    render(<PaymentCalendarTab payments={[]} accounts={[account]} />);
+
+    fireEvent.click(screen.getByTestId('button-add-payment'));
+    fireEvent.change(screen.getByTestId('input-payment-title'), { target: { value: 'Дорога ребенку' } });
+    fireEvent.change(screen.getByTestId('input-payment-amount'), { target: { value: '300' } });
+    fireEvent.change(screen.getByTestId('select-payment-recurrence'), { target: { value: 'weekdays' } });
+
+    expect(screen.getByTestId('payment-weekday-picker')).toBeTruthy();
+    expect(screen.getByTestId('weekday-1').getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByTestId('weekday-2'));
+    fireEvent.click(screen.getByText('Основная карта'));
+
+    expect(document.body.textContent).toMatch(/12[\s,.\u00a0]?345\s+RUB/);
+    expect(screen.getByTestId('weekday-2').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('keeps an empty calendar grid while showing plans outside the current month', () => {

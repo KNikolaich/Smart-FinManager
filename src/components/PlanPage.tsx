@@ -6,6 +6,7 @@ import {
   PlanSubject, 
   PlanCell, 
   Account, 
+  Transaction,
   Category,
   PlanConfig,
   CashbackCategory,
@@ -51,6 +52,7 @@ import PaymentCalendarTab from './PaymentCalendarTab';
 
 interface PlanPageProps {
   accounts: Account[];
+  transactions: Transaction[];
   categories: Category[];
   user: UserProfile | null;
   onRefresh?: () => void;
@@ -119,6 +121,7 @@ const DEFAULT_CASHBACK_CATEGORIES: CashbackCategory[] = [
 
 export default function PlanPage({
   accounts,
+  transactions,
   categories,
   user,
   onRefresh,
@@ -769,6 +772,7 @@ export default function PlanPage({
           <PaymentCalendarTab
             payments={calendarPayments}
             accounts={accounts}
+            transactions={transactions}
             categories={categories}
             loading={!loadedTabs.has('calendar')}
             error={calendarError}

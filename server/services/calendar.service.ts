@@ -4,6 +4,7 @@ const VALID_RECURRENCES = new Set([
   "none",
   "weekly",
   "biweekly",
+  "weekdays",
   "monthly",
   "quarterly",
   "yearly",
@@ -15,6 +16,7 @@ type LegacyPayment = {
   amount?: number;
   date?: string;
   recurrence?: string;
+  weekdays?: number[];
   transactionType?: string;
   accountId?: string;
   categoryId?: string;
@@ -39,6 +41,16 @@ function dateKey(value: Date) {
 
 function recurrence(value: unknown) {
   return VALID_RECURRENCES.has(String(value)) ? String(value) : "none";
+}
+
+function weekdays(value: unknown) {
+  if (!Array.isArray(value)) return null;
+  const normalized = Array.from(new Set(
+    value
+      .map(Number)
+      .filter(day => Number.isInteger(day) && day >= 1 && day <= 7),
+  )).sort((a, b) => a - b);
+  return normalized.length > 0 ? normalized : null;
 }
 
 function transactionType(value: unknown) {
@@ -111,6 +123,7 @@ async function upsertPlan(tx: any, userId: string, payment: LegacyPayment, stric
     amount,
     date: dateOnly(payment.date),
     recurrence: recurrence(payment.recurrence),
+    weekdays: weekdays(payment.weekdays),
     transactionType: transactionType(payment.transactionType),
     accountId,
     categoryId,
@@ -192,6 +205,7 @@ function serializePlan(plan: any) {
     amount: plan.amount,
     date: dateKey(plan.date),
     recurrence: plan.recurrence,
+    weekdays: weekdays(plan.weekdays),
     transactionType: plan.transactionType,
     accountId: plan.accountId || undefined,
     accountName: plan.account?.name,

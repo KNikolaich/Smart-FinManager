@@ -574,6 +574,7 @@ function recurrenceLabel(value: PlannedPaymentRecurrence) {
     none: 'Однократно',
     weekly: 'Еженедельно',
     biweekly: 'Раз в 2 недели',
+    weekdays: 'По дням недели',
     monthly: 'Ежемесячно',
     quarterly: 'Ежеквартально',
     yearly: 'Ежегодно',

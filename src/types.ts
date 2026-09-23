@@ -171,7 +171,7 @@ export interface PlanData {
   };
 }
 
-export type PlannedPaymentRecurrence = 'none' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
+export type PlannedPaymentRecurrence = 'none' | 'weekly' | 'biweekly' | 'weekdays' | 'monthly' | 'quarterly' | 'yearly';
 export type PlannedPaymentStatus = 'paid' | 'pending';
 
 export interface PlannedPayment {
@@ -180,6 +180,7 @@ export interface PlannedPayment {
   amount: number;
   date: string;
   recurrence: PlannedPaymentRecurrence;
+  weekdays?: number[];
   transactionType?: 'expense' | 'income';
   categoryId?: string;
   categoryName?: string;

@@ -37,6 +37,21 @@ export function getPaymentOccurrencesInRange(
   const start = parseDateKey(startKey);
   const end = parseDateKey(endKey);
   const dates: PlannedPaymentOccurrence[] = [];
+  const addedDates = new Set<string>();
+
+  const addOccurrence = (dateKey: string) => {
+    if (addedDates.has(dateKey)) return;
+    const storedOccurrence = payment.occurrences?.find(item => item.date === dateKey);
+    dates.push({
+      payment,
+      date: dateKey,
+      status: getOccurrenceStatus(payment, dateKey),
+      occurrenceId: storedOccurrence?.id,
+      transactionId: storedOccurrence?.transactionId,
+      manuallyCompleted: storedOccurrence?.manuallyCompleted,
+    });
+    addedDates.add(dateKey);
+  };
 
   for (const date = new Date(start.getFullYear(), start.getMonth(), start.getDate()); date <= end; date.setDate(date.getDate() + 1)) {
     const dateKey = toDateKey(date);
@@ -51,26 +66,27 @@ export function getPaymentOccurrencesInRange(
         ? dayDistance % 7 === 0
         : payment.recurrence === 'biweekly'
           ? dayDistance % 14 === 0
+          : payment.recurrence === 'weekdays'
+            ? (payment.weekdays || []).includes(date.getDay() || 7)
           : payment.recurrence === 'monthly'
             ? date.getDate() === base.getDate()
             : payment.recurrence === 'quarterly'
               ? date.getDate() === base.getDate() && monthDistance % 3 === 0
               : date.getDate() === base.getDate() && date.getMonth() === base.getMonth();
 
-    if (matches) {
-      const storedOccurrence = payment.occurrences?.find(item => item.date === dateKey);
-      dates.push({
-        payment,
-        date: dateKey,
-        status: getOccurrenceStatus(payment, dateKey),
-        occurrenceId: storedOccurrence?.id,
-        transactionId: storedOccurrence?.transactionId,
-        manuallyCompleted: storedOccurrence?.manuallyCompleted,
-      });
-    }
+    if (matches) addOccurrence(dateKey);
   }
 
-  return dates;
+  // Keep completed historical dates even when the plan's recurrence was later
+  // changed to a different set of weekdays.
+  payment.occurrences?.forEach(occurrence => {
+    if (occurrence.date < startKey || occurrence.date > endKey) return;
+    if (occurrence.date < payment.date) return;
+    if (payment.disableFrom && occurrence.date > payment.disableFrom) return;
+    addOccurrence(occurrence.date);
+  });
+
+  return dates.sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export function getUpcomingPaymentOccurrences(

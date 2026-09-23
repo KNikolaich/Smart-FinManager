@@ -12,6 +12,8 @@ import {
   X,
 } from 'lucide-react';
 import {
+  Account,
+  Transaction,
   PlannedPayment,
   PlannedPaymentRecurrence,
   PlannedPaymentStatus,
@@ -19,6 +21,8 @@ import {
 } from '../types';
 import CategorySelect from './CategorySelect';
 import UpcomingTasks from './UpcomingTasks';
+import AccountSelect from './AccountSelect';
+import { cn } from '../lib/utils';
 import {
   getPaymentOccurrencesInRange,
   getTodayKey,
@@ -31,7 +35,8 @@ import {
 
 interface PaymentCalendarTabProps {
   payments: PlannedPayment[];
-  accounts: Array<{ id: string; name: string }>;
+  accounts: Account[];
+  transactions?: Transaction[];
   categories?: Category[];
   loading?: boolean;
   error?: string | null;
@@ -57,6 +62,7 @@ const RECURRENCES: Array<{ value: PlannedPaymentRecurrence; label: string }> = [
   { value: 'none', label: 'Однократно' },
   { value: 'weekly', label: 'Еженедельно' },
   { value: 'biweekly', label: 'Раз в 2 недели' },
+  { value: 'weekdays', label: 'По дням недели' },
   { value: 'monthly', label: 'Ежемесячно' },
   { value: 'quarterly', label: 'Ежеквартально' },
   { value: 'yearly', label: 'Ежегодно' },
@@ -88,6 +94,7 @@ function getMonthCells(cursor: Date) {
 export default function PaymentCalendarTab({
   payments,
   accounts,
+  transactions = [],
   categories = [],
   loading = false,
   error = null,
@@ -298,6 +305,7 @@ export default function PaymentCalendarTab({
           mode={dialogMode}
           payment={editingPayment}
           accounts={accounts}
+          transactions={transactions}
           categories={categories}
           onChange={setEditingPayment}
           onClose={() => { setDialogMode(null); setEditingPayment(null); }}
@@ -331,11 +339,19 @@ function occurrenceDotTone(item: PlannedPaymentOccurrence) {
   return item.payment.transactionType === 'income' ? 'bg-lime-500' : 'bg-pink-300';
 }
 
-function PaymentDialog({ mode, payment, accounts, categories, onChange, onClose, onSave, saveError }: { mode: 'create' | 'edit'; payment: PlannedPayment; accounts: Array<{ id: string; name: string }>; categories: Category[]; onChange: (payment: PlannedPayment) => void; onClose: () => void; onSave: () => void; saveError?: string | null }) {
+function PaymentDialog({ mode, payment, accounts, transactions, categories, onChange, onClose, onSave, saveError }: { mode: 'create' | 'edit'; payment: PlannedPayment; accounts: Account[]; transactions: Transaction[]; categories: Category[]; onChange: (payment: PlannedPayment) => void; onClose: () => void; onSave: () => void; saveError?: string | null }) {
   const set = <K extends keyof PlannedPayment>(field: K, value: PlannedPayment[K]) => onChange({ ...payment, [field]: value });
   const transactionType = payment.transactionType || 'expense';
+  const selectedWeekdays = payment.weekdays || [];
+  const activeAccounts = accounts.filter(account => !account.isArchived || account.id === payment.accountId);
+  const setRecurrence = (value: PlannedPaymentRecurrence) => {
+    const nextWeekdays = value === 'weekdays'
+      ? selectedWeekdays.length > 0 ? selectedWeekdays : [getWeekdayNumber(payment.date)]
+      : undefined;
+    onChange({ ...payment, recurrence: value, weekdays: nextWeekdays });
+  };
   return (
-    <div className="fixed inset-0 z-40 bg-black/30 p-0 sm:p-4 flex items-center justify-center" role="presentation" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[100] bg-black/30 p-0 sm:p-4 flex items-center justify-center" role="presentation" onMouseDown={onClose}>
       <section className="w-full max-w-lg h-full max-h-full sm:h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto no-scrollbar rounded-none sm:rounded-2xl bg-theme-surface shadow-2xl" role="dialog" aria-modal="true" onMouseDown={event => event.stopPropagation()}>
         <header className="flex items-center justify-between p-4 border-b border-theme-base"><h3 className="text-lg font-bold text-theme-main">{mode === 'create' ? 'Новая запись' : 'Изменить'}</h3><button type="button" aria-label="Закрыть" data-testid="button-close-payment-dialog" onClick={onClose} className="p-2 rounded-lg hover:bg-theme-main"><X size={16} /></button></header>
         <div className="p-4 space-y-3">
@@ -344,10 +360,59 @@ function PaymentDialog({ mode, payment, accounts, categories, onChange, onClose,
             <label className="block text-xs font-bold text-theme-muted">Сумма<input data-testid="input-payment-amount" type="number" min="1" value={payment.amount || ''} onChange={event => set('amount', Number(event.target.value))} className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main" /></label>
             <label className="block text-xs font-bold text-theme-muted">Дата<input data-testid="input-payment-date" type="date" value={payment.date} onChange={event => set('date', event.target.value)} className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main" /></label>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label className="block text-xs font-bold text-theme-muted">Повторение<select data-testid="select-payment-recurrence" value={payment.recurrence} onChange={event => set('recurrence', event.target.value as PlannedPaymentRecurrence)} className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main">{RECURRENCES.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-            <label className="block text-xs font-bold text-theme-muted">Счёт<select data-testid="select-payment-account" value={payment.accountId || ''} onChange={event => { const account = accounts.find(item => item.id === event.target.value); onChange({ ...payment, accountId: account?.id, accountName: account?.name || '' }); }} className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main"><option value="">Не выбран</option>{accounts.map(account => <option key={account.id} value={account.id}>{account.name}</option>)}</select></label>
-          </div>
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+             <label className="block text-xs font-bold text-theme-muted">Повторение<select data-testid="select-payment-recurrence" value={payment.recurrence} onChange={event => setRecurrence(event.target.value as PlannedPaymentRecurrence)} className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main">{RECURRENCES.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+             <div className="space-y-1.5">
+               <label className="text-xs font-bold text-theme-muted">Счёт</label>
+               <AccountSelect
+                 accounts={activeAccounts}
+                 selectedAccountId={payment.accountId || ''}
+                 onChange={accountId => {
+                   const account = activeAccounts.find(item => item.id === accountId);
+                   onChange({ ...payment, accountId: account?.id, accountName: account?.name || '' });
+                 }}
+                 label=""
+                 transactions={transactions}
+                 type={transactionType}
+               />
+             </div>
+           </div>
+           {payment.recurrence === 'weekdays' && (
+             <div className="rounded-xl border border-theme-base bg-theme-main p-3" data-testid="payment-weekday-picker">
+               <div className="mb-2 flex items-center justify-between gap-2">
+                 <span className="text-[10px] font-bold uppercase tracking-widest text-theme-muted">Дни недели</span>
+                 <span className="text-[10px] text-theme-muted">Выберите один или несколько</span>
+               </div>
+               <div className="grid grid-cols-7 gap-1">
+                 {WEEKDAYS.map((label, index) => {
+                   const day = index + 1;
+                   const selected = selectedWeekdays.includes(day);
+                   return (
+                     <button
+                       key={label}
+                       type="button"
+                       aria-pressed={selected}
+                       data-testid={`weekday-${day}`}
+                       onClick={() => {
+                         const next = selected
+                           ? selectedWeekdays.filter(value => value !== day)
+                           : [...selectedWeekdays, day].sort((a, b) => a - b);
+                         if (next.length > 0) onChange({ ...payment, weekdays: next });
+                       }}
+                       className={cn(
+                         "rounded-lg px-1 py-2 text-[10px] font-bold transition-colors",
+                         selected
+                           ? "bg-theme-primary text-theme-on-primary"
+                           : "bg-theme-surface text-theme-muted hover:bg-theme-primary-light hover:text-theme-primary"
+                       )}
+                     >
+                       {label}
+                     </button>
+                   );
+                 })}
+               </div>
+             </div>
+           )}
            {mode === 'edit' && (
              <label className="block text-xs font-bold text-theme-muted">
                Отключать с даты
@@ -384,4 +449,9 @@ function PaymentDialog({ mode, payment, accounts, categories, onChange, onClose,
 
 function CalendarState({ title, description, action, actionLabel, error = false }: { title: string; description?: string; action?: () => void; actionLabel?: string; error?: boolean }) {
   return <div className="min-h-[340px] m-3 sm:m-5 rounded-2xl border border-dashed border-theme-base bg-theme-surface flex flex-col items-center justify-center text-center px-5">{error ? <CircleAlert className="text-rose-400 mb-3" size={30} /> : <CalendarDays className="text-theme-primary mb-3" size={30} />}<h3 className="text-lg font-bold text-theme-main">{title}</h3>{description && <p className="text-xs text-theme-muted max-w-sm mt-2 mb-4">{description}</p>}{action && <button type="button" data-testid="button-calendar-state-action" onClick={action} className="px-3 py-2 rounded-xl bg-theme-primary text-theme-on-primary text-xs font-bold"><RefreshCw size={14} className="inline mr-1" />{actionLabel}</button>}</div>;
+}
+
+function getWeekdayNumber(dateKey: string) {
+  const day = new Date(`${dateKey}T12:00:00`).getDay();
+  return day === 0 ? 7 : day;
 }
