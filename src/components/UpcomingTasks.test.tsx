@@ -182,6 +182,86 @@ describe('UpcomingTasks', () => {
     vi.useRealTimers();
   });
 
+  it('focuses the first overdue incomplete plan instead of a completed past plan', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 20, 12));
+    const onEditTask = vi.fn();
+    const completedPast = {
+      ...makePayment(0),
+      id: 'completed-past',
+      title: 'Уже выполненная',
+      date: '2026-09-10',
+      paidDates: ['2026-09-10'],
+    };
+    const overdue = {
+      ...makePayment(1),
+      id: 'first-overdue',
+      title: 'Первая просрочка',
+      date: '2026-09-18',
+    };
+    const future = {
+      ...makePayment(2),
+      id: 'nearest-future',
+      title: 'Ближайший план',
+      date: '2026-09-25',
+    };
+
+    render(
+      <UpcomingTasks
+        payments={[completedPast, overdue, future]}
+        startDate="2026-09-20"
+        onEditTask={onEditTask}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('button-upcoming-edit'));
+
+    expect(onEditTask).toHaveBeenCalledWith(expect.objectContaining({
+      date: '2026-09-18',
+      payment: expect.objectContaining({ id: 'first-overdue' }),
+    }));
+  });
+
+  it('focuses the nearest incomplete future plan when there are no overdue plans', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 20, 12));
+    const onEditTask = vi.fn();
+    const completedPast = {
+      ...makePayment(0),
+      id: 'completed-past',
+      title: 'Уже выполненная',
+      date: '2026-09-10',
+      paidDates: ['2026-09-10'],
+    };
+    const nearestFuture = {
+      ...makePayment(1),
+      id: 'nearest-future',
+      title: 'Ближайший план',
+      date: '2026-09-21',
+    };
+    const laterFuture = {
+      ...makePayment(2),
+      id: 'later-future',
+      title: 'Более поздний план',
+      date: '2026-09-25',
+    };
+
+    render(
+      <UpcomingTasks
+        payments={[completedPast, nearestFuture, laterFuture]}
+        startDate="2026-09-20"
+        onEditTask={onEditTask}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('button-upcoming-edit'));
+
+    expect(onEditTask).toHaveBeenCalledWith(expect.objectContaining({
+      date: '2026-09-21',
+      payment: expect.objectContaining({ id: 'nearest-future' }),
+    }));
+  });
+
   it('scrolls the selected list task into view when the calendar date changes', () => {
     const scrollTo = vi.fn();
     const originalScrollTo = HTMLElement.prototype.scrollTo;
