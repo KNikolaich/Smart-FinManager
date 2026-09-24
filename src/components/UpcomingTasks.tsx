@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, Check, CircleDashed, Copy, Eraser, Eye, Hand, Pencil, Plus, RefreshCw, ScrollText, StickyNote, Trash2, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { CalendarNote, PlannedPayment, PlannedPaymentRecurrence } from '../types';
+import { mergeCalendarDashboardItems } from '../lib/calendarDashboardItems';
 import {
   getTodayKey,
   getOutstandingPaymentOccurrences,
@@ -48,7 +49,7 @@ interface UpcomingTasksProps {
 
 export default function UpcomingTasks({
   payments,
-  notes = [],
+  notes,
   startDate = getTodayKey(),
   filter = 'all',
   focusedDate,
@@ -71,6 +72,7 @@ export default function UpcomingTasks({
   className,
 }: UpcomingTasksProps) {
   const [loadedPayments, setLoadedPayments] = useState<PlannedPayment[]>([]);
+  const [loadedNotes, setLoadedNotes] = useState<CalendarNote[]>([]);
   const [localPayments, setLocalPayments] = useState<PlannedPayment[] | null>(null);
   const [loading, setLoading] = useState(payments === undefined);
   const [error, setError] = useState<string | null>(null);
@@ -104,10 +106,11 @@ export default function UpcomingTasks({
 
     let active = true;
     setLoading(true);
-    api.get<{ payments?: PlannedPayment[] }>('/plan-grid/calendar')
+    api.get<{ payments?: PlannedPayment[]; notes?: CalendarNote[] }>('/plan-grid/calendar')
       .then(data => {
         if (!active) return;
         setLoadedPayments(Array.isArray(data?.payments) ? data.payments : []);
+        setLoadedNotes(Array.isArray(data?.notes) ? data.notes : []);
         setError(null);
       })
       .catch(() => {
@@ -127,46 +130,63 @@ export default function UpcomingTasks({
   }, [payments]);
 
   const sourcePayments = localPayments ?? payments ?? loadedPayments;
+  const sourceNotes = notes ?? loadedNotes;
   const todayKey = getTodayKey();
   const pastCleanupCandidates = useMemo(
     () => getPastPlanCleanupCandidates(sourcePayments, todayKey),
     [sourcePayments, todayKey],
   );
   const sortedCalendarNotes = useMemo(
-    () => [...notes].sort((left, right) => left.date.localeCompare(right.date)),
-    [notes],
-  );
-  const focusedCalendarNote = useMemo(
-    () => sortedCalendarNotes.find(note => note.id === focusedNoteId
-      && (!focusedDate || note.date === focusedDate)),
-    [sortedCalendarNotes, focusedNoteId, focusedDate],
+    () => [...sourceNotes].sort((left, right) => left.date.localeCompare(right.date)),
+    [sourceNotes],
   );
   const pastNoteCleanupCandidates = useMemo(
     () => sortedCalendarNotes.filter(note => note.date < todayKey),
     [sortedCalendarNotes, todayKey],
   );
+  const upcomingCalendarNotes = useMemo(
+    () => sortedCalendarNotes.filter(note => note.date >= startDate),
+    [sortedCalendarNotes, startDate],
+  );
 
   const pageSize = 50;
+  const carouselPaymentOccurrenceLimit = carouselLimit + upcomingCalendarNotes.length;
   const loadedOccurrences = useMemo(
     () => variant === 'carousel'
-      ? getOutstandingPaymentOccurrences(sourcePayments, startDate, carouselLimit)
+      ? getOutstandingPaymentOccurrences(sourcePayments, startDate, carouselPaymentOccurrenceLimit)
       : getPaymentOccurrencesForFilter(sourcePayments, startDate, filter, Number.MAX_SAFE_INTEGER),
-    [sourcePayments, startDate, filter, carouselLimit, variant],
+    [sourcePayments, startDate, filter, carouselPaymentOccurrenceLimit, variant],
+  );
+  const carouselItems = useMemo(
+    () => variant === 'carousel'
+      ? mergeCalendarDashboardItems(loadedOccurrences, upcomingCalendarNotes, startDate, carouselLimit)
+      : [],
+    [loadedOccurrences, upcomingCalendarNotes, startDate, carouselLimit, variant],
   );
   const hasPrevious = variant === 'list' && listWindow.start > 0;
   const hasMore = variant === 'list' && listWindow.end < loadedOccurrences.length;
   const occurrences = variant === 'list'
     ? loadedOccurrences.slice(listWindow.start, listWindow.end)
     : loadedOccurrences;
-  const activeCarouselIndex = occurrences.length === 0 ? 0 : Math.min(carouselIndex, occurrences.length - 1);
+  const activeCarouselIndex = carouselItems.length === 0 ? 0 : Math.min(carouselIndex, carouselItems.length - 1);
+  const activeCarouselItem = carouselItems[activeCarouselIndex];
   const focusedOccurrence = useMemo(
-    () => occurrences.find(item => occurrenceKey(item) === focusedKey)
-      || (focusedDate && focusedDate !== getTodayKey()
-        ? occurrences.find(item => item.date === focusedDate)
-        : undefined)
-      || getDefaultFocusOccurrence(occurrences, startDate)
-      || occurrences[0],
-    [occurrences, focusedDate, focusedKey, startDate],
+    () => variant === 'carousel'
+      ? activeCarouselItem?.kind === 'payment' ? activeCarouselItem.occurrence : undefined
+      : occurrences.find(item => occurrenceKey(item) === focusedKey)
+        || (focusedDate && focusedDate !== getTodayKey()
+          ? occurrences.find(item => item.date === focusedDate)
+          : undefined)
+        || getDefaultFocusOccurrence(occurrences, startDate)
+        || occurrences[0],
+    [activeCarouselItem, occurrences, focusedDate, focusedKey, startDate, variant],
+  );
+  const focusedCalendarNote = useMemo(
+    () => variant === 'carousel'
+      ? activeCarouselItem?.kind === 'note' ? activeCarouselItem.note : undefined
+      : sortedCalendarNotes.find(note => note.id === focusedNoteId
+        && (!focusedDate || note.date === focusedDate)),
+    [activeCarouselItem, variant, sortedCalendarNotes, focusedNoteId, focusedDate],
   );
   const focusedIsCompleted = Boolean(
     focusedOccurrence
@@ -185,15 +205,23 @@ export default function UpcomingTasks({
       return;
     }
     if (variant === 'carousel') {
-      const active = occurrences[activeCarouselIndex];
-      if (active) setFocusedKey(occurrenceKey(active));
+      if (activeCarouselItem?.kind === 'payment') {
+        setFocusedNoteId(null);
+        setFocusedKey(occurrenceKey(activeCarouselItem.occurrence));
+      } else if (activeCarouselItem?.kind === 'note') {
+        setFocusedNoteId(activeCarouselItem.note.id);
+        setFocusedKey(activeCarouselItem.key);
+      } else {
+        setFocusedNoteId(null);
+        setFocusedKey(null);
+      }
       return;
     }
     if (!occurrences.some(item => occurrenceKey(item) === focusedKey)) {
       const next = getDefaultFocusOccurrence(occurrences, startDate);
       setFocusedKey(next ? occurrenceKey(next) : null);
     }
-  }, [activeCarouselIndex, occurrences, startDate, variant, focusedKey]);
+  }, [activeCarouselIndex, activeCarouselItem, occurrences, startDate, variant, focusedKey]);
 
   useEffect(() => {
     if (variant !== 'list') return;
@@ -237,10 +265,10 @@ export default function UpcomingTasks({
   }, [focusedKey, listWindow.start, listWindow.end, occurrences.length, variant]);
 
   useEffect(() => {
-    if (carouselIndex >= occurrences.length && occurrences.length > 0) {
-      setCarouselIndex(occurrences.length - 1);
+    if (carouselIndex >= carouselItems.length && carouselItems.length > 0) {
+      setCarouselIndex(carouselItems.length - 1);
     }
-  }, [carouselIndex, occurrences.length]);
+  }, [carouselIndex, carouselItems.length]);
 
   const toggleLocally = async (item: PlannedPaymentOccurrence) => {
     if (item.transactionId) return;
@@ -263,9 +291,9 @@ export default function UpcomingTasks({
 
   const moveCarousel = (direction: -1 | 1) => {
     setCarouselIndex(index => {
-      if (occurrences.length < 2) return index;
-      const nextIndex = Math.max(0, Math.min(index + direction, occurrences.length - 1));
-      if (direction === 1 && nextIndex >= occurrences.length - 2) {
+      if (carouselItems.length < 2) return index;
+      const nextIndex = Math.max(0, Math.min(index + direction, carouselItems.length - 1));
+      if (direction === 1 && nextIndex >= carouselItems.length - 2) {
         setCarouselLimit(current => current + limit);
       }
       return nextIndex;
