@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PaymentCalendarTab from './PaymentCalendarTab';
 import type { Account, PlannedPayment } from '../types';
@@ -116,7 +116,8 @@ describe('PaymentCalendarTab', () => {
     const todayPayment = { ...payment, id: 'today-tone', title: 'Сегодня красным', date: '2026-09-18', recurrence: 'none' as const };
     render(<PaymentCalendarTab payments={[todayPayment]} accounts={[]} />);
 
-    expect(within(screen.getByTestId('calendar-day-2026-09-18')).getByText('Сегодня красным').className).toContain('bg-red-100');
+    const planLabel = within(screen.getByTestId('calendar-day-2026-09-18')).getByText('Сегодня красным');
+    expect(planLabel.parentElement?.className).toContain('bg-red-100');
   });
 
   it('supports weekly and biweekly occurrences and opens a transaction draft', () => {
@@ -206,6 +207,27 @@ describe('PaymentCalendarTab', () => {
 
     expect(document.body.textContent).toMatch(/12[\s,.\u00a0]?345\s+RUB/);
     expect(screen.getByTestId('weekday-2').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('places an optional time immediately after the date and saves it with a new plan', async () => {
+    const onPaymentChange = vi.fn().mockResolvedValue(undefined);
+    render(<PaymentCalendarTab payments={[]} accounts={[]} onPaymentChange={onPaymentChange} />);
+
+    fireEvent.click(screen.getByTestId('button-add-payment'));
+    const dateInput = screen.getByTestId('input-payment-date');
+    const timeInput = screen.getByTestId('input-payment-time') as HTMLInputElement;
+    expect(dateInput.compareDocumentPosition(timeInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(timeInput.value).toBe('');
+
+    fireEvent.change(screen.getByTestId('input-payment-title'), { target: { value: 'Утренний платёж' } });
+    fireEvent.change(screen.getByTestId('input-payment-amount'), { target: { value: '1000' } });
+    fireEvent.change(timeInput, { target: { value: '08:00' } });
+    fireEvent.click(screen.getByTestId('button-save-payment'));
+
+    await waitFor(() => expect(onPaymentChange).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Утренний платёж',
+      time: '08:00',
+    })));
   });
 
   it('keeps an empty calendar grid while showing plans outside the current month', () => {

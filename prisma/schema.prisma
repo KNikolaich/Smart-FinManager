@@ -154,6 +154,7 @@ model CalendarPlan {
   title           String
   amount          Float
   date            DateTime @db.Date
+  time            String?  @db.VarChar(5)
   recurrence      String   @default("none")
   weekdays        Json?
   transactionType String   @default("expense")

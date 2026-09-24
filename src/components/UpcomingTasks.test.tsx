@@ -34,6 +34,49 @@ describe('UpcomingTasks', () => {
     expect(onTaskClick).toHaveBeenCalledWith('2026-09-20');
   });
 
+  it('shows scheduled time and selected weekdays in the dashboard plan card without a month period', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 20, 12));
+    const payment: PlannedPayment = {
+      ...makePayment(1),
+      id: 'weekday-dashboard',
+      title: 'Перевод',
+      date: '2026-09-23',
+      time: '08:00',
+      recurrence: 'weekdays',
+      weekdays: [1, 3, 5],
+    };
+    render(<UpcomingTasks payments={[payment]} variant="carousel" startDate="2026-09-20" />);
+
+    const card = screen.getByTestId('upcoming-banner-weekday-dashboard-2026-09-23');
+    expect(card.textContent).toContain('08:00');
+    expect(card.textContent).toContain('Пн, Ср, Пт');
+    expect(card.textContent).toContain('23 сент');
+    expect(card.textContent).not.toContain('23 сент.');
+  });
+
+  it('shows the regular date instead of the selected-day label in the calendar plan list', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 20, 12));
+    const payment: PlannedPayment = {
+      ...makePayment(1),
+      id: 'weekday-calendar',
+      title: 'Оплата услуг',
+      date: '2026-09-23',
+      time: '15:00',
+      recurrence: 'weekdays',
+      weekdays: [1, 3, 5],
+    };
+    render(<UpcomingTasks payments={[payment]} startDate="2026-09-23" focusedDate="2026-09-23" />);
+
+    const row = screen.getByTestId('payment-row-weekday-calendar-2026-09-23');
+    expect(row.textContent).toContain('23 сент');
+    expect(row.textContent).not.toContain('Выбранный день');
+    expect(row.textContent).toContain('15:00');
+    expect(row.textContent).toContain('Пн, Ср, Пт');
+    expect(row.textContent).not.toContain('23 сент.');
+  });
+
   it('prioritizes overdue tasks and replaces a completed banner', async () => {
     const payments: PlannedPayment[] = [
       { ...makePayment(0), id: 'overdue', title: 'Просроченная задача', date: '2026-09-17' },

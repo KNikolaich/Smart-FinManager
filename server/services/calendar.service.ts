@@ -15,6 +15,7 @@ type LegacyPayment = {
   title?: string;
   amount?: number;
   date?: string;
+  time?: string | null;
   recurrence?: string;
   weekdays?: number[];
   transactionType?: string;
@@ -33,6 +34,17 @@ function dateOnly(value: unknown) {
     throw new Error("Некорректная дата календаря");
   }
   return new Date(Date.UTC(year, month - 1, day));
+}
+
+function paymentTime(value: unknown) {
+  if (value == null || value === "") return null;
+  if (typeof value === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)) {
+    return value;
+  }
+
+  const error: any = new Error("Некорректное время календаря");
+  error.status = 400;
+  throw error;
 }
 
 function dateKey(value: Date) {
@@ -122,6 +134,7 @@ async function upsertPlan(tx: any, userId: string, payment: LegacyPayment, stric
     title: payment.title.trim(),
     amount,
     date: dateOnly(payment.date),
+    time: paymentTime(payment.time),
     recurrence: recurrence(payment.recurrence),
     weekdays: weekdays(payment.weekdays),
     transactionType: transactionType(payment.transactionType),
@@ -204,6 +217,7 @@ function serializePlan(plan: any) {
     title: plan.title,
     amount: plan.amount,
     date: dateKey(plan.date),
+    time: plan.time || undefined,
     recurrence: plan.recurrence,
     weekdays: weekdays(plan.weekdays),
     transactionType: plan.transactionType,

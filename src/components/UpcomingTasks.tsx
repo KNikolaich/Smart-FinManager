@@ -470,7 +470,8 @@ export default function UpcomingTasks({
                     className="min-w-0 flex-1 text-left"
                   >
                     <span className="block text-[10px] uppercase tracking-wider font-bold opacity-70">
-                      {carouselDateLabel(occurrence.date, startDate)}
+                      {carouselDateLabel(occurrence.date)}
+                      {occurrence.payment.time && <> · <time>{occurrence.payment.time}</time></>}
                     </span>
                     <strong className="mt-1 block text-sm sm:text-base leading-tight break-words">
                       <span>{formatMoney(occurrence.payment.amount)}</span>{' '}
@@ -478,7 +479,7 @@ export default function UpcomingTasks({
                       <span>{occurrence.payment.title}</span>
                     </strong>
                     <span className="mt-1 block text-xs opacity-75 leading-snug break-words">
-                      {occurrence.payment.categoryName || 'Без категории'} · {recurrenceLabel(occurrence.payment.recurrence)}
+                      {occurrence.payment.categoryName || 'Без категории'} · {recurrenceLabel(occurrence.payment)}
                     </span>
                   </div>
                 </div>
@@ -529,7 +530,9 @@ export default function UpcomingTasks({
                     <span>{item.payment.title}</span>
                     </strong>
                     <span className="block text-[10px] opacity-75 leading-snug break-words">
-                      {formatTaskDate(item.date, startDate)} · {item.payment.categoryName || 'Без категории'} · {recurrenceLabel(item.payment.recurrence)}
+                      {formatTaskDate(item.date)}
+                      {item.payment.time && <> · <time>{item.payment.time}</time></>}
+                      {' · '}{item.payment.categoryName || 'Без категории'} · {recurrenceLabel(item.payment)}
                   </span>
                 </button>
               </article>
@@ -590,24 +593,23 @@ function getDefaultFocusOccurrence(
     || occurrences[0];
 }
 
-function formatTaskDate(date: string, startDate: string) {
+function formatTaskDate(date: string) {
   if (date === getTodayKey()) return 'Сегодня';
-  if (date === startDate) return 'Выбранный день';
   const taskDate = new Date(`${date}T12:00:00`);
   const today = new Date(`${getTodayKey()}T12:00:00`);
   const difference = Math.round((taskDate.getTime() - today.getTime()) / 86400000);
   if (difference === 0) return 'Сегодня';
   if (difference === 1) return 'Завтра';
-  return taskDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+  return taskDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace(/\.$/, '');
 }
 
 function formatMoney(amount: number) {
   return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(amount)} ₽`;
 }
 
-function carouselDateLabel(date: string, anchorDate: string) {
-  if (isPaymentOccurrenceOverdue(date)) return `Просрочено · ${formatTaskDate(date, anchorDate)}`;
-  return formatTaskDate(date, anchorDate);
+function carouselDateLabel(date: string) {
+  if (isPaymentOccurrenceOverdue(date)) return `Просрочено · ${formatTaskDate(date)}`;
+  return formatTaskDate(date);
 }
 
 function updatePaymentStatus(payments: PlannedPayment[], item: PlannedPaymentOccurrence) {
@@ -623,17 +625,22 @@ function updatePaymentStatus(payments: PlannedPayment[], item: PlannedPaymentOcc
   });
 }
 
-function recurrenceLabel(value: PlannedPaymentRecurrence) {
-  const labels: Record<PlannedPaymentRecurrence, string> = {
+function recurrenceLabel(payment: PlannedPayment) {
+  const labels: Record<Exclude<PlannedPaymentRecurrence, 'weekdays'>, string> = {
     none: 'Однократно',
     weekly: 'Еженедельно',
     biweekly: 'Раз в 2 недели',
-    weekdays: 'По дням недели',
     monthly: 'Ежемесячно',
     quarterly: 'Ежеквартально',
     yearly: 'Ежегодно',
   };
-  return labels[value];
+  if (payment.recurrence !== 'weekdays') return labels[payment.recurrence];
+
+  const weekdayLabels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const selectedDays = (payment.weekdays || [])
+    .filter(day => Number.isInteger(day) && day >= 1 && day <= 7)
+    .map(day => weekdayLabels[day - 1]);
+  return selectedDays.length > 0 ? selectedDays.join(', ') : 'По дням недели';
 }
 
 function getInitialListWindow(

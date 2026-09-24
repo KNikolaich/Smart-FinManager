@@ -250,7 +250,7 @@ export default function PaymentCalendarTab({
         </label>
       </div>
 
-      <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_300px] gap-3">
+       <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_300px] gap-3">
           <div className="min-w-0 rounded-2xl border border-theme-base bg-theme-surface overflow-hidden">
             <div className="grid min-w-0 grid-cols-7 border-b border-theme-base">
               {WEEKDAYS.map((day, index) => <div key={day} className={`min-w-0 p-1 sm:p-2 text-center text-[9px] sm:text-[10px] font-bold uppercase truncate ${index > 4 ? 'text-theme-primary' : 'text-theme-muted'}`}>{day}</div>)}
@@ -269,8 +269,10 @@ export default function PaymentCalendarTab({
                     <span className={`inline-flex min-w-6 h-6 items-center justify-center rounded-lg text-xs font-mono ${cell.key === getTodayKey() ? 'bg-theme-primary text-theme-on-primary' : 'text-theme-muted'}`}>{cell.day}</span>
                     <span className="block mt-1 space-y-1">
                       {dayItems.slice(0, 2).map(item => (
-                        <span key={`${item.payment.id}-${item.date}`} className={`hidden sm:flex items-center gap-1 rounded px-1 py-1 text-[10px] truncate ${occurrenceTone(item)}`}>
-                          <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />{item.payment.title}
+                         <span key={`${item.payment.id}-${item.date}`} className={`hidden sm:flex min-w-0 items-center gap-1 rounded px-1 py-1 text-[10px] ${occurrenceTone(item)}`}>
+                           <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+                           <span className="min-w-0 flex-1 truncate">{item.payment.title}</span>
+                           {item.payment.time && <time className="shrink-0 tabular-nums">{item.payment.time}</time>}
                         </span>
                       ))}
                       {dayItems.length > 2 && <span className="text-[9px] text-theme-muted">+ ещё {dayItems.length - 2}</span>}
@@ -386,10 +388,11 @@ function PaymentDialog({ mode, payment, accounts, transactions, categories, onCh
         <header className="flex items-center justify-between p-4 border-b border-theme-base"><h3 className="text-lg font-bold text-theme-main">{mode === 'create' ? 'Новая запись' : 'Изменить'}</h3><button type="button" aria-label="Закрыть" data-testid="button-close-payment-dialog" onClick={onClose} className="p-2 rounded-lg hover:bg-theme-main"><X size={16} /></button></header>
         <div className="p-4 space-y-3">
           <label className="block text-xs font-bold text-theme-muted">Название<input data-testid="input-payment-title" value={payment.title} onChange={event => set('title', event.target.value)} placeholder="Аренда квартиры" className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main" autoFocus /></label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label className="block text-xs font-bold text-theme-muted">Сумма<input data-testid="input-payment-amount" type="number" min="1" value={payment.amount || ''} onChange={event => set('amount', Number(event.target.value))} className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main" /></label>
-            <label className="block text-xs font-bold text-theme-muted">Дата<input data-testid="input-payment-date" type="date" value={payment.date} onChange={event => set('date', event.target.value)} className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main" /></label>
-          </div>
+           <label className="block text-xs font-bold text-theme-muted">Сумма<input data-testid="input-payment-amount" type="number" min="1" value={payment.amount || ''} onChange={event => set('amount', Number(event.target.value))} className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main" /></label>
+           <div className="grid grid-cols-2 gap-3">
+             <label className="block text-xs font-bold text-theme-muted">Дата<input data-testid="input-payment-date" type="date" value={payment.date} onChange={event => set('date', event.target.value)} className="mt-1 w-full min-w-0 rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main" /></label>
+             <label className="block text-xs font-bold text-theme-muted">Время<input data-testid="input-payment-time" type="time" step="60" value={payment.time || ''} onChange={event => set('time', event.target.value || undefined)} className="mt-1 w-full min-w-0 rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main" /></label>
+           </div>
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
              <label className="block text-xs font-bold text-theme-muted">Повторение<select data-testid="select-payment-recurrence" value={payment.recurrence} onChange={event => setRecurrence(event.target.value as PlannedPaymentRecurrence)} className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main">{RECURRENCES.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
              <div className="space-y-1.5">

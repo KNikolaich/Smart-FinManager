@@ -196,6 +196,7 @@ export interface PlannedPayment {
   title: string;
   amount: number;
   date: string;
+  time?: string;
   recurrence: PlannedPaymentRecurrence;
   weekdays?: number[];
   transactionType?: 'expense' | 'income';
