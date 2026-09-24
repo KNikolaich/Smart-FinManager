@@ -2,6 +2,7 @@ import { Account, Category, Transaction, Goal, Plan, Message } from "../types";
 import { api } from "../lib/api";
 import axios from "axios";
 import { getAICompoundActions } from "../lib/aiCompoundActions";
+import { parseExplicitCalendarReminderRequest } from "../lib/aiCalendarReminderRequest";
 
 export interface AIResponse {
   intent: 'transaction' | 'goal' | 'plan' | 'calendar_plan' | 'calendar_note' | 'compound' | 'advice' | 'unknown';
@@ -123,6 +124,24 @@ export const processUserMessage = async (
   const localWeekday = new Intl.DateTimeFormat('ru-RU', { weekday: 'long' }).format(now);
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'local';
 
+  if (!imageData?.length) {
+    const reminderDraft = parseExplicitCalendarReminderRequest(text, now);
+    if (reminderDraft) {
+      const result: AIResponse = {
+        intent: 'calendar_note',
+        data: reminderDraft,
+        message: 'Подготовил календарную заметку. Проверьте дату и текст в форме и сохраните её.',
+      };
+      await logAIInteraction(
+        userId,
+        { source: 'explicit-calendar-reminder', userMessage: text },
+        result,
+        'local',
+      );
+      return result;
+    }
+  }
+
   const systemInstruction = `Ты — мудрый и дружелюбный финансовый ассистент, как понимающий старший товарищ. Твоя цель — помогать пользователю управлять деньгами легко и без стресса. Говори по-дружески, но конкретно.
   
   Твой тон: теплый, поддерживающий, уверенный. Ты не просто бот, ты — наставник, который уже все сделал за пользователя.
@@ -212,7 +231,7 @@ export const processUserMessage = async (
   - calendar_note:
       - date: string in YYYY-MM-DD format, resolved in the user's local time zone
       - text: string containing the reminder; preserve the user's wording and include the related transaction details when the reminder refers to one
-      - if the user says a day number without a month, choose its nearest future occurrence; "2-го числа" on 2026-09-24 means 2026-10-02
+      - if the user says a day number without a month, choose its nearest future occurrence in the user's local calendar
       - never add a sum, person, or transaction detail the user did not state
   - compound:
       - actions: ordered array of { action, data } objects. action must be "transaction", "calendar_plan", or "calendar_note"; data follows that action's schema above

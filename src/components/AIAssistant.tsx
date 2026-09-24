@@ -555,7 +555,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
       } else if (result.intent === 'plan' && !isCompound) {
         assistantMessage = {
           role: 'assistant',
-          content: 'AI пока не умеет изменять месячный бюджетный план через чат. Откройте раздел «План» для изменений. Если вы хотели добавить напоминание на дату, оно появится в календаре как заметка.'
+          content: 'AI пока не умеет изменять месячный бюджетный план через чат. Откройте раздел «План» для изменений. Если вы хотели добавить напоминание на дату, попросите создать календарную заметку — я подготовлю её для проверки и сохранения.'
         };
       } else if (result.intent === 'unknown' && !isTransactionDraft && !isCompound) {
         assistantMessage = {
