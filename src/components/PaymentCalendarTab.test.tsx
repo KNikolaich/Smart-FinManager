@@ -73,6 +73,46 @@ describe('PaymentCalendarTab', () => {
     expect(onNotesChange.mock.calls[2][0]).toEqual([]);
   });
 
+  it('creates and copies a standalone note from the plans list', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 18, 12));
+    const onNotesChange = vi.fn<(nextNotes: CalendarNote[]) => Promise<void>>().mockResolvedValue(undefined);
+    const { rerender } = render(
+      <PaymentCalendarTab payments={[]} notes={[]} accounts={[]} onNotesChange={onNotesChange} />,
+    );
+
+    fireEvent.click(screen.getByTestId('button-add-calendar-note-from-list'));
+    fireEvent.change(screen.getByTestId('input-calendar-note-text'), { target: { value: 'Позвонить в банк' } });
+    fireEvent.click(screen.getByTestId('button-save-calendar-note'));
+    await waitFor(() => expect(onNotesChange).toHaveBeenCalledTimes(1));
+
+    const originalNotes = onNotesChange.mock.calls[0][0];
+    expect(originalNotes[0]).toEqual(expect.objectContaining({
+      date: '2026-09-18',
+      text: 'Позвонить в банк',
+    }));
+    rerender(
+      <PaymentCalendarTab payments={[]} notes={originalNotes} accounts={[]} onNotesChange={onNotesChange} />,
+    );
+
+    fireEvent.click(screen.getByTestId(`calendar-note-row-${originalNotes[0].id}`));
+    fireEvent.click(screen.getByLabelText('Закрыть записку'));
+    fireEvent.click(screen.getByTestId('button-upcoming-copy'));
+
+    expect((screen.getByTestId('input-calendar-note-date') as HTMLInputElement).value).toBe('2026-09-18');
+    expect((screen.getByTestId('input-calendar-note-text') as HTMLTextAreaElement).value).toBe('Позвонить в банк');
+    fireEvent.click(screen.getByTestId('button-save-calendar-note'));
+    await waitFor(() => expect(onNotesChange).toHaveBeenCalledTimes(2));
+
+    const copiedNotes = onNotesChange.mock.calls[1][0];
+    expect(copiedNotes).toHaveLength(2);
+    expect(copiedNotes[1]).toEqual(expect.objectContaining({
+      date: '2026-09-18',
+      text: 'Позвонить в банк',
+    }));
+    expect(copiedNotes[1].id).not.toBe(originalNotes[0].id);
+  });
+
   it('shows occurrences in the visible spillover days from adjacent months', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 18, 12));

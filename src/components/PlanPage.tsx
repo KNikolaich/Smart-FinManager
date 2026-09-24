@@ -531,8 +531,13 @@ export default function PlanPage({
     await saveCalendarPayments(applyCalendarPlanTrash(calendarPayments, id, getTodayKey()));
   };
 
-  const handleCalendarPastCleanup = async (ids: string[]) => {
-    await saveCalendarPayments(applyPastPlanCleanup(calendarPayments, ids, getTodayKey()));
+  const handleCalendarPastCleanup = async (ids: string[], noteIds: string[] = []) => {
+    const removedNoteIds = new Set(noteIds);
+    const nextNotes = calendarNotes.filter(note => !removedNoteIds.has(note.id));
+    await saveCalendarPayments(
+      applyPastPlanCleanup(calendarPayments, ids, getTodayKey()),
+      nextNotes,
+    );
   };
 
   const handleManualSave = () => {

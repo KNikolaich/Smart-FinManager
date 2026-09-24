@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, Check, CircleDashed, Copy, Eraser, Eye, Hand, Pencil, Plus, RefreshCw, StickyNote, Trash2, X } from 'lucide-react';
+import { CalendarDays, Check, CircleDashed, Copy, Eraser, Eye, Hand, Pencil, Plus, RefreshCw, ScrollText, StickyNote, Trash2, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { CalendarNote, PlannedPayment, PlannedPaymentRecurrence } from '../types';
 import {
@@ -29,6 +29,7 @@ interface UpcomingTasksProps {
   onTaskClick?: (date: string) => void;
   onOpenCalendar?: () => void;
   onAdd?: () => void;
+  onAddNote?: () => void;
   onToggleTask?: (item: PlannedPaymentOccurrence) => void;
   onManualToggleTask?: (item: PlannedPaymentOccurrence) => void | Promise<void>;
   onRequestTransaction?: (
@@ -38,7 +39,9 @@ interface UpcomingTasksProps {
   onEditTask?: (item: PlannedPaymentOccurrence) => void;
   onCopyTask?: (item: PlannedPaymentOccurrence) => void;
   onDeleteTask?: (item: PlannedPaymentOccurrence) => void | Promise<void>;
-  onCleanupPastTasks?: (paymentIds: string[]) => void | Promise<void>;
+  onCleanupPastTasks?: (paymentIds: string[], noteIds?: string[]) => void | Promise<void>;
+  onCopyNote?: (note: CalendarNote) => void;
+  onDeleteNote?: (note: CalendarNote) => void | Promise<void>;
   onNoteClick?: (note: CalendarNote) => void;
   className?: string;
 }
@@ -54,6 +57,7 @@ export default function UpcomingTasks({
   onTaskClick,
   onOpenCalendar,
   onAdd,
+  onAddNote,
   onToggleTask,
   onManualToggleTask,
   onRequestTransaction,
@@ -61,6 +65,8 @@ export default function UpcomingTasks({
   onCopyTask,
   onDeleteTask,
   onCleanupPastTasks,
+  onCopyNote,
+  onDeleteNote,
   onNoteClick,
   className,
 }: UpcomingTasksProps) {
@@ -72,10 +78,12 @@ export default function UpcomingTasks({
   const [carouselLimit, setCarouselLimit] = useState(limit);
   const [listWindow, setListWindow] = useState({ start: 0, end: 50 });
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
+  const [focusedNoteId, setFocusedNoteId] = useState<string | null>(null);
   const [viewItem, setViewItem] = useState<PlannedPaymentOccurrence | null>(null);
   const [cleanupConfirmation, setCleanupConfirmation] = useState<
     | { type: 'single'; item: PlannedPaymentOccurrence }
-    | { type: 'bulk'; paymentIds: string[] }
+    | { type: 'note'; note: CalendarNote }
+    | { type: 'bulk'; paymentIds: string[]; noteIds: string[] }
     | null
   >(null);
   const [cleanupError, setCleanupError] = useState<string | null>(null);
@@ -127,6 +135,15 @@ export default function UpcomingTasks({
   const sortedCalendarNotes = useMemo(
     () => [...notes].sort((left, right) => left.date.localeCompare(right.date)),
     [notes],
+  );
+  const focusedCalendarNote = useMemo(
+    () => sortedCalendarNotes.find(note => note.id === focusedNoteId
+      && (!focusedDate || note.date === focusedDate)),
+    [sortedCalendarNotes, focusedNoteId, focusedDate],
+  );
+  const pastNoteCleanupCandidates = useMemo(
+    () => sortedCalendarNotes.filter(note => note.date < todayKey),
+    [sortedCalendarNotes, todayKey],
   );
 
   const pageSize = 50;
@@ -292,12 +309,22 @@ export default function UpcomingTasks({
     }
   };
 
+  const requestNoteDelete = (note = focusedCalendarNote) => {
+    if (!note) return;
+    setCleanupError(null);
+    setViewItem(null);
+    setCleanupConfirmation({ type: 'note', note });
+  };
+
   const requestPastCleanup = () => {
-    if (pastCleanupCandidates.length === 0) return;
+    const paymentIds = pastCleanupCandidates.map(payment => payment.id);
+    const noteIds = pastNoteCleanupCandidates.map(note => note.id);
+    if (paymentIds.length === 0 && noteIds.length === 0) return;
     setCleanupError(null);
     setCleanupConfirmation({
       type: 'bulk',
-      paymentIds: pastCleanupCandidates.map(payment => payment.id),
+      paymentIds,
+      noteIds,
     });
   };
 
@@ -326,6 +353,11 @@ export default function UpcomingTasks({
             throw error;
           }
         }
+      } else if (cleanupConfirmation.type === 'note') {
+        if (!onDeleteNote) throw new Error('Calendar note deletion is unavailable');
+        await onDeleteNote(cleanupConfirmation.note);
+      } else if (cleanupConfirmation.noteIds.length > 0) {
+        await onCleanupPastTasks?.(cleanupConfirmation.paymentIds, cleanupConfirmation.noteIds);
       } else {
         await onCleanupPastTasks?.(cleanupConfirmation.paymentIds);
       }
@@ -431,52 +463,88 @@ export default function UpcomingTasks({
             </button>
           )}
           {onAdd && (
-            <button type="button" aria-label="Запланировать задачу" onClick={onAdd} className="p-2 rounded-lg bg-theme-primary-light text-theme-primary">
+            <button type="button" aria-label="Запланировать задачу" title="Запланировать задачу" onClick={onAdd} className="p-2 rounded-lg bg-theme-primary-light text-theme-primary">
               <Plus size={16} />
             </button>
           )}
+          {onAddNote && variant !== 'carousel' && (
+            <button
+              type="button"
+              aria-label="Добавить отдельную записку"
+              title="Добавить записку на дату"
+              data-testid="button-add-calendar-note-from-list"
+              onClick={onAddNote}
+              className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-amber-800 hover:bg-amber-100"
+            >
+              <ScrollText size={16} aria-hidden="true" />
+            </button>
+          )}
           {variant !== 'carousel' && (
-            <button type="button" aria-label="Посмотреть сфокусированный план" title="Посмотреть план, записку и действия" data-testid="button-upcoming-view" disabled={!focusedOccurrence} onClick={() => focusedOccurrence && setViewItem(focusedOccurrence)} className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none">
+            <button
+              type="button"
+              aria-label={focusedCalendarNote ? 'Посмотреть выбранную записку' : 'Посмотреть сфокусированный план'}
+              title="Посмотреть план, записку и действия"
+              data-testid="button-upcoming-view"
+              disabled={(!focusedCalendarNote && !focusedOccurrence) || (Boolean(focusedCalendarNote) && !onNoteClick)}
+              onClick={() => {
+                if (focusedCalendarNote) onNoteClick?.(focusedCalendarNote);
+                else if (focusedOccurrence) setViewItem(focusedOccurrence);
+              }}
+              className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none"
+            >
               <Eye size={15} />
             </button>
           )}
-          {onCopyTask && (
-            <button type="button" aria-label="Скопировать сфокусированный план" title="Скопировать план" data-testid="button-upcoming-copy" disabled={!focusedOccurrence} onClick={() => focusedOccurrence && onCopyTask(focusedOccurrence)} className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none">
+          {(onCopyTask || onCopyNote) && (
+            <button
+              type="button"
+              aria-label={focusedCalendarNote ? 'Скопировать выбранную записку' : 'Скопировать сфокусированный план'}
+              title={focusedCalendarNote ? 'Скопировать записку' : 'Скопировать план'}
+              data-testid="button-upcoming-copy"
+              disabled={focusedCalendarNote ? !onCopyNote : !focusedOccurrence || !onCopyTask}
+              onClick={() => {
+                if (focusedCalendarNote) onCopyNote?.(focusedCalendarNote);
+                else if (focusedOccurrence) onCopyTask?.(focusedOccurrence);
+              }}
+              className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none"
+            >
               <Copy size={15} />
             </button>
           )}
           {onManualToggleTask && (
-            <button type="button" aria-label={focusedOccurrence?.manuallyCompleted ? 'Снять ручную отметку' : 'Отметить вручную'} title={focusedIsCompleted ? 'Выполненный план нельзя менять вручную' : focusedOccurrence?.manuallyCompleted ? 'Снять ручную отметку' : 'Отметить вручную'} data-testid="button-upcoming-manual-toggle" disabled={!focusedOccurrence || focusedIsCompleted} onClick={() => focusedOccurrence && !focusedIsCompleted && void onManualToggleTask(focusedOccurrence)} className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none">
+            <button type="button" aria-label={focusedOccurrence?.manuallyCompleted ? 'Снять ручную отметку' : 'Отметить вручную'} title={focusedCalendarNote ? 'Записку нельзя отметить выполненной' : focusedIsCompleted ? 'Выполненный план нельзя менять вручную' : focusedOccurrence?.manuallyCompleted ? 'Снять ручную отметку' : 'Отметить вручную'} data-testid="button-upcoming-manual-toggle" disabled={Boolean(focusedCalendarNote) || !focusedOccurrence || focusedIsCompleted} onClick={() => focusedOccurrence && !focusedCalendarNote && !focusedIsCompleted && void onManualToggleTask(focusedOccurrence)} className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none">
               <Hand size={15} />
             </button>
           )}
           {variant !== 'carousel' && onCleanupPastTasks && (
             <button
               type="button"
-              aria-label="Очистить завершённые прошлые планы"
-              title={pastCleanupCandidates.length > 0
-                ? `Очистить завершённые прошлые планы (${pastCleanupCandidates.length})`
-                : 'Нет завершённых прошлых планов для очистки'}
+              aria-label="Очистить завершённые планы и старые записки"
+              title={pastCleanupCandidates.length + pastNoteCleanupCandidates.length > 0
+                ? `Очистить планы и записки (${pastCleanupCandidates.length + pastNoteCleanupCandidates.length})`
+                : 'Нет завершённых планов и старых записок для очистки'}
               data-testid="button-upcoming-clean-past"
-              disabled={pastCleanupCandidates.length === 0}
+              disabled={pastCleanupCandidates.length === 0 && pastNoteCleanupCandidates.length === 0}
               onClick={requestPastCleanup}
               className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none"
             >
               <Eraser size={15} />
             </button>
           )}
-          {onDeleteTask && (
+          {(onDeleteTask || onDeleteNote) && (
             <button
               type="button"
-              aria-label="Удалить или очистить сфокусированный план"
-              title={focusedOccurrence
-                ? getCalendarPlanCleanupMode(focusedOccurrence.payment, todayKey) === 'reset-history'
-                  ? 'Скрыть прошлые отметки, план продолжится с сегодня'
-                  : 'Удалить план целиком из календаря'
-                : 'Выберите план'}
+              aria-label={focusedCalendarNote ? 'Удалить выбранную записку' : 'Удалить или очистить сфокусированный план'}
+              title={focusedCalendarNote
+                ? 'Удалить записку из календаря'
+                : focusedOccurrence
+                  ? getCalendarPlanCleanupMode(focusedOccurrence.payment, todayKey) === 'reset-history'
+                    ? 'Скрыть прошлые отметки, план продолжится с сегодня'
+                    : 'Удалить план целиком из календаря'
+                  : 'Выберите план'}
               data-testid="button-upcoming-delete"
-              disabled={!focusedOccurrence}
-              onClick={() => requestDelete()}
+              disabled={focusedCalendarNote ? !onDeleteNote : !focusedOccurrence || !onDeleteTask}
+              onClick={() => focusedCalendarNote ? requestNoteDelete() : requestDelete()}
               className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 disabled:opacity-30 disabled:pointer-events-none"
             >
               <Trash2 size={15} />
@@ -583,11 +651,15 @@ export default function UpcomingTasks({
                   key={note.id}
                   type="button"
                   data-testid={`calendar-note-row-${note.id}`}
-                  onClick={() => onNoteClick?.(note)}
+                  onClick={() => {
+                    setFocusedNoteId(note.id);
+                    onTaskClick?.(note.date);
+                    onNoteClick?.(note);
+                  }}
                   disabled={!onNoteClick}
-                  className="flex w-full items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-left text-amber-950 disabled:cursor-default"
+                  className={`flex w-full items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-left text-amber-950 disabled:cursor-default ${focusedCalendarNote?.id === note.id ? 'ring-2 ring-inset ring-amber-300' : ''}`}
                 >
-                  <StickyNote size={14} className="mt-0.5 shrink-0 text-amber-700" aria-hidden="true" />
+                  <ScrollText size={15} data-testid={`calendar-note-icon-${note.id}`} className="mt-0.5 shrink-0 text-amber-700" aria-hidden="true" />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[10px] font-semibold text-amber-800">
                       {formatLongTaskDate(note.date)}
@@ -629,7 +701,7 @@ export default function UpcomingTasks({
                 )}
                 <button
                   type="button"
-                    onClick={() => { setFocusedKey(key); onTaskClick?.(item.date); }}
+                    onClick={() => { setFocusedNoteId(null); setFocusedKey(key); onTaskClick?.(item.date); }}
                   className="min-w-0 flex-1 text-left"
                   data-testid={`upcoming-task-link-${key}`}
                 >
@@ -674,6 +746,7 @@ export default function UpcomingTasks({
           confirmation={cleanupConfirmation}
           today={todayKey}
           candidates={pastCleanupCandidates}
+          notes={sortedCalendarNotes}
           error={cleanupError}
           pending={isCleaningUp}
           onClose={() => {
@@ -690,7 +763,8 @@ export default function UpcomingTasks({
 
 type PlanCleanupConfirmation =
   | { type: 'single'; item: PlannedPaymentOccurrence }
-  | { type: 'bulk'; paymentIds: string[] };
+  | { type: 'note'; note: CalendarNote }
+  | { type: 'bulk'; paymentIds: string[]; noteIds: string[] };
 
 function PlanViewDialog({
   item,
@@ -778,6 +852,7 @@ function PlanCleanupDialog({
   confirmation,
   today,
   candidates,
+  notes,
   error,
   pending,
   onClose,
@@ -786,6 +861,7 @@ function PlanCleanupDialog({
   confirmation: PlanCleanupConfirmation;
   today: string;
   candidates: PlannedPayment[];
+  notes: CalendarNote[];
   error: string | null;
   pending: boolean;
   onClose: () => void;
@@ -793,6 +869,9 @@ function PlanCleanupDialog({
 }) {
   const bulkCandidates = confirmation.type === 'bulk'
     ? candidates.filter(payment => confirmation.paymentIds.includes(payment.id))
+    : [];
+  const bulkNotes = confirmation.type === 'bulk'
+    ? notes.filter(note => confirmation.noteIds.includes(note.id))
     : [];
   const bulkDeletes = bulkCandidates.filter(payment => (
     getCalendarPlanCleanupMode(payment, today) === 'delete'
@@ -803,7 +882,10 @@ function PlanCleanupDialog({
   const singleMode = confirmation.type === 'single'
     ? getCalendarPlanCleanupMode(confirmation.item.payment, today)
     : null;
-  const canConfirm = confirmation.type === 'single' || bulkCandidates.length > 0;
+  const isSingleNote = confirmation.type === 'note';
+  const canConfirm = confirmation.type === 'single'
+    || isSingleNote
+    || bulkCandidates.length + bulkNotes.length > 0;
 
   return (
     <div
@@ -825,15 +907,19 @@ function PlanCleanupDialog({
           <div>
             <h2 id="plan-cleanup-title" className="text-base font-bold text-theme-main">
               {confirmation.type === 'bulk'
-                ? 'Очистить прошлые планы?'
+                ? 'Очистить прошлые планы и записки?'
+                : isSingleNote
+                  ? 'Удалить записку?'
                 : singleMode === 'reset-history'
                   ? 'Скрыть старые отметки и продолжить план?'
                   : 'Удалить план целиком?'}
             </h2>
             <p className="mt-1 text-xs text-theme-muted">
               {confirmation.type === 'bulk'
-                ? `Найдено планов для очистки: ${bulkCandidates.length}.`
-                : 'Проверьте, какой план и какие отметки будут затронуты.'}
+                ? `Планов для очистки: ${bulkCandidates.length}. Старых записок для удаления: ${bulkNotes.length}.`
+                : isSingleNote
+                  ? `Записка на ${formatLongTaskDate(confirmation.note.date)} будет удалена из календаря.`
+                  : 'Проверьте, какой план и какие отметки будут затронуты.'}
             </p>
           </div>
           <button
@@ -854,21 +940,27 @@ function PlanCleanupDialog({
             mode={singleMode || 'delete'}
             today={today}
           />
+        ) : isSingleNote ? (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+            <ScrollText size={16} className="mb-2 text-amber-700" aria-hidden="true" />
+            <p className="whitespace-pre-wrap break-words">{confirmation.note.text}</p>
+          </div>
         ) : (
           <div className="mt-4 space-y-3">
             <div className="rounded-xl border border-theme-base bg-theme-main p-3 text-xs text-theme-main">
-              <p>
-                Из календаря целиком удалится: <strong>{bulkDeletes.length}</strong>.
-                {bulkResets.length > 0 && (
-                  <> С продолжением с сегодняшней даты останется: <strong>{bulkResets.length}</strong>.</>
-                )}
-              </p>
+              <p>Из календаря удалится планов: <strong>{bulkDeletes.length}</strong>.</p>
+              {bulkResets.length > 0 && (
+                <p className="mt-1">С продолжением с сегодняшней даты останется планов: <strong>{bulkResets.length}</strong>.</p>
+              )}
+              {bulkNotes.length > 0 && (
+                <p className="mt-1">Старых записок будет удалено: <strong>{bulkNotes.length}</strong>.</p>
+              )}
               <p className="mt-2 text-theme-muted">
                 Планы с невыполненными просроченными вхождениями не затрагиваются.
                 Связанные операции в истории не удаляются.
               </p>
             </div>
-            {bulkCandidates.length > 0 ? (
+            {bulkCandidates.length + bulkNotes.length > 0 ? (
               <ul className="max-h-52 space-y-2 overflow-y-auto rounded-xl border border-theme-base p-3">
                 {bulkCandidates.slice(0, 20).map(payment => (
                   <li key={payment.id} className="text-xs text-theme-main">
@@ -887,10 +979,19 @@ function PlanCleanupDialog({
                     И ещё {bulkCandidates.length - 20} планов.
                   </li>
                 )}
+                {bulkNotes.map(note => (
+                  <li key={note.id} className="flex items-start gap-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-950">
+                    <ScrollText size={14} className="mt-0.5 shrink-0 text-amber-700" aria-hidden="true" />
+                    <span className="min-w-0">
+                      <strong className="block">{formatLongTaskDate(note.date)}</strong>
+                      <span className="block whitespace-pre-wrap break-words">{note.text}</span>
+                    </span>
+                  </li>
+                ))}
               </ul>
             ) : (
               <p className="rounded-xl bg-theme-main p-3 text-xs text-theme-muted">
-                Пока открывалось окно, подходящие планы изменились. Закройте его и повторите очистку.
+                Пока открывалось окно, подходящие планы и записки изменились. Закройте его и повторите очистку.
               </p>
             )}
           </div>
@@ -919,6 +1020,8 @@ function PlanCleanupDialog({
               ? 'Обработка…'
               : confirmation.type === 'bulk'
                 ? 'Очистить прошлые'
+                : isSingleNote
+                  ? 'Удалить записку'
                 : singleMode === 'reset-history'
                   ? 'Скрыть старые отметки'
                   : 'Удалить план'}

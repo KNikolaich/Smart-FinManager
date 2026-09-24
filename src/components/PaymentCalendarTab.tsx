@@ -9,6 +9,7 @@ import {
   CircleAlert,
   Plus,
   RefreshCw,
+  ScrollText,
   StickyNote,
   X,
 } from 'lucide-react';
@@ -49,7 +50,7 @@ interface PaymentCalendarTabProps {
   onTransactionCreated?: (paymentId: string, date: string, transactionId: string) => void;
   onPaymentChange?: (payment: PlannedPayment) => void | Promise<void>;
   onPaymentDelete?: (id: string, date: string) => void | Promise<void>;
-  onCleanupPastPayments?: (ids: string[]) => void | Promise<void>;
+  onCleanupPastPayments?: (ids: string[], noteIds?: string[]) => void | Promise<void>;
   onNotesChange?: (notes: CalendarNote[]) => void | Promise<void>;
   focusDate?: string;
   onFocusDateHandled?: () => void;
@@ -96,6 +97,13 @@ function getMonthCells(cursor: Date) {
     nextDay += 1;
   }
   return cells;
+}
+
+function createCalendarNoteId() {
+  const uniquePart = typeof globalThis.crypto?.randomUUID === 'function'
+    ? globalThis.crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `calendar-note-${uniquePart}`;
 }
 
 export default function PaymentCalendarTab({
@@ -206,7 +214,18 @@ export default function PaymentCalendarTab({
   };
 
   const openCreateNote = (date = selectedDate) => {
-    setEditingNote({ id: `calendar-note-${Date.now()}`, date, text: '' });
+    setEditingNote({ id: createCalendarNoteId(), date, text: '' });
+    setNoteError(null);
+    setConfirmDeleteNote(false);
+    setNoteDialogMode('create');
+  };
+
+  const openCopyNote = (note: CalendarNote) => {
+    setEditingNote({
+      id: createCalendarNoteId(),
+      date: getTodayKey(),
+      text: note.text,
+    });
     setNoteError(null);
     setConfirmDeleteNote(false);
     setNoteDialogMode('create');
@@ -323,7 +342,7 @@ export default function PaymentCalendarTab({
           disabled={!onNotesChange}
           className="w-10 h-10 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 flex items-center justify-center hover:bg-amber-100 shrink-0 disabled:opacity-40"
         >
-          <StickyNote size={18} />
+          <ScrollText size={18} />
         </button>
       </header>
 
@@ -375,7 +394,7 @@ export default function PaymentCalendarTab({
                       ))}
                        {dayNotes.slice(0, 1).map(note => (
                          <span key={note.id} data-testid={`calendar-note-chip-${note.id}`} className="hidden sm:flex min-w-0 items-start gap-1 rounded bg-amber-50 px-1 py-1 text-[9px] leading-tight text-amber-900">
-                           <StickyNote size={10} className="mt-px shrink-0 text-amber-700" aria-hidden="true" />
+                            <ScrollText size={10} className="mt-px shrink-0 text-amber-700" aria-hidden="true" />
                            <span className="min-w-0 line-clamp-2 break-words">{note.text}</span>
                          </span>
                        ))}
@@ -397,6 +416,7 @@ export default function PaymentCalendarTab({
             filter={filter}
             focusedDate={selectedDate}
             onAdd={() => openCreate()}
+            onAddNote={() => openCreateNote(selectedDate)}
             onTaskClick={date => {
               const nextDate = parseDateKey(date);
               setCursor(new Date(nextDate.getFullYear(), nextDate.getMonth(), 1));
@@ -435,6 +455,8 @@ export default function PaymentCalendarTab({
              }}
             onDeleteTask={item => onPaymentDelete?.(item.payment.id, item.date)}
             onCleanupPastTasks={onCleanupPastPayments}
+            onCopyNote={openCopyNote}
+            onDeleteNote={note => onNotesChange?.(notes.filter(item => item.id !== note.id))}
             onNoteClick={openViewNote}
           />
           </div>
@@ -558,7 +580,7 @@ function CalendarNoteDialog({
       >
         <header className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-2">
-            <StickyNote size={18} className="mt-0.5 shrink-0 text-amber-700" aria-hidden="true" />
+            <ScrollText size={18} className="mt-0.5 shrink-0 text-amber-700" aria-hidden="true" />
             <div>
               <h2 id="calendar-note-dialog-title" className="text-base font-bold text-theme-main">{title}</h2>
               {isView && <p className="mt-1 text-xs text-theme-muted">{formatLongDate(note.date)}</p>}

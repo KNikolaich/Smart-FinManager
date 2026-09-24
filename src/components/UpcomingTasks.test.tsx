@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import UpcomingTasks from './UpcomingTasks';
-import type { PlannedPayment } from '../types';
+import type { CalendarNote, PlannedPayment } from '../types';
 import { api } from '../lib/api';
 
 const makePayment = (index: number): PlannedPayment => ({
@@ -35,6 +35,61 @@ describe('UpcomingTasks', () => {
 
     fireEvent.click(screen.getByTestId('upcoming-task-link-task-2-2026-09-20'));
     expect(onTaskClick).toHaveBeenCalledWith('2026-09-20');
+  });
+
+  it('offers a separate note button in the plans list header', () => {
+    const onAddNote = vi.fn();
+    render(<UpcomingTasks payments={[]} onAddNote={onAddNote} />);
+
+    fireEvent.click(screen.getByTestId('button-add-calendar-note-from-list'));
+
+    expect(onAddNote).toHaveBeenCalledTimes(1);
+  });
+
+  it('routes view, copy, and delete actions to a selected note without a completion checkbox', () => {
+    const note: CalendarNote = {
+      id: 'list-note',
+      date: '2026-09-20',
+      text: 'Позвонить врачу',
+    };
+    const onNoteClick = vi.fn();
+    const onCopyNote = vi.fn();
+    const onDeleteNote = vi.fn().mockResolvedValue(undefined);
+    const onManualToggleTask = vi.fn();
+    render(
+      <UpcomingTasks
+        payments={[]}
+        notes={[note]}
+        startDate="2026-09-20"
+        focusedDate="2026-09-20"
+        onNoteClick={onNoteClick}
+        onCopyNote={onCopyNote}
+        onDeleteNote={onDeleteNote}
+        onManualToggleTask={onManualToggleTask}
+      />,
+    );
+
+    const row = screen.getByTestId('calendar-note-row-list-note');
+    expect(row.className).toContain('bg-amber-50');
+    expect(screen.getByTestId('calendar-note-icon-list-note')).toBeTruthy();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+
+    fireEvent.click(row);
+    expect(onNoteClick).toHaveBeenCalledWith(note);
+    expect((screen.getByTestId('button-upcoming-manual-toggle') as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(screen.getByTestId('button-upcoming-view'));
+    expect(onNoteClick).toHaveBeenCalledTimes(2);
+    expect(onNoteClick).toHaveBeenLastCalledWith(note);
+
+    fireEvent.click(screen.getByTestId('button-upcoming-copy'));
+    expect(onCopyNote).toHaveBeenCalledWith(note);
+
+    fireEvent.click(screen.getByTestId('button-upcoming-delete'));
+    expect(screen.getByTestId('dialog-plan-cleanup').textContent).toContain('Удалить записку?');
+    fireEvent.click(screen.getByTestId('button-upcoming-delete-confirm'));
+    expect(onDeleteNote).toHaveBeenCalledWith(note);
+    expect(onManualToggleTask).not.toHaveBeenCalled();
   });
 
   it('shows scheduled time and selected weekdays in the dashboard plan card without a month period', () => {
@@ -301,7 +356,7 @@ describe('UpcomingTasks', () => {
     fireEvent.click(eraser);
 
     const dialog = screen.getByRole('dialog');
-    expect(dialog.textContent).toContain('Найдено планов для очистки: 2.');
+    expect(dialog.textContent).toContain('Планов для очистки: 2. Старых записок для удаления: 0.');
     expect(dialog.textContent).toContain('Разовый выполненный');
     expect(dialog.textContent).toContain('Повторяющийся выполненный');
     expect(dialog.textContent).not.toContain('Просроченный');
@@ -309,6 +364,39 @@ describe('UpcomingTasks', () => {
 
     expect(onCleanupPastTasks).toHaveBeenCalledWith(['completed-once', 'completed-series']);
     expect(onDeleteTask).not.toHaveBeenCalled();
+  });
+
+  it('includes old standalone notes in the bulk cleanup action', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 24, 12));
+    const oldNote: CalendarNote = {
+      id: 'old-note',
+      date: '2026-09-23',
+      text: 'Старое напоминание',
+    };
+    const futureNote: CalendarNote = {
+      id: 'future-note',
+      date: '2026-09-26',
+      text: 'Будущее напоминание',
+    };
+    const onCleanupPastTasks = vi.fn();
+    render(
+      <UpcomingTasks
+        payments={[]}
+        notes={[oldNote, futureNote]}
+        startDate="2026-09-24"
+        onCleanupPastTasks={onCleanupPastTasks}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('button-upcoming-clean-past'));
+    const dialog = screen.getByTestId('dialog-plan-cleanup');
+    expect(dialog.textContent).toContain('Старых записок для удаления: 1.');
+    expect(dialog.textContent).toContain('Старое напоминание');
+    expect(dialog.textContent).not.toContain('Будущее напоминание');
+    fireEvent.click(screen.getByTestId('button-upcoming-delete-confirm'));
+
+    expect(onCleanupPastTasks).toHaveBeenCalledWith([], ['old-note']);
   });
 
   it('allows copying a completed focused task', () => {
