@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PaymentCalendarTab from './PaymentCalendarTab';
-import type { Account, PlannedPayment } from '../types';
+import type { Account, CalendarNote, PlannedPayment } from '../types';
 
 const payment: PlannedPayment = {
   id: 'rent',
@@ -18,7 +18,7 @@ describe('PaymentCalendarTab', () => {
   afterEach(() => vi.useRealTimers());
 
   it('shows a recurring payment on its occurrence day', () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 8, 18, 12));
     render(<PaymentCalendarTab payments={[payment]} accounts={[]} />);
 
@@ -27,6 +27,50 @@ describe('PaymentCalendarTab', () => {
     expect(screen.getByTestId('payment-row-rent-2026-09-05')).toBeTruthy();
     expect(screen.getAllByText(/Ежемесячно/).length).toBeGreaterThan(0);
     expect(screen.getByText('Календарный план')).toBeTruthy();
+  });
+
+  it('creates, displays, edits, and deletes a standalone calendar note', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 18, 12));
+    const onNotesChange = vi.fn<(nextNotes: CalendarNote[]) => Promise<void>>().mockResolvedValue(undefined);
+    const { rerender } = render(
+      <PaymentCalendarTab payments={[payment]} notes={[]} accounts={[]} onNotesChange={onNotesChange} />,
+    );
+
+    fireEvent.click(screen.getByTestId('button-add-calendar-note'));
+    fireEvent.change(screen.getByTestId('input-calendar-note-date'), { target: { value: '2026-09-20' } });
+    fireEvent.change(screen.getByTestId('input-calendar-note-text'), { target: { value: 'Позвонить в банк' } });
+    fireEvent.click(screen.getByTestId('button-save-calendar-note'));
+    await waitFor(() => expect(onNotesChange).toHaveBeenCalledTimes(1));
+
+    const createdNotes = onNotesChange.mock.calls[0][0];
+    expect(createdNotes).toEqual([expect.objectContaining({
+      date: '2026-09-20',
+      text: 'Позвонить в банк',
+    })]);
+
+    rerender(
+      <PaymentCalendarTab payments={[payment]} notes={createdNotes} accounts={[]} onNotesChange={onNotesChange} />,
+    );
+    expect(screen.getByTestId(`calendar-note-chip-${createdNotes[0].id}`)).toBeTruthy();
+    fireEvent.click(screen.getByTestId(`calendar-note-row-${createdNotes[0].id}`));
+    expect(screen.getByTestId('dialog-calendar-note').textContent).toContain('Позвонить в банк');
+
+    fireEvent.click(screen.getByTestId('button-edit-calendar-note'));
+    fireEvent.change(screen.getByTestId('input-calendar-note-text'), { target: { value: 'Позвонить в банк утром' } });
+    fireEvent.click(screen.getByTestId('button-save-calendar-note'));
+    await waitFor(() => expect(onNotesChange).toHaveBeenCalledTimes(2));
+    const editedNotes = onNotesChange.mock.calls[1][0];
+    expect(editedNotes[0].text).toBe('Позвонить в банк утром');
+
+    rerender(
+      <PaymentCalendarTab payments={[payment]} notes={editedNotes} accounts={[]} onNotesChange={onNotesChange} />,
+    );
+    fireEvent.click(screen.getByTestId(`calendar-note-row-${editedNotes[0].id}`));
+    fireEvent.click(screen.getByTestId('button-delete-calendar-note'));
+    fireEvent.click(screen.getByTestId('button-confirm-delete-calendar-note'));
+    await waitFor(() => expect(onNotesChange).toHaveBeenCalledTimes(3));
+    expect(onNotesChange.mock.calls[2][0]).toEqual([]);
   });
 
   it('shows occurrences in the visible spillover days from adjacent months', () => {
@@ -187,7 +231,8 @@ describe('PaymentCalendarTab', () => {
     render(<PaymentCalendarTab payments={[weeklyPayment]} accounts={[]} />);
 
     fireEvent.click(screen.getByTestId('calendar-day-2026-09-16'));
-    fireEvent.click(screen.getByTestId('button-upcoming-edit'));
+    fireEvent.click(screen.getByTestId('button-upcoming-view'));
+    fireEvent.click(screen.getByTestId('button-plan-view-edit'));
 
     expect((screen.getByTestId('input-payment-date') as HTMLInputElement).value).toBe('2026-09-16');
   });
@@ -258,14 +303,16 @@ describe('PaymentCalendarTab', () => {
     expect(screen.getByTestId('payment-row-future-plan-2026-10-01')).toBeTruthy();
   });
 
-  it('opens the focused task in the edit form from the header', () => {
+  it('opens the focused task viewer and starts editing from there', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 18, 12));
     render(<PaymentCalendarTab payments={[payment]} accounts={[]} />);
 
     fireEvent.click(screen.getByTestId('calendar-day-2026-09-05'));
     expect(screen.getByTestId('calendar-day-2026-09-05').className).toContain('ring-2');
-    fireEvent.click(screen.getByTestId('button-upcoming-edit'));
+    fireEvent.click(screen.getByTestId('button-upcoming-view'));
+    expect(screen.getByTestId('dialog-plan-view')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('button-plan-view-edit'));
 
     expect(screen.getByRole('dialog')).toBeTruthy();
     expect(screen.getByRole('dialog').textContent).toContain('Изменить');

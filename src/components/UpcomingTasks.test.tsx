@@ -15,7 +15,10 @@ const makePayment = (index: number): PlannedPayment => ({
 });
 
 describe('UpcomingTasks', () => {
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
 
   it('shows the first page of tasks and navigates from the task text', () => {
     const onTaskClick = vi.fn();
@@ -150,9 +153,9 @@ describe('UpcomingTasks', () => {
     expect(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20').className).toContain('bg-pink-50');
   });
 
-  it('places the current-plan edit button before refresh in the carousel header', () => {
+  it('places the current-plan view button before refresh and opens editing from the viewer', () => {
     const onEditTask = vi.fn();
-    const payment = { ...makePayment(0), id: 'editable-task' };
+    const payment = { ...makePayment(0), id: 'editable-task', note: 'Оплатить после получения счёта' };
     render(
       <UpcomingTasks
         payments={[payment]}
@@ -162,14 +165,40 @@ describe('UpcomingTasks', () => {
       />,
     );
 
-    const editButton = screen.getByTestId('button-upcoming-edit');
+    const viewButton = screen.getByTestId('button-upcoming-view');
     const refreshButton = screen.getByTestId('button-upcoming-first');
-    expect(editButton.compareDocumentPosition(refreshButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(viewButton.compareDocumentPosition(refreshButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
-    fireEvent.click(editButton);
+    fireEvent.click(viewButton);
+    expect(screen.getByTestId('dialog-plan-view').textContent).toContain('Оплатить после получения счёта');
+    fireEvent.click(screen.getByTestId('button-plan-view-edit'));
     expect(onEditTask).toHaveBeenCalledWith(expect.objectContaining({
       payment,
     }));
+  });
+
+  it('lets the dashboard plan viewer delete and persist a plan', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 24, 12));
+    const payment = { ...makePayment(0), id: 'dashboard-delete', date: '2026-09-25' };
+    const postSpy = vi.spyOn(api, 'post').mockResolvedValue({});
+    render(
+      <UpcomingTasks
+        payments={[payment]}
+        variant="carousel"
+        startDate="2026-09-24"
+        onEditTask={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('button-upcoming-view'));
+    fireEvent.click(screen.getByTestId('button-plan-view-delete'));
+    expect(screen.getByTestId('dialog-plan-cleanup')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('button-upcoming-delete-confirm'));
+
+    await waitFor(() => {
+      expect(postSpy).toHaveBeenCalledWith('/plan-grid/calendar', { payments: [] });
+    });
   });
 
   it('uses header actions for the focused list task', () => {
@@ -186,7 +215,8 @@ describe('UpcomingTasks', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('button-upcoming-edit'));
+    fireEvent.click(screen.getByTestId('button-upcoming-view'));
+    fireEvent.click(screen.getByTestId('button-plan-view-edit'));
     fireEvent.click(screen.getByTestId('button-upcoming-manual-toggle'));
     fireEvent.click(screen.getByTestId('button-upcoming-delete'));
     expect(onDeleteTask).not.toHaveBeenCalled();
@@ -384,7 +414,8 @@ describe('UpcomingTasks', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('button-upcoming-edit'));
+    fireEvent.click(screen.getByTestId('button-upcoming-view'));
+    fireEvent.click(screen.getByTestId('button-plan-view-edit'));
 
     expect(onEditTask).toHaveBeenCalledWith(expect.objectContaining({
       date: '2026-09-18',
@@ -424,7 +455,8 @@ describe('UpcomingTasks', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('button-upcoming-edit'));
+    fireEvent.click(screen.getByTestId('button-upcoming-view'));
+    fireEvent.click(screen.getByTestId('button-plan-view-edit'));
 
     expect(onEditTask).toHaveBeenCalledWith(expect.objectContaining({
       date: '2026-09-21',

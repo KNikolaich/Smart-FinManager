@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, Check, CircleDashed, Copy, Eraser, Hand, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import { CalendarDays, Check, CircleDashed, Copy, Eraser, Eye, Hand, Pencil, Plus, RefreshCw, StickyNote, Trash2, X } from 'lucide-react';
 import { api } from '../lib/api';
-import { PlannedPayment, PlannedPaymentRecurrence } from '../types';
+import { CalendarNote, PlannedPayment, PlannedPaymentRecurrence } from '../types';
 import {
   getTodayKey,
   getOutstandingPaymentOccurrences,
@@ -14,11 +14,13 @@ import {
   getCalendarPlanCleanupMode,
   getPastPlanCleanupCandidates,
   isCompletedOccurrence,
+  applyCalendarPlanTrash,
   type CalendarPlanCleanupMode,
 } from '../lib/calendarPlanCleanup';
 
 interface UpcomingTasksProps {
   payments?: PlannedPayment[];
+  notes?: CalendarNote[];
   startDate?: string;
   filter?: PlannedPaymentFilter;
   focusedDate?: string;
@@ -37,11 +39,13 @@ interface UpcomingTasksProps {
   onCopyTask?: (item: PlannedPaymentOccurrence) => void;
   onDeleteTask?: (item: PlannedPaymentOccurrence) => void | Promise<void>;
   onCleanupPastTasks?: (paymentIds: string[]) => void | Promise<void>;
+  onNoteClick?: (note: CalendarNote) => void;
   className?: string;
 }
 
 export default function UpcomingTasks({
   payments,
+  notes = [],
   startDate = getTodayKey(),
   filter = 'all',
   focusedDate,
@@ -57,6 +61,7 @@ export default function UpcomingTasks({
   onCopyTask,
   onDeleteTask,
   onCleanupPastTasks,
+  onNoteClick,
   className,
 }: UpcomingTasksProps) {
   const [loadedPayments, setLoadedPayments] = useState<PlannedPayment[]>([]);
@@ -67,6 +72,7 @@ export default function UpcomingTasks({
   const [carouselLimit, setCarouselLimit] = useState(limit);
   const [listWindow, setListWindow] = useState({ start: 0, end: 50 });
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
+  const [viewItem, setViewItem] = useState<PlannedPaymentOccurrence | null>(null);
   const [cleanupConfirmation, setCleanupConfirmation] = useState<
     | { type: 'single'; item: PlannedPaymentOccurrence }
     | { type: 'bulk'; paymentIds: string[] }
@@ -117,6 +123,10 @@ export default function UpcomingTasks({
   const pastCleanupCandidates = useMemo(
     () => getPastPlanCleanupCandidates(sourcePayments, todayKey),
     [sourcePayments, todayKey],
+  );
+  const sortedCalendarNotes = useMemo(
+    () => [...notes].sort((left, right) => left.date.localeCompare(right.date)),
+    [notes],
   );
 
   const pageSize = 50;
@@ -274,10 +284,11 @@ export default function UpcomingTasks({
     if (element.scrollHeight - element.scrollTop - element.clientHeight < 120) loadMore();
   };
 
-  const requestDelete = () => {
-    if (focusedOccurrence) {
+  const requestDelete = (item = focusedOccurrence) => {
+    if (item) {
       setCleanupError(null);
-      setCleanupConfirmation({ type: 'single', item: focusedOccurrence });
+      setViewItem(null);
+      setCleanupConfirmation({ type: 'single', item });
     }
   };
 
@@ -296,7 +307,25 @@ export default function UpcomingTasks({
     setCleanupError(null);
     try {
       if (cleanupConfirmation.type === 'single') {
-        await onDeleteTask?.(cleanupConfirmation.item);
+        if (onDeleteTask) {
+          await onDeleteTask(cleanupConfirmation.item);
+        } else {
+          const previousPayments = sourcePayments;
+          const nextPayments = applyCalendarPlanTrash(
+            sourcePayments,
+            cleanupConfirmation.item.payment.id,
+            todayKey,
+          );
+          if (payments !== undefined) setLocalPayments(nextPayments);
+          else setLoadedPayments(nextPayments);
+          try {
+            await api.post('/plan-grid/calendar', { payments: nextPayments });
+          } catch (error) {
+            if (payments !== undefined) setLocalPayments(previousPayments);
+            else setLoadedPayments(previousPayments);
+            throw error;
+          }
+        }
       } else {
         await onCleanupPastTasks?.(cleanupConfirmation.paymentIds);
       }
@@ -376,17 +405,17 @@ export default function UpcomingTasks({
           )
         )}
         <div className="ml-auto flex items-center gap-1">
-          {variant === 'carousel' && onEditTask && (
+          {variant === 'carousel' && (
             <button
               type="button"
-              aria-label="Редактировать текущий план"
-              title={focusedIsCompleted ? 'Выполненный план нельзя редактировать' : 'Редактировать текущий план'}
-              data-testid="button-upcoming-edit"
-              disabled={!focusedOccurrence || focusedIsCompleted}
-              onClick={() => focusedOccurrence && !focusedIsCompleted && onEditTask(focusedOccurrence)}
+              aria-label="Посмотреть текущий план"
+              title="Посмотреть план, записку и действия"
+              data-testid="button-upcoming-view"
+              disabled={!focusedOccurrence}
+              onClick={() => focusedOccurrence && setViewItem(focusedOccurrence)}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none"
             >
-              <Pencil size={15} />
+              <Eye size={15} />
             </button>
           )}
           {variant === 'carousel' && (
@@ -406,9 +435,9 @@ export default function UpcomingTasks({
               <Plus size={16} />
             </button>
           )}
-          {variant !== 'carousel' && onEditTask && (
-            <button type="button" aria-label="Редактировать сфокусированную задачу" title={focusedIsCompleted ? 'Выполненный план нельзя редактировать' : 'Редактировать'} data-testid="button-upcoming-edit" disabled={!focusedOccurrence || focusedIsCompleted} onClick={() => focusedOccurrence && !focusedIsCompleted && onEditTask(focusedOccurrence)} className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none">
-              <Pencil size={15} />
+          {variant !== 'carousel' && (
+            <button type="button" aria-label="Посмотреть сфокусированный план" title="Посмотреть план, записку и действия" data-testid="button-upcoming-view" disabled={!focusedOccurrence} onClick={() => focusedOccurrence && setViewItem(focusedOccurrence)} className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none">
+              <Eye size={15} />
             </button>
           )}
           {onCopyTask && (
@@ -447,7 +476,7 @@ export default function UpcomingTasks({
                 : 'Выберите план'}
               data-testid="button-upcoming-delete"
               disabled={!focusedOccurrence}
-              onClick={requestDelete}
+              onClick={() => requestDelete()}
               className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 disabled:opacity-30 disabled:pointer-events-none"
             >
               <Trash2 size={15} />
@@ -460,7 +489,7 @@ export default function UpcomingTasks({
         <div className="py-10 text-center text-xs text-theme-muted">Загружаем задачи...</div>
       ) : error ? (
         <div className="py-10 text-center text-xs text-rose-600">{error}</div>
-      ) : occurrences.length === 0 ? (
+      ) : occurrences.length === 0 && (variant === 'carousel' || sortedCalendarNotes.length === 0) ? (
         <div className="py-10 text-center text-xs text-theme-muted">
           <CircleDashed size={20} className="mx-auto mb-2" />
           Предстоящих задач нет
@@ -528,10 +557,13 @@ export default function UpcomingTasks({
                       {carouselDateLabel(occurrence.date)}
                       {occurrence.payment.time && <> · <time>{occurrence.payment.time}</time></>}
                     </span>
-                    <strong className="mt-1 block text-sm sm:text-base leading-tight break-words">
+                    <strong className="mt-1 flex items-center gap-1 text-sm sm:text-base leading-tight break-words">
                       <span>{formatMoney(occurrence.payment.amount)}</span>{' '}
                       <span aria-hidden="true">·</span>{' '}
-                      <span>{occurrence.payment.title}</span>
+                      <span className="min-w-0">{occurrence.payment.title}</span>
+                      {occurrence.payment.note?.trim() && (
+                        <StickyNote size={13} className="shrink-0 text-amber-700" aria-label="У плана есть записка" />
+                      )}
                     </strong>
                     <span className="mt-1 block text-xs opacity-75 leading-snug break-words">
                       {occurrence.payment.categoryName || 'Без категории'} · {recurrenceLabel(occurrence.payment)}
@@ -544,6 +576,28 @@ export default function UpcomingTasks({
         </div>
       ) : (
           <div ref={listRef} className="max-h-[min(65vh,620px)] overflow-y-auto no-scrollbar overscroll-contain touch-pan-y space-y-2 pt-3 pr-1" onScroll={handleListScroll} data-testid="upcoming-tasks-list">
+          {sortedCalendarNotes.length > 0 && (
+            <section className="space-y-2" aria-label="Записки календаря" data-testid="calendar-notes-list">
+              {sortedCalendarNotes.map(note => (
+                <button
+                  key={note.id}
+                  type="button"
+                  data-testid={`calendar-note-row-${note.id}`}
+                  onClick={() => onNoteClick?.(note)}
+                  disabled={!onNoteClick}
+                  className="flex w-full items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-left text-amber-950 disabled:cursor-default"
+                >
+                  <StickyNote size={14} className="mt-0.5 shrink-0 text-amber-700" aria-hidden="true" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[10px] font-semibold text-amber-800">
+                      {formatLongTaskDate(note.date)}
+                    </span>
+                    <span className="block whitespace-pre-wrap break-words text-xs">{note.text}</span>
+                  </span>
+                </button>
+              ))}
+            </section>
+          )}
           {hasPrevious && (
             <button type="button" data-testid="button-upcoming-load-previous" onClick={loadPrevious} className="w-full rounded-xl border border-dashed border-theme-base px-3 py-2 text-xs text-theme-muted hover:bg-theme-main">
               Показать более ранние
@@ -579,10 +633,13 @@ export default function UpcomingTasks({
                   className="min-w-0 flex-1 text-left"
                   data-testid={`upcoming-task-link-${key}`}
                 >
-                    <strong className="block text-xs leading-tight break-words">
+                    <strong className="flex items-center gap-1 text-xs leading-tight break-words">
                     <span>{formatMoney(item.payment.amount)}</span>{' '}
                     <span aria-hidden="true">·</span>{' '}
-                    <span>{item.payment.title}</span>
+                    <span className="min-w-0">{item.payment.title}</span>
+                    {item.payment.note?.trim() && (
+                      <StickyNote size={12} className="shrink-0 text-amber-700" aria-label="У плана есть записка" />
+                    )}
                     </strong>
                     <span className="block text-[10px] opacity-75 leading-snug break-words">
                       {formatTaskDate(item.date)}
@@ -599,6 +656,18 @@ export default function UpcomingTasks({
             </button>
           )}
         </div>
+      )}
+      {viewItem && (
+        <PlanViewDialog
+          item={viewItem}
+          onClose={() => setViewItem(null)}
+          onEdit={onEditTask ? () => {
+            const item = viewItem;
+            setViewItem(null);
+            onEditTask(item);
+          } : undefined}
+          onDelete={onDeleteTask || variant === 'carousel' ? () => requestDelete(viewItem) : undefined}
+        />
       )}
       {cleanupConfirmation && (
         <PlanCleanupDialog
@@ -622,6 +691,88 @@ export default function UpcomingTasks({
 type PlanCleanupConfirmation =
   | { type: 'single'; item: PlannedPaymentOccurrence }
   | { type: 'bulk'; paymentIds: string[] };
+
+function PlanViewDialog({
+  item,
+  onClose,
+  onEdit,
+  onDelete,
+}: {
+  item: PlannedPaymentOccurrence;
+  onClose: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+}) {
+  const payment = item.payment;
+  return (
+    <div
+      className="fixed inset-0 z-[118] flex items-center justify-center bg-black/45 p-3 sm:p-5"
+      role="presentation"
+      onMouseDown={event => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        className="w-full max-w-md rounded-2xl border border-theme-base bg-theme-surface p-4 shadow-2xl sm:p-5"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="plan-view-title"
+        data-testid="dialog-plan-view"
+        onMouseDown={event => event.stopPropagation()}
+      >
+        <header className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-theme-muted">{formatLongTaskDate(item.date)}</p>
+            <h2 id="plan-view-title" className="mt-1 break-words text-lg font-bold text-theme-main">
+              {payment.title}
+            </h2>
+          </div>
+          <button type="button" aria-label="Закрыть просмотр плана" onClick={onClose} className="rounded-lg p-1 text-theme-muted hover:bg-theme-main">
+            <X size={18} />
+          </button>
+        </header>
+        <div className="mt-4 space-y-2 text-sm text-theme-main">
+          <p className="font-semibold">{formatMoney(payment.amount)}</p>
+          <p className="text-xs text-theme-muted">
+            {payment.transactionType === 'income' ? 'Доход' : 'Расход'}
+            {payment.time ? ` · ${payment.time}` : ''}
+            {` · ${recurrenceLabel(payment)}`}
+          </p>
+          <p className="text-xs text-theme-muted">
+            {payment.categoryName || 'Без категории'}
+            {payment.accountName ? ` · ${payment.accountName}` : ''}
+          </p>
+          {payment.note?.trim() && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-950">
+              <span className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-amber-800">
+                <StickyNote size={13} aria-hidden="true" />
+                Записка к плану
+              </span>
+              <p className="whitespace-pre-wrap break-words text-sm">{payment.note}</p>
+            </div>
+          )}
+        </div>
+        <footer className="mt-5 flex flex-wrap justify-end gap-2">
+          <button type="button" onClick={onClose} className="rounded-xl bg-theme-main px-3 py-2 text-xs font-bold text-theme-muted">
+            Закрыть
+          </button>
+          {onEdit && (
+            <button type="button" data-testid="button-plan-view-edit" onClick={onEdit} className="inline-flex items-center gap-1 rounded-xl bg-theme-primary px-3 py-2 text-xs font-bold text-white">
+              <Pencil size={13} />
+              Редактировать
+            </button>
+          )}
+          {onDelete && (
+            <button type="button" data-testid="button-plan-view-delete" onClick={onDelete} className="inline-flex items-center gap-1 rounded-xl bg-rose-600 px-3 py-2 text-xs font-bold text-white">
+              <Trash2 size={13} />
+              Удалить
+            </button>
+          )}
+        </footer>
+      </section>
+    </div>
+  );
+}
 
 function PlanCleanupDialog({
   confirmation,
@@ -878,6 +1029,15 @@ function formatTaskDate(date: string) {
   if (difference === 0) return 'Сегодня';
   if (difference === 1) return 'Завтра';
   return taskDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace(/\.$/, '');
+}
+
+function formatLongTaskDate(date: string) {
+  return new Date(`${date}T12:00:00`).toLocaleDateString('ru-RU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 }
 
 function formatMoney(amount: number) {

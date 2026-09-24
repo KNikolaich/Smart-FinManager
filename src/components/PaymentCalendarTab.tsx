@@ -9,6 +9,7 @@ import {
   CircleAlert,
   Plus,
   RefreshCw,
+  StickyNote,
   X,
 } from 'lucide-react';
 import {
@@ -18,6 +19,7 @@ import {
   PlannedPaymentRecurrence,
   PlannedPaymentStatus,
   Category,
+  CalendarNote,
 } from '../types';
 import CategorySelect from './CategorySelect';
 import UpcomingTasks from './UpcomingTasks';
@@ -35,6 +37,7 @@ import {
 
 interface PaymentCalendarTabProps {
   payments: PlannedPayment[];
+  notes?: CalendarNote[];
   accounts: Account[];
   transactions?: Transaction[];
   categories?: Category[];
@@ -47,6 +50,7 @@ interface PaymentCalendarTabProps {
   onPaymentChange?: (payment: PlannedPayment) => void | Promise<void>;
   onPaymentDelete?: (id: string, date: string) => void | Promise<void>;
   onCleanupPastPayments?: (ids: string[]) => void | Promise<void>;
+  onNotesChange?: (notes: CalendarNote[]) => void | Promise<void>;
   focusDate?: string;
   onFocusDateHandled?: () => void;
   initialPaymentToEdit?: PlannedPayment | null;
@@ -96,6 +100,7 @@ function getMonthCells(cursor: Date) {
 
 export default function PaymentCalendarTab({
   payments,
+  notes = [],
   accounts,
   transactions = [],
   categories = [],
@@ -108,6 +113,7 @@ export default function PaymentCalendarTab({
   onPaymentChange,
   onPaymentDelete,
   onCleanupPastPayments,
+  onNotesChange,
   focusDate,
   onFocusDateHandled,
   initialPaymentToEdit,
@@ -121,6 +127,11 @@ export default function PaymentCalendarTab({
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [editingPayment, setEditingPayment] = useState<PlannedPayment | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [noteDialogMode, setNoteDialogMode] = useState<'create' | 'view' | 'edit' | null>(null);
+  const [editingNote, setEditingNote] = useState<CalendarNote | null>(null);
+  const [noteError, setNoteError] = useState<string | null>(null);
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const [confirmDeleteNote, setConfirmDeleteNote] = useState(false);
 
   useEffect(() => {
     if (!focusDate) return;
@@ -146,6 +157,15 @@ export default function PaymentCalendarTab({
   }, [initialPaymentToEdit, loading, onInitialPaymentEditHandled]);
 
   const monthCells = useMemo(() => getMonthCells(cursor), [cursor]);
+  const notesByDate = useMemo(() => {
+    const result = new Map<string, CalendarNote[]>();
+    notes.forEach(note => result.set(note.date, [...(result.get(note.date) || []), note]));
+    return result;
+  }, [notes]);
+  const sortedNotes = useMemo(
+    () => [...notes].sort((left, right) => left.date.localeCompare(right.date)),
+    [notes],
+  );
   const occurrences = useMemo<PlannedPaymentOccurrence[]>(
     () => {
       const calendarStart = monthCells[0]?.key;
@@ -170,6 +190,7 @@ export default function PaymentCalendarTab({
       title: '',
       amount: 0,
       date: date || toDateKey(cursor),
+      note: '',
       recurrence: 'none',
       transactionType: 'expense',
       categoryId: category?.id,
@@ -182,6 +203,68 @@ export default function PaymentCalendarTab({
       color: 'plum',
     });
     setDialogMode('create');
+  };
+
+  const openCreateNote = (date = selectedDate) => {
+    setEditingNote({ id: `calendar-note-${Date.now()}`, date, text: '' });
+    setNoteError(null);
+    setConfirmDeleteNote(false);
+    setNoteDialogMode('create');
+  };
+
+  const openViewNote = (note: CalendarNote) => {
+    setEditingNote({ ...note });
+    setNoteError(null);
+    setConfirmDeleteNote(false);
+    setNoteDialogMode('view');
+  };
+
+  const closeNoteDialog = () => {
+    if (isSavingNote) return;
+    setNoteDialogMode(null);
+    setEditingNote(null);
+    setNoteError(null);
+    setConfirmDeleteNote(false);
+  };
+
+  const saveNote = async () => {
+    if (!editingNote?.text.trim() || !editingNote.date || !onNotesChange) return;
+    const nextNote = { ...editingNote, text: editingNote.text.trim() };
+    const nextNotes = [...notes.filter(note => note.id !== nextNote.id), nextNote];
+    try {
+      setIsSavingNote(true);
+      setNoteError(null);
+      await onNotesChange(nextNotes);
+      const noteDate = parseDateKey(nextNote.date);
+      setCursor(new Date(noteDate.getFullYear(), noteDate.getMonth(), 1));
+      setSelectedDate(nextNote.date);
+      setListStartDate(nextNote.date);
+      setNoteDialogMode(null);
+      setEditingNote(null);
+      setConfirmDeleteNote(false);
+    } catch (error) {
+      console.error('Calendar note save error:', error);
+      setNoteError('Не удалось сохранить записку. Проверьте подключение и попробуйте ещё раз.');
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
+  const deleteNote = async () => {
+    if (!editingNote || !onNotesChange) return;
+    try {
+      setIsSavingNote(true);
+      setNoteError(null);
+      await onNotesChange(notes.filter(note => note.id !== editingNote.id));
+      setNoteDialogMode(null);
+      setEditingNote(null);
+      setConfirmDeleteNote(false);
+    } catch (error) {
+      console.error('Calendar note delete error:', error);
+      setNoteError('Не удалось удалить записку. Проверьте подключение и попробуйте ещё раз.');
+    } finally {
+      setIsSavingNote(false);
+    }
   };
 
   const savePayment = async () => {
@@ -231,6 +314,17 @@ export default function PaymentCalendarTab({
         >
           <Plus size={20} />
         </button>
+        <button
+          type="button"
+          aria-label="Добавить записку на дату"
+          title="Добавить записку на выбранную дату"
+          data-testid="button-add-calendar-note"
+          onClick={() => openCreateNote()}
+          disabled={!onNotesChange}
+          className="w-10 h-10 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 flex items-center justify-center hover:bg-amber-100 shrink-0 disabled:opacity-40"
+        >
+          <StickyNote size={18} />
+        </button>
       </header>
 
       <div className="flex min-w-0 w-full flex-nowrap items-center gap-1 overflow-x-auto no-scrollbar">
@@ -260,6 +354,7 @@ export default function PaymentCalendarTab({
             <div className="grid min-w-0 grid-cols-7">
               {monthCells.map(cell => {
                 const dayItems = byDate.get(cell.key) || [];
+                const dayNotes = notesByDate.get(cell.key) || [];
                 return (
                   <button
                     key={cell.key}
@@ -274,11 +369,19 @@ export default function PaymentCalendarTab({
                          <span key={`${item.payment.id}-${item.date}`} className={`hidden sm:flex min-w-0 items-center gap-1 rounded px-1 py-1 text-[10px] ${occurrenceTone(item)}`}>
                            <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
                            <span className="min-w-0 flex-1 truncate">{item.payment.title}</span>
+                            {item.payment.note?.trim() && <StickyNote size={10} className="shrink-0 text-amber-700" aria-label="У плана есть записка" />}
                            {item.payment.time && <time className="shrink-0 tabular-nums">{item.payment.time}</time>}
                         </span>
                       ))}
+                       {dayNotes.slice(0, 1).map(note => (
+                         <span key={note.id} data-testid={`calendar-note-chip-${note.id}`} className="hidden sm:flex min-w-0 items-start gap-1 rounded bg-amber-50 px-1 py-1 text-[9px] leading-tight text-amber-900">
+                           <StickyNote size={10} className="mt-px shrink-0 text-amber-700" aria-hidden="true" />
+                           <span className="min-w-0 line-clamp-2 break-words">{note.text}</span>
+                         </span>
+                       ))}
+                       {dayNotes.length > 1 && <span className="hidden sm:block text-[9px] text-amber-800">+ ещё записки: {dayNotes.length - 1}</span>}
                       {dayItems.length > 2 && <span className="text-[9px] text-theme-muted">+ ещё {dayItems.length - 2}</span>}
-                      {dayItems.length > 0 && <span className="sm:hidden flex gap-0.5">{dayItems.slice(0, 3).map(item => <span key={`${item.payment.id}-${item.date}-dot`} className={`w-1.5 h-1.5 rounded-full ${occurrenceDotTone(item)}`} />)}</span>}
+                       {(dayItems.length > 0 || dayNotes.length > 0) && <span className="sm:hidden flex gap-0.5">{dayItems.slice(0, 3).map(item => <span key={`${item.payment.id}-${item.date}-dot`} className={`w-1.5 h-1.5 rounded-full ${occurrenceDotTone(item)}`} />)}{dayNotes.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" aria-label="Есть записка" />}</span>}
                     </span>
                   </button>
                 );
@@ -289,6 +392,7 @@ export default function PaymentCalendarTab({
           <div className="min-w-0">
           <UpcomingTasks
             payments={payments}
+            notes={sortedNotes}
             startDate={listStartDate}
             filter={filter}
             focusedDate={selectedDate}
@@ -331,6 +435,7 @@ export default function PaymentCalendarTab({
              }}
             onDeleteTask={item => onPaymentDelete?.(item.payment.id, item.date)}
             onCleanupPastTasks={onCleanupPastPayments}
+            onNoteClick={openViewNote}
           />
           </div>
       </div>
@@ -348,6 +453,27 @@ export default function PaymentCalendarTab({
           saveError={saveError}
         />
       )}
+      {noteDialogMode && editingNote && (
+        <CalendarNoteDialog
+          mode={noteDialogMode}
+          note={editingNote}
+          error={noteError}
+          saving={isSavingNote}
+          canEdit={Boolean(onNotesChange)}
+          confirmDelete={confirmDeleteNote}
+          onChange={setEditingNote}
+          onClose={closeNoteDialog}
+          onEdit={() => {
+            setNoteError(null);
+            setConfirmDeleteNote(false);
+            setNoteDialogMode('edit');
+          }}
+          onRequestDelete={() => setConfirmDeleteNote(true)}
+          onCancelDelete={() => setConfirmDeleteNote(false)}
+          onConfirmDelete={() => void deleteNote()}
+          onSave={() => void saveNote()}
+        />
+      )}
     </section>
   );
 }
@@ -358,6 +484,15 @@ function moveMonth(offset: number, cursor: Date, setCursor: (date: Date) => void
   const nextKey = toDateKey(next);
   setSelectedDate(nextKey);
   setListStartDate(nextKey);
+}
+
+function formatLongDate(date: string) {
+  return parseDateKey(date).toLocaleDateString('ru-RU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 }
 
 function occurrenceTone(item: PlannedPaymentOccurrence) {
@@ -372,6 +507,138 @@ function occurrenceDotTone(item: PlannedPaymentOccurrence) {
   if (item.status === 'paid') return 'bg-neutral-300';
   if (isPaymentOccurrenceOverdue(item.date)) return 'bg-red-500';
   return item.payment.transactionType === 'income' ? 'bg-lime-500' : 'bg-pink-300';
+}
+
+function CalendarNoteDialog({
+  mode,
+  note,
+  error,
+  saving,
+  canEdit,
+  confirmDelete,
+  onChange,
+  onClose,
+  onEdit,
+  onRequestDelete,
+  onCancelDelete,
+  onConfirmDelete,
+  onSave,
+}: {
+  mode: 'create' | 'view' | 'edit';
+  note: CalendarNote;
+  error: string | null;
+  saving: boolean;
+  canEdit: boolean;
+  confirmDelete: boolean;
+  onChange: (note: CalendarNote) => void;
+  onClose: () => void;
+  onEdit: () => void;
+  onRequestDelete: () => void;
+  onCancelDelete: () => void;
+  onConfirmDelete: () => void;
+  onSave: () => void;
+}) {
+  const isView = mode === 'view';
+  const title = mode === 'create' ? 'Новая записка' : mode === 'edit' ? 'Редактировать записку' : 'Записка календаря';
+  return (
+    <div
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 p-3 sm:p-5"
+      role="presentation"
+      onMouseDown={event => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        className="w-full max-w-md rounded-2xl border border-amber-200 bg-theme-surface p-4 shadow-2xl sm:p-5"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="calendar-note-dialog-title"
+        data-testid="dialog-calendar-note"
+        onMouseDown={event => event.stopPropagation()}
+      >
+        <header className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-2">
+            <StickyNote size={18} className="mt-0.5 shrink-0 text-amber-700" aria-hidden="true" />
+            <div>
+              <h2 id="calendar-note-dialog-title" className="text-base font-bold text-theme-main">{title}</h2>
+              {isView && <p className="mt-1 text-xs text-theme-muted">{formatLongDate(note.date)}</p>}
+            </div>
+          </div>
+          <button type="button" aria-label="Закрыть записку" onClick={onClose} disabled={saving} className="rounded-lg p-1 text-theme-muted hover:bg-theme-main disabled:opacity-40">
+            <X size={17} />
+          </button>
+        </header>
+
+        {isView ? (
+          <p className="mt-4 min-h-16 whitespace-pre-wrap break-words rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+            {note.text}
+          </p>
+        ) : (
+          <div className="mt-4 space-y-3">
+            <label className="block text-xs font-bold text-theme-muted">
+              Дата
+              <input
+                type="date"
+                required
+                value={note.date}
+                data-testid="input-calendar-note-date"
+                onChange={event => onChange({ ...note, date: event.target.value })}
+                className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main"
+              />
+            </label>
+            <label className="block text-xs font-bold text-theme-muted">
+              Текст записки
+              <textarea
+                autoFocus
+                required
+                maxLength={2000}
+                rows={5}
+                value={note.text}
+                data-testid="input-calendar-note-text"
+                onChange={event => onChange({ ...note, text: event.target.value })}
+                placeholder="Напоминание на эту дату"
+                className="mt-1 w-full resize-y rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-normal text-amber-950 placeholder:text-amber-700/60"
+              />
+              <span className="mt-1 block text-right text-[10px] font-normal text-theme-muted">{note.text.length}/2000</span>
+            </label>
+          </div>
+        )}
+
+        {confirmDelete && (
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3" role="alertdialog" aria-label="Подтверждение удаления записки">
+            <p className="text-sm font-semibold text-rose-900">Удалить эту записку?</p>
+            <p className="mt-1 text-xs text-rose-800">Это действие нельзя отменить.</p>
+            <div className="mt-3 flex justify-end gap-2">
+              <button type="button" onClick={onCancelDelete} disabled={saving} className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-theme-muted disabled:opacity-40">Оставить</button>
+              <button type="button" data-testid="button-confirm-delete-calendar-note" onClick={onConfirmDelete} disabled={saving} className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{saving ? 'Удаляем…' : 'Удалить'}</button>
+            </div>
+          </div>
+        )}
+        {error && <p className="mt-3 text-xs text-rose-600" role="alert">{error}</p>}
+
+        {!confirmDelete && (
+          <footer className="mt-5 flex flex-wrap justify-end gap-2">
+            {isView ? (
+              <>
+                <button type="button" onClick={onClose} className="rounded-xl bg-theme-main px-3 py-2 text-xs font-bold text-theme-muted">Закрыть</button>
+                {canEdit && (
+                  <>
+                    <button type="button" data-testid="button-edit-calendar-note" onClick={onEdit} className="rounded-xl bg-theme-primary px-3 py-2 text-xs font-bold text-white">Редактировать</button>
+                    <button type="button" data-testid="button-delete-calendar-note" onClick={onRequestDelete} className="rounded-xl bg-rose-600 px-3 py-2 text-xs font-bold text-white">Удалить</button>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <button type="button" onClick={onClose} disabled={saving} className="rounded-xl bg-theme-main px-3 py-2 text-xs font-bold text-theme-muted disabled:opacity-40">Отмена</button>
+                <button type="button" data-testid="button-save-calendar-note" onClick={onSave} disabled={saving || !note.date || !note.text.trim() || !canEdit} className="rounded-xl bg-theme-primary px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{saving ? 'Сохраняем…' : 'Сохранить'}</button>
+              </>
+            )}
+          </footer>
+        )}
+      </section>
+    </div>
+  );
 }
 
 function PaymentDialog({ mode, payment, accounts, transactions, categories, onChange, onClose, onSave, saveError }: { mode: 'create' | 'edit'; payment: PlannedPayment; accounts: Account[]; transactions: Transaction[]; categories: Category[]; onChange: (payment: PlannedPayment) => void; onClose: () => void; onSave: () => void; saveError?: string | null }) {
@@ -391,6 +658,7 @@ function PaymentDialog({ mode, payment, accounts, transactions, categories, onCh
         <header className="flex items-center justify-between p-4 border-b border-theme-base"><h3 className="text-lg font-bold text-theme-main">{mode === 'create' ? 'Новая запись' : 'Изменить'}</h3><button type="button" aria-label="Закрыть" data-testid="button-close-payment-dialog" onClick={onClose} className="p-2 rounded-lg hover:bg-theme-main"><X size={16} /></button></header>
         <div className="p-4 space-y-3">
           <label className="block text-xs font-bold text-theme-muted">Название<input data-testid="input-payment-title" value={payment.title} onChange={event => set('title', event.target.value)} placeholder="Аренда квартиры" className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main" autoFocus /></label>
+           <label className="block text-xs font-bold text-theme-muted">Заметка к плану<textarea data-testid="input-payment-note" maxLength={4000} rows={3} value={payment.note || ''} onChange={event => set('note', event.target.value || undefined)} placeholder="Комментарий, связанный с этим планом" className="mt-1 w-full resize-y rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-normal text-amber-950 placeholder:text-amber-700/60" /></label>
            <label className="block text-xs font-bold text-theme-muted">Сумма<input data-testid="input-payment-amount" type="number" min="1" value={payment.amount || ''} onChange={event => set('amount', Number(event.target.value))} className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main" /></label>
            <div className="grid grid-cols-2 gap-3">
              <label className="block text-xs font-bold text-theme-muted">Дата<input data-testid="input-payment-date" type="date" value={payment.date} onChange={event => set('date', event.target.value)} className="mt-1 w-full min-w-0 rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main" /></label>
