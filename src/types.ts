@@ -196,6 +196,7 @@ export interface PlannedPayment {
   title: string;
   amount: number;
   date: string;
+  note?: string;
   time?: string;
   recurrence: PlannedPaymentRecurrence;
   weekdays?: number[];
@@ -214,6 +215,12 @@ export interface PlannedPayment {
     manuallyCompleted: boolean;
   }>;
   color?: 'plum' | 'blue' | 'orange';
+}
+
+export interface CalendarNote {
+  id: string;
+  date: string;
+  text: string;
 }
 
 export interface PlanNote {

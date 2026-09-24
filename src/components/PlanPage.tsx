@@ -14,7 +14,8 @@ import {
   PlanNote,
   PlanNotesPayload,
   PlannedPayment,
-  PlannedPaymentStatus
+  PlannedPaymentStatus,
+  CalendarNote,
 } from '../types';
 import { io } from 'socket.io-client';
 import { 
@@ -204,6 +205,7 @@ export default function PlanPage({
   const [showCalculator, setShowCalculator] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | 'queued'>('saved');
   const [calendarPayments, setCalendarPayments] = useState<PlannedPayment[]>([]);
+  const [calendarNotes, setCalendarNotes] = useState<CalendarNote[]>([]);
   const [calendarError, setCalendarError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -277,6 +279,7 @@ export default function PlanPage({
               (newData as any).credit = data;
             } else if (type === 'calendar') {
               setCalendarPayments(Array.isArray(data?.payments) ? data.payments : []);
+              setCalendarNotes(Array.isArray(data?.notes) ? data.notes : []);
             }
             return newData;
           });
@@ -309,7 +312,10 @@ export default function PlanPage({
             comment: '',
             updatedAt: new Date().toISOString()
           });
-          if (type === 'calendar') setCalendarPayments([]);
+          if (type === 'calendar') {
+            setCalendarPayments([]);
+            setCalendarNotes([]);
+          }
           setLoadedTabs(prev => new Set(prev).add(type));
         }
       } catch (error) {
@@ -405,16 +411,22 @@ export default function PlanPage({
     }
   };
 
-  const saveCalendarPayments = async (payments: PlannedPayment[]) => {
+  const saveCalendarPayments = async (
+    payments: PlannedPayment[],
+    notes: CalendarNote[] = calendarNotes,
+  ) => {
     const previousPayments = calendarPayments;
+    const previousNotes = calendarNotes;
     setCalendarPayments(payments);
+    setCalendarNotes(notes);
     setCalendarError(null);
     try {
-      await api.post('/plan-grid/calendar', { payments });
+      await api.post('/plan-grid/calendar', { payments, notes });
       setSaveStatus(!navigator.onLine ? 'queued' : 'saved');
     } catch (error) {
       console.error('Error saving payment calendar:', error);
       setCalendarPayments(previousPayments);
+      setCalendarNotes(previousNotes);
       setCalendarError('Не удалось сохранить календарь. Попробуйте ещё раз.');
       setSaveStatus('error');
       throw error;
@@ -424,6 +436,10 @@ export default function PlanPage({
   const handleCalendarPaymentChange = async (payment: PlannedPayment) => {
     const next = createEditedCalendarPlanVersion(calendarPayments, payment);
     await saveCalendarPayments(next);
+  };
+
+  const handleCalendarNotesChange = async (notes: CalendarNote[]) => {
+    await saveCalendarPayments(calendarPayments, notes);
   };
 
   const handleCalendarStatusChange = async (id: string, date: string, status: PlannedPaymentStatus) => {
@@ -801,6 +817,8 @@ export default function PlanPage({
             onPaymentChange={handleCalendarPaymentChange}
             onPaymentDelete={handleCalendarPaymentDelete}
             onCleanupPastPayments={handleCalendarPastCleanup}
+            notes={calendarNotes}
+            onNotesChange={handleCalendarNotesChange}
             focusDate={calendarFocusDate}
             onFocusDateHandled={onCalendarFocusHandled}
             initialPaymentToEdit={calendarPaymentToEdit}

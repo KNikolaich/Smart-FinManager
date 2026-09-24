@@ -27,6 +27,7 @@ model User {
   goals          Goal[]
   planGrid       PlanGrid[]
   calendarPlans  CalendarPlan[]
+  calendarNotes  CalendarNote[]
   chatMessages   ChatMessage[]
   aiLogs         AiLog[]
   balanceHistory BalanceHistory[]
@@ -154,6 +155,7 @@ model CalendarPlan {
   title           String
   amount          Float
   date            DateTime @db.Date
+  note            String?  @db.Text
   time            String?  @db.VarChar(5)
   recurrence      String   @default("none")
   weekdays        Json?
@@ -175,6 +177,20 @@ model CalendarPlan {
   @@index([accountId])
   @@index([categoryId])
   @@map("calendar_plans")
+}
+
+model CalendarNote {
+  id        String   @id @default(uuid())
+  userId    String
+  date      DateTime @db.Date
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@map("calendar_notes")
 }
 
 model CalendarOccurrence {

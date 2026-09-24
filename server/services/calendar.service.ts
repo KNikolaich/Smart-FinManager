@@ -15,6 +15,7 @@ type LegacyPayment = {
   title?: string;
   amount?: number;
   date?: string;
+  note?: string | null;
   time?: string | null;
   recurrence?: string;
   weekdays?: number[];
@@ -25,6 +26,12 @@ type LegacyPayment = {
   disableFrom?: string | null;
   status?: string;
   paidDates?: string[];
+};
+
+type LegacyCalendarNote = {
+  id?: string;
+  date?: string;
+  text?: string;
 };
 
 function dateOnly(value: unknown) {
@@ -75,7 +82,7 @@ async function migrateLegacyCalendar(userId: string) {
   });
   if (!legacy) return;
 
-  const payload = legacy.data as { payments?: LegacyPayment[] } | null;
+  const payload = legacy.data as { payments?: LegacyPayment[]; notes?: LegacyCalendarNote[] } | null;
   if (!Array.isArray(payload?.payments)) {
     await prisma.planGrid.delete({ where: { id: legacy.id } });
     return;
@@ -85,8 +92,21 @@ async function migrateLegacyCalendar(userId: string) {
     for (const payment of payload.payments) {
       await upsertPlan(tx, userId, payment);
     }
+    if (Array.isArray(payload.notes)) {
+      await replaceCalendarNotes(tx, userId, payload.notes);
+    }
     await tx.planGrid.delete({ where: { id: legacy.id } });
   });
+}
+
+function calendarText(value: unknown, maxLength: number, message: string) {
+  if (value == null) return null;
+  if (typeof value !== "string" || value.length > maxLength) {
+    const error: any = new Error(message);
+    error.status = 400;
+    throw error;
+  }
+  return value.trim() || null;
 }
 
 async function upsertPlan(tx: any, userId: string, payment: LegacyPayment, strictReferences = false) {
@@ -134,6 +154,7 @@ async function upsertPlan(tx: any, userId: string, payment: LegacyPayment, stric
     title: payment.title.trim(),
     amount,
     date: dateOnly(payment.date),
+    note: calendarText(payment.note, 4000, "Комментарий к плану слишком длинный"),
     time: paymentTime(payment.time),
     recurrence: recurrence(payment.recurrence),
     weekdays: weekdays(payment.weekdays),
@@ -186,6 +207,55 @@ async function upsertPlan(tx: any, userId: string, payment: LegacyPayment, stric
   return plan;
 }
 
+async function upsertCalendarNote(tx: any, userId: string, note: LegacyCalendarNote) {
+  if (!note.date) {
+    const error: any = new Error("У заметки календаря должна быть дата");
+    error.status = 400;
+    throw error;
+  }
+  const text = calendarText(note.text, 2000, "Текст заметки слишком длинный");
+  if (!text) {
+    const error: any = new Error("Текст заметки не может быть пустым");
+    error.status = 400;
+    throw error;
+  }
+
+  const requestedId = typeof note.id === "string" && note.id.trim()
+    ? note.id.trim()
+    : undefined;
+  const owned = requestedId
+    ? await tx.calendarNote.findFirst({ where: { id: requestedId, userId } })
+    : null;
+  const occupiedByAnotherUser = requestedId && !owned
+    ? await tx.calendarNote.findUnique({ where: { id: requestedId }, select: { id: true } })
+    : null;
+  const data = { date: dateOnly(note.date), text };
+
+  return owned
+    ? tx.calendarNote.update({ where: { id: owned.id }, data })
+    : tx.calendarNote.create({
+      data: {
+        ...data,
+        ...(requestedId && !occupiedByAnotherUser ? { id: requestedId } : {}),
+        userId,
+      },
+    });
+}
+
+async function replaceCalendarNotes(tx: any, userId: string, notes: LegacyCalendarNote[]) {
+  const retainedIds: string[] = [];
+  for (const note of notes) {
+    const saved = await upsertCalendarNote(tx, userId, note);
+    retainedIds.push(saved.id);
+  }
+  await tx.calendarNote.deleteMany({
+    where: {
+      userId,
+      ...(retainedIds.length > 0 ? { id: { notIn: retainedIds } } : {}),
+    },
+  });
+}
+
 async function loadPlans(userId: string) {
   return prisma.calendarPlan.findMany({
     where: { userId, archivedAt: null },
@@ -225,6 +295,7 @@ function serializePlan(plan: any) {
     accountName: plan.account?.name,
     categoryId: plan.categoryId || undefined,
     categoryName: plan.category?.name,
+    note: plan.note || undefined,
     status: paidDates.includes(dateKey(plan.date)) ? "paid" : "pending",
     paidDates,
     disableFrom: plan.disableFrom ? dateKey(plan.disableFrom) : null,
@@ -235,10 +306,28 @@ function serializePlan(plan: any) {
 
 export async function listCalendar(userId: string) {
   await migrateLegacyCalendar(userId);
-  return { payments: (await loadPlans(userId)).map(serializePlan) };
+  const [plans, notes] = await Promise.all([
+    loadPlans(userId),
+    prisma.calendarNote.findMany({
+      where: { userId },
+      orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+    }),
+  ]);
+  return {
+    payments: plans.map(serializePlan),
+    notes: notes.map((note: any) => ({
+      id: note.id,
+      date: dateKey(note.date),
+      text: note.text,
+    })),
+  };
 }
 
-export async function replaceCalendar(userId: string, payments: LegacyPayment[]) {
+export async function replaceCalendar(
+  userId: string,
+  payments: LegacyPayment[],
+  notes?: LegacyCalendarNote[],
+) {
   await migrateLegacyCalendar(userId);
 
   await prisma.$transaction(async (tx) => {
@@ -246,6 +335,9 @@ export async function replaceCalendar(userId: string, payments: LegacyPayment[])
     for (const payment of payments) {
       const plan = await upsertPlan(tx, userId, payment, true);
       if (plan) retainedIds.push(plan.id);
+    }
+    if (Array.isArray(notes)) {
+      await replaceCalendarNotes(tx, userId, notes);
     }
 
     await tx.calendarPlan.updateMany({

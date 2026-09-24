@@ -34,7 +34,10 @@ export async function setByType(req: any, res: any) {
 
     if (type === "calendar") {
       const payments = Array.isArray(data?.payments) ? data.payments : [];
-      const result = await calendarService.replaceCalendar(userId, payments);
+      if (data?.notes !== undefined && !Array.isArray(data.notes)) {
+        return res.status(400).json({ error: "Поле notes должно быть массивом" });
+      }
+      const result = await calendarService.replaceCalendar(userId, payments, data?.notes);
       notifyUser(userId, "data:updated", { type: "plan-grid", planType: "calendar" });
       return res.json(result);
     }
