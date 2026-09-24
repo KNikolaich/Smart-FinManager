@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -17,6 +17,7 @@ import {
   Account,
   Transaction,
   PlannedPayment,
+  PlannedPaymentDraft,
   PlannedPaymentRecurrence,
   PlannedPaymentStatus,
   Category,
@@ -56,6 +57,8 @@ interface PaymentCalendarTabProps {
   onFocusDateHandled?: () => void;
   initialPaymentToEdit?: PlannedPayment | null;
   onInitialPaymentEditHandled?: () => void;
+  initialPaymentToCreate?: PlannedPaymentDraft | null;
+  onInitialPaymentCreateHandled?: () => void;
 }
 
 type Filter = PlannedPaymentFilter;
@@ -126,6 +129,8 @@ export default function PaymentCalendarTab({
   onFocusDateHandled,
   initialPaymentToEdit,
   onInitialPaymentEditHandled,
+  initialPaymentToCreate,
+  onInitialPaymentCreateHandled,
 }: PaymentCalendarTabProps) {
   const now = new Date();
   const [cursor, setCursor] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
@@ -140,6 +145,7 @@ export default function PaymentCalendarTab({
   const [noteError, setNoteError] = useState<string | null>(null);
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [confirmDeleteNote, setConfirmDeleteNote] = useState(false);
+  const handledInitialPaymentToCreateRef = useRef<PlannedPaymentDraft | null>(null);
 
   useEffect(() => {
     if (!focusDate) return;
@@ -190,28 +196,58 @@ export default function PaymentCalendarTab({
   });
   const byDate = new Map<string, PlannedPaymentOccurrence[]>();
   visibleOccurrences.forEach(item => byDate.set(item.date, [...(byDate.get(item.date) || []), item]));
-  const openCreate = (date = selectedDate) => {
-    const account = accounts[0];
-    const category = categories.find(item => item.type === 'expense');
+  const openCreate = useCallback((date = selectedDate, initialData: PlannedPaymentDraft = {}) => {
+    const transactionType = initialData.transactionType === 'income' ? 'income' : 'expense';
+    const account = initialData.accountId === ''
+      ? undefined
+      : accounts.find(item => item.id === initialData.accountId) || (!initialData.accountId ? accounts[0] : undefined);
+    const category = initialData.categoryId === ''
+      ? undefined
+      : categories.find(item => item.id === initialData.categoryId && item.type === transactionType) ||
+        (!initialData.categoryId ? categories.find(item => item.type === transactionType) : undefined);
+    const id = `payment-${Date.now()}`;
+    const paymentDate = initialData.date || date || toDateKey(cursor);
+
     setEditingPayment({
-      id: `payment-${Date.now()}`,
-      title: '',
-      amount: 0,
-      date: date || toDateKey(cursor),
-      note: '',
-      recurrence: 'none',
-      transactionType: 'expense',
-      categoryId: category?.id,
+      ...initialData,
+      id,
+      title: initialData.title ?? '',
+      amount: initialData.amount ?? 0,
+      date: paymentDate,
+      note: initialData.note ?? '',
+      recurrence: initialData.recurrence ?? 'none',
+      transactionType,
+      categoryId: initialData.categoryId ?? category?.id,
       categoryName: category?.name,
-      accountId: account?.id,
+      accountId: initialData.accountId ?? account?.id,
       accountName: account?.name || '',
       status: 'pending',
       paidDates: [],
       disableFrom: null,
-      color: 'plum',
+      occurrences: [],
+      color: initialData.color ?? 'plum',
     });
     setDialogMode('create');
-  };
+  }, [accounts, categories, cursor, selectedDate]);
+
+  useEffect(() => {
+    if (!initialPaymentToCreate) {
+      handledInitialPaymentToCreateRef.current = null;
+      return;
+    }
+    if (loading || handledInitialPaymentToCreateRef.current === initialPaymentToCreate) return;
+
+    const requestedDate = initialPaymentToCreate.date || getTodayKey();
+    const parsedDate = parseDateKey(requestedDate);
+    const date = Number.isNaN(parsedDate.getTime()) ? getTodayKey() : requestedDate;
+    const validDate = parseDateKey(date);
+    handledInitialPaymentToCreateRef.current = initialPaymentToCreate;
+    setCursor(new Date(validDate.getFullYear(), validDate.getMonth(), 1));
+    setSelectedDate(date);
+    setListStartDate(date);
+    openCreate(date, initialPaymentToCreate);
+    onInitialPaymentCreateHandled?.();
+  }, [initialPaymentToCreate, loading, onInitialPaymentCreateHandled, openCreate]);
 
   const openCreateNote = (date = selectedDate) => {
     setEditingNote({ id: createCalendarNoteId(), date, text: '' });

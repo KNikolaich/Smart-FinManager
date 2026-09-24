@@ -14,6 +14,7 @@ import {
   PlanNote,
   PlanNotesPayload,
   PlannedPayment,
+  PlannedPaymentDraft,
   PlannedPaymentStatus,
   CalendarNote,
 } from '../types';
@@ -65,6 +66,8 @@ interface PlanPageProps {
   onCalendarFocusHandled?: () => void;
   calendarPaymentToEdit?: PlannedPayment | null;
   onCalendarPaymentEditHandled?: () => void;
+  calendarPaymentToCreate?: PlannedPaymentDraft | null;
+  onCalendarPaymentCreateHandled?: () => void;
 }
 
 type TabType = 'now' | 'past' | 'config' | 'comment' | 'cashback' | 'credit' | 'calendar';
@@ -136,9 +139,11 @@ export default function PlanPage({
   onCalendarFocusHandled,
   calendarPaymentToEdit,
   onCalendarPaymentEditHandled,
+  calendarPaymentToCreate,
+  onCalendarPaymentCreateHandled,
 }: PlanPageProps) {
   const [activeTab, setActiveTab] = useState<TabType>(() => (
-    calendarFocusDate || calendarPaymentToEdit ? 'calendar' : 'now'
+    calendarFocusDate || calendarPaymentToEdit || calendarPaymentToCreate ? 'calendar' : 'now'
   ));
   const [planData, setPlanData] = useState<PlanData | null>(null);
   const [loadedTabs, setLoadedTabs] = useState<Set<TabType>>(new Set());
@@ -209,8 +214,8 @@ export default function PlanPage({
   const [calendarError, setCalendarError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (calendarFocusDate || calendarPaymentToEdit) setActiveTab('calendar');
-  }, [calendarFocusDate, calendarPaymentToEdit]);
+    if (calendarFocusDate || calendarPaymentToEdit || calendarPaymentToCreate) setActiveTab('calendar');
+  }, [calendarFocusDate, calendarPaymentToEdit, calendarPaymentToCreate]);
 
   // When network is restored, flip 'queued' → 'saved' (sync already fired in App.tsx)
   useEffect(() => {
@@ -828,6 +833,8 @@ export default function PlanPage({
             onFocusDateHandled={onCalendarFocusHandled}
             initialPaymentToEdit={calendarPaymentToEdit}
             onInitialPaymentEditHandled={onCalendarPaymentEditHandled}
+            initialPaymentToCreate={calendarPaymentToCreate}
+            onInitialPaymentCreateHandled={onCalendarPaymentCreateHandled}
           />
         ) : activeTab === 'cashback' ? (
           <CashbackTab planData={planData} accounts={accounts} onSave={handleSaveCashback} />

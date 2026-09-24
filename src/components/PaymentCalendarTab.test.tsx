@@ -29,6 +29,35 @@ describe('PaymentCalendarTab', () => {
     expect(screen.getByText('Календарный план')).toBeTruthy();
   });
 
+  it('opens a fresh create dialog prefilled with an AI calendar-plan draft', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 24, 12));
+    const onInitialPaymentCreateHandled = vi.fn();
+
+    render(
+      <PaymentCalendarTab
+        payments={[]}
+        accounts={[]}
+        categories={[]}
+        initialPaymentToCreate={{
+          title: 'Аренда',
+          amount: 32000,
+          date: '2026-10-01',
+          recurrence: 'monthly',
+        }}
+        onInitialPaymentCreateHandled={onInitialPaymentCreateHandled}
+      />,
+    );
+
+    await waitFor(() => {
+      expect((screen.getByTestId('input-payment-title') as HTMLInputElement).value).toBe('Аренда');
+      expect((screen.getByTestId('input-payment-amount') as HTMLInputElement).value).toBe('32000');
+      expect((screen.getByTestId('input-payment-date') as HTMLInputElement).value).toBe('2026-10-01');
+      expect(screen.getByTestId('button-save-payment').textContent).toContain('Запланировать');
+    });
+    expect(onInitialPaymentCreateHandled).toHaveBeenCalledTimes(1);
+  });
+
   it('creates, displays, edits, and deletes a standalone calendar note', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 8, 18, 12));

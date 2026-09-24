@@ -5,11 +5,12 @@ import { Send, User, Sparkles, Loader2, PlusCircle, Target, PieChart, Calendar, 
 import { RobotIcon } from './icons/RobotIcon';
 import { processUserMessage, getFinancialAdvice } from '../services/aiService';
 import { api } from '../lib/api';
-import { Account, Category, Transaction, Goal, Plan, Message } from '../types';
+import { Account, Category, Transaction, Goal, Plan, Message, PlannedPaymentDraft } from '../types';
 import { SimpleMarkdown } from './ui/InteractiveMarkdown';
 import { cn } from '../lib/utils';
 import { normalizeTransactionDate } from '../lib/transactionDate';
 import { getAITransactionDrafts, isTransactionBatch } from '../lib/aiTransactions';
+import { normalizeAICalendarPlanDraft } from '../lib/aiCalendarPlanDraft';
 
 interface AIAssistantProps {
   accounts: Account[];
@@ -23,6 +24,7 @@ interface AIAssistantProps {
   onResult?: (result: any) => void;
   onOpenAddTransaction?: (initialData?: any) => void;
   onOpenAddTransactions?: (initialData: any[]) => void;
+  onOpenAddCalendarPlan?: (initialData: PlannedPaymentDraft) => void;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
@@ -30,7 +32,7 @@ export interface AIAssistantHandle {
   handleVoiceInput: (onStart?: () => void, onEnd?: () => void) => void;
 }
 
-const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssistant({ accounts, categories, transactions, goals, plans, userId, onRedirectToCreateGoal, onRefresh, onResult, onOpenAddTransaction, onOpenAddTransactions, showToast }, ref) {
+const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssistant({ accounts, categories, transactions, goals, plans, userId, onRedirectToCreateGoal, onRefresh, onResult, onOpenAddTransaction, onOpenAddTransactions, onOpenAddCalendarPlan, showToast }, ref) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -378,6 +380,24 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
           });
           return true;
         }
+      } else if (type === 'calendar_plan') {
+        if (!onOpenAddCalendarPlan) {
+          if (silent) return false;
+          throw new Error('Не удалось открыть форму календарного плана.');
+        }
+
+        onOpenAddCalendarPlan(normalizeAICalendarPlanDraft(data, accounts, categories));
+        if (!silent) {
+          const msg = messages.find(m => m.id === msgId);
+          if (msg) {
+            const currentContent = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+            await api.put(`/chat-history/${msgId}`, {
+              type: 'text',
+              content: currentContent + '\n\n🗓️ **Форма календарного плана открыта. Проверьте поля и нажмите «Запланировать».**'
+            });
+          }
+        }
+        return true;
       } else if (type === 'plan') {
         // ... handled similarly if needed
         // but let's stick to core transaction flow
@@ -466,7 +486,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
           role: 'assistant',
           content: result.message
         };
-      } else if (shouldHandleAsTransaction || ['goal', 'plan'].includes(result.intent)) {
+      } else if (shouldHandleAsTransaction || ['goal', 'plan', 'calendar_plan'].includes(result.intent)) {
         assistantMessage = {
           role: 'assistant',
           content: result.message,
@@ -524,6 +544,17 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
               content: typeof assistantMessage.content === 'string' ? assistantMessage.content : JSON.stringify(assistantMessage.content)
             });
             fetchHistory();
+          }
+        } else if (result.intent === 'calendar_plan') {
+          const success = await confirmAction(savedMsg.id, 'calendar_plan', result.data, true);
+          if (success) {
+            const currentContent = typeof assistantMessage.content === 'string'
+              ? assistantMessage.content
+              : JSON.stringify(assistantMessage.content);
+            await api.put(`/chat-history/${savedMsg.id}`, {
+              type: 'text',
+              content: currentContent + '\n\n🗓️ **Форма календарного плана открыта. Проверьте поля и нажмите «Запланировать».**'
+            });
           }
         }
       }

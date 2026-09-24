@@ -3,7 +3,7 @@ import { api } from "../lib/api";
 import axios from "axios";
 
 export interface AIResponse {
-  intent: 'transaction' | 'goal' | 'plan' | 'advice' | 'unknown';
+  intent: 'transaction' | 'goal' | 'plan' | 'calendar_plan' | 'advice' | 'unknown';
   data: any;
   message: string;
 }
@@ -170,11 +170,13 @@ export const processUserMessage = async (
     - Be empathetic: "Вижу, зашел перекусить? Отметил твой обед в расходах по карте...", "Пополнил твой счет..., молодец, так держать!"
   - For goal intent: "Я уже подготовил форму для твоей новой цели '...', давай заполним детали вместе."
   - For plan intent: "Обновил твои планы, теперь мы точно знаем, куда идем."
+  - For calendar_plan intent, say that you prepared the calendar form and ask the user to review and save it. Never claim the payment has already been scheduled.
   
   Intents:
   - transaction: adding income, expense, or transfer.
   - goal: creating a new financial goal.
-  - plan: creating or updating a financial plan for a month.
+  - plan: creating or updating a monthly budget plan.
+  - calendar_plan: creating a one-time or recurring payment/income item in the payment calendar. Do not use this intent for a monthly budget plan.
   - advice: asking for financial analysis or tips.
   
   Data object requirements per intent:
@@ -191,11 +193,20 @@ export const processUserMessage = async (
   - goal:
       - name: string (required)
       - targetAmount: number (required)
+  - calendar_plan:
+      - title: string (required when stated; use a concise description)
+      - amount: positive number (when stated)
+      - date: string in YYYY-MM-DD format. Resolve relative and explicit dates in the user's local time zone; use the supplied current local date if the user did not specify one.
+      - transactionType: "expense" or "income" (default to "expense" only when the wording clearly describes a payment)
+      - recurrence: one of "none", "weekly", "biweekly", "weekdays", "monthly", "quarterly", "yearly" when stated
+      - weekdays: array of integers 1-7 where 1 is Monday and 7 is Sunday, when specified
+      - accountId/accountName and categoryId/categoryName: use exact matches from REFERENCE DATA only when identifiable; do not invent IDs
+      - time: HH:mm when stated; note: optional extra detail
   
   Return a JSON object with:
-  - intent: string (one of: transaction, goal, plan, advice, unknown)
+  - intent: string (one of: transaction, goal, plan, calendar_plan, advice, unknown)
   - data: object containing the extracted fields.
-  - message: string (a concise, friendly, and supportive response in Russian confirming the fact that the action was taken)
+  - message: string (a concise, friendly, and supportive response in Russian that follows the phrasing rules above for the selected intent)
   `;
 
   const userPrompt = `User message: "${text}"
@@ -222,7 +233,7 @@ REFERENCE DATA:
 
     if (
       result.data &&
-      (['transaction', 'income', 'expense', 'transfer'].includes(result.intent) ||
+      (['transaction', 'income', 'expense', 'transfer', 'calendar_plan'].includes(result.intent) ||
         transactionDrafts.some(draft => ['income', 'expense', 'transfer'].includes(draft?.type)))
     ) {
       transactionDrafts.forEach(draft => {

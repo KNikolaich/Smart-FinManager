@@ -217,6 +217,12 @@ export interface PlannedPayment {
   color?: 'plum' | 'blue' | 'orange';
 }
 
+export type PlannedPaymentDraft = Partial<Pick<
+  PlannedPayment,
+  'title' | 'amount' | 'date' | 'note' | 'time' | 'recurrence' | 'weekdays' |
+  'transactionType' | 'categoryId' | 'accountId' | 'color'
+>>;
+
 export interface CalendarNote {
   id: string;
   date: string;
@@ -262,7 +268,7 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   type?: 'text' | 'action' | 'suggestion';
-  actionType?: 'transaction' | 'goal' | 'plan';
+  actionType?: 'transaction' | 'goal' | 'plan' | 'calendar_plan';
   actionData?: any;
   attachments?: string[];
 }
