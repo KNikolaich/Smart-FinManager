@@ -173,13 +173,12 @@ describe('UpcomingTasks', () => {
       { id: 'dashboard-note-second', date: '2026-09-23', text: 'Вторая записка' },
     ];
     vi.spyOn(api, 'get').mockResolvedValue({ payments, notes });
-    const onNoteClick = vi.fn();
+    const postSpy = vi.spyOn(api, 'post').mockResolvedValue({});
 
     render(
       <UpcomingTasks
         variant="carousel"
         startDate="2026-09-20"
-        onNoteClick={onNoteClick}
       />,
     );
 
@@ -195,7 +194,31 @@ describe('UpcomingTasks', () => {
     ]);
     expect((screen.getByTestId('button-upcoming-view') as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByTestId('button-upcoming-view'));
-    expect(onNoteClick).toHaveBeenCalledWith(notes[0]);
+    expect(screen.getByTestId('dialog-calendar-note').textContent).toContain('Первая записка');
+
+    fireEvent.click(screen.getByTestId('button-edit-calendar-note'));
+    fireEvent.change(screen.getByTestId('input-calendar-note-text'), {
+      target: { value: 'Исправленная первая записка' },
+    });
+    fireEvent.click(screen.getByTestId('button-save-calendar-note'));
+
+    await waitFor(() => expect(postSpy).toHaveBeenCalledTimes(1));
+    expect(postSpy).toHaveBeenNthCalledWith(1, '/plan-grid/calendar', expect.objectContaining({
+      payments,
+      notes: expect.arrayContaining([
+        expect.objectContaining({ id: 'dashboard-note-first', text: 'Исправленная первая записка' }),
+      ]),
+    }));
+    expect(screen.queryByTestId('dialog-calendar-note')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('button-upcoming-view'));
+    fireEvent.click(screen.getByTestId('button-delete-calendar-note'));
+    fireEvent.click(screen.getByTestId('button-confirm-delete-calendar-note'));
+
+    await waitFor(() => expect(postSpy).toHaveBeenCalledTimes(2));
+    const deleteRequest = postSpy.mock.calls[1][1] as { notes: CalendarNote[] };
+    expect(deleteRequest.notes.map(note => note.id)).toEqual(['dashboard-note-second']);
+    expect(screen.queryByTestId('dialog-calendar-note')).toBeNull();
   });
 
   it('moves to the next stacked banner with a horizontal swipe', () => {

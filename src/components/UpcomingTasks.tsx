@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, Check, CircleDashed, Copy, Eraser, Eye, Hand, Pencil, Plus, RefreshCw, ScrollText, StickyNote, Trash2, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { CalendarNote, PlannedPayment, PlannedPaymentRecurrence } from '../types';
+import CalendarNoteDialog from './CalendarNoteDialog';
 import { mergeCalendarDashboardItems } from '../lib/calendarDashboardItems';
 import {
   getTodayKey,
@@ -74,6 +75,7 @@ export default function UpcomingTasks({
   const [loadedPayments, setLoadedPayments] = useState<PlannedPayment[]>([]);
   const [loadedNotes, setLoadedNotes] = useState<CalendarNote[]>([]);
   const [localPayments, setLocalPayments] = useState<PlannedPayment[] | null>(null);
+  const [localNotes, setLocalNotes] = useState<CalendarNote[] | null>(null);
   const [loading, setLoading] = useState(payments === undefined);
   const [error, setError] = useState<string | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -82,6 +84,11 @@ export default function UpcomingTasks({
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const [focusedNoteId, setFocusedNoteId] = useState<string | null>(null);
   const [viewItem, setViewItem] = useState<PlannedPaymentOccurrence | null>(null);
+  const [noteDialogMode, setNoteDialogMode] = useState<'view' | 'edit' | null>(null);
+  const [editingNote, setEditingNote] = useState<CalendarNote | null>(null);
+  const [noteDialogError, setNoteDialogError] = useState<string | null>(null);
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const [confirmDeleteNote, setConfirmDeleteNote] = useState(false);
   const [cleanupConfirmation, setCleanupConfirmation] = useState<
     | { type: 'single'; item: PlannedPaymentOccurrence }
     | { type: 'note'; note: CalendarNote }
@@ -129,8 +136,12 @@ export default function UpcomingTasks({
     if (payments !== undefined) setLocalPayments(null);
   }, [payments]);
 
+  useEffect(() => {
+    if (notes !== undefined) setLocalNotes(null);
+  }, [notes]);
+
   const sourcePayments = localPayments ?? payments ?? loadedPayments;
-  const sourceNotes = notes ?? loadedNotes;
+  const sourceNotes = localNotes ?? notes ?? loadedNotes;
   const todayKey = getTodayKey();
   const pastCleanupCandidates = useMemo(
     () => getPastPlanCleanupCandidates(sourcePayments, todayKey),
@@ -344,6 +355,79 @@ export default function UpcomingTasks({
     setCleanupConfirmation({ type: 'note', note });
   };
 
+  const openNoteDialog = (note: CalendarNote) => {
+    setEditingNote({ ...note });
+    setNoteDialogError(null);
+    setConfirmDeleteNote(false);
+    setNoteDialogMode('view');
+  };
+
+  const closeNoteDialog = () => {
+    if (isSavingNote) return;
+    setNoteDialogMode(null);
+    setEditingNote(null);
+    setNoteDialogError(null);
+    setConfirmDeleteNote(false);
+  };
+
+  const persistNotes = async (nextNotes: CalendarNote[]) => {
+    const previousLocalNotes = localNotes;
+    setLocalNotes(nextNotes);
+    try {
+      await api.post('/plan-grid/calendar', { payments: sourcePayments, notes: nextNotes });
+    } catch (error) {
+      setLocalNotes(previousLocalNotes);
+      throw error;
+    }
+  };
+
+  const saveEditingNote = async () => {
+    if (!editingNote || !editingNote.date || !editingNote.text.trim()) return;
+    const nextNote = { ...editingNote, text: editingNote.text.trim() };
+    const nextNotes = [
+      ...sourceNotes.filter(note => note.id !== nextNote.id),
+      nextNote,
+    ].sort((left, right) => left.date.localeCompare(right.date));
+
+    setIsSavingNote(true);
+    setNoteDialogError(null);
+    try {
+      await persistNotes(nextNotes);
+      setNoteDialogMode(null);
+      setEditingNote(null);
+      setConfirmDeleteNote(false);
+    } catch (error) {
+      console.error('Calendar note save error:', error);
+      setNoteDialogError('Не удалось сохранить записку. Проверьте подключение и попробуйте ещё раз.');
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
+  const deleteEditingNote = async () => {
+    if (!editingNote) return;
+    const nextNotes = sourceNotes.filter(note => note.id !== editingNote.id);
+
+    setIsSavingNote(true);
+    setNoteDialogError(null);
+    try {
+      if (onDeleteNote) {
+        await onDeleteNote(editingNote);
+        setLocalNotes(nextNotes);
+      } else {
+        await persistNotes(nextNotes);
+      }
+      setNoteDialogMode(null);
+      setEditingNote(null);
+      setConfirmDeleteNote(false);
+    } catch (error) {
+      console.error('Calendar note delete error:', error);
+      setNoteDialogError('Не удалось удалить записку. Проверьте подключение и попробуйте ещё раз.');
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
   const requestPastCleanup = () => {
     const paymentIds = pastCleanupCandidates.map(payment => payment.id);
     const noteIds = pastNoteCleanupCandidates.map(note => note.id);
@@ -471,9 +555,9 @@ export default function UpcomingTasks({
               aria-label="Открыть выбранный план или записку"
               title="Посмотреть план, записку и действия"
               data-testid="button-upcoming-view"
-              disabled={!focusedOccurrence && (!focusedCalendarNote || !onNoteClick)}
+              disabled={!focusedOccurrence && !focusedCalendarNote}
               onClick={() => {
-                if (focusedCalendarNote) onNoteClick?.(focusedCalendarNote);
+                if (focusedCalendarNote) openNoteDialog(focusedCalendarNote);
                 else if (focusedOccurrence) setViewItem(focusedOccurrence);
               }}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none"
@@ -797,6 +881,27 @@ export default function UpcomingTasks({
             </button>
           )}
         </div>
+      )}
+      {noteDialogMode && editingNote && (
+        <CalendarNoteDialog
+          mode={noteDialogMode}
+          note={editingNote}
+          error={noteDialogError}
+          saving={isSavingNote}
+          canEdit
+          confirmDelete={confirmDeleteNote}
+          onChange={setEditingNote}
+          onClose={closeNoteDialog}
+          onEdit={() => {
+            setNoteDialogError(null);
+            setConfirmDeleteNote(false);
+            setNoteDialogMode('edit');
+          }}
+          onRequestDelete={() => setConfirmDeleteNote(true)}
+          onCancelDelete={() => setConfirmDeleteNote(false)}
+          onConfirmDelete={() => void deleteEditingNote()}
+          onSave={() => void saveEditingNote()}
+        />
       )}
       {viewItem && (
         <PlanViewDialog
