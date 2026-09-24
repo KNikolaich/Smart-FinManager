@@ -197,6 +197,90 @@ describe('UpcomingTasks', () => {
     expect(onDeleteTask).toHaveBeenCalledWith(expect.objectContaining({ date: '2026-09-18' }));
   });
 
+  it('confirms whole-plan removal and shows when the selected occurrence is incomplete', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 24, 12));
+    const onDeleteTask = vi.fn();
+    const uncompleted = {
+      ...makePayment(0),
+      id: 'uncompleted-one-time',
+      title: 'Невыполненная оплата',
+      date: '2026-09-18',
+    };
+    render(
+      <UpcomingTasks
+        payments={[uncompleted]}
+        startDate="2026-09-18"
+        focusedDate="2026-09-18"
+        onDeleteTask={onDeleteTask}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('button-upcoming-delete'));
+
+    expect(screen.getByRole('dialog').textContent).toContain('Удалить план целиком?');
+    expect(screen.getByRole('dialog').textContent).toContain('НЕ выполнено');
+    expect(screen.getByRole('dialog').textContent).toContain('Невыполненная оплата');
+    fireEvent.click(screen.getByTestId('button-upcoming-delete-confirm'));
+
+    expect(onDeleteTask).toHaveBeenCalledWith(expect.objectContaining({
+      payment: uncompleted,
+      date: '2026-09-18',
+    }));
+  });
+
+  it('places the eraser immediately before the trash and confirms bulk cleanup candidates', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 24, 12));
+    const completedOnce = {
+      ...makePayment(0),
+      id: 'completed-once',
+      title: 'Разовый выполненный',
+      date: '2026-09-10',
+      status: 'paid' as const,
+      paidDates: ['2026-09-10'],
+    };
+    const completedSeries = {
+      ...makePayment(1),
+      id: 'completed-series',
+      title: 'Повторяющийся выполненный',
+      date: '2026-09-03',
+      recurrence: 'weekly' as const,
+      paidDates: ['2026-09-03', '2026-09-10', '2026-09-17'],
+    };
+    const overdue = {
+      ...makePayment(2),
+      id: 'overdue-plan',
+      title: 'Просроченный',
+      date: '2026-09-18',
+    };
+    const onDeleteTask = vi.fn();
+    const onCleanupPastTasks = vi.fn();
+    render(
+      <UpcomingTasks
+        payments={[completedOnce, completedSeries, overdue]}
+        startDate="2026-09-24"
+        onDeleteTask={onDeleteTask}
+        onCleanupPastTasks={onCleanupPastTasks}
+      />,
+    );
+
+    const eraser = screen.getByTestId('button-upcoming-clean-past');
+    const trash = screen.getByTestId('button-upcoming-delete');
+    expect(eraser.compareDocumentPosition(trash) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(eraser);
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.textContent).toContain('Найдено планов для очистки: 2.');
+    expect(dialog.textContent).toContain('Разовый выполненный');
+    expect(dialog.textContent).toContain('Повторяющийся выполненный');
+    expect(dialog.textContent).not.toContain('Просроченный');
+    fireEvent.click(screen.getByTestId('button-upcoming-delete-confirm'));
+
+    expect(onCleanupPastTasks).toHaveBeenCalledWith(['completed-once', 'completed-series']);
+    expect(onDeleteTask).not.toHaveBeenCalled();
+  });
+
   it('allows copying a completed focused task', () => {
     const onCopyTask = vi.fn();
     const completed = {

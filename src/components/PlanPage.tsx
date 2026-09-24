@@ -48,7 +48,9 @@ import CashbackTab from './CashbackTab';
 import Calculator from './Calculator';
 import CreditTab from './CreditTab';
 import { normalizePlanNotes } from '../lib/planNotes';
+import { getTodayKey } from '../lib/plannedPaymentOccurrences';
 import { createEditedCalendarPlanVersion } from '../lib/calendarPlanVersions';
+import { applyCalendarPlanTrash, applyPastPlanCleanup } from '../lib/calendarPlanCleanup';
 import PaymentCalendarTab from './PaymentCalendarTab';
 
 interface PlanPageProps {
@@ -404,6 +406,7 @@ export default function PlanPage({
   };
 
   const saveCalendarPayments = async (payments: PlannedPayment[]) => {
+    const previousPayments = calendarPayments;
     setCalendarPayments(payments);
     setCalendarError(null);
     try {
@@ -411,6 +414,7 @@ export default function PlanPage({
       setSaveStatus(!navigator.onLine ? 'queued' : 'saved');
     } catch (error) {
       console.error('Error saving payment calendar:', error);
+      setCalendarPayments(previousPayments);
       setCalendarError('Не удалось сохранить календарь. Попробуйте ещё раз.');
       setSaveStatus('error');
       throw error;
@@ -507,10 +511,12 @@ export default function PlanPage({
     }));
   };
 
-  const handleCalendarPaymentDelete = async (id: string, date: string) => {
-    await saveCalendarPayments(calendarPayments.map(payment => (
-      payment.id === id ? { ...payment, disableFrom: date } : payment
-    )));
+  const handleCalendarPaymentDelete = async (id: string) => {
+    await saveCalendarPayments(applyCalendarPlanTrash(calendarPayments, id, getTodayKey()));
+  };
+
+  const handleCalendarPastCleanup = async (ids: string[]) => {
+    await saveCalendarPayments(applyPastPlanCleanup(calendarPayments, ids, getTodayKey()));
   };
 
   const handleManualSave = () => {
@@ -794,6 +800,7 @@ export default function PlanPage({
             onTransactionCreated={handleCalendarTransactionCreated}
             onPaymentChange={handleCalendarPaymentChange}
             onPaymentDelete={handleCalendarPaymentDelete}
+            onCleanupPastPayments={handleCalendarPastCleanup}
             focusDate={calendarFocusDate}
             onFocusDateHandled={onCalendarFocusHandled}
             initialPaymentToEdit={calendarPaymentToEdit}

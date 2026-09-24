@@ -46,6 +46,7 @@ interface PaymentCalendarTabProps {
   onTransactionCreated?: (paymentId: string, date: string, transactionId: string) => void;
   onPaymentChange?: (payment: PlannedPayment) => void | Promise<void>;
   onPaymentDelete?: (id: string, date: string) => void | Promise<void>;
+  onCleanupPastPayments?: (ids: string[]) => void | Promise<void>;
   focusDate?: string;
   onFocusDateHandled?: () => void;
   initialPaymentToEdit?: PlannedPayment | null;
@@ -106,6 +107,7 @@ export default function PaymentCalendarTab({
   onTransactionCreated,
   onPaymentChange,
   onPaymentDelete,
+  onCleanupPastPayments,
   focusDate,
   onFocusDateHandled,
   initialPaymentToEdit,
@@ -328,6 +330,7 @@ export default function PaymentCalendarTab({
                setDialogMode('create');
              }}
             onDeleteTask={item => onPaymentDelete?.(item.payment.id, item.date)}
+            onCleanupPastTasks={onCleanupPastPayments}
           />
           </div>
       </div>

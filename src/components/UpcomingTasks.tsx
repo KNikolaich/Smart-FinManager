@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, Check, CircleDashed, Copy, Hand, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { CalendarDays, Check, CircleDashed, Copy, Eraser, Hand, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { PlannedPayment, PlannedPaymentRecurrence } from '../types';
 import {
@@ -10,6 +10,12 @@ import {
   PlannedPaymentFilter,
   PlannedPaymentOccurrence,
 } from '../lib/plannedPaymentOccurrences';
+import {
+  getCalendarPlanCleanupMode,
+  getPastPlanCleanupCandidates,
+  isCompletedOccurrence,
+  type CalendarPlanCleanupMode,
+} from '../lib/calendarPlanCleanup';
 
 interface UpcomingTasksProps {
   payments?: PlannedPayment[];
@@ -30,6 +36,7 @@ interface UpcomingTasksProps {
   onEditTask?: (item: PlannedPaymentOccurrence) => void;
   onCopyTask?: (item: PlannedPaymentOccurrence) => void;
   onDeleteTask?: (item: PlannedPaymentOccurrence) => void | Promise<void>;
+  onCleanupPastTasks?: (paymentIds: string[]) => void | Promise<void>;
   className?: string;
 }
 
@@ -49,6 +56,7 @@ export default function UpcomingTasks({
   onEditTask,
   onCopyTask,
   onDeleteTask,
+  onCleanupPastTasks,
   className,
 }: UpcomingTasksProps) {
   const [loadedPayments, setLoadedPayments] = useState<PlannedPayment[]>([]);
@@ -59,7 +67,13 @@ export default function UpcomingTasks({
   const [carouselLimit, setCarouselLimit] = useState(limit);
   const [listWindow, setListWindow] = useState({ start: 0, end: 50 });
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
-  const [deleteConfirmKey, setDeleteConfirmKey] = useState<string | null>(null);
+  const [cleanupConfirmation, setCleanupConfirmation] = useState<
+    | { type: 'single'; item: PlannedPaymentOccurrence }
+    | { type: 'bulk'; paymentIds: string[] }
+    | null
+  >(null);
+  const [cleanupError, setCleanupError] = useState<string | null>(null);
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const [quietOverdue, setQuietOverdue] = useState<Set<string>>(new Set());
   const pointerStartX = useRef<number | null>(null);
@@ -99,6 +113,11 @@ export default function UpcomingTasks({
   }, [payments]);
 
   const sourcePayments = localPayments ?? payments ?? loadedPayments;
+  const todayKey = getTodayKey();
+  const pastCleanupCandidates = useMemo(
+    () => getPastPlanCleanupCandidates(sourcePayments, todayKey),
+    [sourcePayments, todayKey],
+  );
 
   const pageSize = 50;
   const loadedOccurrences = useMemo(
@@ -128,10 +147,6 @@ export default function UpcomingTasks({
       || focusedOccurrence.manuallyCompleted
       || focusedOccurrence.transactionId),
   );
-  const isDeleteConfirmationOpen = Boolean(
-    focusedOccurrence && deleteConfirmKey === occurrenceKey(focusedOccurrence),
-  );
-
   useEffect(() => {
     const startDateChanged = previousStartDate.current !== startDate;
     if (startDateChanged) {
@@ -167,10 +182,6 @@ export default function UpcomingTasks({
     previousListHeight.current = null;
     listRef.current?.scrollTo?.({ top: 0 });
   }, [filter, startDate, variant, sourcePayments.length]);
-
-  useEffect(() => {
-    setDeleteConfirmKey(null);
-  }, [focusedKey]);
 
   useLayoutEffect(() => {
     if (previousListHeight.current === null || !listRef.current) return;
@@ -264,13 +275,38 @@ export default function UpcomingTasks({
   };
 
   const requestDelete = () => {
-    if (focusedOccurrence) setDeleteConfirmKey(occurrenceKey(focusedOccurrence));
+    if (focusedOccurrence) {
+      setCleanupError(null);
+      setCleanupConfirmation({ type: 'single', item: focusedOccurrence });
+    }
   };
 
-  const confirmDelete = async () => {
-    if (!focusedOccurrence || !onDeleteTask) return;
-    await onDeleteTask(focusedOccurrence);
-    setDeleteConfirmKey(null);
+  const requestPastCleanup = () => {
+    if (pastCleanupCandidates.length === 0) return;
+    setCleanupError(null);
+    setCleanupConfirmation({
+      type: 'bulk',
+      paymentIds: pastCleanupCandidates.map(payment => payment.id),
+    });
+  };
+
+  const confirmCleanup = async () => {
+    if (!cleanupConfirmation) return;
+    setIsCleaningUp(true);
+    setCleanupError(null);
+    try {
+      if (cleanupConfirmation.type === 'single') {
+        await onDeleteTask?.(cleanupConfirmation.item);
+      } else {
+        await onCleanupPastTasks?.(cleanupConfirmation.paymentIds);
+      }
+      setCleanupConfirmation(null);
+    } catch (error) {
+      console.error('Calendar plan cleanup error:', error);
+      setCleanupError('Не удалось выполнить очистку. Проверьте подключение и попробуйте ещё раз.');
+    } finally {
+      setIsCleaningUp(false);
+    }
   };
 
   const handleCarouselPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -339,7 +375,7 @@ export default function UpcomingTasks({
             </div>
           )
         )}
-        <div className="flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-1">
           {variant === 'carousel' && onEditTask && (
             <button
               type="button"
@@ -385,18 +421,37 @@ export default function UpcomingTasks({
               <Hand size={15} />
             </button>
           )}
+          {variant !== 'carousel' && onCleanupPastTasks && (
+            <button
+              type="button"
+              aria-label="Очистить завершённые прошлые планы"
+              title={pastCleanupCandidates.length > 0
+                ? `Очистить завершённые прошлые планы (${pastCleanupCandidates.length})`
+                : 'Нет завершённых прошлых планов для очистки'}
+              data-testid="button-upcoming-clean-past"
+              disabled={pastCleanupCandidates.length === 0}
+              onClick={requestPastCleanup}
+              className="p-2 rounded-lg text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <Eraser size={15} />
+            </button>
+          )}
           {onDeleteTask && (
-            isDeleteConfirmationOpen ? (
-              <div className="inline-flex items-center gap-1 rounded-lg bg-rose-50 px-1 py-1 text-[10px] text-rose-700">
-                <span className="px-1">Отключить с этой даты?</span>
-                <button type="button" data-testid="button-upcoming-delete-confirm" onClick={() => void confirmDelete()} className="rounded-md bg-rose-600 px-2 py-1 font-bold text-white hover:bg-rose-700">Да</button>
-                <button type="button" data-testid="button-upcoming-delete-cancel" onClick={() => setDeleteConfirmKey(null)} className="rounded-md px-2 py-1 font-bold hover:bg-rose-100">Нет</button>
-              </div>
-            ) : (
-              <button type="button" aria-label="Отключить план с даты сфокусированной задачи" title="Отключить план с этой даты" data-testid="button-upcoming-delete" disabled={!focusedOccurrence} onClick={requestDelete} className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 disabled:opacity-30 disabled:pointer-events-none">
-                <Trash2 size={15} />
-              </button>
-            )
+            <button
+              type="button"
+              aria-label="Удалить или очистить сфокусированный план"
+              title={focusedOccurrence
+                ? getCalendarPlanCleanupMode(focusedOccurrence.payment, todayKey) === 'reset-history'
+                  ? 'Скрыть прошлые отметки, план продолжится с сегодня'
+                  : 'Удалить план целиком из календаря'
+                : 'Выберите план'}
+              data-testid="button-upcoming-delete"
+              disabled={!focusedOccurrence}
+              onClick={requestDelete}
+              className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <Trash2 size={15} />
+            </button>
           )}
         </div>
       </header>
@@ -545,8 +600,238 @@ export default function UpcomingTasks({
           )}
         </div>
       )}
+      {cleanupConfirmation && (
+        <PlanCleanupDialog
+          confirmation={cleanupConfirmation}
+          today={todayKey}
+          candidates={pastCleanupCandidates}
+          error={cleanupError}
+          pending={isCleaningUp}
+          onClose={() => {
+            if (isCleaningUp) return;
+            setCleanupConfirmation(null);
+            setCleanupError(null);
+          }}
+          onConfirm={() => void confirmCleanup()}
+        />
+      )}
     </section>
   );
+}
+
+type PlanCleanupConfirmation =
+  | { type: 'single'; item: PlannedPaymentOccurrence }
+  | { type: 'bulk'; paymentIds: string[] };
+
+function PlanCleanupDialog({
+  confirmation,
+  today,
+  candidates,
+  error,
+  pending,
+  onClose,
+  onConfirm,
+}: {
+  confirmation: PlanCleanupConfirmation;
+  today: string;
+  candidates: PlannedPayment[];
+  error: string | null;
+  pending: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const bulkCandidates = confirmation.type === 'bulk'
+    ? candidates.filter(payment => confirmation.paymentIds.includes(payment.id))
+    : [];
+  const bulkDeletes = bulkCandidates.filter(payment => (
+    getCalendarPlanCleanupMode(payment, today) === 'delete'
+  ));
+  const bulkResets = bulkCandidates.filter(payment => (
+    getCalendarPlanCleanupMode(payment, today) === 'reset-history'
+  ));
+  const singleMode = confirmation.type === 'single'
+    ? getCalendarPlanCleanupMode(confirmation.item.payment, today)
+    : null;
+  const canConfirm = confirmation.type === 'single' || bulkCandidates.length > 0;
+
+  return (
+    <div
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/45 p-3 sm:p-5"
+      role="presentation"
+      onMouseDown={event => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        className="w-full max-w-md max-h-[min(88dvh,760px)] overflow-y-auto rounded-2xl border border-theme-base bg-theme-surface p-4 shadow-2xl sm:p-5"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="plan-cleanup-title"
+        data-testid="dialog-plan-cleanup"
+        onMouseDown={event => event.stopPropagation()}
+      >
+        <header className="flex items-start justify-between gap-3">
+          <div>
+            <h2 id="plan-cleanup-title" className="text-base font-bold text-theme-main">
+              {confirmation.type === 'bulk'
+                ? 'Очистить прошлые планы?'
+                : singleMode === 'reset-history'
+                  ? 'Скрыть старые отметки и продолжить план?'
+                  : 'Удалить план целиком?'}
+            </h2>
+            <p className="mt-1 text-xs text-theme-muted">
+              {confirmation.type === 'bulk'
+                ? `Найдено планов для очистки: ${bulkCandidates.length}.`
+                : 'Проверьте, какой план и какие отметки будут затронуты.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Закрыть подтверждение"
+            data-testid="button-close-plan-cleanup"
+            onClick={onClose}
+            disabled={pending}
+            className="rounded-lg p-2 text-theme-muted hover:bg-theme-main disabled:opacity-40"
+          >
+            <X size={16} />
+          </button>
+        </header>
+
+        {confirmation.type === 'single' ? (
+          <SinglePlanCleanupDetails
+            item={confirmation.item}
+            mode={singleMode || 'delete'}
+            today={today}
+          />
+        ) : (
+          <div className="mt-4 space-y-3">
+            <div className="rounded-xl border border-theme-base bg-theme-main p-3 text-xs text-theme-main">
+              <p>
+                Из календаря целиком удалится: <strong>{bulkDeletes.length}</strong>.
+                {bulkResets.length > 0 && (
+                  <> С продолжением с сегодняшней даты останется: <strong>{bulkResets.length}</strong>.</>
+                )}
+              </p>
+              <p className="mt-2 text-theme-muted">
+                Планы с невыполненными просроченными вхождениями не затрагиваются.
+                Связанные операции в истории не удаляются.
+              </p>
+            </div>
+            {bulkCandidates.length > 0 ? (
+              <ul className="max-h-52 space-y-2 overflow-y-auto rounded-xl border border-theme-base p-3">
+                {bulkCandidates.slice(0, 20).map(payment => (
+                  <li key={payment.id} className="text-xs text-theme-main">
+                    <strong className="block break-words">{payment.title}</strong>
+                    <span className="text-theme-muted">
+                      {formatMoney(payment.amount)} · {recurrenceLabel(payment)} · {payment.categoryName || 'Без категории'}
+                      {' · '}
+                      {getCalendarPlanCleanupMode(payment, today) === 'delete'
+                        ? 'будет удалён из календаря'
+                        : 'продолжится с сегодня'}
+                    </span>
+                  </li>
+                ))}
+                {bulkCandidates.length > 20 && (
+                  <li className="text-xs text-theme-muted">
+                    И ещё {bulkCandidates.length - 20} планов.
+                  </li>
+                )}
+              </ul>
+            ) : (
+              <p className="rounded-xl bg-theme-main p-3 text-xs text-theme-muted">
+                Пока открывалось окно, подходящие планы изменились. Закройте его и повторите очистку.
+              </p>
+            )}
+          </div>
+        )}
+
+        {error && <p role="alert" className="mt-3 text-xs text-rose-600">{error}</p>}
+
+        <footer className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            data-testid="button-upcoming-delete-cancel"
+            onClick={onClose}
+            disabled={pending}
+            className="rounded-xl bg-theme-main px-3 py-2 text-xs font-bold text-theme-muted disabled:opacity-40"
+          >
+            Отмена
+          </button>
+          <button
+            type="button"
+            data-testid="button-upcoming-delete-confirm"
+            onClick={onConfirm}
+            disabled={pending || !canConfirm}
+            className="rounded-xl bg-rose-600 px-3 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-40"
+          >
+            {pending
+              ? 'Обработка…'
+              : confirmation.type === 'bulk'
+                ? 'Очистить прошлые'
+                : singleMode === 'reset-history'
+                  ? 'Скрыть старые отметки'
+                  : 'Удалить план'}
+          </button>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
+function SinglePlanCleanupDetails({
+  item,
+  mode,
+  today,
+}: {
+  item: PlannedPaymentOccurrence;
+  mode: CalendarPlanCleanupMode;
+  today: string;
+}) {
+  const completed = isCompletedOccurrence(item);
+  const payment = item.payment;
+  const dateLabel = new Date(`${item.date}T12:00:00`).toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  return (
+    <div className="mt-4 space-y-3">
+      <div className="rounded-xl border border-theme-base bg-theme-main p-3">
+        <strong className="block break-words text-sm text-theme-main">{payment.title}</strong>
+        <p className="mt-1 text-xs text-theme-muted">
+          {formatMoney(payment.amount)} · {dateLabel}{payment.time ? ` · ${payment.time}` : ''}
+        </p>
+        <p className="mt-1 text-xs text-theme-muted">
+          {payment.transactionType === 'income' ? 'Доход' : 'Расход'} · {recurrenceLabel(payment)} · {payment.categoryName || 'Без категории'}
+        </p>
+        {payment.accountName && <p className="mt-1 text-xs text-theme-muted">Счёт: {payment.accountName}</p>}
+        <p className={`mt-2 text-xs font-bold ${completed ? 'text-emerald-700' : 'text-rose-700'}`}>
+          Выбранное вхождение: {completed ? 'выполнено' : 'НЕ выполнено'}
+        </p>
+      </div>
+      {mode === 'reset-history' ? (
+        <p className="text-xs leading-relaxed text-theme-muted">
+          План продолжится. Дата начала станет {formatLongDate(today)}, а вхождения до этой даты, включая выбранное,
+          перестанут отображаться в календаре. Связанные операции в истории не удаляются.
+        </p>
+      ) : (
+        <p className="text-xs leading-relaxed text-theme-muted">
+          План будет удалён из календаря целиком.
+          {!completed && <strong className="text-rose-700"> Выбранное вхождение не выполнено.</strong>}
+          {' '}Связанные операции в истории не удаляются.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function formatLongDate(date: string) {
+  return new Date(`${date}T12:00:00`).toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 }
 
 function occurrenceTone(item: PlannedPaymentOccurrence) {
@@ -568,14 +853,6 @@ function carouselTone(item: PlannedPaymentOccurrence, isPulsing = false) {
 
 function occurrenceKey(item: PlannedPaymentOccurrence) {
   return `${item.payment.id}-${item.date}`;
-}
-
-function isCompletedOccurrence(item: PlannedPaymentOccurrence) {
-  return Boolean(
-    item.status === 'paid'
-      || item.manuallyCompleted
-      || item.transactionId,
-  );
 }
 
 function getDefaultFocusOccurrence(
