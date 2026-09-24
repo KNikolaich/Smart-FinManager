@@ -383,6 +383,8 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
           });
           return true;
         }
+        if (silent) return false;
+        throw new Error('Не удалось открыть форму создания цели.');
       } else if (type === 'calendar_plan') {
         if (!onOpenAddCalendarPlan) {
           if (silent) return false;
@@ -420,9 +422,11 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
         }
         return true;
       } else if (type === 'plan') {
-        // ... handled similarly if needed
-        // but let's stick to core transaction flow
-        if (silent) return false; // plans might need manual overview
+        if (silent) return false;
+        throw new Error('Изменение месячного плана через AI пока не поддерживается. Откройте раздел «План», чтобы внести изменения.');
+      } else {
+        if (silent) return false;
+        throw new Error('Этот тип действия пока не поддерживается.');
       }
 
       if (!silent) {
@@ -548,12 +552,17 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
           role: 'assistant',
           content: advice
         };
+      } else if (result.intent === 'plan' && !isCompound) {
+        assistantMessage = {
+          role: 'assistant',
+          content: 'AI пока не умеет изменять месячный бюджетный план через чат. Откройте раздел «План» для изменений. Если вы хотели добавить напоминание на дату, оно появится в календаре как заметка.'
+        };
       } else if (result.intent === 'unknown' && !isTransactionDraft && !isCompound) {
         assistantMessage = {
           role: 'assistant',
           content: result.message
         };
-      } else if (shouldHandleAsTransaction || isCompound || ['goal', 'plan', 'calendar_plan', 'calendar_note'].includes(result.intent)) {
+      } else if (shouldHandleAsTransaction || isCompound || ['goal', 'calendar_plan', 'calendar_note'].includes(result.intent)) {
         assistantMessage = {
           role: 'assistant',
           content: result.message,

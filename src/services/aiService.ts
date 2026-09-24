@@ -150,6 +150,8 @@ export const processUserMessage = async (
   IMPORTANT: 
   - If the user mentions an account or category by name, you MUST find its corresponding "id" from the REFERENCE DATA and use that "id" in the data object.
   - EVERY value you mention in your "message" (amount, account name, category name, goal name) MUST be present in the "data" object.
+  - Never invent or copy amounts, people, dates, accounts, or other details that are absent from the CURRENT USER MESSAGE. Do not use details from examples or recent transactions to fill a reminder.
+  - For a reminder, preserve only the reminder the user actually stated. Add a sum or transaction details only if the current user message explicitly includes them.
   - If you cannot find a matching ID for an account or category mentioned by the user, set intent to "unknown" and ask for clarification.
   - You MUST return the intent and data even if some parameters are missing, as long as you have identified the intent and at least ONE parameter.
   - Only set intent to "unknown" and ask for clarification if more than ONE required parameter is missing.
@@ -166,11 +168,11 @@ export const processUserMessage = async (
     - Future transaction dates are allowed and must be preserved: "завтра", "послезавтра", "в следующую среду", or an explicit future date.
     - If the user does not mention a date, use the supplied current local date.
     - Never silently replace a mentioned date with today.
-  - **PHRASING**: Never ask for confirmation if you have all the data. Communicate that the action is DONE. 
-    - Use phrases like: "Записал твой расход...", "Добавил операцию в базу...", "Готово, отметил это в журнале...", "Сделано! Твои траты по категории... учтены."
-    - Be empathetic: "Вижу, зашел перекусить? Отметил твой обед в расходах по карте...", "Пополнил твой счет..., молодец, так держать!"
+  - **PHRASING**: Never claim an action was saved unless the application actually saved it. Transactions are saved only after a successful API request. Calendar plans and notes are only prepared in a form; ask the user to review and save them.
+    - For a successfully saved transaction, use phrases like: "Записал твой расход..." or "Добавил операцию в журнал..."
+    - Be empathetic, but keep every amount and other factual detail grounded in the current request and REFERENCE DATA.
   - For goal intent: "Я уже подготовил форму для твоей новой цели '...', давай заполним детали вместе."
-  - For plan intent: "Обновил твои планы, теперь мы точно знаем, куда идем."
+  - For plan intent, do not claim that a monthly budget plan was updated. AI cannot currently save monthly budget-plan changes; return intent "unknown" and explain that the user must edit it in the Plan section.
   - For calendar_plan intent, say that you prepared the calendar form and ask the user to review and save it. Never claim the payment has already been scheduled.
   - For calendar_note intent, say that you prepared a calendar-note form and ask the user to review and save it.
   - For compound intent, state which actions were recognized; distinguish a saved transaction from a calendar form that still needs the user's confirmation.
@@ -178,9 +180,9 @@ export const processUserMessage = async (
   Intents:
   - transaction: adding income, expense, or transfer.
   - goal: creating a new financial goal.
-  - plan: creating or updating a monthly budget plan.
+  - plan: creating or updating a monthly budget plan. Do not use for a dated reminder; AI cannot save monthly budget-plan changes, so use intent "unknown" for those requests.
   - calendar_plan: creating a one-time or recurring payment/income item in the payment calendar. Do not use this intent for a monthly budget plan.
-  - calendar_note: creating a standalone text reminder on a calendar date. Do not use this for the note field attached to a planned payment.
+  - calendar_note: creating a standalone text reminder on a calendar date. Requests containing "напоминание", "напомни", "напоминалка" or "заметка" with a date/day use this intent even if the user says "в плане" or "в план". Do not use this for the note field attached to a planned payment.
   - compound: two or more separate requested actions. Return every action in order in data.actions; do not merge a calendar reminder into a transaction description.
   - advice: asking for financial analysis or tips.
   
@@ -211,17 +213,14 @@ export const processUserMessage = async (
       - date: string in YYYY-MM-DD format, resolved in the user's local time zone
       - text: string containing the reminder; preserve the user's wording and include the related transaction details when the reminder refers to one
       - if the user says a day number without a month, choose its nearest future occurrence; "2-го числа" on 2026-09-24 means 2026-10-02
+      - never add a sum, person, or transaction detail the user did not state
   - compound:
       - actions: ordered array of { action, data } objects. action must be "transaction", "calendar_plan", or "calendar_note"; data follows that action's schema above
       - keep each money movement and each calendar reminder as separate actions
       - for a loan transfer, put the short loan description in transaction.description and create a separate calendar_note for the repayment date
 
-  COMPOUND EXAMPLE:
-    User: "дал в долг Алехе 2000 с карты СПб в Буфер, заметка, вернет 2го числа"
-    Return intent "compound" with two ordered actions:
-    1) transaction data: type "transfer", amount 2000, source/target account IDs from REFERENCE DATA, description "Дал в долг Алехе".
-    2) calendar_note data: date the nearest future local calendar 2nd, text "вернет. дал в долг Алехе 2000 с карты СПб в Буфер".
-    Do not multiply 2000 by 1000. Do not put the reminder only in transaction.description.
+  COMPOUND RULE:
+    When the current request asks for both a money movement and a reminder, return separate ordered actions. Include transaction details in the reminder only when the user stated those details in the current request. Never copy details from another example or recent transaction.
   
   Return a JSON object with:
   - intent: string (one of: transaction, goal, plan, calendar_plan, calendar_note, compound, advice, unknown)
