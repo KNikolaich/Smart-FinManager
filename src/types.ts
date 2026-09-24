@@ -229,6 +229,8 @@ export interface CalendarNote {
   text: string;
 }
 
+export type CalendarNoteDraft = Pick<CalendarNote, 'date' | 'text'>;
+
 export interface PlanNote {
   id: string;
   title: string;
@@ -268,7 +270,7 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   type?: 'text' | 'action' | 'suggestion';
-  actionType?: 'transaction' | 'goal' | 'plan' | 'calendar_plan';
+  actionType?: 'transaction' | 'goal' | 'plan' | 'calendar_plan' | 'calendar_note' | 'compound';
   actionData?: any;
   attachments?: string[];
 }

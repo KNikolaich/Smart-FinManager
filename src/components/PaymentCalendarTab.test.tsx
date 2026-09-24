@@ -44,6 +44,7 @@ describe('PaymentCalendarTab', () => {
           amount: 32000,
           date: '2026-10-01',
           recurrence: 'monthly',
+          note: 'Списывать в начале месяца',
         }}
         onInitialPaymentCreateHandled={onInitialPaymentCreateHandled}
       />,
@@ -53,9 +54,56 @@ describe('PaymentCalendarTab', () => {
       expect((screen.getByTestId('input-payment-title') as HTMLInputElement).value).toBe('Аренда');
       expect((screen.getByTestId('input-payment-amount') as HTMLInputElement).value).toBe('32000');
       expect((screen.getByTestId('input-payment-date') as HTMLInputElement).value).toBe('2026-10-01');
+      expect((screen.getByTestId('input-payment-note') as HTMLTextAreaElement).value).toBe('Списывать в начале месяца');
       expect(screen.getByTestId('button-save-payment').textContent).toContain('Запланировать');
     });
     expect(onInitialPaymentCreateHandled).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens and saves a calendar note draft without replacing existing notes', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 24, 12));
+    const existingNote: CalendarNote = {
+      id: 'existing-note',
+      date: '2026-09-25',
+      text: 'Существующая заметка',
+    };
+    const onNotesChange = vi.fn<(nextNotes: CalendarNote[]) => Promise<void>>().mockResolvedValue(undefined);
+    const onInitialNoteCreateHandled = vi.fn();
+
+    render(
+      <PaymentCalendarTab
+        payments={[]}
+        notes={[existingNote]}
+        accounts={[]}
+        categories={[]}
+        onNotesChange={onNotesChange}
+        initialNoteToCreate={{
+          date: '2026-10-02',
+          text: 'вернет. дал в долг Алехе 2000 с карты спб в буфер',
+        }}
+        onInitialNoteCreateHandled={onInitialNoteCreateHandled}
+      />,
+    );
+
+    await waitFor(() => {
+      expect((screen.getByTestId('input-calendar-note-date') as HTMLInputElement).value).toBe('2026-10-02');
+      expect((screen.getByTestId('input-calendar-note-text') as HTMLTextAreaElement).value)
+        .toBe('вернет. дал в долг Алехе 2000 с карты спб в буфер');
+    });
+    expect(onInitialNoteCreateHandled).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('button-save-calendar-note'));
+    await waitFor(() => expect(onNotesChange).toHaveBeenCalledTimes(1));
+
+    const savedNotes = onNotesChange.mock.calls[0][0];
+    expect(savedNotes).toHaveLength(2);
+    expect(savedNotes[0]).toEqual(existingNote);
+    expect(savedNotes[1]).toEqual(expect.objectContaining({
+      date: '2026-10-02',
+      text: 'вернет. дал в долг Алехе 2000 с карты спб в буфер',
+    }));
+    expect(savedNotes[1].id).not.toBe(existingNote.id);
   });
 
   it('creates, displays, edits, and deletes a standalone calendar note', async () => {

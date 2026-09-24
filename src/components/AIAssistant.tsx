@@ -5,12 +5,14 @@ import { Send, User, Sparkles, Loader2, PlusCircle, Target, PieChart, Calendar, 
 import { RobotIcon } from './icons/RobotIcon';
 import { processUserMessage, getFinancialAdvice } from '../services/aiService';
 import { api } from '../lib/api';
-import { Account, Category, Transaction, Goal, Plan, Message, PlannedPaymentDraft } from '../types';
+import { Account, Category, Transaction, Goal, Plan, Message, PlannedPaymentDraft, CalendarNoteDraft } from '../types';
 import { SimpleMarkdown } from './ui/InteractiveMarkdown';
 import { cn } from '../lib/utils';
 import { normalizeTransactionDate } from '../lib/transactionDate';
 import { getAITransactionDrafts, isTransactionBatch } from '../lib/aiTransactions';
 import { normalizeAICalendarPlanDraft } from '../lib/aiCalendarPlanDraft';
+import { getAICompoundActions } from '../lib/aiCompoundActions';
+import { normalizeAICalendarNoteDraft } from '../lib/aiCalendarNoteDraft';
 
 interface AIAssistantProps {
   accounts: Account[];
@@ -25,6 +27,7 @@ interface AIAssistantProps {
   onOpenAddTransaction?: (initialData?: any) => void;
   onOpenAddTransactions?: (initialData: any[]) => void;
   onOpenAddCalendarPlan?: (initialData: PlannedPaymentDraft) => void;
+  onOpenAddCalendarNote?: (initialData: CalendarNoteDraft) => void;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
@@ -32,7 +35,7 @@ export interface AIAssistantHandle {
   handleVoiceInput: (onStart?: () => void, onEnd?: () => void) => void;
 }
 
-const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssistant({ accounts, categories, transactions, goals, plans, userId, onRedirectToCreateGoal, onRefresh, onResult, onOpenAddTransaction, onOpenAddTransactions, onOpenAddCalendarPlan, showToast }, ref) {
+const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIAssistant({ accounts, categories, transactions, goals, plans, userId, onRedirectToCreateGoal, onRefresh, onResult, onOpenAddTransaction, onOpenAddTransactions, onOpenAddCalendarPlan, onOpenAddCalendarNote, showToast }, ref) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -398,6 +401,24 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
           }
         }
         return true;
+      } else if (type === 'calendar_note') {
+        if (!onOpenAddCalendarNote) {
+          if (silent) return false;
+          throw new Error('Не удалось открыть форму календарной заметки.');
+        }
+
+        onOpenAddCalendarNote(normalizeAICalendarNoteDraft(data));
+        if (!silent) {
+          const msg = messages.find(m => m.id === msgId);
+          if (msg) {
+            const currentContent = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+            await api.put(`/chat-history/${msgId}`, {
+              type: 'text',
+              content: currentContent + '\n\n📝 **Форма календарной заметки открыта. Проверьте дату и текст и сохраните заметку.**'
+            });
+          }
+        }
+        return true;
       } else if (type === 'plan') {
         // ... handled similarly if needed
         // but let's stick to core transaction flow
@@ -433,6 +454,49 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
     }
   };
 
+  const processAICompoundActions = async (msgId: string, data: unknown, baseContent: string) => {
+    const actions = getAICompoundActions(data);
+    if (actions.length === 0) {
+      throw new Error('Не удалось разобрать список действий в запросе.');
+    }
+
+    const results: string[] = [];
+    for (const action of actions) {
+      if (action.action === 'transaction') {
+        const success = await confirmAction(msgId, 'transaction', action.data, true);
+        if (!success && !isTransactionBatch(action.data)) {
+          const drafts = getAITransactionDrafts(action.data);
+          if (drafts.length > 0) openTransactionDrafts(drafts);
+        }
+        results.push(success
+          ? '✅ Операция добавлена.'
+          : '📝 Операция требует уточнения и открыта в редакторе.');
+      } else if (action.action === 'calendar_plan') {
+        const success = await confirmAction(msgId, 'calendar_plan', action.data, true);
+        results.push(success
+          ? '🗓️ Форма календарного плана открыта для проверки и сохранения.'
+          : '⚠️ Не удалось открыть форму календарного плана.');
+      } else if (action.action === 'calendar_note') {
+        const success = await confirmAction(msgId, 'calendar_note', action.data, true);
+        results.push(success
+          ? '📝 Форма календарной заметки открыта для проверки и сохранения.'
+          : '⚠️ Не удалось открыть форму календарной заметки.');
+      }
+    }
+
+    const updatedContent = `${baseContent}\n\n${results.join('\n\n')}`;
+    await api.put(`/chat-history/${msgId}`, {
+      type: 'text',
+      content: updatedContent,
+    });
+    setMessages(current => current.map(message =>
+      message.id === msgId
+        ? { ...message, type: 'text', content: updatedContent }
+        : message
+    ));
+    return true;
+  };
+
   const handleSend = async (textOverride?: string) => {
     const text = textOverride || input;
     if ((!text.trim() && attachments.length === 0) || loading) return;
@@ -453,6 +517,8 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
     try {
       const result = await processUserMessage(userId, text, accounts, categories, currentAttachments, transactions);
 
+      const compoundActions = getAICompoundActions(result.data);
+      const isCompound = result.intent === 'compound' || compoundActions.length > 0;
       const transactionDrafts = getAITransactionDrafts(result.data);
       const isTransactionDraft = transactionDrafts.some(draft =>
         ['income', 'expense', 'transfer'].includes(draft.type) ||
@@ -467,7 +533,8 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
         draft.createdAt ||
         draft.date
       );
-      const shouldHandleAsTransaction = result.intent === 'transaction' || (result.intent === 'unknown' && isTransactionDraft);
+      const shouldHandleAsTransaction = !isCompound &&
+        (result.intent === 'transaction' || (result.intent === 'unknown' && isTransactionDraft));
       
       if (result.data?.error_code === 'REGION_NOT_SUPPORTED') {
         if (showToast) showToast('⚠️ Регион не поддерживается! Используйте VPN или смените локацию.', 'error');
@@ -481,17 +548,17 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
           role: 'assistant',
           content: advice
         };
-      } else if (result.intent === 'unknown' && !isTransactionDraft) {
+      } else if (result.intent === 'unknown' && !isTransactionDraft && !isCompound) {
         assistantMessage = {
           role: 'assistant',
           content: result.message
         };
-      } else if (shouldHandleAsTransaction || ['goal', 'plan', 'calendar_plan'].includes(result.intent)) {
+      } else if (shouldHandleAsTransaction || isCompound || ['goal', 'plan', 'calendar_plan', 'calendar_note'].includes(result.intent)) {
         assistantMessage = {
           role: 'assistant',
           content: result.message,
           type: 'action',
-          actionType: shouldHandleAsTransaction ? 'transaction' : result.intent as any,
+          actionType: shouldHandleAsTransaction ? 'transaction' : isCompound ? 'compound' : result.intent as any,
           actionData: result.data
         };
       } else {
@@ -556,6 +623,25 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
               content: currentContent + '\n\n🗓️ **Форма календарного плана открыта. Проверьте поля и нажмите «Запланировать».**'
             });
           }
+        } else if (result.intent === 'calendar_note') {
+          const success = await confirmAction(savedMsg.id, 'calendar_note', result.data, true);
+          if (success) {
+            const currentContent = typeof assistantMessage.content === 'string'
+              ? assistantMessage.content
+              : JSON.stringify(assistantMessage.content);
+            await api.put(`/chat-history/${savedMsg.id}`, {
+              type: 'text',
+              content: currentContent + '\n\n📝 **Форма календарной заметки открыта. Проверьте дату и текст и сохраните заметку.**'
+            });
+          }
+        } else if (isCompound && currentAttachments.length === 0) {
+          await processAICompoundActions(
+            savedMsg.id,
+            result.data,
+            typeof assistantMessage.content === 'string'
+              ? assistantMessage.content
+              : JSON.stringify(assistantMessage.content),
+          );
         }
       }
     } catch (error) {
@@ -640,7 +726,14 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
               {m.type === 'action' && (
                 <div className="flex gap-2">
                   <button 
-                    onClick={() => confirmAction(m.id, m.actionType!, typeof m.actionData === 'string' ? JSON.parse(m.actionData) : m.actionData)}
+                    onClick={() => {
+                      const data = typeof m.actionData === 'string' ? JSON.parse(m.actionData) : m.actionData;
+                      if (m.actionType === 'compound') {
+                        void processAICompoundActions(m.id, data, typeof m.content === 'string' ? m.content : JSON.stringify(m.content));
+                      } else {
+                        void confirmAction(m.id, m.actionType!, data);
+                      }
+                    }}
                     className="bg-theme-primary text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all"
                   >
                     Подтвердить

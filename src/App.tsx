@@ -5,7 +5,7 @@ import { useAppData } from './hooks/useAppData';
 import { useAuth } from './hooks/useAuth';
 import { useGlobalInputContextMenu } from './hooks/useGlobalInputContextMenu';
 import { api, safeStorage, syncOfflineQueue } from './lib/api';
-import { DashboardLayoutSettings, PlannedPayment, PlannedPaymentDraft, Transaction, UserProfile } from './types';
+import { CalendarNoteDraft, DashboardLayoutSettings, PlannedPayment, PlannedPaymentDraft, Transaction, UserProfile } from './types';
 import type { PlannedPaymentOccurrence } from './lib/plannedPaymentOccurrences';
 import { getDashboardLayout } from './lib/dashboardLayout';
 import { useDashboardDevice } from './hooks/useDashboardDevice';
@@ -69,6 +69,7 @@ export default function App() {
   const [calendarFocusDate, setCalendarFocusDate] = useState<string | undefined>();
   const [calendarPaymentToEdit, setCalendarPaymentToEdit] = useState<PlannedPayment | null>(null);
   const [calendarPaymentToCreate, setCalendarPaymentToCreate] = useState<PlannedPaymentDraft | null>(null);
+  const [calendarNoteToCreate, setCalendarNoteToCreate] = useState<CalendarNoteDraft | null>(null);
   const [analyticsOptions, setAnalyticsOptions] = useState<{
     type?: 'expense' | 'income';
     filterType?: 'month' | 'period' | 'all';
@@ -225,8 +226,21 @@ export default function App() {
 
   const handleOpenCalendarPlanDraft = useCallback((draft: PlannedPaymentDraft) => {
     setCalendarPaymentToEdit(null);
+    setCalendarNoteToCreate(null);
     setCalendarFocusDate(undefined);
     setCalendarPaymentToCreate(draft);
+    setActiveTab('plan');
+  }, []);
+
+  const handleCalendarNoteCreateHandled = useCallback(() => {
+    setCalendarNoteToCreate(null);
+  }, []);
+
+  const handleOpenCalendarNoteDraft = useCallback((draft: CalendarNoteDraft) => {
+    setCalendarPaymentToEdit(null);
+    setCalendarPaymentToCreate(null);
+    setCalendarFocusDate(undefined);
+    setCalendarNoteToCreate(draft);
     setActiveTab('plan');
   }, []);
 
@@ -320,6 +334,8 @@ export default function App() {
             onCalendarPaymentEditHandled={handleCalendarPaymentEditHandled}
             calendarPaymentToCreate={calendarPaymentToCreate}
             onCalendarPaymentCreateHandled={handleCalendarPaymentCreateHandled}
+            calendarNoteToCreate={calendarNoteToCreate}
+            onCalendarNoteCreateHandled={handleCalendarNoteCreateHandled}
           />
         );
       case 'analytics':
@@ -370,6 +386,7 @@ export default function App() {
             }}
             onOpenAddTransactions={openAITransactionDrafts}
             onOpenAddCalendarPlan={handleOpenCalendarPlanDraft}
+            onOpenAddCalendarNote={handleOpenCalendarNoteDraft}
             showToast={addToast}
           />
         );

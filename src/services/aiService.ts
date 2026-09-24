@@ -1,9 +1,10 @@
 import { Account, Category, Transaction, Goal, Plan, Message } from "../types";
 import { api } from "../lib/api";
 import axios from "axios";
+import { getAICompoundActions } from "../lib/aiCompoundActions";
 
 export interface AIResponse {
-  intent: 'transaction' | 'goal' | 'plan' | 'calendar_plan' | 'advice' | 'unknown';
+  intent: 'transaction' | 'goal' | 'plan' | 'calendar_plan' | 'calendar_note' | 'compound' | 'advice' | 'unknown';
   data: any;
   message: string;
 }
@@ -171,12 +172,16 @@ export const processUserMessage = async (
   - For goal intent: "Я уже подготовил форму для твоей новой цели '...', давай заполним детали вместе."
   - For plan intent: "Обновил твои планы, теперь мы точно знаем, куда идем."
   - For calendar_plan intent, say that you prepared the calendar form and ask the user to review and save it. Never claim the payment has already been scheduled.
+  - For calendar_note intent, say that you prepared a calendar-note form and ask the user to review and save it.
+  - For compound intent, state which actions were recognized; distinguish a saved transaction from a calendar form that still needs the user's confirmation.
   
   Intents:
   - transaction: adding income, expense, or transfer.
   - goal: creating a new financial goal.
   - plan: creating or updating a monthly budget plan.
   - calendar_plan: creating a one-time or recurring payment/income item in the payment calendar. Do not use this intent for a monthly budget plan.
+  - calendar_note: creating a standalone text reminder on a calendar date. Do not use this for the note field attached to a planned payment.
+  - compound: two or more separate requested actions. Return every action in order in data.actions; do not merge a calendar reminder into a transaction description.
   - advice: asking for financial analysis or tips.
   
   Data object requirements per intent:
@@ -198,13 +203,28 @@ export const processUserMessage = async (
       - amount: positive number (when stated)
       - date: string in YYYY-MM-DD format. Resolve relative and explicit dates in the user's local time zone; use the supplied current local date if the user did not specify one.
       - transactionType: "expense" or "income" (default to "expense" only when the wording clearly describes a payment)
-      - recurrence: one of "none", "weekly", "biweekly", "weekdays", "monthly", "quarterly", "yearly" when stated
+      - recurrence: "none" for a one-time plan, otherwise one of "weekly", "biweekly", "weekdays", "monthly", "quarterly", "yearly" when stated
       - weekdays: array of integers 1-7 where 1 is Monday and 7 is Sunday, when specified
       - accountId/accountName and categoryId/categoryName: use exact matches from REFERENCE DATA only when identifiable; do not invent IDs
-      - time: HH:mm when stated; note: optional extra detail
+      - time: HH:mm when stated; note: optional text attached to this planned payment
+  - calendar_note:
+      - date: string in YYYY-MM-DD format, resolved in the user's local time zone
+      - text: string containing the reminder; preserve the user's wording and include the related transaction details when the reminder refers to one
+      - if the user says a day number without a month, choose its nearest future occurrence; "2-го числа" on 2026-09-24 means 2026-10-02
+  - compound:
+      - actions: ordered array of { action, data } objects. action must be "transaction", "calendar_plan", or "calendar_note"; data follows that action's schema above
+      - keep each money movement and each calendar reminder as separate actions
+      - for a loan transfer, put the short loan description in transaction.description and create a separate calendar_note for the repayment date
+
+  COMPOUND EXAMPLE:
+    User: "дал в долг Алехе 2000 с карты СПб в Буфер, заметка, вернет 2го числа"
+    Return intent "compound" with two ordered actions:
+    1) transaction data: type "transfer", amount 2000, source/target account IDs from REFERENCE DATA, description "Дал в долг Алехе".
+    2) calendar_note data: date the nearest future local calendar 2nd, text "вернет. дал в долг Алехе 2000 с карты СПб в Буфер".
+    Do not multiply 2000 by 1000. Do not put the reminder only in transaction.description.
   
   Return a JSON object with:
-  - intent: string (one of: transaction, goal, plan, calendar_plan, advice, unknown)
+  - intent: string (one of: transaction, goal, plan, calendar_plan, calendar_note, compound, advice, unknown)
   - data: object containing the extracted fields.
   - message: string (a concise, friendly, and supportive response in Russian that follows the phrasing rules above for the selected intent)
   `;
@@ -225,15 +245,26 @@ REFERENCE DATA:
     const responseText = await callAI(systemInstruction, userPrompt, "json_object", imageData);
     const result = JSON.parse(responseText || "{}") as AIResponse;
 
-    const transactionDrafts = Array.isArray(result.data?.transactions)
-      ? result.data.transactions
-      : Array.isArray(result.data)
-        ? result.data
-        : [result.data];
+    const compoundActions = getAICompoundActions(result.data);
+    const isCompound = result.intent === 'compound' || compoundActions.length > 0;
+    const transactionDrafts = isCompound
+      ? compoundActions
+        .filter(action => action.action === 'transaction' || action.action === 'calendar_plan')
+        .flatMap(action => {
+          const payload = action.data as any;
+          if (Array.isArray(payload?.transactions)) return payload.transactions;
+          return Array.isArray(payload) ? payload : [payload];
+        })
+      : Array.isArray(result.data?.transactions)
+        ? result.data.transactions
+        : Array.isArray(result.data)
+          ? result.data
+          : [result.data];
 
     if (
       result.data &&
       (['transaction', 'income', 'expense', 'transfer', 'calendar_plan'].includes(result.intent) ||
+        isCompound ||
         transactionDrafts.some(draft => ['income', 'expense', 'transfer'].includes(draft?.type)))
     ) {
       transactionDrafts.forEach(draft => {

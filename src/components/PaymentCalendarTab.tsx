@@ -22,6 +22,7 @@ import {
   PlannedPaymentStatus,
   Category,
   CalendarNote,
+  CalendarNoteDraft,
 } from '../types';
 import CategorySelect from './CategorySelect';
 import UpcomingTasks from './UpcomingTasks';
@@ -59,6 +60,8 @@ interface PaymentCalendarTabProps {
   onInitialPaymentEditHandled?: () => void;
   initialPaymentToCreate?: PlannedPaymentDraft | null;
   onInitialPaymentCreateHandled?: () => void;
+  initialNoteToCreate?: CalendarNoteDraft | null;
+  onInitialNoteCreateHandled?: () => void;
 }
 
 type Filter = PlannedPaymentFilter;
@@ -131,6 +134,8 @@ export default function PaymentCalendarTab({
   onInitialPaymentEditHandled,
   initialPaymentToCreate,
   onInitialPaymentCreateHandled,
+  initialNoteToCreate,
+  onInitialNoteCreateHandled,
 }: PaymentCalendarTabProps) {
   const now = new Date();
   const [cursor, setCursor] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
@@ -146,6 +151,7 @@ export default function PaymentCalendarTab({
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [confirmDeleteNote, setConfirmDeleteNote] = useState(false);
   const handledInitialPaymentToCreateRef = useRef<PlannedPaymentDraft | null>(null);
+  const handledInitialNoteToCreateRef = useRef<CalendarNoteDraft | null>(null);
 
   useEffect(() => {
     if (!focusDate) return;
@@ -249,12 +255,31 @@ export default function PaymentCalendarTab({
     onInitialPaymentCreateHandled?.();
   }, [initialPaymentToCreate, loading, onInitialPaymentCreateHandled, openCreate]);
 
-  const openCreateNote = (date = selectedDate) => {
-    setEditingNote({ id: createCalendarNoteId(), date, text: '' });
+  const openCreateNote = useCallback((date = selectedDate, text = '') => {
+    setEditingNote({ id: createCalendarNoteId(), date, text });
     setNoteError(null);
     setConfirmDeleteNote(false);
     setNoteDialogMode('create');
-  };
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (!initialNoteToCreate) {
+      handledInitialNoteToCreateRef.current = null;
+      return;
+    }
+    if (loading || !onNotesChange || handledInitialNoteToCreateRef.current === initialNoteToCreate) return;
+
+    const requestedDate = initialNoteToCreate.date || getTodayKey();
+    const parsedDate = parseDateKey(requestedDate);
+    const date = Number.isNaN(parsedDate.getTime()) ? getTodayKey() : requestedDate;
+    const validDate = parseDateKey(date);
+    handledInitialNoteToCreateRef.current = initialNoteToCreate;
+    setCursor(new Date(validDate.getFullYear(), validDate.getMonth(), 1));
+    setSelectedDate(date);
+    setListStartDate(date);
+    openCreateNote(date, initialNoteToCreate.text);
+    onInitialNoteCreateHandled?.();
+  }, [initialNoteToCreate, loading, onInitialNoteCreateHandled, onNotesChange, openCreateNote]);
 
   const openCopyNote = (note: CalendarNote) => {
     setEditingNote({
