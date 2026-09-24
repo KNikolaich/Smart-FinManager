@@ -163,6 +163,41 @@ describe('UpcomingTasks', () => {
     postSpy.mockRestore();
   });
 
+  it('loads calendar notes into the dashboard carousel in date order with planned payments', async () => {
+    const payments: PlannedPayment[] = [
+      { ...makePayment(1), id: 'dashboard-plan-first', title: 'Первый план', date: '2026-09-22' },
+      { ...makePayment(2), id: 'dashboard-plan-last', title: 'Последний план', date: '2026-09-24' },
+    ];
+    const notes: CalendarNote[] = [
+      { id: 'dashboard-note-first', date: '2026-09-21', text: 'Первая записка' },
+      { id: 'dashboard-note-second', date: '2026-09-23', text: 'Вторая записка' },
+    ];
+    vi.spyOn(api, 'get').mockResolvedValue({ payments, notes });
+    const onNoteClick = vi.fn();
+
+    render(
+      <UpcomingTasks
+        variant="carousel"
+        startDate="2026-09-20"
+        onNoteClick={onNoteClick}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('upcoming-note-card-dashboard-note-first')).toBeTruthy());
+    const carousel = screen.getByTestId('upcoming-tasks-carousel');
+    const visibleStack = Array.from(carousel.querySelectorAll<HTMLElement>('[data-upcoming-item]'))
+      .map(item => `${item.dataset.upcomingDate}:${item.dataset.upcomingItem?.startsWith('note-') ? 'note' : 'payment'}`);
+
+    expect(visibleStack).toEqual([
+      '2026-09-21:note',
+      '2026-09-22:payment',
+      '2026-09-23:note',
+    ]);
+    expect((screen.getByTestId('button-upcoming-view') as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByTestId('button-upcoming-view'));
+    expect(onNoteClick).toHaveBeenCalledWith(notes[0]);
+  });
+
   it('moves to the next stacked banner with a horizontal swipe', () => {
     const payments: PlannedPayment[] = [
       { ...makePayment(0), id: 'overdue', title: 'Просроченная задача', date: '2026-09-17' },

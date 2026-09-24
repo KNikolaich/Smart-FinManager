@@ -22,7 +22,9 @@ describe('mergeCalendarDashboardItems', () => {
       { id: 'note-later', date: '2026-10-05', text: 'Позвонить' },
       { id: 'note-first', date: '2026-10-02', text: 'Вернуть деньги' },
     ];
-    const occurrences = getPaymentOccurrencesInRange(payments, '2026-10-01', '2026-10-10');
+    const occurrences = payments.flatMap(item =>
+      getPaymentOccurrencesInRange(item, '2026-10-01', '2026-10-10'),
+    );
 
     const items = mergeCalendarDashboardItems(occurrences, notes, '2026-10-01', 7);
 
@@ -46,7 +48,7 @@ describe('mergeCalendarDashboardItems', () => {
 
   it('places planned payments before notes when their dates are equal', () => {
     const paymentOccurrence = getPaymentOccurrencesInRange(
-      [payment('same-day', 'Оплата', '2026-10-05')],
+      payment('same-day', 'Оплата', '2026-10-05'),
       '2026-10-05',
       '2026-10-05',
     );

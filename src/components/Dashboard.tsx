@@ -116,6 +116,7 @@ export default function Dashboard({
             variant="carousel"
             className={stretchClass}
             onOpenCalendar={onOpenCalendar}
+            onNoteClick={note => onNavigateToCalendar?.(note.date)}
             onEditTask={onEditUpcomingTask}
             onRequestTransaction={(item, onCompleted) => onOpenAddTransaction?.({
               type: item.payment.transactionType,

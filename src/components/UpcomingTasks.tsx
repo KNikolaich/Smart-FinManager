@@ -468,11 +468,14 @@ export default function UpcomingTasks({
           {variant === 'carousel' && (
             <button
               type="button"
-              aria-label="Посмотреть текущий план"
+              aria-label="Открыть выбранный план или записку"
               title="Посмотреть план, записку и действия"
               data-testid="button-upcoming-view"
-              disabled={!focusedOccurrence}
-              onClick={() => focusedOccurrence && setViewItem(focusedOccurrence)}
+              disabled={!focusedOccurrence && (!focusedCalendarNote || !onNoteClick)}
+              onClick={() => {
+                if (focusedCalendarNote) onNoteClick?.(focusedCalendarNote);
+                else if (focusedOccurrence) setViewItem(focusedOccurrence);
+              }}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none"
             >
               <Eye size={15} />
@@ -481,8 +484,8 @@ export default function UpcomingTasks({
           {variant === 'carousel' && (
             <button
               type="button"
-              aria-label="Показать первую операцию"
-              title="Показать первую операцию"
+              aria-label="Показать первую запись"
+              title="Показать первую запись"
               data-testid="button-upcoming-first"
               onClick={resetCarousel}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-theme-muted hover:bg-theme-main"
@@ -585,7 +588,9 @@ export default function UpcomingTasks({
         <div className="py-10 text-center text-xs text-theme-muted">Загружаем задачи...</div>
       ) : error ? (
         <div className="py-10 text-center text-xs text-rose-600">{error}</div>
-      ) : occurrences.length === 0 && (variant === 'carousel' || sortedCalendarNotes.length === 0) ? (
+      ) : (variant === 'carousel'
+        ? carouselItems.length === 0
+        : occurrences.length === 0 && sortedCalendarNotes.length === 0) ? (
         <div className="py-10 text-center text-xs text-theme-muted">
           <CircleDashed size={20} className="mx-auto mb-2" />
           Предстоящих задач нет
@@ -600,72 +605,108 @@ export default function UpcomingTasks({
           onPointerCancel={handleCarouselPointerUp}
         >
           {[0, 1, 2].map(stackIndex => {
-            if (occurrences.length <= stackIndex) return null;
-            const occurrence = occurrences[activeCarouselIndex + stackIndex];
-            if (!occurrence) return null;
+            const item = carouselItems[activeCarouselIndex + stackIndex];
+            if (!item) return null;
             const isActive = stackIndex === 0;
-             const key = occurrenceKey(occurrence);
-             const isPulsing = isActive && isPaymentOccurrenceOverdue(occurrence.date) && !quietOverdue.has(key);
+            const occurrence = item.kind === 'payment' ? item.occurrence : undefined;
+            const isPulsing = Boolean(
+              isActive && occurrence && isPaymentOccurrenceOverdue(occurrence.date) && !quietOverdue.has(item.key),
+            );
             const stackStyle = isActive
               ? { transform: `translateX(${dragOffset}px)`, zIndex: 30 }
               : { transform: `translateY(${stackIndex * 8}px) scale(${1 - stackIndex * 0.04})`, zIndex: 30 - stackIndex };
+            const cardTone = item.kind === 'note'
+              ? isActive
+                ? 'border-amber-200 bg-amber-50 text-amber-950'
+                : 'border-theme-base bg-theme-main text-theme-muted'
+              : isActive
+                ? carouselTone(item.occurrence, isPulsing)
+                : 'border-theme-base bg-theme-main text-theme-muted';
             return (
               <article
-                key={`${occurrence.payment.id}-${occurrence.date}-${stackIndex}`}
-                className={`absolute inset-x-0 top-3 overflow-hidden rounded-2xl border p-4 transition-transform ${isActive ? carouselTone(occurrence, isPulsing) : 'border-theme-base bg-theme-main text-theme-muted'}`}
+                key={item.key}
+                className={`absolute inset-x-0 top-3 overflow-hidden rounded-2xl border p-4 transition-transform ${cardTone}`}
                 style={stackStyle}
-                data-testid={isActive ? `upcoming-banner-${occurrence.payment.id}-${occurrence.date}` : undefined}
+                data-testid={item.kind === 'note'
+                  ? `upcoming-note-card-${item.note.id}`
+                  : isActive
+                    ? `upcoming-banner-${item.occurrence.payment.id}-${item.occurrence.date}`
+                    : undefined}
+                data-upcoming-item={item.key}
+                data-upcoming-date={item.date}
                 aria-hidden={!isActive}
                 onClick={() => {
                   if (suppressCarouselClick.current) {
                     suppressCarouselClick.current = false;
                     return;
                   }
-                  if (isActive) quietOverdueOccurrence(occurrence);
-                  if (isActive) setFocusedKey(key);
+                  if (!isActive) return;
+                  if (item.kind === 'note') {
+                    setFocusedNoteId(item.note.id);
+                    setFocusedKey(item.key);
+                  } else {
+                    quietOverdueOccurrence(item.occurrence);
+                    setFocusedNoteId(null);
+                    setFocusedKey(occurrenceKey(item.occurrence));
+                  }
                 }}
               >
-                <div className="flex items-start gap-3">
-                  {isActive && (
-                    <button
-                      type="button"
-                      aria-label={occurrence.transactionId ? `Операция уже создана: ${occurrence.payment.title}` : `Отметить задачу: ${occurrence.payment.title}`}
-                      title={occurrence.transactionId ? 'Операция уже создана' : 'Создать операцию'}
-                      disabled={Boolean(occurrence.transactionId)}
-                      onPointerDown={event => event.stopPropagation()}
-                      onPointerUp={event => event.stopPropagation()}
-                      onClick={event => {
-                        event.stopPropagation();
-                        quietOverdueOccurrence(occurrence);
-                        handleCarouselCheckbox(occurrence);
-                      }}
-                      data-testid={`button-toggle-payment-${occurrence.payment.id}-${occurrence.date}`}
-                      className={`mt-0.5 w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 disabled:cursor-not-allowed ${occurrence.transactionId ? 'border-neutral-300 bg-neutral-100 text-neutral-400' : 'border-current/30 bg-white/70'}`}
-                    >
-                      {occurrence.transactionId && <Check size={14} strokeWidth={3} aria-hidden="true" />}
-                    </button>
-                  )}
-                  <div
-                    tabIndex={isActive ? 0 : -1}
-                    className="min-w-0 flex-1 text-left"
-                  >
-                    <span className="block text-[10px] uppercase tracking-wider font-bold opacity-70">
-                      {carouselDateLabel(occurrence.date)}
-                      {occurrence.payment.time && <> · <time>{occurrence.payment.time}</time></>}
-                    </span>
-                    <strong className="mt-1 flex items-center gap-1 text-sm sm:text-base leading-tight break-words">
-                      <span>{formatMoney(occurrence.payment.amount)}</span>{' '}
-                      <span aria-hidden="true">·</span>{' '}
-                      <span className="min-w-0">{occurrence.payment.title}</span>
-                      {occurrence.payment.note?.trim() && (
-                        <StickyNote size={13} className="shrink-0 text-amber-700" aria-label="У плана есть записка" />
-                      )}
-                    </strong>
-                    <span className="mt-1 block text-xs opacity-75 leading-snug break-words">
-                      {occurrence.payment.categoryName || 'Без категории'} · {recurrenceLabel(occurrence.payment)}
-                    </span>
+                {item.kind === 'note' ? (
+                  <div className="flex items-start gap-3">
+                    <ScrollText size={17} className="mt-0.5 shrink-0 text-amber-700" aria-hidden="true" />
+                    <div className="min-w-0 flex-1">
+                      <span className="block text-[10px] uppercase tracking-wider font-bold opacity-70">
+                        {carouselDateLabel(item.note.date)}
+                      </span>
+                      <strong className="mt-1 block text-sm sm:text-base leading-tight">Записка календаря</strong>
+                      <p className="mt-1 max-h-12 overflow-hidden whitespace-pre-wrap break-words text-xs leading-snug opacity-80">
+                        {item.note.text}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex items-start gap-3">
+                    {isActive && (
+                      <button
+                        type="button"
+                        aria-label={item.occurrence.transactionId ? `Операция уже создана: ${item.occurrence.payment.title}` : `Отметить задачу: ${item.occurrence.payment.title}`}
+                        title={item.occurrence.transactionId ? 'Операция уже создана' : 'Создать операцию'}
+                        disabled={Boolean(item.occurrence.transactionId)}
+                        onPointerDown={event => event.stopPropagation()}
+                        onPointerUp={event => event.stopPropagation()}
+                        onClick={event => {
+                          event.stopPropagation();
+                          quietOverdueOccurrence(item.occurrence);
+                          handleCarouselCheckbox(item.occurrence);
+                        }}
+                        data-testid={`button-toggle-payment-${item.occurrence.payment.id}-${item.occurrence.date}`}
+                        className={`mt-0.5 w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 disabled:cursor-not-allowed ${item.occurrence.transactionId ? 'border-neutral-300 bg-neutral-100 text-neutral-400' : 'border-current/30 bg-white/70'}`}
+                      >
+                        {item.occurrence.transactionId && <Check size={14} strokeWidth={3} aria-hidden="true" />}
+                      </button>
+                    )}
+                    <div
+                      tabIndex={isActive ? 0 : -1}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <span className="block text-[10px] uppercase tracking-wider font-bold opacity-70">
+                        {carouselDateLabel(item.occurrence.date)}
+                        {item.occurrence.payment.time && <> · <time>{item.occurrence.payment.time}</time></>}
+                      </span>
+                      <strong className="mt-1 flex items-center gap-1 text-sm sm:text-base leading-tight break-words">
+                        <span>{formatMoney(item.occurrence.payment.amount)}</span>{' '}
+                        <span aria-hidden="true">·</span>{' '}
+                        <span className="min-w-0">{item.occurrence.payment.title}</span>
+                        {item.occurrence.payment.note?.trim() && (
+                          <StickyNote size={13} className="shrink-0 text-amber-700" aria-label="У плана есть записка" />
+                        )}
+                      </strong>
+                      <span className="mt-1 block text-xs opacity-75 leading-snug break-words">
+                        {item.occurrence.payment.categoryName || 'Без категории'} · {recurrenceLabel(item.occurrence.payment)}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </article>
             );
           })}
