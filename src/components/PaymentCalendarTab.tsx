@@ -29,6 +29,7 @@ import CalendarNoteDialog from './CalendarNoteDialog';
 import UpcomingTasks from './UpcomingTasks';
 import AccountSelect from './AccountSelect';
 import { cn } from '../lib/utils';
+import { isCompletedOccurrence } from '../lib/calendarPlanCleanup';
 import {
   getPaymentOccurrencesInRange,
   getTodayKey,
@@ -571,7 +572,7 @@ function moveMonth(offset: number, cursor: Date, setCursor: (date: Date) => void
 }
 
 function occurrenceTone(item: PlannedPaymentOccurrence) {
-  if (item.status === 'paid') return 'bg-neutral-100 text-neutral-400 opacity-80';
+  if (isCompletedOccurrence(item)) return 'bg-neutral-200 text-neutral-500 opacity-80';
   if (isPaymentOccurrenceOverdue(item.date)) return 'bg-red-100 text-red-800';
   return item.payment.transactionType === 'income'
     ? 'bg-lime-50 text-lime-700'
@@ -579,7 +580,7 @@ function occurrenceTone(item: PlannedPaymentOccurrence) {
 }
 
 function occurrenceDotTone(item: PlannedPaymentOccurrence) {
-  if (item.status === 'paid') return 'bg-neutral-300';
+  if (isCompletedOccurrence(item)) return 'bg-neutral-400';
   if (isPaymentOccurrenceOverdue(item.date)) return 'bg-red-500';
   return item.payment.transactionType === 'income' ? 'bg-lime-500' : 'bg-pink-300';
 }

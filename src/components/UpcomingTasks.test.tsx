@@ -20,7 +20,7 @@ describe('UpcomingTasks', () => {
     vi.restoreAllMocks();
   });
 
-  it('shows the first page of tasks and navigates from the task text', () => {
+  it('opens a plan preview and navigates to its date when the plan row is tapped', () => {
     const onTaskClick = vi.fn();
     render(
       <UpcomingTasks
@@ -35,6 +35,32 @@ describe('UpcomingTasks', () => {
 
     fireEvent.click(screen.getByTestId('upcoming-task-link-task-2-2026-09-20'));
     expect(onTaskClick).toHaveBeenCalledWith('2026-09-20');
+    expect(screen.getByTestId('dialog-plan-view').textContent).toContain('Задача 2');
+  });
+
+  it('sorts calendar notes among plan rows by date and scheduled time', () => {
+    const payments: PlannedPayment[] = [
+      { ...makePayment(1), id: 'late-plan', date: '2026-09-22', time: '17:30' },
+      { ...makePayment(2), id: 'early-plan', date: '2026-09-22', time: '08:15' },
+      { ...makePayment(3), id: 'next-day-plan', date: '2026-09-23', time: '10:00' },
+    ];
+    const notes: CalendarNote[] = [
+      { id: 'note-first-day', date: '2026-09-22', text: 'Записка на первый день' },
+      { id: 'note-second-day', date: '2026-09-23', text: 'Записка на второй день' },
+    ];
+    render(<UpcomingTasks payments={payments} notes={notes} startDate="2026-09-22" />);
+
+    const orderedItems = Array.from(
+      screen.getByTestId('upcoming-tasks-list').querySelectorAll<HTMLElement>('[data-calendar-plan-entry]'),
+    ).map(item => `${item.dataset.calendarPlanEntry}:${item.dataset.calendarItemKey}`);
+
+    expect(orderedItems).toEqual([
+      'note:note-note-first-day-2026-09-22',
+      'payment:early-plan-2026-09-22',
+      'payment:late-plan-2026-09-22',
+      'note:note-note-second-day-2026-09-23',
+      'payment:next-day-plan-2026-09-23',
+    ]);
   });
 
   it('offers a separate note button in the plans list header', () => {
@@ -183,6 +209,9 @@ describe('UpcomingTasks', () => {
     );
 
     await waitFor(() => expect(screen.getByTestId('upcoming-note-card-dashboard-note-first')).toBeTruthy());
+    const firstNoteCard = screen.getByTestId('upcoming-note-card-dashboard-note-first');
+    expect(firstNoteCard.querySelector('strong')?.textContent).toContain('Первая записка');
+    expect(firstNoteCard.textContent).not.toContain('Записка календаря');
     const carousel = screen.getByTestId('upcoming-tasks-carousel');
     const visibleStack = Array.from(carousel.querySelectorAll<HTMLElement>('[data-upcoming-item]'))
       .map(item => `${item.dataset.upcomingDate}:${item.dataset.upcomingItem?.startsWith('note-') ? 'note' : 'payment'}`);
@@ -508,7 +537,7 @@ describe('UpcomingTasks', () => {
     const paid = { ...makePayment(0), id: 'paid-tone', title: 'Серая выполненная', date: '2026-09-20', paidDates: ['2026-09-20'] };
     render(<UpcomingTasks payments={[paid]} startDate="2026-09-20" filter="paid" />);
 
-    expect(screen.getByTestId('payment-row-paid-tone-2026-09-20').className).toContain('bg-neutral-100');
+    expect(screen.getByTestId('payment-row-paid-tone-2026-09-20').className).toContain('bg-neutral-200');
     expect(screen.getByTestId('payment-row-paid-tone-2026-09-20').className).not.toContain('bg-red-100');
     expect(screen.getByTestId('payment-row-paid-tone-2026-09-20').className).not.toContain('bg-lime-50');
   });

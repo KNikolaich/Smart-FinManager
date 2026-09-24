@@ -15,11 +15,9 @@ export type CalendarDashboardItem =
       note: CalendarNote;
     };
 
-export function mergeCalendarDashboardItems(
+export function mergeCalendarPlanItems(
   occurrences: PlannedPaymentOccurrence[],
   notes: CalendarNote[],
-  startDate: string,
-  limit: number,
 ): CalendarDashboardItem[] {
   const items: CalendarDashboardItem[] = [
     ...occurrences.map(occurrence => ({
@@ -28,20 +26,34 @@ export function mergeCalendarDashboardItems(
       date: occurrence.date,
       occurrence,
     })),
-    ...notes
-      .filter(note => note.date >= startDate)
-      .map(note => ({
-        kind: 'note' as const,
-        key: `note-${note.id}-${note.date}`,
-        date: note.date,
-        note,
-      })),
+    ...notes.map(note => ({
+      kind: 'note' as const,
+      key: `note-${note.id}-${note.date}`,
+      date: note.date,
+      note,
+    })),
   ];
 
-  return items
-    .sort((left, right) =>
-      left.date.localeCompare(right.date) ||
-      (left.kind === right.kind ? left.key.localeCompare(right.key) : left.kind === 'payment' ? -1 : 1),
-    )
+  return items.sort((left, right) =>
+    left.date.localeCompare(right.date) ||
+    getItemTime(left).localeCompare(getItemTime(right)) ||
+    (left.kind === right.kind ? left.key.localeCompare(right.key) : left.kind === 'payment' ? -1 : 1),
+  );
+}
+
+export function mergeCalendarDashboardItems(
+  occurrences: PlannedPaymentOccurrence[],
+  notes: CalendarNote[],
+  startDate: string,
+  limit: number,
+): CalendarDashboardItem[] {
+  return mergeCalendarPlanItems(
+    occurrences,
+    notes.filter(note => note.date >= startDate),
+  )
     .slice(0, Math.max(0, limit));
+}
+
+function getItemTime(item: CalendarDashboardItem) {
+  return item.kind === 'payment' ? item.occurrence.payment.time || '' : '';
 }

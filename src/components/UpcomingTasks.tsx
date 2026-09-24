@@ -3,7 +3,7 @@ import { CalendarDays, Check, CircleDashed, Copy, Eraser, Eye, Hand, Pencil, Plu
 import { api } from '../lib/api';
 import { CalendarNote, PlannedPayment, PlannedPaymentRecurrence } from '../types';
 import CalendarNoteDialog from './CalendarNoteDialog';
-import { mergeCalendarDashboardItems } from '../lib/calendarDashboardItems';
+import { mergeCalendarDashboardItems, mergeCalendarPlanItems } from '../lib/calendarDashboardItems';
 import {
   getTodayKey,
   getOutstandingPaymentOccurrences,
@@ -179,6 +179,10 @@ export default function UpcomingTasks({
   const occurrences = variant === 'list'
     ? loadedOccurrences.slice(listWindow.start, listWindow.end)
     : loadedOccurrences;
+  const calendarListItems = useMemo(
+    () => variant === 'list' ? mergeCalendarPlanItems(occurrences, sortedCalendarNotes) : [],
+    [occurrences, sortedCalendarNotes, variant],
+  );
   const activeCarouselIndex = carouselItems.length === 0 ? 0 : Math.min(carouselIndex, carouselItems.length - 1);
   const activeCarouselItem = carouselItems[activeCarouselIndex];
   const focusedOccurrence = useMemo(
@@ -742,10 +746,12 @@ export default function UpcomingTasks({
                       <span className="block text-[10px] uppercase tracking-wider font-bold opacity-70">
                         {carouselDateLabel(item.note.date)}
                       </span>
-                      <strong className="mt-1 block text-sm sm:text-base leading-tight">Записка календаря</strong>
-                      <p className="mt-1 max-h-12 overflow-hidden whitespace-pre-wrap break-words text-xs leading-snug opacity-80">
+                      <strong
+                        className="mt-1 block max-h-14 overflow-hidden whitespace-pre-wrap break-words text-sm sm:text-base leading-tight line-clamp-3"
+                        title={item.note.text}
+                      >
                         {item.note.text}
-                      </p>
+                      </strong>
                     </div>
                   </div>
                 ) : (
@@ -797,13 +803,22 @@ export default function UpcomingTasks({
         </div>
       ) : (
           <div ref={listRef} className="max-h-[min(65vh,620px)] overflow-y-auto no-scrollbar overscroll-contain touch-pan-y space-y-2 pt-3 pr-1" onScroll={handleListScroll} data-testid="upcoming-tasks-list">
-          {sortedCalendarNotes.length > 0 && (
-            <section className="space-y-2" aria-label="Записки календаря" data-testid="calendar-notes-list">
-              {sortedCalendarNotes.map(note => (
+          {hasPrevious && (
+            <button type="button" data-testid="button-upcoming-load-previous" onClick={loadPrevious} className="w-full rounded-xl border border-dashed border-theme-base px-3 py-2 text-xs text-theme-muted hover:bg-theme-main">
+              Показать более ранние
+            </button>
+          )}
+          {calendarListItems.map(entry => {
+            if (entry.kind === 'note') {
+              const note = entry.note;
+              return (
                 <button
-                  key={note.id}
+                  key={entry.key}
                   type="button"
                   data-testid={`calendar-note-row-${note.id}`}
+                  data-calendar-plan-entry="note"
+                  data-calendar-item-key={entry.key}
+                  data-upcoming-date={entry.date}
                   onClick={() => {
                     setFocusedNoteId(note.id);
                     onTaskClick?.(note.date);
@@ -820,24 +835,27 @@ export default function UpcomingTasks({
                     <span className="block whitespace-pre-wrap break-words text-xs">{note.text}</span>
                   </span>
                 </button>
-              ))}
-            </section>
-          )}
-          {hasPrevious && (
-            <button type="button" data-testid="button-upcoming-load-previous" onClick={loadPrevious} className="w-full rounded-xl border border-dashed border-theme-base px-3 py-2 text-xs text-theme-muted hover:bg-theme-main">
-              Показать более ранние
-            </button>
-          )}
-          {occurrences.map(item => {
-            const key = `${item.payment.id}-${item.date}`;
+              );
+            }
+
+            const item = entry.occurrence;
+            const key = entry.key;
             const canToggle = Boolean(onToggleTask);
-              const isFocused = item.date === focusedOccurrence?.date;
+            const isFocused = Boolean(
+              focusedOccurrence && occurrenceKey(item) === occurrenceKey(focusedOccurrence),
+            );
+            const focusedBorder = isFocused
+              ? `border-dashed ${isCompletedOccurrence(item) ? 'border-neutral-400' : 'border-theme-primary'}`
+              : 'border-transparent';
             return (
               <article
-                key={key}
-                  className={`flex items-center gap-2 rounded-xl px-2 py-2 border ${isFocused ? 'border-dashed border-theme-primary' : 'border-transparent'} ${occurrenceTone(item)}`}
+                key={entry.key}
+                className={`flex items-center gap-2 rounded-xl px-2 py-2 border ${focusedBorder} ${occurrenceTone(item)}`}
                 data-testid={`payment-row-${key}`}
                 data-upcoming-task={key}
+                data-calendar-plan-entry="payment"
+                data-calendar-item-key={entry.key}
+                data-upcoming-date={entry.date}
               >
                 {canToggle && (
                   <button
@@ -854,22 +872,27 @@ export default function UpcomingTasks({
                 )}
                 <button
                   type="button"
-                    onClick={() => { setFocusedNoteId(null); setFocusedKey(key); onTaskClick?.(item.date); }}
+                  onClick={() => {
+                    setFocusedNoteId(null);
+                    setFocusedKey(key);
+                    onTaskClick?.(item.date);
+                    setViewItem(item);
+                  }}
                   className="min-w-0 flex-1 text-left"
                   data-testid={`upcoming-task-link-${key}`}
                 >
-                    <strong className="flex items-center gap-1 text-xs leading-tight break-words">
+                  <strong className="flex items-center gap-1 text-xs leading-tight break-words">
                     <span>{formatMoney(item.payment.amount)}</span>{' '}
                     <span aria-hidden="true">·</span>{' '}
                     <span className="min-w-0">{item.payment.title}</span>
                     {item.payment.note?.trim() && (
                       <StickyNote size={12} className="shrink-0 text-amber-700" aria-label="У плана есть записка" />
                     )}
-                    </strong>
-                    <span className="block text-[10px] opacity-75 leading-snug break-words">
-                      {formatTaskDate(item.date)}
-                      {item.payment.time && <> · <time>{item.payment.time}</time></>}
-                      {' · '}{item.payment.categoryName || 'Без категории'} · {recurrenceLabel(item.payment)}
+                  </strong>
+                  <span className="block text-[10px] opacity-75 leading-snug break-words">
+                    {formatTaskDate(item.date)}
+                    {item.payment.time && <> · <time>{item.payment.time}</time></>}
+                    {' · '}{item.payment.categoryName || 'Без категории'} · {recurrenceLabel(item.payment)}
                   </span>
                 </button>
               </article>
@@ -1263,7 +1286,7 @@ function formatLongDate(date: string) {
 }
 
 function occurrenceTone(item: PlannedPaymentOccurrence) {
-  if (item.status === 'paid') return 'bg-neutral-100 text-neutral-400 opacity-80';
+  if (isCompletedOccurrence(item)) return 'bg-neutral-200 text-neutral-500 opacity-80';
   if (isPaymentOccurrenceOverdue(item.date)) return 'bg-red-100 text-red-800';
   return item.payment.transactionType === 'income'
     ? 'bg-lime-50 text-lime-700'
@@ -1271,6 +1294,7 @@ function occurrenceTone(item: PlannedPaymentOccurrence) {
 }
 
 function carouselTone(item: PlannedPaymentOccurrence, isPulsing = false) {
+  if (isCompletedOccurrence(item)) return 'border-neutral-300 bg-neutral-200 text-neutral-600 opacity-80';
   if (isPaymentOccurrenceOverdue(item.date)) {
     return `border-red-300 bg-red-100 text-red-900${isPulsing ? ' animate-overdue-pulse' : ''}`;
   }
