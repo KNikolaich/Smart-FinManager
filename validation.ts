@@ -390,6 +390,57 @@ export const importBatchSchema = z.object({
   profile: z.array(importProfileSchema).max(1).optional(),
 }).strict();
 
+// Full backups may contain far more records than a normal batched import.
+// The HTTP JSON parser still enforces the total request-size limit.
+const MAX_BACKUP_ITEMS = 500_000;
+const backupRowsSchema = z.array(z.record(z.string(), z.unknown())).max(MAX_BACKUP_ITEMS);
+
+export const backupRestoreSchema = z.object({
+  format: z.literal("ai-fin-assistant-backup"),
+  version: z.literal(2),
+  scope: z.enum(["user", "admin"]),
+  exportedAt: z.string().datetime(),
+  sourceUserId: z.string().min(1),
+  data: z.object({
+    profile: z.object({
+      displayName: z.string().nullable(),
+      photoURL: z.string().nullable(),
+      settings: z.unknown().refine(value => value !== undefined, "Настройки профиля должны присутствовать"),
+    }).strict(),
+    accounts: backupRowsSchema,
+    categories: backupRowsSchema,
+    transactions: backupRowsSchema,
+    goals: backupRowsSchema,
+    planGrids: backupRowsSchema,
+    calendarPlans: backupRowsSchema,
+    calendarOccurrences: backupRowsSchema,
+    calendarNotes: backupRowsSchema,
+    balanceHistory: backupRowsSchema,
+    chatMessages: backupRowsSchema,
+    aiLogs: backupRowsSchema,
+  }).strict(),
+  referenceData: z.object({
+    currencies: backupRowsSchema,
+    currencyRateSnapshots: backupRowsSchema,
+    currencyRateCollectionRuns: backupRowsSchema,
+  }).strict().optional(),
+}).strict().superRefine((archive, context) => {
+  if (archive.scope === "admin" && !archive.referenceData) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["referenceData"],
+      message: "Администраторская копия должна содержать справочники валют и историю курсов",
+    });
+  }
+  if (archive.scope === "user" && archive.referenceData) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["referenceData"],
+      message: "Пользовательская копия не может содержать глобальные справочники",
+    });
+  }
+});
+
 // --- Admin ---
 export const adminSendPasswordSchema = z.object({
   email: z.string().trim().email().max(254),

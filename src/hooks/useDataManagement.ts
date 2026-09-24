@@ -43,11 +43,21 @@ export function useDataManagement(user: UserProfile, onRefresh: () => void, onLo
         file, 
         (progress) => setImportProgress(progress),
         (log) => setImportLogs(prev => [...prev, log]),
-        controller.signal
+        controller.signal,
+        { isAdmin: user.role === 'admin' },
       );
       if (result.success) {
         setImportResult({ success: true, count: result.count });
         onRefresh();
+      } else if (result.errors.length > 0) {
+        const wasCancelled = result.errors.includes('Import cancelled');
+        setImportLogs(prev => [
+          ...prev,
+          ...(wasCancelled
+            ? ['⚠️ Импорт остановлен пользователем']
+            : result.errors.map(message => `Ошибка: ${message}`)),
+        ]);
+        if (!wasCancelled) alert('Ошибка при импорте данных');
       }
     } catch (error: any) {
       if (error.message === 'Import cancelled') {
@@ -127,38 +137,8 @@ export function useDataManagement(user: UserProfile, onRefresh: () => void, onLo
   const exportData = async () => {
     setExporting(true);
     try {
-      const collections = [
-        { name: 'transactions', endpoint: '/transactions' },
-        { name: 'accounts', endpoint: '/accounts' },
-        { name: 'categories', endpoint: '/categories' },
-        { name: 'goals', endpoint: '/goals' },
-        { name: 'plan_grids', endpoint: '/plan-grids' },
-        { name: 'profile', endpoint: '/user/profile' }
-      ];
-      
-      const backupData: Record<string, any> = {
-        version: '1.0',
-        exportedAt: new Date().toISOString(),
-        userId: user.id
-      };
-      
-      let hasData = false;
-      
-      for (const col of collections) {
-        try {
-          const data = await api.get<any>(col.endpoint);
-          backupData[col.name] = data;
-          if (Array.isArray(data) && data.length > 0) hasData = true;
-          else if (data && !Array.isArray(data)) hasData = true;
-        } catch (err) {
-          console.error(`Error exporting ${col.name}:`, err);
-        }
-      }
-
-      if (!hasData) {
-        alert('Нет данных для экспорта');
-        return;
-      }
+      const endpoint = user.role === 'admin' ? '/admin/backup/export' : '/backup/export';
+      const backupData = await api.get<Record<string, any>>(endpoint);
 
       const date = new Date().toISOString().split('T')[0];
       const fileName = `backupAiFinAssistant_${date}.json`;

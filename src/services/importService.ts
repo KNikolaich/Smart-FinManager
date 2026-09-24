@@ -9,18 +9,23 @@ export interface ImportResult {
   errors: string[];
 }
 
+export interface ImportOptions {
+  isAdmin?: boolean;
+}
+
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const importFinancialData = async (
   file: File, 
   onProgress?: (progress: number) => void,
   onLog?: (message: string) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options: ImportOptions = {},
 ): Promise<ImportResult> => {
   const extension = file.name.split('.').pop()?.toLowerCase();
 
   if (extension === 'json') {
-    return importFromJSON(file, onProgress, onLog, signal);
+    return importFromJSON(file, onProgress, onLog, signal, options);
   } else {
     return importFromExcel(file, onProgress, onLog, signal);
   }
@@ -30,13 +35,44 @@ const importFromJSON = async (
   file: File,
   onProgress?: (progress: number) => void,
   onLog?: (message: string) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options: ImportOptions = {},
 ): Promise<ImportResult> => {
   try {
     if (signal?.aborted) throw new Error('Import cancelled');
     if (onLog) onLog('Чтение JSON файла...');
     const text = await file.text();
     const data = JSON.parse(text);
+
+    if (data?.format === 'ai-fin-assistant-backup') {
+      if (data.version !== 2) {
+        throw new Error(`Версия резервной копии ${String(data.version)} не поддерживается`);
+      }
+      if (data.scope !== 'user' && data.scope !== 'admin') {
+        throw new Error('В архиве указан неизвестный тип резервной копии');
+      }
+      if (data.scope === 'admin' && !options.isAdmin) {
+        throw new Error('Администраторскую копию может восстановить только администратор');
+      }
+      if (signal?.aborted) throw new Error('Import cancelled');
+
+      const confirmMessage = data.scope === 'admin'
+        ? 'Полное восстановление заменит данные этого аккаунта и обновит общие справочники валют и историю курсов из архива. Валюты, добавленные после создания копии, будут сохранены. Продолжить?'
+        : 'Полное восстановление заменит текущие данные этого аккаунта: счета, балансы, операции, цели, планы, заметки, историю баланса и историю чата. Текущие данные будут удалены. Продолжить?';
+      if (!window.confirm(confirmMessage)) throw new Error('Import cancelled');
+
+      if (onLog) onLog('Восстановление полного архива...');
+      const endpoint = data.scope === 'admin' ? '/admin/backup/restore' : '/backup/restore';
+      const result = await api.post<{ restoredCounts?: Record<string, number> }>(endpoint, data);
+      const restoredCounts = result?.restoredCounts || {};
+      const totalRestored = Object.values(restoredCounts).reduce(
+        (sum, count) => sum + (Number.isFinite(count) ? count : 0),
+        0,
+      );
+      if (onProgress) onProgress(100);
+      if (onLog) onLog(`Полный архив восстановлен. Записей: ${totalRestored}.`);
+      return { success: true, count: restoredCounts.transactions || 0, errors: [] };
+    }
 
     // Check if this is our standard backup format
     const isStandardBackup = data.accounts || data.categories || data.transactions;

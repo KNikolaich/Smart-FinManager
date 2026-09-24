@@ -19,6 +19,7 @@ import currenciesRoutes from "./server/routes/currencies.routes";
 import balanceHistoryRoutes from "./server/routes/balanceHistory.routes";
 import userRoutes from "./server/routes/user.routes";
 import importRoutes from "./server/routes/import.routes";
+import backupRoutes from "./server/routes/backup.routes";
 import chatHistoryRoutes from "./server/routes/chatHistory.routes";
 import aiLogsRoutes from "./server/routes/aiLogs.routes";
 import aiProxyRoutes from "./server/routes/aiProxy.routes";
@@ -34,7 +35,16 @@ initSocket(httpServer);
 app.set("trust proxy", 1);
 
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
+const standardJsonParser = express.json({ limit: '50mb' });
+app.use((req, res, next) => {
+  if (
+    req.method === "POST" &&
+    (req.path === "/api/backup/restore" || req.path === "/api/admin/backup/restore")
+  ) {
+    return next();
+  }
+  return standardJsonParser(req, res, next);
+});
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Request logging middleware
@@ -60,6 +70,7 @@ app.use(userRoutes);
 
 // --- IMPORT ROUTES ---
 app.use(importRoutes);
+app.use(backupRoutes);
 
 app.use(chatHistoryRoutes);
 app.use(aiLogsRoutes);
