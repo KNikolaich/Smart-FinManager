@@ -311,7 +311,7 @@ export default function PaymentCalendarTab({
               void onStatusChange(item.payment.id, item.date, item.manuallyCompleted ? 'pending' : 'paid');
             }}
             onEditTask={item => {
-              setEditingPayment({ ...item.payment });
+              setEditingPayment({ ...item.payment, date: item.date });
               setDialogMode('edit');
             }}
              onCopyTask={item => {

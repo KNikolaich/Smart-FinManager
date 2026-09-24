@@ -48,6 +48,7 @@ import CashbackTab from './CashbackTab';
 import Calculator from './Calculator';
 import CreditTab from './CreditTab';
 import { normalizePlanNotes } from '../lib/planNotes';
+import { createEditedCalendarPlanVersion } from '../lib/calendarPlanVersions';
 import PaymentCalendarTab from './PaymentCalendarTab';
 
 interface PlanPageProps {
@@ -417,9 +418,7 @@ export default function PlanPage({
   };
 
   const handleCalendarPaymentChange = async (payment: PlannedPayment) => {
-    const next = calendarPayments.some(item => item.id === payment.id)
-      ? calendarPayments.map(item => item.id === payment.id ? payment : item)
-      : [...calendarPayments, payment];
+    const next = createEditedCalendarPlanVersion(calendarPayments, payment);
     await saveCalendarPayments(next);
   };
 

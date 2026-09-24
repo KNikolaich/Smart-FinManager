@@ -180,6 +180,18 @@ describe('PaymentCalendarTab', () => {
     expect(onInitialPaymentEditHandled).toHaveBeenCalledTimes(1);
   });
 
+  it('uses the focused occurrence date as the starting date in the edit form', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 18, 12));
+    const weeklyPayment = { ...payment, date: '2026-09-02', recurrence: 'weekly' as const };
+    render(<PaymentCalendarTab payments={[weeklyPayment]} accounts={[]} />);
+
+    fireEvent.click(screen.getByTestId('calendar-day-2026-09-16'));
+    fireEvent.click(screen.getByTestId('button-upcoming-edit'));
+
+    expect((screen.getByTestId('input-payment-date') as HTMLInputElement).value).toBe('2026-09-16');
+  });
+
   it('lets a plan repeat on selected weekdays and keeps the account picker grouped', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 21, 12));

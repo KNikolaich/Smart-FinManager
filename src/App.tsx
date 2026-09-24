@@ -209,7 +209,7 @@ export default function App() {
   }, [handleNavigateToCalendar]);
 
   const handleEditDashboardPlan = useCallback((item: PlannedPaymentOccurrence) => {
-    setCalendarPaymentToEdit({ ...item.payment });
+    setCalendarPaymentToEdit({ ...item.payment, date: item.date });
     setCalendarFocusDate(item.date);
     setActiveTab('plan');
   }, []);
