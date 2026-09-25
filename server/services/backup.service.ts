@@ -131,9 +131,6 @@ export async function restoreBackup(
   archive: BackupArchive,
   allowReferenceData = false,
 ) {
-  if (archive.sourceUserId !== userId) {
-    throw new BackupServiceError("Резервная копия создана для другого аккаунта", 403);
-  }
   if (archive.scope === "admin" && !allowReferenceData) {
     throw new BackupServiceError("Администраторскую копию может восстановить только администратор", 403);
   }
@@ -208,6 +205,12 @@ export async function restoreBackup(
     : [];
 
   return prisma.$transaction(async tx => {
+    if (
+      archive.sourceUserId !== userId &&
+      !(await isFreshBootstrapTarget(tx, userId))
+    ) {
+      throw new BackupServiceError("Резервная копия создана для другого аккаунта", 403);
+    }
     await assertNoForeignDependents(tx, userId);
     const existingPlans = await tx.calendarPlan.findMany({
       where: { userId },
@@ -302,6 +305,28 @@ export async function restoreBackup(
       },
     };
   }, { maxWait: 10_000, timeout: 120_000 });
+}
+
+async function isFreshBootstrapTarget(tx: any, userId: string) {
+  const [userCount, user, dataCounts] = await Promise.all([
+    tx.user.count(),
+    tx.user.findUnique({ where: { id: userId }, select: { role: true } }),
+    Promise.all([
+      tx.account.count(),
+      tx.category.count(),
+      tx.transaction.count(),
+      tx.goal.count(),
+      tx.planGrid.count(),
+      tx.calendarPlan.count(),
+      tx.calendarOccurrence.count(),
+      tx.calendarNote.count(),
+      tx.balanceHistory.count(),
+      tx.chatMessage.count(),
+      tx.aiLog.count(),
+    ]),
+  ]);
+
+  return userCount === 1 && user?.role === "admin" && dataCounts.every((count: number) => count === 0);
 }
 
 function normalizeRows(
