@@ -38,6 +38,7 @@ const fake = vi.hoisted(() => {
       if (args.take !== undefined) rows = rows.slice(0, args.take);
       return structuredClone(rows);
     }),
+    count: vi.fn(async () => tables[name].length),
     deleteMany: vi.fn(async (args: any = {}) => {
       const rows = tables[name];
       const keep = args.where?.userId !== undefined
@@ -70,6 +71,7 @@ const fake = vi.hoisted(() => {
   const db: Record<string, any> = {};
   for (const name of names) db[name] = makeDelegate(name);
   db.user = {
+    count: vi.fn(async () => userRecord.id ? 1 : 0),
     findUnique: vi.fn(async ({ where }: any) =>
       where.id === userRecord.id ? structuredClone(userRecord) : null),
     update: vi.fn(async ({ data }: any) => {
@@ -110,6 +112,7 @@ function seedDatabase() {
   for (const rows of Object.values(fake.tables)) rows.splice(0, rows.length);
   Object.assign(fake.userRecord, {
     id: "user-1",
+    role: "admin",
     displayName: "Анна",
     photoURL: null,
     settings: { showTotalBalance: false, theme: "dark" },
@@ -276,6 +279,37 @@ describe("full backup round trip", () => {
     await expect(restoreBackup("user-1", archive, true)).rejects.toThrow("другого аккаунта");
     expect(fake.tables.account).toHaveLength(accountCountBefore);
     expect(fake.db.account.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("restores an old admin archive into a fresh single-admin database with a new user ID", async () => {
+    const archive = JSON.parse(JSON.stringify(await exportBackup("user-1", true)));
+    for (const rows of Object.values(fake.tables)) rows.splice(0, rows.length);
+    Object.assign(fake.userRecord, {
+      id: "new-user",
+      role: "admin",
+      displayName: null,
+      photoURL: null,
+      settings: {},
+      email: "fresh-account@example.test",
+      password: "fresh-password-hash",
+    });
+
+    const result = await restoreBackup("new-user", archive, true);
+
+    expect(result.restoredCounts.accounts).toBe(1);
+    expect(fake.tables.account[0]).toMatchObject({
+      id: "account-1",
+      userId: "new-user",
+      balance: 17342.61,
+    });
+    expect(fake.tables.transaction[0].userId).toBe("new-user");
+    expect(fake.tables.chatMessage[0].userId).toBe("new-user");
+    expect(fake.userRecord).toMatchObject({
+      id: "new-user",
+      role: "admin",
+      displayName: "Анна",
+      password: "fresh-password-hash",
+    });
   });
 
   it("refuses to cascade-delete another user's transaction through a shared account id", async () => {
