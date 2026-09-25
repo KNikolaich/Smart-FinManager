@@ -1,5 +1,9 @@
 import { notifyUser } from "../socket";
-import { DemoDataServiceError, generateDemoData } from "../services/demoData.service";
+import {
+  DemoDataServiceError,
+  generateDemoCalendarData,
+  generateDemoData,
+} from "../services/demoData.service";
 
 export async function generate(req: any, res: any) {
   try {
@@ -16,5 +20,22 @@ export async function generate(req: any, res: any) {
     }
     console.error("Demo data generation failed:", error);
     res.status(500).json({ error: "Не удалось создать демо-данные" });
+  }
+}
+
+export async function addCalendarData(req: any, res: any) {
+  try {
+    const result = await generateDemoCalendarData(req.user.userId);
+    if (result.categoriesAdded > 0) {
+      notifyUser(req.user.userId, "data:updated", { type: "categories" });
+    }
+    notifyUser(req.user.userId, "data:updated", { type: "plan-grid", planType: "calendar" });
+    res.json({ success: true, ...result });
+  } catch (error: any) {
+    if (error instanceof DemoDataServiceError) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    console.error("Demo calendar data generation failed:", error);
+    res.status(500).json({ error: "Не удалось добавить планы в календарь" });
   }
 }

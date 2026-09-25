@@ -282,6 +282,122 @@ function choosePaymentAccount(
   return accounts.get("ВТБ")!.record.id;
 }
 
+export function buildDemoCalendarSeed(
+  userId: string,
+  categoryIds: Map<string, string>,
+  accountIdsByName: ReadonlyMap<string, string>,
+  now = new Date(),
+): { calendarPlans: DemoCalendarPlanRecord[]; calendarNotes: DemoCalendarNoteRecord[] } {
+  const accountId = (name: string) => {
+    const id = accountIdsByName.get(name);
+    if (!id) throw new Error(`Demo account is missing: ${name}`);
+    return id;
+  };
+
+  const calendarPlans: DemoCalendarPlanRecord[] = [
+    {
+      id: randomUUID(),
+      userId,
+      title: "Зарплата",
+      amount: 200_000,
+      date: nextMonthlyDate(now, 5),
+      recurrence: "monthly",
+      transactionType: "income",
+      accountId: accountId("ВТБ"),
+      categoryId: categoryId(categoryIds, "Зарплата", "income"),
+      color: "blue",
+    },
+    {
+      id: randomUUID(),
+      userId,
+      title: "Аванс",
+      amount: 50_000,
+      date: nextMonthlyDate(now, 25),
+      recurrence: "monthly",
+      transactionType: "income",
+      accountId: accountId("ВТБ"),
+      categoryId: categoryId(categoryIds, "Зарплата", "income"),
+      color: "blue",
+    },
+    {
+      id: randomUUID(),
+      userId,
+      title: "Квартплата / аренда",
+      amount: 45_000,
+      date: nextMonthlyDate(now, 15),
+      recurrence: "monthly",
+      transactionType: "expense",
+      accountId: accountId("Сбер"),
+      categoryId: categoryId(categoryIds, "Аренда", "expense"),
+      color: "orange",
+    },
+    {
+      id: randomUUID(),
+      userId,
+      title: "Коммунальные услуги",
+      amount: 25_000,
+      date: nextMonthlyDate(now, 8),
+      recurrence: "monthly",
+      transactionType: "expense",
+      accountId: accountId("Сбер"),
+      categoryId: categoryId(categoryIds, "Коммунальные услуги", "expense"),
+      color: "orange",
+    },
+    {
+      id: randomUUID(),
+      userId,
+      title: "Связь и интернет",
+      amount: 1_200,
+      date: nextMonthlyDate(now, 9),
+      recurrence: "monthly",
+      transactionType: "expense",
+      accountId: accountId("Сбер"),
+      categoryId: categoryId(categoryIds, "связь и интернет", "expense"),
+      color: "orange",
+    },
+    {
+      id: randomUUID(),
+      userId,
+      title: "Заправка",
+      amount: 2_500,
+      date: nextScheduledDay(now, [7, 14, 21, 28]),
+      recurrence: "weekly",
+      transactionType: "expense",
+      accountId: accountId("ВТБ"),
+      categoryId: categoryId(categoryIds, "авто / бензин", "expense"),
+      color: "orange",
+    },
+    {
+      id: randomUUID(),
+      userId,
+      title: "Маникюр",
+      amount: 2_800,
+      date: nextScheduledDay(now, [12, 26]),
+      recurrence: "biweekly",
+      transactionType: "expense",
+      accountId: accountId("ВТБ"),
+      categoryId: categoryId(categoryIds, "услуги", "expense"),
+      color: "orange",
+    },
+  ];
+
+  const firstSalaryDate = nextMonthlyDate(now, 5);
+  const calendarNotes: DemoCalendarNoteRecord[] = Array.from({ length: 5 }, (_, index) => {
+    const salaryDate = addUtcMonths(firstSalaryDate, index, 5);
+    const monthOrdinal = salaryDate.getUTCFullYear() * 12 + salaryDate.getUTCMonth();
+    return {
+      id: randomUUID(),
+      userId,
+      date: utcDay(salaryDate.getUTCFullYear(), salaryDate.getUTCMonth(), 6),
+      text: monthOrdinal % 2 === 1
+        ? "После зарплаты отложи часть денег на Бали."
+        : "После зарплаты пополни подушку безопасности.",
+    };
+  });
+
+  return { calendarPlans, calendarNotes };
+}
+
 export function buildDemoDataset(
   userId: string,
   categoryIds: Map<string, string>,
@@ -566,104 +682,12 @@ export function buildDemoDataset(
     };
   });
 
-  const calendarPlans: DemoCalendarPlanRecord[] = [
-    {
-      id: randomUUID(),
-      userId,
-      title: "Зарплата",
-      amount: 200_000,
-      date: nextMonthlyDate(now, 5),
-      recurrence: "monthly",
-      transactionType: "income",
-      accountId: accountByName.get("ВТБ")!.record.id,
-      categoryId: categoryId(categoryIds, "Зарплата", "income"),
-      color: "blue",
-    },
-    {
-      id: randomUUID(),
-      userId,
-      title: "Аванс",
-      amount: 50_000,
-      date: nextMonthlyDate(now, 25),
-      recurrence: "monthly",
-      transactionType: "income",
-      accountId: accountByName.get("ВТБ")!.record.id,
-      categoryId: categoryId(categoryIds, "Зарплата", "income"),
-      color: "blue",
-    },
-    {
-      id: randomUUID(),
-      userId,
-      title: "Квартплата / аренда",
-      amount: 45_000,
-      date: nextMonthlyDate(now, 15),
-      recurrence: "monthly",
-      transactionType: "expense",
-      accountId: accountByName.get("Сбер")!.record.id,
-      categoryId: categoryId(categoryIds, "Аренда", "expense"),
-      color: "orange",
-    },
-    {
-      id: randomUUID(),
-      userId,
-      title: "Коммунальные услуги",
-      amount: 25_000,
-      date: nextMonthlyDate(now, 8),
-      recurrence: "monthly",
-      transactionType: "expense",
-      accountId: accountByName.get("Сбер")!.record.id,
-      categoryId: categoryId(categoryIds, "Коммунальные услуги", "expense"),
-      color: "orange",
-    },
-    {
-      id: randomUUID(),
-      userId,
-      title: "Связь и интернет",
-      amount: 1_200,
-      date: nextMonthlyDate(now, 9),
-      recurrence: "monthly",
-      transactionType: "expense",
-      accountId: accountByName.get("Сбер")!.record.id,
-      categoryId: categoryId(categoryIds, "связь и интернет", "expense"),
-      color: "orange",
-    },
-    {
-      id: randomUUID(),
-      userId,
-      title: "Заправка",
-      amount: 2_500,
-      date: nextScheduledDay(now, [7, 14, 21, 28]),
-      recurrence: "weekly",
-      transactionType: "expense",
-      accountId: accountByName.get("ВТБ")!.record.id,
-      categoryId: categoryId(categoryIds, "авто / бензин", "expense"),
-      color: "orange",
-    },
-    {
-      id: randomUUID(),
-      userId,
-      title: "Маникюр",
-      amount: 2_800,
-      date: nextScheduledDay(now, [12, 26]),
-      recurrence: "biweekly",
-      transactionType: "expense",
-      accountId: accountByName.get("ВТБ")!.record.id,
-      categoryId: categoryId(categoryIds, "услуги", "expense"),
-      color: "orange",
-    },
-  ];
-  const firstSalaryDate = nextMonthlyDate(now, 5);
-  const calendarNotes: DemoCalendarNoteRecord[] = Array.from({ length: 5 }, (_, index) => {
-    const salaryDate = addUtcMonths(firstSalaryDate, index, 5);
-    return {
-      id: randomUUID(),
-      userId,
-      date: utcDay(salaryDate.getUTCFullYear(), salaryDate.getUTCMonth(), 6),
-      text: index % 2 === 0
-        ? "После зарплаты отложи часть денег на Бали."
-        : "После зарплаты пополни подушку безопасности.",
-    };
-  });
+  const calendarSeed = buildDemoCalendarSeed(
+    userId,
+    categoryIds,
+    new Map(accounts.map(account => [account.record.name, account.record.id])),
+    now,
+  );
 
   return {
     accounts,
@@ -679,8 +703,8 @@ export function buildDemoDataset(
       entries: [],
     },
     balanceHistory,
-    calendarPlans,
-    calendarNotes,
+    calendarPlans: calendarSeed.calendarPlans,
+    calendarNotes: calendarSeed.calendarNotes,
     months: months.map(month => month.key),
   };
 }

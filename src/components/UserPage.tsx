@@ -1,4 +1,4 @@
-import { LogOut, Sparkles, Eraser, FileDown, FileUp, Edit2, Check, Trash2, AlertTriangle, X, Save } from 'lucide-react';
+import { LogOut, Sparkles, CalendarDays, Eraser, FileDown, FileUp, Edit2, Check, Trash2, AlertTriangle, X, Save } from 'lucide-react';
 import { useState } from 'react';
 import { UserProfile } from '../types';
 import { cn } from '../lib/utils';
@@ -23,7 +23,8 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
   const [error, setError] = useState<string | null>(null);
 
   const {
-    seeding, showSeedConfirm, setShowSeedConfirm, password, setPassword, seedInitialData,
+    seeding, seedProgress, success, showSeedConfirm, setShowSeedConfirm, password, setPassword,
+    seedInitialData, seedCalendarOnly,
     showClearConfirm, setShowClearConfirm, deleteAccount, showClearTransactionsConfirm,
     setShowClearTransactionsConfirm, clearTransactionsOnly, exporting, exportData,
     fileInputRef, handleImportClick, handleFileChange, clearing
@@ -222,7 +223,7 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
                 <Sparkles className="w-8 h-8 text-amber-500" />
               </div>
               <h3 className="text-xl font-bold text-theme-main mb-2">Создать демо-данные?</h3>
-              <p className="text-theme-muted mb-8 text-sm">Добавятся 6 счетов, 2 цели, операции за 5 завершённых месяцев, регулярные планы и заметки в календаре. Существующие данные не удаляются; повторный запуск добавит ещё один набор демо-данных.</p>
+              <p className="text-theme-muted mb-8 text-sm">Добавятся 6 счетов, 2 цели, операции за 5 завершённых месяцев, планы и заметки в календаре. Повторный запуск создаст ещё один полный набор. Если демо-счета и операции уже добавлены, используйте дозаполнение календаря ниже.</p>
               <input
                 type="password"
                 placeholder="Введите пароль"
@@ -243,6 +244,30 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
                   )}
                   Создать
                 </button>
+                <button
+                  onClick={seedCalendarOnly}
+                  disabled={seeding}
+                  className="w-full border border-theme-base bg-theme-main text-theme-main font-bold py-4 rounded-2xl hover:bg-theme-base transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {seeding ? (
+                    <div className="w-5 h-5 border-2 border-theme-muted/30 border-t-theme-primary rounded-full animate-spin" />
+                  ) : (
+                    <CalendarDays className="w-5 h-5" />
+                  )}
+                  Добавить только планы календаря
+                </button>
+                <p className="text-theme-muted text-xs">
+                  Счета и операции не создаются повторно; уже существующие совпадающие планы и заметки пропускаются.
+                </p>
+                {seedProgress && (
+                  <p
+                    role="status"
+                    aria-live="polite"
+                    className={`text-sm ${success ? 'text-emerald-600' : seeding ? 'text-theme-primary' : 'text-rose-600'}`}
+                  >
+                    {seedProgress}
+                  </p>
+                )}
                 <button
                   onClick={() => { setShowSeedConfirm(false); setPassword(''); }}
                   disabled={seeding}

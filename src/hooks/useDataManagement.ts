@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { generateDemoData } from '../services/demoDataService';
+import { addDemoCalendarData, generateDemoData } from '../services/demoDataService';
 import { importFinancialData } from '../services/importService';
 import { api } from '../lib/api';
 import * as XLSX from 'xlsx';
@@ -105,6 +105,25 @@ export function useDataManagement(user: UserProfile, onRefresh: () => void, onLo
     }
   };
 
+  const seedCalendarOnly = async () => {
+    if (!(await verifyPassword())) return;
+    setSeeding(true);
+    setSeedProgress('Добавляем пропущенные планы и заметки...');
+    setSuccess(false);
+    try {
+      await addDemoCalendarData(user.id, (message) => setSeedProgress(message));
+      setSuccess(true);
+      onRefresh();
+      setPassword('');
+      setTimeout(() => { setSuccess(false); setSeedProgress(null); }, 5000);
+    } catch (error) {
+      console.error('Demo calendar seed error:', error);
+      setSeedProgress(error instanceof Error ? error.message : 'Не удалось добавить планы в календарь');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   const deleteAccount = async () => {
     if (!(await verifyPassword())) return;
     setClearing(true);
@@ -168,7 +187,7 @@ export function useDataManagement(user: UserProfile, onRefresh: () => void, onLo
     seeding, seedProgress, success, clearing, showClearConfirm, setShowClearConfirm,
     showClearTransactionsConfirm, setShowClearTransactionsConfirm, showSeedConfirm, setShowSeedConfirm,
     password, setPassword, exporting, importing, importProgress, importLogs, showLogModal, setShowLogModal,
-    importResult, fileInputRef, handleImportClick, handleFileChange, seedInitialData, deleteAccount,
+    importResult, fileInputRef, handleImportClick, handleFileChange, seedInitialData, seedCalendarOnly, deleteAccount,
     clearTransactionsOnly, exportData, copyLogsToClipboard
   };
 }

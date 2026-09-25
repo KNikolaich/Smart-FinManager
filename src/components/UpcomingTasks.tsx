@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, Check, CircleDashed, Copy, Eraser, Eye, Hand, Pencil, Plus, RefreshCw, ScrollText, StickyNote, Trash2, X } from 'lucide-react';
+import { io } from 'socket.io-client';
 import { api } from '../lib/api';
 import { CalendarNote, PlannedPayment, PlannedPaymentRecurrence } from '../types';
 import CalendarNoteDialog from './CalendarNoteDialog';
@@ -21,6 +22,7 @@ import {
 } from '../lib/calendarPlanCleanup';
 
 interface UpcomingTasksProps {
+  userId?: string;
   payments?: PlannedPayment[];
   notes?: CalendarNote[];
   startDate?: string;
@@ -49,6 +51,7 @@ interface UpcomingTasksProps {
 }
 
 export default function UpcomingTasks({
+  userId,
   payments,
   notes,
   startDate = getTodayKey(),
@@ -112,25 +115,40 @@ export default function UpcomingTasks({
     }
 
     let active = true;
-    setLoading(true);
-    api.get<{ payments?: PlannedPayment[]; notes?: CalendarNote[] }>('/plan-grid/calendar')
-      .then(data => {
-        if (!active) return;
-        setLoadedPayments(Array.isArray(data?.payments) ? data.payments : []);
-        setLoadedNotes(Array.isArray(data?.notes) ? data.notes : []);
-        setError(null);
-      })
-      .catch(() => {
-        if (active) setError('Не удалось загрузить предстоящие задачи.');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    let requestId = 0;
+    const loadCalendar = () => {
+      const currentRequest = ++requestId;
+      setLoading(true);
+      api.get<{ payments?: PlannedPayment[]; notes?: CalendarNote[] }>('/plan-grid/calendar')
+        .then(data => {
+          if (!active || currentRequest !== requestId) return;
+          setLoadedPayments(Array.isArray(data?.payments) ? data.payments : []);
+          setLoadedNotes(Array.isArray(data?.notes) ? data.notes : []);
+          setError(null);
+        })
+        .catch(() => {
+          if (active && currentRequest === requestId) {
+            setError('Не удалось загрузить предстоящие задачи.');
+          }
+        })
+        .finally(() => {
+          if (active && currentRequest === requestId) setLoading(false);
+        });
+    };
+
+    loadCalendar();
+    const socket = userId ? io(window.location.origin) : null;
+    socket?.on('connect', () => socket.emit('join', userId));
+    socket?.on('data:updated', (data: any) => {
+      if (data?.type === 'plan-grid' && data.planType === 'calendar') loadCalendar();
+    });
 
     return () => {
       active = false;
+      requestId += 1;
+      socket?.disconnect();
     };
-  }, [payments]);
+  }, [payments, userId]);
 
   useEffect(() => {
     if (payments !== undefined) setLocalPayments(null);

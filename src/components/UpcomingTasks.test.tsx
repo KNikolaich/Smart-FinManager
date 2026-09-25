@@ -1,5 +1,22 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const socket = vi.hoisted(() => {
+  const handlers: Record<string, (...args: any[]) => void> = {};
+  const fakeSocket = {
+    handlers,
+    on: vi.fn((event: string, callback: (...args: any[]) => void) => {
+      handlers[event] = callback;
+      return fakeSocket;
+    }),
+    emit: vi.fn(),
+    disconnect: vi.fn(),
+  };
+  return fakeSocket;
+});
+
+vi.mock('socket.io-client', () => ({ io: vi.fn(() => socket) }));
+
 import UpcomingTasks from './UpcomingTasks';
 import type { CalendarNote, PlannedPayment } from '../types';
 import { api } from '../lib/api';
@@ -36,6 +53,28 @@ describe('UpcomingTasks', () => {
     fireEvent.click(screen.getByTestId('upcoming-task-link-task-2-2026-09-20'));
     expect(onTaskClick).toHaveBeenCalledWith('2026-09-20');
     expect(screen.getByTestId('dialog-plan-view').textContent).toContain('Задача 2');
+  });
+
+  it('reloads the dashboard list when calendar data changes', async () => {
+    const getSpy = vi.spyOn(api, 'get')
+      .mockResolvedValueOnce({ payments: [], notes: [] })
+      .mockResolvedValueOnce({ payments: [makePayment(8)], notes: [] });
+    for (const event of Object.keys(socket.handlers)) delete socket.handlers[event];
+
+    const { unmount } = render(<UpcomingTasks userId="user-1" />);
+    await waitFor(() => expect(getSpy).toHaveBeenCalledTimes(1));
+
+    act(() => socket.handlers.connect?.());
+    expect(socket.emit).toHaveBeenCalledWith('join', 'user-1');
+
+    await act(async () => {
+      socket.handlers['data:updated']?.({ type: 'plan-grid', planType: 'calendar' });
+    });
+    await waitFor(() => expect(getSpy).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText('Задача 8')).toBeTruthy();
+
+    unmount();
+    expect(socket.disconnect).toHaveBeenCalled();
   });
 
   it('sorts calendar notes among plan rows by date and scheduled time', () => {

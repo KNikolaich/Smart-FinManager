@@ -113,6 +113,7 @@ export default function Dashboard({
       case 'upcomingTasks':
         return (
           <UpcomingTasks
+            userId={userId}
             variant="carousel"
             className={stretchClass}
             onOpenCalendar={onOpenCalendar}

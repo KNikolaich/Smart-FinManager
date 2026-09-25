@@ -5,6 +5,7 @@ import { DEMO_DASHBOARD_SETTINGS, DEMO_USD_CURRENCY } from "../data/demoDataTemp
 import { ensureCalendarDataReady } from "./calendar.service";
 import {
   buildDemoCategorySeed,
+  buildDemoCalendarSeed,
   buildDemoDataset,
   DemoCurrencyRef,
 } from "./demoDataBuilder";
@@ -153,6 +154,100 @@ export async function generateDemoData(userId: string) {
       calendarPlansAdded: dataset.calendarPlans.length,
       calendarNotesAdded: dataset.calendarNotes.length,
       months: dataset.months,
+    };
+  });
+}
+
+export async function generateDemoCalendarData(userId: string) {
+  await ensureCalendarDataReady(userId);
+
+  return prisma.$transaction(async tx => {
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!user) throw new DemoDataServiceError("Пользователь не найден", 404);
+
+    const accounts = await tx.account.findMany({
+      where: { userId, name: { in: ["ВТБ", "Сбер"] } },
+      select: { id: true, name: true },
+      orderBy: { createdAt: "desc" },
+    });
+    const accountIdsByName = new Map<string, string>();
+    for (const account of accounts) {
+      if (!accountIdsByName.has(account.name)) {
+        accountIdsByName.set(account.name, account.id);
+      }
+    }
+    if (!accountIdsByName.has("ВТБ") || !accountIdsByName.has("Сбер")) {
+      throw new DemoDataServiceError(
+        "Сначала создайте основные демо-данные, чтобы добавить планы в календарь",
+        409,
+      );
+    }
+
+    const existingCategories = await tx.category.findMany({
+      where: { userId },
+      select: { id: true, name: true, type: true, parentId: true },
+    });
+    const categorySeed = buildDemoCategorySeed(userId, existingCategories);
+    if (categorySeed.rootRows.length > 0) {
+      await tx.category.createMany({ data: categorySeed.rootRows });
+    }
+    if (categorySeed.childRows.length > 0) {
+      await tx.category.createMany({ data: categorySeed.childRows });
+    }
+
+    const seed = buildDemoCalendarSeed(userId, categorySeed.categoryIds, accountIdsByName);
+    const existingPlans = await tx.calendarPlan.findMany({
+      where: { userId, archivedAt: null },
+      include: {
+        account: { select: { name: true } },
+        category: { select: { name: true } },
+      },
+    });
+    const accountNameById = new Map(accounts.map(account => [account.id, account.name]));
+    const categoryNameById = new Map(
+      [...categorySeed.rootRows, ...categorySeed.childRows]
+        .map(category => [category.id, category.name] as const),
+    );
+    for (const category of existingCategories) {
+      categoryNameById.set(category.id, category.name);
+    }
+    const plansToCreate = seed.calendarPlans.filter(plan => !existingPlans.some(existing =>
+      existing.title === plan.title
+      && existing.amount === plan.amount
+      && existing.recurrence === plan.recurrence
+      && existing.transactionType === plan.transactionType
+      && (existing.account?.name || accountNameById.get(existing.accountId || "")) ===
+        (accountNameById.get(plan.accountId) || "")
+      && (existing.category?.name || categoryNameById.get(existing.categoryId || "")) ===
+        (categoryNameById.get(plan.categoryId) || "")
+      && (!existing.disableFrom || existing.disableFrom >= plan.date)
+    ));
+
+    const existingNotes = await tx.calendarNote.findMany({
+      where: { userId },
+      select: { date: true, text: true },
+    });
+    const existingNoteKeys = new Set(existingNotes.map(note =>
+      `${note.date.toISOString().slice(0, 10)}\u0000${note.text}`,
+    ));
+    const notesToCreate = seed.calendarNotes.filter(note =>
+      !existingNoteKeys.has(`${note.date.toISOString().slice(0, 10)}\u0000${note.text}`),
+    );
+
+    if (plansToCreate.length > 0) {
+      await tx.calendarPlan.createMany({ data: plansToCreate });
+    }
+    if (notesToCreate.length > 0) {
+      await tx.calendarNote.createMany({ data: notesToCreate });
+    }
+
+    return {
+      categoriesAdded: categorySeed.rootRows.length + categorySeed.childRows.length,
+      calendarPlansAdded: plansToCreate.length,
+      calendarNotesAdded: notesToCreate.length,
     };
   });
 }
