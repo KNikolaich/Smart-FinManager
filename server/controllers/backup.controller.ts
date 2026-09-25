@@ -40,3 +40,11 @@ export async function restoreAdmin(req: any, res: any) {
     handleError(res, error);
   }
 }
+
+export async function restoreForAdminTarget(req: any, res: any) {
+  try {
+    res.json(await backupService.restoreBackupForAdminTarget(req.params.id, req.body));
+  } catch (error) {
+    handleError(res, error);
+  }
+}

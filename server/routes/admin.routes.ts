@@ -11,6 +11,14 @@ router.get("/api/admin/users", authenticateToken, requireAdmin, adminController.
 router.delete("/api/admin/users/:id", authenticateToken, requireAdmin, adminController.deleteUser);
 router.post("/api/admin/users/:id/send-password", authenticateToken, requireAdmin, validateBody(adminSendPasswordSchema), adminController.sendUserPassword);
 router.post("/api/admin/users/:id/unlock", authenticateToken, requireAdmin, validateBody(adminUnlockSchema), adminController.unlockUser);
+router.post(
+  "/api/admin/users/:id/backup/restore",
+  authenticateToken,
+  requireAdmin,
+  express.json({ limit: "100mb" }),
+  validateBody(backupRestoreSchema),
+  backupController.restoreForAdminTarget,
+);
 router.get("/api/admin/backup/export", authenticateToken, requireAdmin, backupController.exportAdmin);
 router.post(
   "/api/admin/backup/restore",

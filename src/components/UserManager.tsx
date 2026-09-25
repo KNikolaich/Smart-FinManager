@@ -1,8 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api';
 import { UserProfile } from '../types';
-import { Trash2, X, AlertTriangle, User, Mail, Calendar, LockOpen, Lock } from 'lucide-react';
+import { Trash2, X, AlertTriangle, User, Mail, Calendar, LockOpen, Lock, Upload } from 'lucide-react';
 import { cn } from '../lib/utils';
+
+type PendingBackupRestore = {
+  target: UserProfile;
+  fileName: string;
+  archive: Record<string, any>;
+};
 
 export const UserManager: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -14,6 +20,10 @@ export const UserManager: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [sending, setSending] = useState(false);
   const [unlockingId, setUnlockingId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+  const [pendingRestore, setPendingRestore] = useState<PendingBackupRestore | null>(null);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+  const restoreInputRef = useRef<HTMLInputElement>(null);
+  const restoreTargetRef = useRef<UserProfile | null>(null);
 
   const fetchUsers = async () => {
     try {
@@ -81,6 +91,68 @@ export const UserManager: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     }
   };
 
+  const openRestorePicker = (target: UserProfile) => {
+    restoreTargetRef.current = target;
+    if (restoreInputRef.current) {
+      restoreInputRef.current.value = '';
+      restoreInputRef.current.click();
+    }
+  };
+
+  const handleRestoreFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    const target = restoreTargetRef.current;
+    restoreTargetRef.current = null;
+    event.target.value = '';
+    if (!file || !target) return;
+
+    if (file.size > 100 * 1024 * 1024) {
+      setStatusMessage({ text: 'Размер архива превышает 100 МБ', type: 'error' });
+      return;
+    }
+
+    try {
+      const archive = JSON.parse(await file.text());
+      if (
+        archive?.format !== 'ai-fin-assistant-backup' ||
+        archive?.version !== 2 ||
+        !['user', 'admin'].includes(archive?.scope)
+      ) {
+        setStatusMessage({ text: 'Формат резервной копии не поддерживается', type: 'error' });
+        return;
+      }
+      setPendingRestore({ target, fileName: file.name, archive });
+    } catch {
+      setStatusMessage({ text: 'Не удалось прочитать JSON-файл резервной копии', type: 'error' });
+    }
+  };
+
+  const confirmBackupRestore = async () => {
+    if (!pendingRestore) return;
+    const { target, archive } = pendingRestore;
+    setRestoringId(target.id);
+    try {
+      const result = await api.post<{ restoredCounts?: Record<string, number> }>(
+        `/admin/users/${target.id}/backup/restore`,
+        archive,
+      );
+      const totalRestored = Object.values(result?.restoredCounts || {}).reduce(
+        (sum, count) => sum + (Number.isFinite(count) ? count : 0),
+        0,
+      );
+      setPendingRestore(null);
+      await fetchUsers();
+      setStatusMessage({ text: `Данные восстановлены. Записей: ${totalRestored}`, type: 'success' });
+    } catch (error: any) {
+      setStatusMessage({
+        text: error.response?.data?.error || 'Не удалось восстановить данные пользователя',
+        type: 'error',
+      });
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
   if (loading) return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm">
       <div className="text-white font-black uppercase tracking-widest animate-pulse">Загрузка пользователей...</div>
@@ -90,6 +162,13 @@ export const UserManager: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-0 lg:p-8 bg-black/80 backdrop-blur-xl">
       <div className="relative w-full h-full lg:h-auto lg:max-w-4xl bg-theme-main lg:rounded-xl lg:border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
+        <input
+          ref={restoreInputRef}
+          type="file"
+          accept=".json,application/json"
+          className="hidden"
+          onChange={handleRestoreFileChange}
+        />
         <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
           <h3 className="text-sm font-black uppercase tracking-widest text-theme-main">Управление пользователями</h3>
           <button 
@@ -140,6 +219,15 @@ export const UserManager: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <div className="mt-4 pt-4 border-t border-theme-base flex items-center justify-between">
                   <span className="text-[10px] font-mono text-theme-muted/40 uppercase">ID: {u.id.substring(0, 8)}...</span>
                   <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => openRestorePicker(u)}
+                      disabled={restoringId !== null}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-theme-primary/20 px-2.5 py-2 text-[10px] font-bold text-theme-primary hover:bg-theme-primary/10 transition-colors disabled:opacity-50"
+                      title="Восстановить данные из резервной копии"
+                    >
+                      <Upload size={15} />
+                      Восстановить
+                    </button>
                     {u.isLockedOut && (
                       <button
                         onClick={() => handleUnlockUser(u.id)}
@@ -182,6 +270,57 @@ export const UserManager: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           statusMessage.type === 'success' ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
         )}>
           {statusMessage.text}
+        </div>
+      )}
+
+      {/* Admin backup restore confirmation */}
+      {pendingRestore && (
+        <div className="fixed inset-0 z-[260] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl">
+          <div className="relative w-full max-w-lg bg-theme-main rounded-xl border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300">
+            <div className="p-6 space-y-5">
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 shrink-0">
+                  <AlertTriangle size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-theme-main">Восстановить данные?</h3>
+                  <p className="text-sm text-theme-muted mt-1">
+                    Целевой аккаунт: <span className="font-bold text-theme-main">{pendingRestore.target.displayName || pendingRestore.target.email}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-sm text-theme-muted">
+                <p className="break-all">Файл: {pendingRestore.fileName}</p>
+                <p>
+                  Все личные данные выбранного аккаунта будут заменены данными архива.
+                  Email, пароль и роль аккаунта останутся прежними.
+                </p>
+                <p>
+                  Общая история курсов не заменяется. Если архив содержит валюты,
+                  которых нет в справочнике, они будут добавлены без изменения уже существующих валют.
+                </p>
+                <p className="font-bold text-amber-600">Это действие нельзя отменить.</p>
+              </div>
+
+              <div className="flex flex-col-reverse sm:flex-row gap-2">
+                <button
+                  onClick={() => setPendingRestore(null)}
+                  disabled={restoringId !== null}
+                  className="flex-1 rounded-lg border border-theme-base bg-theme-surface px-4 py-3 text-sm font-bold text-theme-muted hover:text-theme-main transition-colors disabled:opacity-50"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={confirmBackupRestore}
+                  disabled={restoringId !== null}
+                  className="flex-1 rounded-lg bg-rose-600 px-4 py-3 text-sm font-bold text-white hover:bg-rose-700 transition-colors disabled:opacity-50"
+                >
+                  {restoringId === pendingRestore.target.id ? 'Восстановление...' : 'Заменить данные'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

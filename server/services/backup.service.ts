@@ -131,10 +131,34 @@ export async function restoreBackup(
   archive: BackupArchive,
   allowReferenceData = false,
 ) {
-  if (archive.scope === "admin" && !allowReferenceData) {
+  return restoreBackupInternal(userId, archive, {
+    allowAdminArchive: allowReferenceData,
+    restoreReferenceData: allowReferenceData,
+    allowSourceUserIdMismatch: false,
+  });
+}
+
+export async function restoreBackupForAdminTarget(userId: string, archive: BackupArchive) {
+  return restoreBackupInternal(userId, archive, {
+    allowAdminArchive: true,
+    restoreReferenceData: false,
+    allowSourceUserIdMismatch: true,
+  });
+}
+
+async function restoreBackupInternal(
+  userId: string,
+  archive: BackupArchive,
+  options: {
+    allowAdminArchive: boolean;
+    restoreReferenceData: boolean;
+    allowSourceUserIdMismatch: boolean;
+  },
+) {
+  if (archive.scope === "admin" && !options.allowAdminArchive) {
     throw new BackupServiceError("Администраторскую копию может восстановить только администратор", 403);
   }
-  if (allowReferenceData && (archive.scope !== "admin" || !archive.referenceData)) {
+  if (options.restoreReferenceData && (archive.scope !== "admin" || !archive.referenceData)) {
     throw new BackupServiceError("В архиве отсутствуют справочники администратора");
   }
 
@@ -188,27 +212,32 @@ export async function restoreBackup(
     "id", "request", "response", "provider", "createdAt",
   ], { userId, dates: ["createdAt"], json: ["request", "response"] });
   const referenceData = archive.referenceData;
-  const currencies = allowReferenceData
-    ? normalizeRows(referenceData!.currencies, [
+  const archivedCurrencies = referenceData
+    ? normalizeRows(referenceData.currencies, [
       "id", "currency", "name", "iso", "rate", "buyRate", "sellRate", "rateSource", "rateUpdatedAt", "symbol",
     ], { nullableDates: ["rateUpdatedAt"] })
     : [];
-  const currencyRateSnapshots = allowReferenceData
+  const currencies = options.restoreReferenceData ? archivedCurrencies : [];
+  const currencyRateSnapshots = options.restoreReferenceData
     ? normalizeRows(referenceData!.currencyRateSnapshots, [
       "id", "iso", "buyRate", "sellRate", "quotedAt", "source", "quoteType",
     ], { dates: ["quotedAt"] })
     : [];
-  const currencyRateCollectionRuns = allowReferenceData
+  const currencyRateCollectionRuns = options.restoreReferenceData
     ? normalizeRows(referenceData!.currencyRateCollectionRuns, [
       "id", "runDate", "source", "status", "startedAt", "completedAt", "error",
     ], { dates: ["runDate", "startedAt"], nullableDates: ["completedAt"] })
     : [];
 
   return prisma.$transaction(async tx => {
-    if (
-      archive.sourceUserId !== userId &&
-      !(await isFreshBootstrapTarget(tx, userId))
-    ) {
+    const targetUser = await tx.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!targetUser) throw new BackupServiceError("Пользователь для восстановления не найден", 404);
+
+    if (archive.sourceUserId !== userId && !options.allowSourceUserIdMismatch &&
+      !(await isFreshBootstrapTarget(tx, userId))) {
       throw new BackupServiceError("Резервная копия создана для другого аккаунта", 403);
     }
     await assertNoForeignDependents(tx, userId);
@@ -232,8 +261,23 @@ export async function restoreBackup(
     await tx.category.deleteMany({ where: { userId } });
     await tx.account.deleteMany({ where: { userId } });
 
+    await assertRestoredIdsAvailable(tx, [
+      { delegate: tx.account, rows: accounts, label: "счётов" },
+      { delegate: tx.category, rows: categories, label: "категорий" },
+      { delegate: tx.transaction, rows: transactions, label: "операций" },
+      { delegate: tx.goal, rows: goals, label: "целей" },
+      { delegate: tx.planGrid, rows: planGrids, label: "планов" },
+      { delegate: tx.calendarPlan, rows: calendarPlans, label: "планов календаря" },
+      { delegate: tx.calendarOccurrence, rows: calendarOccurrences, label: "вхождений календаря" },
+      { delegate: tx.calendarNote, rows: calendarNotes, label: "заметок" },
+      { delegate: tx.balanceHistory, rows: balanceHistory, label: "снимков баланса" },
+      { delegate: tx.chatMessage, rows: chatMessages, label: "сообщений чата" },
+      { delegate: tx.aiLog, rows: aiLogs, label: "журналов ИИ" },
+    ]);
+
     const restoredCurrencyIds = new Map<string, string>();
-    if (allowReferenceData) {
+    let addedCurrencyCount = 0;
+    if (options.restoreReferenceData) {
       await tx.currencyRateSnapshot.deleteMany({});
       await tx.currencyRateCollectionRun.deleteMany({});
       for (const currency of currencies) {
@@ -250,8 +294,12 @@ export async function restoreBackup(
 
         const existingById = await tx.currency.findUnique({
           where: { id: archivedId },
-          select: { id: true },
+          select: { id: true, currency: true },
         });
+        if (existingById?.currency === currency.currency) {
+          restoredCurrencyIds.set(archivedId, existingById.id);
+          continue;
+        }
         const saved = await tx.currency.create({
           data: (existingById ? currencyData : currency) as any,
           select: { id: true },
@@ -260,12 +308,63 @@ export async function restoreBackup(
       }
       await createManyIfAny(tx.currencyRateSnapshot, currencyRateSnapshots);
       await createManyIfAny(tx.currencyRateCollectionRun, currencyRateCollectionRuns);
+    } else {
+      for (const currency of archivedCurrencies) {
+        if (!accounts.some(account => account.currencyId === currency.id)) continue;
+        const existingByCode = await tx.currency.findUnique({
+          where: { currency: currency.currency },
+          select: { id: true },
+        });
+        if (existingByCode) {
+          restoredCurrencyIds.set(currency.id, existingByCode.id);
+          continue;
+        }
+
+        const existingById = await tx.currency.findUnique({
+          where: { id: currency.id },
+          select: { id: true, currency: true },
+        });
+        if (existingById?.currency === currency.currency) {
+          restoredCurrencyIds.set(currency.id, existingById.id);
+          continue;
+        }
+
+        const { id: archivedId, ...currencyData } = currency;
+        const saved = await tx.currency.create({
+          data: (existingById ? currencyData : currency) as any,
+          select: { id: true },
+        });
+        restoredCurrencyIds.set(archivedId, saved.id);
+        addedCurrencyCount += 1;
+      }
     }
 
-    const accountsToRestore = accounts.map(account => {
-      const restoredId = account.currencyId && restoredCurrencyIds.get(account.currencyId);
+    const accountsToRestore = await Promise.all(accounts.map(async account => {
+      let restoredId = account.currencyId && restoredCurrencyIds.get(account.currencyId);
+      if (!restoredId && account.currencyId) {
+        const existingCurrency = await tx.currency.findUnique({
+          where: { id: account.currencyId },
+          select: { id: true },
+        });
+        restoredId = existingCurrency?.id;
+      }
+      if (!restoredId && typeof account.currency === "string" && account.currency.length > 0) {
+        const matchingCurrencies = await tx.currency.findMany({
+          where: {
+            OR: [
+              { currency: account.currency },
+              { iso: account.currency },
+              { symbol: account.currency },
+              { name: account.currency },
+            ],
+          },
+          select: { id: true },
+          take: 1,
+        });
+        restoredId = matchingCurrencies[0]?.id;
+      }
       return restoredId ? { ...account, currencyId: restoredId } : account;
-    });
+    }));
     await createManyIfAny(tx.account, accountsToRestore);
     await createCategoriesInParentOrder(tx, categories);
     await createManyIfAny(tx.goal, goals);
@@ -299,7 +398,7 @@ export async function restoreBackup(
         balanceHistory: balanceHistory.length,
         chatMessages: chatMessages.length,
         aiLogs: aiLogs.length,
-        currencies: currencies.length,
+        currencies: options.restoreReferenceData ? currencies.length : addedCurrencyCount,
         currencyRateSnapshots: currencyRateSnapshots.length,
         currencyRateCollectionRuns: currencyRateCollectionRuns.length,
       },
@@ -386,6 +485,26 @@ async function createManyIfAny(delegate: any, rows: Row[]) {
   if (rows.length > 0) await delegate.createMany({ data: rows });
 }
 
+async function assertRestoredIdsAvailable(
+  tx: any,
+  collections: Array<{ delegate: any; rows: Row[]; label: string }>,
+) {
+  for (const { delegate, rows, label } of collections) {
+    if (rows.length === 0) continue;
+    const collision = await delegate.findMany({
+      where: { id: { in: rows.map(row => row.id) } },
+      select: { id: true },
+      take: 1,
+    });
+    if (collision.length > 0) {
+      throw new BackupServiceError(
+        `Идентификаторы архива для ${label} уже используются другими данными. Удалите исходный профиль или выберите свободную учётную запись`,
+        409,
+      );
+    }
+  }
+}
+
 async function createCategoriesInParentOrder(tx: any, categories: Row[]) {
   const pending = new Map(categories.map(category => [category.id, category]));
   const created = new Set<string>();
@@ -465,21 +584,44 @@ function assertUniqueIds(rows: Row[], label: string) {
 }
 
 async function assertNoForeignDependents(tx: any, userId: string) {
-  const [accounts, categories] = await Promise.all([
+  const [accounts, categories, plans] = await Promise.all([
     tx.account.findMany({ where: { userId }, select: { id: true } }),
     tx.category.findMany({ where: { userId }, select: { id: true } }),
+    tx.calendarPlan.findMany({ where: { userId }, select: { id: true } }),
   ]);
   const accountIds = accounts.map((row: { id: string }) => row.id);
   const categoryIds = categories.map((row: { id: string }) => row.id);
+  const planIds = plans.map((row: { id: string }) => row.id);
+  const occurrences = planIds.length > 0
+    ? await tx.calendarOccurrence.findMany({
+      where: { calendarPlanId: { in: planIds } },
+      select: { id: true },
+    })
+    : [];
+  const occurrenceIds = occurrences.map((row: { id: string }) => row.id);
+  const transactionReferences = [
+    ...(accountIds.length > 0
+      ? [
+        { accountId: { in: accountIds } },
+        { targetAccountId: { in: accountIds } },
+      ]
+      : []),
+    ...(categoryIds.length > 0
+      ? [
+        { categoryId: { in: categoryIds } },
+        { subcategoryId: { in: categoryIds } },
+      ]
+      : []),
+    ...(occurrenceIds.length > 0
+      ? [{ calendarOccurrenceId: { in: occurrenceIds } }]
+      : []),
+  ];
   const [foreignTransactions, foreignChildCategories] = await Promise.all([
-    accountIds.length > 0
+    transactionReferences.length > 0
       ? tx.transaction.findMany({
         where: {
           userId: { not: userId },
-          OR: [
-            { accountId: { in: accountIds } },
-            { targetAccountId: { in: accountIds } },
-          ],
+          OR: transactionReferences,
         },
         select: { id: true },
         take: 1,
@@ -499,7 +641,7 @@ async function assertNoForeignDependents(tx: any, userId: string) {
 
   if (foreignTransactions.length > 0 || foreignChildCategories.length > 0) {
     throw new BackupServiceError(
-      "В данных обнаружены связи с записями других пользователей; восстановление остановлено",
+      "В данных есть связи с записями других пользователей; восстановление остановлено, чтобы не изменить их данные",
       409,
     );
   }

@@ -27,6 +27,10 @@ const fake = vi.hoisted(() => {
         const ids = new Set(args.where.calendarPlanId.in);
         rows = rows.filter(row => ids.has(row.calendarPlanId));
       }
+      if (args.where?.id?.in) {
+        const ids = new Set(args.where.id.in);
+        rows = rows.filter(row => ids.has(row.id));
+      }
       if (args.where?.parentId?.in) {
         rows = rows.filter(row => args.where.parentId.in.includes(row.parentId));
       }
@@ -86,7 +90,11 @@ const fake = vi.hoisted(() => {
 
 vi.mock("../../server/prisma", () => ({ prisma: fake.db }));
 
-import { exportBackup, restoreBackup } from "../../server/services/backup.service";
+import {
+  exportBackup,
+  restoreBackup,
+  restoreBackupForAdminTarget,
+} from "../../server/services/backup.service";
 
 const date = (value: string) => new Date(value);
 const accountFixture = () => ({
@@ -312,6 +320,102 @@ describe("full backup round trip", () => {
     });
   });
 
+  it("lets an admin restore a client backup to another user without changing shared rate history", async () => {
+    const archive = JSON.parse(JSON.stringify(await exportBackup("user-1")));
+    const personalTables = [
+      "account", "category", "transaction", "goal", "planGrid", "calendarPlan",
+      "calendarOccurrence", "calendarNote", "balanceHistory", "chatMessage", "aiLog",
+    ];
+    for (const name of personalTables) fake.tables[name].splice(0, fake.tables[name].length);
+    fake.tables.currency[0].id = "currency-rub-current";
+    const previousSnapshots = structuredClone(fake.tables.currencyRateSnapshot);
+    const previousRuns = structuredClone(fake.tables.currencyRateCollectionRun);
+    Object.assign(fake.userRecord, {
+      id: "target-user",
+      role: "user",
+      displayName: "Target profile",
+      photoURL: null,
+      settings: {},
+      email: "target@example.test",
+      password: "target-password-hash",
+    });
+
+    const result = await restoreBackupForAdminTarget("target-user", archive);
+
+    expect(result.restoredCounts.accounts).toBe(1);
+    expect(fake.tables.account[0]).toMatchObject({
+      id: "account-1",
+      userId: "target-user",
+      currencyId: "currency-rub-current",
+    });
+    expect(fake.tables.transaction[0].userId).toBe("target-user");
+    expect(fake.tables.chatMessage[0].userId).toBe("target-user");
+    expect(fake.tables.currencyRateSnapshot).toEqual(previousSnapshots);
+    expect(fake.tables.currencyRateCollectionRun).toEqual(previousRuns);
+    expect(fake.userRecord).toMatchObject({
+      id: "target-user",
+      role: "user",
+      displayName: "Анна",
+      email: "target@example.test",
+      password: "target-password-hash",
+    });
+  });
+
+  it("restores an admin archive to a selected account without replacing shared rate history", async () => {
+    const archive = JSON.parse(JSON.stringify(await exportBackup("user-1", true)));
+    const personalTables = [
+      "account", "category", "transaction", "goal", "planGrid", "calendarPlan",
+      "calendarOccurrence", "calendarNote", "balanceHistory", "chatMessage", "aiLog",
+    ];
+    for (const name of personalTables) fake.tables[name].splice(0, fake.tables[name].length);
+    fake.tables.currency[0].id = "currency-rub-current";
+    const previousSnapshots = structuredClone(fake.tables.currencyRateSnapshot);
+    const previousRuns = structuredClone(fake.tables.currencyRateCollectionRun);
+    Object.assign(fake.userRecord, {
+      id: "restored-admin",
+      role: "admin",
+      displayName: "New admin profile",
+      photoURL: null,
+      settings: {},
+      email: "new-admin@example.test",
+      password: "new-admin-password-hash",
+    });
+
+    const result = await restoreBackupForAdminTarget("restored-admin", archive);
+
+    expect(result.restoredCounts.accounts).toBe(1);
+    expect(result.restoredCounts.currencyRateSnapshots).toBe(0);
+    expect(fake.tables.account[0]).toMatchObject({
+      userId: "restored-admin",
+      currencyId: "currency-rub-current",
+    });
+    expect(fake.tables.currencyRateSnapshot).toEqual(previousSnapshots);
+    expect(fake.tables.currencyRateCollectionRun).toEqual(previousRuns);
+    expect(fake.userRecord).toMatchObject({
+      id: "restored-admin",
+      role: "admin",
+      email: "new-admin@example.test",
+      password: "new-admin-password-hash",
+      displayName: "Анна",
+    });
+  });
+
+  it("does not overwrite data when archived record IDs are still used by the source account", async () => {
+    const archive = JSON.parse(JSON.stringify(await exportBackup("user-1")));
+    Object.assign(fake.userRecord, {
+      id: "target-user",
+      role: "user",
+      email: "target@example.test",
+      password: "target-password-hash",
+    });
+
+    await expect(restoreBackupForAdminTarget("target-user", archive))
+      .rejects.toThrow("уже используются другими данными");
+    expect(fake.tables.account).toHaveLength(1);
+    expect(fake.tables.account[0].userId).toBe("user-1");
+    expect(fake.tables.transaction).toHaveLength(1);
+  });
+
   it("refuses to cascade-delete another user's transaction through a shared account id", async () => {
     const archive = await exportBackup("user-1");
     fake.tables.transaction.push({
@@ -324,6 +428,22 @@ describe("full backup round trip", () => {
     expect(fake.tables.account).toHaveLength(1);
     expect(fake.tables.transaction).toHaveLength(2);
     expect(fake.db.account.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("refuses to null another user's transaction category during restore", async () => {
+    const archive = await exportBackup("user-1");
+    fake.tables.transaction.push({
+      ...fake.tables.transaction[0],
+      id: "foreign-category-transaction",
+      userId: "user-2",
+      accountId: "foreign-account",
+      categoryId: "category-1",
+    });
+
+    await expect(restoreBackup("user-1", archive, false)).rejects.toThrow("других пользователей");
+    expect(fake.tables.category).toHaveLength(2);
+    expect(fake.tables.transaction).toHaveLength(2);
+    expect(fake.db.category.deleteMany).not.toHaveBeenCalled();
   });
 
   it("requires an administrator path for global currency and rate data", async () => {
