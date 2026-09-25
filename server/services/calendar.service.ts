@@ -354,7 +354,11 @@ export async function replaceCalendar(
     });
   });
 
-  return listCalendar(userId);
+  // The caller already holds the updated calendar state, and the controller
+  // broadcasts an invalidation for other sessions. Avoid re-reading every
+  // plan and occurrence after the transaction: a failed readback could report
+  // a committed save as failed and adds latency to every calendar edit.
+  return { success: true };
 }
 
 export async function setManualCompletion(

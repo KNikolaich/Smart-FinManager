@@ -429,7 +429,6 @@ export default function PlanPage({
     const previousNotes = calendarNotes;
     setCalendarPayments(payments);
     setCalendarNotes(notes);
-    setCalendarError(null);
     try {
       await api.post('/plan-grid/calendar', { payments, notes });
       setSaveStatus(!navigator.onLine ? 'queued' : 'saved');
@@ -437,7 +436,6 @@ export default function PlanPage({
       console.error('Error saving payment calendar:', error);
       setCalendarPayments(previousPayments);
       setCalendarNotes(previousNotes);
-      setCalendarError('Не удалось сохранить календарь. Попробуйте ещё раз.');
       setSaveStatus('error');
       throw error;
     }

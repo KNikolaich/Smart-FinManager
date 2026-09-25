@@ -27,8 +27,8 @@ export async function getByType(req: any, res: any) {
 }
 
 export async function setByType(req: any, res: any) {
+  const { type } = req.params;
   try {
-    const { type } = req.params;
     const userId = req.user.userId;
     const data = req.body;
 
@@ -46,7 +46,10 @@ export async function setByType(req: any, res: any) {
     notifyUser(userId, "data:updated", { type: "plan-grid", planType: type });
     res.json(result);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    if (type === "calendar" && (error.status || 500) >= 500) {
+      console.error("Calendar save failed:", error);
+    }
+    res.status(error.status || 500).json({ error: error.message });
   }
 }
 
