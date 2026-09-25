@@ -15,6 +15,7 @@ import {
 } from '../lib/plannedPaymentOccurrences';
 import {
   getCalendarPlanCleanupMode,
+  getNextCalendarPlanDate,
   getPastPlanCleanupCandidates,
   isCompletedOccurrence,
   applyCalendarPlanTrash,
@@ -676,7 +677,7 @@ export default function UpcomingTasks({
                 ? 'Удалить записку из календаря'
                 : focusedOccurrence
                   ? getCalendarPlanCleanupMode(focusedOccurrence.payment, todayKey) === 'reset-history'
-                    ? 'Скрыть прошлые отметки, план продолжится с сегодня'
+                    ? 'Скрыть прошлые отметки, план продолжится со следующего запуска по графику'
                     : 'Удалить план целиком из календаря'
                   : 'Выберите план'}
               data-testid="button-upcoming-delete"
@@ -1165,7 +1166,7 @@ function PlanCleanupDialog({
             <div className="rounded-xl border border-theme-base bg-theme-main p-3 text-xs text-theme-main">
               <p>Из календаря удалится планов: <strong>{bulkDeletes.length}</strong>.</p>
               {bulkResets.length > 0 && (
-                <p className="mt-1">С продолжением с сегодняшней даты останется планов: <strong>{bulkResets.length}</strong>.</p>
+                <p className="mt-1">С продолжением со следующего запуска по графику останется планов: <strong>{bulkResets.length}</strong>.</p>
               )}
               {bulkNotes.length > 0 && (
                 <p className="mt-1">Старых записок будет удалено: <strong>{bulkNotes.length}</strong>.</p>
@@ -1185,7 +1186,7 @@ function PlanCleanupDialog({
                       {' · '}
                       {getCalendarPlanCleanupMode(payment, today) === 'delete'
                         ? 'будет удалён из календаря'
-                        : 'продолжится с сегодня'}
+                        : 'продолжится со следующего запуска по графику'}
                     </span>
                   </li>
                 ))}
@@ -1258,6 +1259,9 @@ function SinglePlanCleanupDetails({
 }) {
   const completed = isCompletedOccurrence(item);
   const payment = item.payment;
+  const nextPlanDate = mode === 'reset-history'
+    ? getNextCalendarPlanDate(payment, today)
+    : null;
   const dateLabel = new Date(`${item.date}T12:00:00`).toLocaleDateString('ru-RU', {
     day: 'numeric',
     month: 'long',
@@ -1281,8 +1285,8 @@ function SinglePlanCleanupDetails({
       </div>
       {mode === 'reset-history' ? (
         <p className="text-xs leading-relaxed text-theme-muted">
-          План продолжится. Дата начала станет {formatLongDate(today)}, а вхождения до этой даты, включая выбранное,
-          перестанут отображаться в календаре. Связанные операции в истории не удаляются.
+          План продолжится со следующего запуска по графику{nextPlanDate ? ` — ${formatLongDate(nextPlanDate)}` : ''}.
+          Отметки до этой даты перестанут отображаться в календаре. Связанные операции в истории не удаляются.
         </p>
       ) : (
         <p className="text-xs leading-relaxed text-theme-muted">

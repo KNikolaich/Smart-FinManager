@@ -46,19 +46,34 @@ describe('calendar plan cleanup', () => {
     }]);
   });
 
-  it('preserves the selected weekdays and monthly schedule when choosing the next date', () => {
+  it('chooses the next date from the full recurrence schedule', () => {
     const weekdays = payment({
       date: '2026-09-01',
       recurrence: 'weekdays',
       weekdays: [1, 4],
     });
+    const biweekly = payment({
+      date: '2026-09-04',
+      recurrence: 'biweekly',
+    });
     const monthly = payment({
       date: '2026-08-15',
       recurrence: 'monthly',
     });
+    const quarterly = payment({
+      date: '2026-06-15',
+      recurrence: 'quarterly',
+    });
+    const yearly = payment({
+      date: '2025-09-25',
+      recurrence: 'yearly',
+    });
 
     expect(getNextCalendarPlanDate(weekdays, today)).toBe('2026-09-28');
+    expect(getNextCalendarPlanDate(biweekly, today)).toBe('2026-10-02');
     expect(getNextCalendarPlanDate(monthly, today)).toBe('2026-10-15');
+    expect(getNextCalendarPlanDate(quarterly, today)).toBe('2026-12-15');
+    expect(getNextCalendarPlanDate(yearly, today)).toBe('2026-09-25');
   });
 
   it('deletes a completed one-time plan and an unstarted future recurring plan', () => {
@@ -108,7 +123,7 @@ describe('calendar plan cleanup', () => {
     )).toEqual([
       {
         ...completedSeries,
-        date: today,
+        date: '2026-10-01',
         status: 'pending',
         paidDates: [],
         occurrences: [],

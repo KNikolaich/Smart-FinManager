@@ -440,6 +440,37 @@ describe('UpcomingTasks', () => {
     }));
   });
 
+  it('shows the next scheduled date when clearing history from a recurring plan', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 24, 12));
+
+    const recurring = {
+      ...makePayment(0),
+      id: 'weekly-plan',
+      title: 'Еженедельный план',
+      date: '2026-09-04',
+      recurrence: 'weekly' as const,
+    };
+
+    render(
+      <UpcomingTasks
+        payments={[recurring]}
+        startDate="2026-09-24"
+        focusedDate="2026-09-25"
+        onDeleteTask={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('button-upcoming-view'));
+    fireEvent.click(screen.getByTestId('button-plan-view-delete'));
+
+    const confirmationText = screen.getByTestId('dialog-plan-cleanup').textContent || '';
+    expect(confirmationText).toContain('План продолжится со следующего запуска по графику');
+    expect(confirmationText).toContain('25 сентября 2026');
+    expect(confirmationText).toContain('Отметки до этой даты перестанут отображаться');
+    expect(confirmationText).not.toContain('Дата начала станет 24 сентября');
+  });
+
   it('places the eraser immediately before the trash and confirms bulk cleanup candidates', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 24, 12));
