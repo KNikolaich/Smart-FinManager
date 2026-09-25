@@ -48,11 +48,20 @@ app.use((req, res, next) => {
 });
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Request logging middleware
+// Log API response time and size to separate server latency from client-side
+// rendering or network transfer when investigating slow screens.
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api')) {
-    console.log(`[API Request] ${req.method} ${req.path}`);
-  }
+  if (!req.path.startsWith('/api')) return next();
+
+  const startedAt = process.hrtime.bigint();
+  res.once('finish', () => {
+    const elapsedMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+    const contentLength = res.getHeader('content-length');
+    const size = contentLength ? ` ${contentLength} bytes` : '';
+    console.log(
+      `[API Response] ${req.method} ${req.path} ${res.statusCode} ${elapsedMs.toFixed(1)}ms${size}`,
+    );
+  });
   next();
 });
 
