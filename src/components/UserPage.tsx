@@ -26,7 +26,9 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
     seeding, seedProgress, success, showSeedConfirm, setShowSeedConfirm, password, setPassword,
     seedInitialData, seedCalendarOnly,
     showClearConfirm, setShowClearConfirm, deleteAccount, showClearTransactionsConfirm,
-    setShowClearTransactionsConfirm, clearTransactionsOnly, exporting, exportData,
+    setShowClearTransactionsConfirm, clearTransactionsOnly,
+    showClearAllDataConfirm, setShowClearAllDataConfirm, clearAllDataError, setClearAllDataError,
+    clearAllUserData, exporting, exportData,
     fileInputRef, handleImportClick, handleFileChange, clearing
   } = useDataManagement(user, onRefresh, onLogout);
 
@@ -164,6 +166,22 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
               <div className="text-left">
                 <p className="font-semibold text-sm text-theme-main">Стереть операции</p>
                 <p className="text-xs text-theme-muted">Удалить только транзакции</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
+                setClearAllDataError(null);
+                setShowClearAllDataConfirm(true);
+              }}
+              className="w-full px-6 py-4 flex items-center gap-4 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors border-b border-theme-base"
+            >
+              <div className="w-10 h-10 bg-rose-500/10 rounded-xl flex items-center justify-center">
+                <Eraser className="w-5 h-5 text-rose-500" />
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-sm text-rose-600">Почистить все данные</p>
+                <p className="text-xs text-theme-muted">Очистить счета, планы, операции и историю ИИ</p>
               </div>
             </button>
 
@@ -350,6 +368,70 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
                 </button>
                 <button
                   onClick={() => { setShowClearTransactionsConfirm(false); setPassword(''); }}
+                  disabled={clearing}
+                  className="w-full bg-theme-main text-theme-muted font-bold py-4 rounded-2xl hover:bg-theme-base transition-all active:scale-95"
+                >
+                  Отмена
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {showClearAllDataConfirm && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="clear-all-data-title"
+          >
+            <div className="w-full max-w-md bg-theme-surface rounded-[32px] p-8 text-center shadow-2xl animate-in zoom-in duration-200 border border-theme-base">
+              <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-8 h-8 text-rose-500" />
+              </div>
+              <h3 id="clear-all-data-title" className="text-xl font-bold text-theme-main mb-2">
+                Очистить все данные?
+              </h3>
+              <p className="text-theme-muted mb-5 text-sm">
+                Будут удалены счета и балансы, операции, планы и заметки календаря,
+                остальные данные раздела «Планы», цели, месячные кэшбеки, журналы ИИ
+                и разговоры с ИИ. Это действие нельзя отменить.
+              </p>
+              <p className="text-theme-muted mb-5 text-xs">
+                Категории, категории кэшбека, валюты и история курсов сохранятся.
+                Профиль и настройки аккаунта останутся.
+              </p>
+              <input
+                type="password"
+                autoComplete="current-password"
+                placeholder="Введите пароль для подтверждения"
+                value={password}
+                onChange={event => setPassword(event.target.value)}
+                className="w-full bg-theme-main p-4 rounded-2xl mb-3 text-center border border-theme-base outline-none focus:ring-2 ring-theme-primary/20 text-theme-main"
+              />
+              {clearAllDataError && (
+                <p className="mb-4 text-sm text-rose-600" role="alert">
+                  {clearAllDataError}
+                </p>
+              )}
+              <div className="flex flex-col w-full gap-3">
+                <button
+                  onClick={clearAllUserData}
+                  disabled={clearing}
+                  className="w-full bg-rose-600 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-rose-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {clearing ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Eraser className="w-5 h-5" />
+                  )}
+                  Да, очистить все данные
+                </button>
+                <button
+                  onClick={() => {
+                    setShowClearAllDataConfirm(false);
+                    setClearAllDataError(null);
+                    setPassword('');
+                  }}
                   disabled={clearing}
                   className="w-full bg-theme-main text-theme-muted font-bold py-4 rounded-2xl hover:bg-theme-base transition-all active:scale-95"
                 >

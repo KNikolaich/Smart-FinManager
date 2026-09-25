@@ -70,6 +70,101 @@ export const safeStorage = {
   }
 };
 
+const DATA_RESET_ENDPOINT_PREFIXES = [
+  '/initial-data',
+  '/transactions',
+  '/accounts',
+  '/goals',
+  '/balance-history',
+  '/ai-logs',
+  '/chat-history',
+  '/plan-grid',
+  '/data/clear-transactions',
+];
+
+function isDataResetEndpoint(endpoint: string): boolean {
+  const path = endpoint.split('?')[0].replace(/^\/api(?=\/)/, '');
+  return DATA_RESET_ENDPOINT_PREFIXES.some(prefix =>
+    path === prefix || path.startsWith(`${prefix}/`),
+  );
+}
+
+function preserveCashbackCategoryQueueItem(item: any): any | null {
+  if (!item || typeof item.endpoint !== 'string' || !item.endpoint.startsWith('/plan-grid')) {
+    return null;
+  }
+
+  const endpoint = item.endpoint.split('?')[0].replace(/^\/api(?=\/)/, '');
+  const data = item.data;
+  const candidates = endpoint === '/plan-grid'
+    ? [data?.cashback, data?.cashbacks]
+    : [data, data?.cashback, data?.cashbacks];
+  const cashback = candidates.find(candidate =>
+    candidate && typeof candidate === 'object' && Array.isArray(candidate.categories),
+  );
+  if (!cashback) return null;
+
+  return {
+    ...item,
+    endpoint: '/plan-grid/cashback',
+    data: {
+      categories: cashback.categories,
+      months: [],
+      entries: [],
+    },
+  };
+}
+
+/**
+ * Prevent stale local data from reappearing after a full account-data reset.
+ * Category and currency requests are intentionally retained.
+ */
+export function clearLocalUserDataAfterReset(): void {
+  const queueKey = 'api_offline_queue';
+  const rawQueue = safeStorage.getItem(queueKey);
+  if (rawQueue) {
+    try {
+      const queue = JSON.parse(rawQueue);
+      if (Array.isArray(queue)) {
+        const retainedQueue: any[] = [];
+        for (const item of queue) {
+          if (typeof item?.endpoint === 'string' && item.endpoint.startsWith('/plan-grid')) {
+            const cashbackCategories = preserveCashbackCategoryQueueItem(item);
+            if (cashbackCategories) retainedQueue.push(cashbackCategories);
+            continue;
+          }
+          if (!isDataResetEndpoint(typeof item?.endpoint === 'string' ? item.endpoint : '')) {
+            retainedQueue.push(item);
+          }
+        }
+        safeStorage.setItem(
+          queueKey,
+          JSON.stringify(retainedQueue),
+        );
+      }
+    } catch (error) {
+      // Leave an unreadable queue untouched; it cannot be safely filtered.
+      console.warn('Could not filter offline queue after data reset:', error);
+    }
+  }
+
+  try {
+    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+      const key = localStorage.key(index);
+      if (!key) continue;
+      let endpoint: string | null = null;
+      if (key.startsWith('api_cache_timestamp_')) {
+        endpoint = key.slice('api_cache_timestamp_'.length);
+      } else if (key.startsWith('api_cache_')) {
+        endpoint = key.slice('api_cache_'.length);
+      }
+      if (endpoint && isDataResetEndpoint(endpoint)) safeStorage.removeItem(key);
+    }
+  } catch (error) {
+    console.warn('Could not clear cached user data after reset:', error);
+  }
+}
+
 /**
  * Hard cap on the number of non-plan-grid items that may sit in the offline
  * queue at one time.  Plan-grid items are full overwrites so they deduplicate

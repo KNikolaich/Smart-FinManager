@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { addDemoCalendarData, generateDemoData } from '../services/demoDataService';
 import { importFinancialData } from '../services/importService';
-import { api } from '../lib/api';
+import { api, clearLocalUserDataAfterReset } from '../lib/api';
 import * as XLSX from 'xlsx';
 import { UserProfile } from '../types';
 
@@ -12,6 +12,8 @@ export function useDataManagement(user: UserProfile, onRefresh: () => void, onLo
   const [clearing, setClearing] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showClearTransactionsConfirm, setShowClearTransactionsConfirm] = useState(false);
+  const [showClearAllDataConfirm, setShowClearAllDataConfirm] = useState(false);
+  const [clearAllDataError, setClearAllDataError] = useState<string | null>(null);
   const [showSeedConfirm, setShowSeedConfirm] = useState(false);
   const [password, setPassword] = useState('');
   const [exporting, setExporting] = useState(false);
@@ -153,6 +155,30 @@ export function useDataManagement(user: UserProfile, onRefresh: () => void, onLo
     }
   };
 
+  const clearAllUserData = async () => {
+    if (!password) {
+      setClearAllDataError('Введите пароль для подтверждения.');
+      return;
+    }
+
+    setClearing(true);
+    setClearAllDataError(null);
+    try {
+      await api.postDirect('/data/clear-all', { password });
+      clearLocalUserDataAfterReset();
+      onRefresh();
+      setShowClearAllDataConfirm(false);
+      setPassword('');
+    } catch (error) {
+      console.error('Clear all user data error:', error);
+      setClearAllDataError(
+        error instanceof Error ? error.message : 'Не удалось очистить данные. Попробуйте ещё раз.',
+      );
+    } finally {
+      setClearing(false);
+    }
+  };
+
   const exportData = async () => {
     setExporting(true);
     try {
@@ -185,9 +211,12 @@ export function useDataManagement(user: UserProfile, onRefresh: () => void, onLo
 
   return {
     seeding, seedProgress, success, clearing, showClearConfirm, setShowClearConfirm,
-    showClearTransactionsConfirm, setShowClearTransactionsConfirm, showSeedConfirm, setShowSeedConfirm,
+    showClearTransactionsConfirm, setShowClearTransactionsConfirm,
+    showClearAllDataConfirm, setShowClearAllDataConfirm, clearAllDataError, setClearAllDataError,
+    showSeedConfirm, setShowSeedConfirm,
     password, setPassword, exporting, importing, importProgress, importLogs, showLogModal, setShowLogModal,
     importResult, fileInputRef, handleImportClick, handleFileChange, seedInitialData, seedCalendarOnly, deleteAccount,
+    clearAllUserData,
     clearTransactionsOnly, exportData, copyLogsToClipboard
   };
 }
