@@ -124,6 +124,7 @@ model Goal {
   description   String?
   targetAmount  Float
   currentAmount Float     @default(0)
+  currency      String    @default("RUB")
   deadline      DateTime?
   completedAt   DateTime?
   isCompleted   Boolean   @default(false)

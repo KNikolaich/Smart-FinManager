@@ -17,6 +17,7 @@ import goalsRoutes from "./server/routes/goals.routes";
 import planGridsRoutes from "./server/routes/planGrids.routes";
 import currenciesRoutes from "./server/routes/currencies.routes";
 import balanceHistoryRoutes from "./server/routes/balanceHistory.routes";
+import demoDataRoutes from "./server/routes/demoData.routes";
 import userRoutes from "./server/routes/user.routes";
 import importRoutes from "./server/routes/import.routes";
 import backupRoutes from "./server/routes/backup.routes";
@@ -66,6 +67,7 @@ app.use(goalsRoutes);
 app.use(planGridsRoutes);
 app.use(currenciesRoutes);
 app.use(balanceHistoryRoutes);
+app.use(demoDataRoutes);
 app.use(userRoutes);
 
 // --- IMPORT ROUTES ---

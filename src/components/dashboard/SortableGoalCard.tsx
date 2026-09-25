@@ -6,6 +6,7 @@ import { ru } from 'date-fns/locale';
 import InteractiveMarkdown from '../ui/InteractiveMarkdown';
 import { cn } from '../../lib/utils';
 import { createPortal } from 'react-dom';
+import { formatGoalAmount } from '../../lib/goalCurrency';
 
 interface SortableGoalCardProps {
   goal: Goal;
@@ -53,6 +54,7 @@ export function SortableGoalCard({
       name: editName,
       targetAmount: parseFloat(editTarget),
       currentAmount: parseFloat(editCurrent),
+      currency: goal.currency || 'RUB',
       deadline: editDeadline || null,
       description: editDescription
     });
@@ -305,11 +307,11 @@ export function SortableGoalCard({
         <div className="flex justify-between items-end mb-3">
           <div>
             <p className="text-[10px] font-bold text-theme-muted uppercase tracking-widest leading-none mb-1">Накоплено</p>
-            <p className="font-bold text-emerald-500 leading-none">{goal.currentAmount.toLocaleString()} ₽</p>
+            <p className="font-bold text-emerald-500 leading-none">{formatGoalAmount(goal.currentAmount, goal.currency)}</p>
           </div>
           <div className="text-right">
             <p className="text-[10px] font-bold text-theme-muted uppercase tracking-widest leading-none mb-1">Цель</p>
-            <p className="font-bold text-theme-main leading-none">{goal.targetAmount.toLocaleString()} ₽</p>
+            <p className="font-bold text-theme-main leading-none">{formatGoalAmount(goal.targetAmount, goal.currency)}</p>
           </div>
         </div>
 

@@ -228,6 +228,7 @@ export const goalCreateSchema = z.object({
   description: z.string().trim().max(500).optional().nullable(),
   targetAmount: z.coerce.number().finite(),
   currentAmount: z.coerce.number().finite().optional().default(0),
+  currency: z.string().trim().regex(/^[A-Z]{3}$/).optional().default("RUB"),
   deadline: optionalNullableDate,
   isCompleted: z.boolean().optional(),
   completedAt: optionalNullableDate,

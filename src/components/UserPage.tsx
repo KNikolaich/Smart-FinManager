@@ -222,7 +222,7 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
                 <Sparkles className="w-8 h-8 text-amber-500" />
               </div>
               <h3 className="text-xl font-bold text-theme-main mb-2">Создать демо-данные?</h3>
-              <p className="text-theme-muted mb-8 text-sm">Будут добавлены 3 карты и операции за 3 месяца.</p>
+              <p className="text-theme-muted mb-8 text-sm">Добавятся 6 счетов, 2 цели и операции за 5 завершённых месяцев. Существующие данные не удаляются; повторный запуск добавит ещё один набор демо-операций.</p>
               <input
                 type="password"
                 placeholder="Введите пароль"

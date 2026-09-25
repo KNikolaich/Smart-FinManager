@@ -3,6 +3,7 @@ import { api } from '../lib/api';
 import { Goal } from '../types';
 import { X, Plus, Trash2, Check, Calendar, Edit2, Target, TrendingUp, Save, GripVertical } from 'lucide-react';
 import { SimpleMarkdown } from './ui/InteractiveMarkdown';
+import { formatGoalAmount } from '../lib/goalCurrency';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import {
@@ -213,13 +214,13 @@ function SortableGoalItem({
               <p className="text-[8px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5 sm:mb-1 flex items-center gap-1">
                 <TrendingUp className="w-2.5 h-2.5 sm:w-3 h-3" /> Накоплено
               </p>
-              <p className="text-xs sm:text-base font-bold text-emerald-600">{goal.currentAmount.toLocaleString()} ₽</p>
+              <p className="text-xs sm:text-base font-bold text-emerald-600">{formatGoalAmount(goal.currentAmount, goal.currency)}</p>
             </div>
             <div className="bg-neutral-50 rounded-xl sm:rounded-2xl p-2 sm:p-3">
               <p className="text-[8px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5 sm:mb-1 flex items-center gap-1">
                 <Target className="w-2.5 h-2.5 sm:w-3 h-3" /> Цель
               </p>
-              <p className="text-xs sm:text-base font-bold text-neutral-900">{goal.targetAmount.toLocaleString()} ₽</p>
+              <p className="text-xs sm:text-base font-bold text-neutral-900">{formatGoalAmount(goal.targetAmount, goal.currency)}</p>
             </div>
           </div>
 

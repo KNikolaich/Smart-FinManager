@@ -177,7 +177,7 @@ async function restoreBackupInternal(
     "amount", "targetAmount", "exchangeRate", "type", "description", "createdAt",
   ], { userId, dates: ["createdAt"] });
   const goals = normalizeRows(data.goals, [
-    "id", "name", "description", "targetAmount", "currentAmount", "deadline", "completedAt",
+    "id", "name", "description", "targetAmount", "currentAmount", "currency", "deadline", "completedAt",
     "isCompleted", "createdAt", "sortOrder",
   ], { userId, dates: ["createdAt"], nullableDates: ["deadline", "completedAt"] });
   const planGrids = normalizeRows(data.planGrids, [

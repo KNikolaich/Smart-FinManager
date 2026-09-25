@@ -95,6 +95,7 @@ export interface Goal {
   description?: string;
   targetAmount: number;
   currentAmount: number;
+  currency?: string;
   deadline?: string;
   completedAt?: string;
   isCompleted: boolean;
