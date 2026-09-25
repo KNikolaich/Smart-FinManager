@@ -8,23 +8,30 @@ import {
 
 export type CalendarPlanCleanupMode = 'delete' | 'reset-history';
 
-export function getCalendarPlanCleanupMode(
+export function getNextCalendarPlanDate(
   payment: PlannedPayment,
   today: string,
-): CalendarPlanCleanupMode {
-  if (payment.recurrence === 'none' || payment.date > today) return 'delete';
-
-  const tomorrow = shiftDate(today, 1);
+): string | null {
+  const start = shiftDate(today, 1);
   const fiveYearsFromToday = parseDateKey(today);
   fiveYearsFromToday.setFullYear(fiveYearsFromToday.getFullYear() + 5);
   const end = payment.disableFrom && payment.disableFrom < toDateKey(fiveYearsFromToday)
     ? payment.disableFrom
     : toDateKey(fiveYearsFromToday);
 
-  if (end < tomorrow) return 'delete';
+  if (end < start) return null;
 
-  const hasFutureOccurrence = getPaymentOccurrencesInRange(payment, tomorrow, end).length > 0;
-  return hasFutureOccurrence ? 'reset-history' : 'delete';
+  const scheduledPlan = { ...payment, occurrences: [] };
+  return getPaymentOccurrencesInRange(scheduledPlan, start, end)[0]?.date ?? null;
+}
+
+export function getCalendarPlanCleanupMode(
+  payment: PlannedPayment,
+  today: string,
+): CalendarPlanCleanupMode {
+  if (payment.recurrence === 'none' || payment.date > today) return 'delete';
+
+  return getNextCalendarPlanDate(payment, today) ? 'reset-history' : 'delete';
 }
 
 export function getPastPlanCleanupCandidates(
@@ -77,10 +84,13 @@ export function isCompletedOccurrence(item: PlannedPaymentOccurrence) {
 }
 
 function resetPlanHistory(payment: PlannedPayment, today: string): PlannedPayment {
-  const paidDates = new Set((payment.paidDates || []).filter(date => date >= today));
+  const nextDate = getNextCalendarPlanDate(payment, today);
+  if (!nextDate) return payment;
+
+  const paidDates = new Set((payment.paidDates || []).filter(date => date >= nextDate));
   payment.occurrences?.forEach(occurrence => {
     if (
-      occurrence.date >= today
+      occurrence.date >= nextDate
       && (occurrence.manuallyCompleted || occurrence.transactionId)
     ) {
       paidDates.add(occurrence.date);
@@ -89,10 +99,10 @@ function resetPlanHistory(payment: PlannedPayment, today: string): PlannedPaymen
 
   return {
     ...payment,
-    date: today,
-    status: paidDates.has(today) ? 'paid' : 'pending',
+    date: nextDate,
+    status: paidDates.has(nextDate) ? 'paid' : 'pending',
     paidDates: Array.from(paidDates),
-    occurrences: (payment.occurrences || []).filter(occurrence => occurrence.date >= today),
+    occurrences: (payment.occurrences || []).filter(occurrence => occurrence.date >= nextDate),
   };
 }
 

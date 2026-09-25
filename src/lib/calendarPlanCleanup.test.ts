@@ -4,6 +4,7 @@ import {
   applyCalendarPlanTrash,
   applyPastPlanCleanup,
   getCalendarPlanCleanupMode,
+  getNextCalendarPlanDate,
   getPastPlanCleanupCandidates,
 } from './calendarPlanCleanup';
 
@@ -25,23 +26,39 @@ function payment(overrides: Partial<PlannedPayment> = {}): PlannedPayment {
 }
 
 describe('calendar plan cleanup', () => {
-  it('keeps a recurring plan that will continue, but resets its start and past marks', () => {
+  it('starts a weekly plan on its next scheduled date instead of shifting it to today', () => {
     const recurring = payment({
-      paidDates: ['2026-09-03', '2026-09-10', '2026-09-17'],
+      date: '2026-09-04',
+      paidDates: ['2026-09-04', '2026-09-11', '2026-09-18'],
       occurrences: [
         { id: 'old', date: '2026-09-17', manuallyCompleted: true },
-        { id: 'today', date: '2026-09-24', manuallyCompleted: true },
       ],
     });
 
     expect(getCalendarPlanCleanupMode(recurring, today)).toBe('reset-history');
+    expect(getNextCalendarPlanDate(recurring, today)).toBe('2026-09-25');
     expect(applyCalendarPlanTrash([recurring], recurring.id, today)).toEqual([{
       ...recurring,
-      date: today,
-      status: 'paid',
-      paidDates: [today],
-      occurrences: [expect.objectContaining({ date: today })],
+      date: '2026-09-25',
+      status: 'pending',
+      paidDates: [],
+      occurrences: [],
     }]);
+  });
+
+  it('preserves the selected weekdays and monthly schedule when choosing the next date', () => {
+    const weekdays = payment({
+      date: '2026-09-01',
+      recurrence: 'weekdays',
+      weekdays: [1, 4],
+    });
+    const monthly = payment({
+      date: '2026-08-15',
+      recurrence: 'monthly',
+    });
+
+    expect(getNextCalendarPlanDate(weekdays, today)).toBe('2026-09-28');
+    expect(getNextCalendarPlanDate(monthly, today)).toBe('2026-10-15');
   });
 
   it('deletes a completed one-time plan and an unstarted future recurring plan', () => {
