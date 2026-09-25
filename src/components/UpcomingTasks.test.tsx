@@ -289,6 +289,44 @@ describe('UpcomingTasks', () => {
     expect(screen.queryByTestId('dialog-calendar-note')).toBeNull();
   });
 
+  it('keeps stacked carousel cards the same height and clamps banner text', () => {
+    const longPlan: PlannedPayment = {
+      ...makePayment(0),
+      id: 'long-plan',
+      title: 'Очень длинное название плана, которое не должно вытолкнуть соседние баннеры вниз',
+      categoryName: 'Очень длинное название категории для проверки многоточия',
+    };
+    const longNote: CalendarNote = {
+      id: 'long-note',
+      date: '2026-09-20',
+      text: 'Длинная записка, которая может занимать несколько строк и должна обрезаться после второй строки.',
+    };
+
+    render(
+      <UpcomingTasks
+        payments={[longPlan, makePayment(1)]}
+        notes={[longNote]}
+        variant="carousel"
+        startDate="2026-09-18"
+      />,
+    );
+
+    const cards = Array.from(
+      screen.getByTestId('upcoming-tasks-carousel').querySelectorAll<HTMLElement>('[data-upcoming-item]'),
+    );
+    expect(cards).toHaveLength(3);
+    expect(cards.every(card => card.className.includes('h-24'))).toBe(true);
+
+    const banner = screen.getByTestId('upcoming-banner-long-plan-2026-09-18');
+    const title = banner.querySelector('strong')?.querySelectorAll('span')[2];
+    const category = banner.querySelector('strong')?.nextElementSibling;
+    expect(title?.className).toContain('truncate');
+    expect(category?.className).toContain('truncate');
+
+    const noteCard = screen.getByTestId('upcoming-note-card-long-note');
+    expect(noteCard.querySelector('strong')?.className).toContain('line-clamp-2');
+  });
+
   it('moves to the next stacked banner with a horizontal swipe', () => {
     const payments: PlannedPayment[] = [
       { ...makePayment(0), id: 'overdue', title: 'Просроченная задача', date: '2026-09-17' },

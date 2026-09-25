@@ -732,7 +732,7 @@ export default function UpcomingTasks({
             return (
               <article
                 key={item.key}
-                className={`absolute inset-x-0 top-3 overflow-hidden rounded-2xl border p-4 transition-transform ${cardTone}`}
+                className={`absolute inset-x-0 top-3 h-24 overflow-hidden rounded-2xl border p-4 transition-transform ${cardTone}`}
                 style={stackStyle}
                 data-testid={item.kind === 'note'
                   ? `upcoming-note-card-${item.note.id}`
@@ -766,7 +766,7 @@ export default function UpcomingTasks({
                         {carouselDateLabel(item.note.date)}
                       </span>
                       <strong
-                        className="mt-1 block max-h-14 overflow-hidden whitespace-pre-wrap break-words text-sm sm:text-base leading-tight line-clamp-3"
+                        className="mt-1 block overflow-hidden whitespace-pre-wrap break-words text-sm sm:text-base leading-tight line-clamp-2"
                         title={item.note.text}
                       >
                         {item.note.text}
@@ -802,15 +802,20 @@ export default function UpcomingTasks({
                         {carouselDateLabel(item.occurrence.date)}
                         {item.occurrence.payment.time && <> · <time>{item.occurrence.payment.time}</time></>}
                       </span>
-                      <strong className="mt-1 flex items-center gap-1 text-sm sm:text-base leading-tight break-words">
-                        <span>{formatMoney(item.occurrence.payment.amount)}</span>{' '}
-                        <span aria-hidden="true">·</span>{' '}
-                        <span className="min-w-0">{item.occurrence.payment.title}</span>
+                      <strong className="mt-1 flex min-w-0 items-center gap-1 text-sm sm:text-base leading-tight">
+                        <span className="shrink-0 whitespace-nowrap">{formatMoney(item.occurrence.payment.amount)}</span>
+                        <span className="shrink-0" aria-hidden="true">·</span>
+                        <span className="min-w-0 flex-1 truncate" title={item.occurrence.payment.title}>
+                          {item.occurrence.payment.title}
+                        </span>
                         {item.occurrence.payment.note?.trim() && (
                           <StickyNote size={13} className="shrink-0 text-amber-700" aria-label="У плана есть записка" />
                         )}
                       </strong>
-                      <span className="mt-1 block text-xs opacity-75 leading-snug break-words">
+                      <span
+                        className="mt-1 block truncate text-xs opacity-75 leading-snug"
+                        title={`${item.occurrence.payment.categoryName || 'Без категории'} · ${recurrenceLabel(item.occurrence.payment)}`}
+                      >
                         {item.occurrence.payment.categoryName || 'Без категории'} · {recurrenceLabel(item.occurrence.payment)}
                       </span>
                     </div>
