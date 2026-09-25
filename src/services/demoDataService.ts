@@ -6,6 +6,8 @@ interface DemoGenerationResult {
   transactionsAdded: number;
   goalsAdded: number;
   cashbackCategoriesAdded: number;
+  calendarPlansAdded: number;
+  calendarNotesAdded: number;
   months: string[];
 }
 
@@ -16,6 +18,8 @@ export const generateDemoData = async (
   onProgress('Подготавливаем демо-данные...');
   const result = await api.post<DemoGenerationResult>('/demo-data/generate', {});
   onProgress(`Добавлено операций: ${result.transactionsAdded}`);
+  onProgress(`Добавлено планов календаря: ${result.calendarPlansAdded}`);
+  onProgress(`Добавлено заметок в календарь: ${result.calendarNotesAdded}`);
   onProgress('Готово!');
   return result;
 };

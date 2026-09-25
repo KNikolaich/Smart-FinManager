@@ -110,6 +110,67 @@ describe("demo data builder", () => {
     }
   });
 
+  it("adds future recurring income and expense plans with post-salary calendar notes", () => {
+    const { categorySeed, dataset } = makeDataset();
+    const plansByTitle = new Map(dataset.calendarPlans.map(plan => [plan.title, plan]));
+
+    expect(dataset.calendarPlans).toHaveLength(7);
+    expect(plansByTitle.get("Зарплата")).toMatchObject({
+      amount: 200_000,
+      date: new Date("2026-10-05T12:00:00.000Z"),
+      recurrence: "monthly",
+      transactionType: "income",
+    });
+    expect(plansByTitle.get("Аванс")).toMatchObject({
+      amount: 50_000,
+      date: new Date("2026-09-25T12:00:00.000Z"),
+      recurrence: "monthly",
+      transactionType: "income",
+    });
+    expect(plansByTitle.get("Квартплата / аренда")).toMatchObject({
+      amount: 45_000,
+      date: new Date("2026-10-15T12:00:00.000Z"),
+      recurrence: "monthly",
+      transactionType: "expense",
+    });
+    expect(plansByTitle.get("Коммунальные услуги")?.date).toEqual(
+      new Date("2026-10-08T12:00:00.000Z"),
+    );
+    expect(plansByTitle.get("Связь и интернет")?.date).toEqual(
+      new Date("2026-10-09T12:00:00.000Z"),
+    );
+    expect(plansByTitle.get("Заправка")).toMatchObject({
+      date: new Date("2026-09-28T12:00:00.000Z"),
+      recurrence: "weekly",
+    });
+    expect(plansByTitle.get("Маникюр")).toMatchObject({
+      date: new Date("2026-09-26T12:00:00.000Z"),
+      recurrence: "biweekly",
+    });
+    expect(dataset.calendarPlans.every(plan =>
+      categorySeed.categoryIds.size > 0
+      && Array.from(categorySeed.categoryIds.values()).includes(plan.categoryId),
+    )).toBe(true);
+
+    expect(dataset.calendarNotes.map(note => note.date.toISOString().slice(0, 10))).toEqual([
+      "2026-10-06",
+      "2026-11-06",
+      "2026-12-06",
+      "2027-01-06",
+      "2027-02-06",
+    ]);
+    expect(dataset.calendarNotes.map(note => note.text)).toEqual([
+      "После зарплаты отложи часть денег на Бали.",
+      "После зарплаты пополни подушку безопасности.",
+      "После зарплаты отложи часть денег на Бали.",
+      "После зарплаты пополни подушку безопасности.",
+      "После зарплаты отложи часть денег на Бали.",
+    ]);
+    expect(dataset.calendarPlans.every(plan =>
+      !dataset.transactions.some(transaction => transaction.id === plan.id),
+    )).toBe(true);
+  });
+
   it("generates unique UUIDs for every new demo record", () => {
     const { categorySeed, dataset } = makeDataset();
     const ids = [
@@ -120,6 +181,8 @@ describe("demo data builder", () => {
       ...dataset.goals.map(goal => goal.id),
       ...dataset.cashback.categories.map(category => category.id),
       ...dataset.balanceHistory.map(row => row.id),
+      ...dataset.calendarPlans.map(plan => plan.id),
+      ...dataset.calendarNotes.map(note => note.id),
     ];
 
     expect(ids.every(id => UUID.test(id))).toBe(true);

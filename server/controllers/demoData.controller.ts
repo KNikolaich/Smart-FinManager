@@ -8,6 +8,7 @@ export async function generate(req: any, res: any) {
       notifyUser(req.user.userId, "data:updated", { type });
     }
     notifyUser(req.user.userId, "data:updated", { type: "plan-grid", planType: "cashback" });
+    notifyUser(req.user.userId, "data:updated", { type: "plan-grid", planType: "calendar" });
     res.json({ success: true, ...result });
   } catch (error: any) {
     if (error instanceof DemoDataServiceError) {

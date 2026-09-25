@@ -99,6 +99,10 @@ async function migrateLegacyCalendar(userId: string) {
   });
 }
 
+export async function ensureCalendarDataReady(userId: string) {
+  await migrateLegacyCalendar(userId);
+}
+
 function calendarText(value: unknown, maxLength: number, message: string) {
   if (value == null) return null;
   if (typeof value !== "string" || value.length > maxLength) {
@@ -305,7 +309,7 @@ function serializePlan(plan: any) {
 }
 
 export async function listCalendar(userId: string) {
-  await migrateLegacyCalendar(userId);
+  await ensureCalendarDataReady(userId);
   const [plans, notes] = await Promise.all([
     loadPlans(userId),
     prisma.calendarNote.findMany({

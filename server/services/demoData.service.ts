@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma";
 import { DEMO_DASHBOARD_SETTINGS, DEMO_USD_CURRENCY } from "../data/demoDataTemplate";
+import { ensureCalendarDataReady } from "./calendar.service";
 import {
   buildDemoCategorySeed,
   buildDemoDataset,
@@ -20,6 +21,10 @@ function currencyByIso(currencies: DemoCurrencyRef[], iso: string): DemoCurrency
 }
 
 export async function generateDemoData(userId: string) {
+  // Migrate any legacy calendar grid first. Its note migration replaces the
+  // dedicated notes table, so demo entries must be inserted afterwards.
+  await ensureCalendarDataReady(userId);
+
   return prisma.$transaction(async tx => {
     const user = await tx.user.findUnique({
       where: { id: userId },
@@ -77,6 +82,8 @@ export async function generateDemoData(userId: string) {
 
     const dataset = buildDemoDataset(userId, categorySeed.categoryIds, rub, usd);
     await tx.account.createMany({ data: dataset.accounts.map(account => account.record) });
+    await tx.calendarPlan.createMany({ data: dataset.calendarPlans });
+    await tx.calendarNote.createMany({ data: dataset.calendarNotes });
 
     // Bulk insert bypasses transaction-service balance effects. Account
     // balances stay at zero until the final explicit balance assignment.
@@ -143,6 +150,8 @@ export async function generateDemoData(userId: string) {
       transactionsAdded: dataset.transactions.length,
       goalsAdded: dataset.goals.length,
       cashbackCategoriesAdded: cashbackGrid ? 0 : dataset.cashback.categories.length,
+      calendarPlansAdded: dataset.calendarPlans.length,
+      calendarNotesAdded: dataset.calendarNotes.length,
       months: dataset.months,
     };
   });
