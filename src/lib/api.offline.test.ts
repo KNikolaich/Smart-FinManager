@@ -577,3 +577,21 @@ describe('syncOfflineQueue – replay on reconnect', () => {
     expect(readQueue()).toHaveLength(0);
   });
 });
+
+describe('api.get HTTP failures', () => {
+  it('preserves the HTTP status and server message for callers', async () => {
+    fakeStorage.setItem('token', 'test-token');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      statusText: 'Forbidden',
+      headers: { get: () => 'application/json' },
+      text: async () => '{"error":"Forbidden"}',
+    } as any));
+
+    await expect(api.get('/plan-grid/calendar')).rejects.toMatchObject({
+      status: 403,
+      message: 'Forbidden',
+    });
+  });
+});

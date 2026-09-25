@@ -330,7 +330,9 @@ export default function PlanPage({
         }
       } catch (error) {
         console.error(`Error loading plan grid type ${type}:`, error);
-        if (retries > 0) {
+        const status = (error as any)?.status;
+        const isTransientFailure = status === undefined || status >= 500;
+        if (retries > 0 && isTransientFailure) {
           await new Promise(resolve => setTimeout(resolve, 1000));
           await loadData(type, retries - 1);
         } else {

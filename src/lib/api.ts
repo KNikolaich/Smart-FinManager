@@ -294,27 +294,39 @@ const getHeaders = () => {
   };
 };
 
+const createHttpError = (status: number, message: string) => {
+  const error = new Error(message) as Error & { status: number };
+  error.status = status;
+  return error;
+};
+
+const getHttpErrorMessage = (text: string, status: number, statusText: string) => {
+  const fallback = text || `Error ${status}: ${statusText}`;
+  if (!text) return fallback;
+
+  try {
+    const body = JSON.parse(text);
+    if (typeof body?.error === 'string') return body.error;
+    if (typeof body?.message === 'string') return body.message;
+    return JSON.stringify(body);
+  } catch {
+    return fallback;
+  }
+};
+
 const handleAuthError = async (res: Response, endpoint: string) => {
   if (res.status === 401 || res.status === 403) {
     if (endpoint.includes('/auth/login') || endpoint.includes('/auth/register')) {
       const text = await res.text();
-      try {
-        const error = JSON.parse(text);
-        if (error && typeof error.error === 'string') {
-          throw new Error(error.error);
-        }
-        if (error && typeof error.message === 'string') {
-          throw new Error(error.message);
-        }
-        throw new Error(JSON.stringify(error));
-      } catch {
-        throw new Error(text || `Error ${res.status}: ${res.statusText}`);
-      }
+      throw createHttpError(
+        res.status,
+        getHttpErrorMessage(text, res.status, res.statusText),
+      );
     }
     
     if (res.status === 401) {
       safeStorage.removeItem('token');
-      throw new Error('Session expired. Please log in again.');
+      throw createHttpError(res.status, 'Session expired. Please log in again.');
     }
   }
 };
@@ -322,18 +334,10 @@ const handleAuthError = async (res: Response, endpoint: string) => {
 const handleResponse = async (res: Response) => {
   if (!res.ok) {
     const text = await res.text();
-    try {
-      const error = JSON.parse(text);
-      if (error && typeof error.error === 'string') {
-        throw new Error(error.error);
-      }
-      if (error && typeof error.message === 'string') {
-        throw new Error(error.message);
-      }
-      throw new Error(JSON.stringify(error));
-    } catch {
-      throw new Error(text || `Error ${res.status}: ${res.statusText}`);
-    }
+    throw createHttpError(
+      res.status,
+      getHttpErrorMessage(text, res.status, res.statusText),
+    );
   }
   
   if (res.status === 204) return null;

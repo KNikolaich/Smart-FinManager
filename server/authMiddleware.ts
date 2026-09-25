@@ -12,23 +12,31 @@ export const authenticateToken = async (req: any, res: any, next: any) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  let decoded: any;
   try {
-    const decoded: any = jwt.verify(token, JWT_SECRET_VALUE);
-    const user = await prisma.user.findUnique({
+    decoded = jwt.verify(token, JWT_SECRET_VALUE);
+  } catch (err: any) {
+    console.warn(`[Auth] Token rejected: ${err.name || "verification failed"}`);
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  let user: any;
+  try {
+    user = await prisma.user.findUnique({
       where: { id: decoded.userId }
     });
-
-    if (!user) {
-      console.warn(`[Auth] User not found during token verification: ${decoded.userId}`);
-      return res.status(401).json({ error: "User not found" });
-    }
-
-    req.user = { userId: user.id, email: user.email, role: user.role };
-    next();
   } catch (err: any) {
-    console.error(`[Auth] Token verification failed: ${err.message}`);
-    return res.status(403).json({ error: "Forbidden" });
+    console.error(`[Auth] User lookup failed: ${err.message}`);
+    return res.status(500).json({ error: "Authentication service unavailable" });
   }
+
+  if (!user) {
+    console.warn(`[Auth] User not found during token verification: ${decoded.userId}`);
+    return res.status(401).json({ error: "User not found" });
+  }
+
+  req.user = { userId: user.id, email: user.email, role: user.role };
+  next();
 };
 
 export const requireAdmin = (req: any, res: any, next: any) => {
