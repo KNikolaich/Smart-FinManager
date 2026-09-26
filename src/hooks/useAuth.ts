@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, safeStorage, checkIfNetworkError } from '../lib/api';
 import { queryKeys } from '../lib/queryClient';
@@ -44,20 +44,20 @@ export function useAuth(addToast: (message: string, type?: 'info' | 'success' | 
     }
   }, [token, queryClient]);
 
-  const setUser = (updatedUser: UserProfile | null) => {
+  const setUser = useCallback((updatedUser: UserProfile | null) => {
     queryClient.setQueryData(queryKeys.me, updatedUser);
     if (updatedUser) {
       safeStorage.setItem('last_logged_in_user', JSON.stringify(updatedUser));
     }
-  };
+  }, [queryClient]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     safeStorage.removeItem('token');
     queryClient.setQueryData(queryKeys.me, null);
     // Drop all per-user server-data caches (keyed by user id) so a different
     // account logging in next can never see this user's cached data.
     queryClient.removeQueries({ queryKey: ['initial-data'] });
-  };
+  }, [queryClient]);
 
   // loading is "true" only while a token exists but we haven't resolved the query yet.
   const loading = !!token && isLoading && !isFetched;

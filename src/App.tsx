@@ -155,7 +155,14 @@ export default function App() {
       if (hydratedThemeUserIdRef.current) {
         hydratedThemeUserIdRef.current = null;
         themeMigrationStartedUserIdRef.current = null;
-        setThemePreferences(resolveThemePreferences(undefined, null).preferences);
+        const defaults = resolveThemePreferences(undefined, null).preferences;
+        setThemePreferences(current =>
+          current.mobile === defaults.mobile
+          && current.tablet === defaults.tablet
+          && current.desktop === defaults.desktop
+            ? current
+            : defaults,
+        );
       }
       return;
     }
@@ -163,7 +170,13 @@ export default function App() {
     hydratedThemeUserIdRef.current = user.id;
     const legacyTheme = safeStorage.getItem('theme');
     const { preferences, shouldPersist } = resolveThemePreferences(user.settings, legacyTheme);
-    setThemePreferences(preferences);
+    setThemePreferences(current =>
+      current.mobile === preferences.mobile
+      && current.tablet === preferences.tablet
+      && current.desktop === preferences.desktop
+        ? current
+        : preferences,
+    );
 
     if (isCompleteThemePreferences(user.settings?.themeByDevice)) {
       safeStorage.removeItem('theme');
@@ -197,7 +210,14 @@ export default function App() {
         const profile = await api.get<UserProfile>('/auth/me');
         if (currentUserIdRef.current !== user.id || !profile.settings?.themeByDevice) return;
         if (isCompleteThemePreferences(profile.settings.themeByDevice)) {
-          setThemePreferences(normalizeThemePreferences(profile.settings.themeByDevice));
+          const preferences = normalizeThemePreferences(profile.settings.themeByDevice);
+          setThemePreferences(current =>
+            current.mobile === preferences.mobile
+            && current.tablet === preferences.tablet
+            && current.desktop === preferences.desktop
+              ? current
+              : preferences,
+          );
           setUser(profile);
         }
       } catch (error) {
