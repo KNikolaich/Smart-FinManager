@@ -9,14 +9,18 @@ interface AppHeaderProps {
   isOnline: boolean;
   showUserPage: boolean;
   onOpenUserPage: () => void;
+  isHidden: boolean;
 }
 
-export function AppHeader({ activeTab, onLogoClick, isOnline, showUserPage, onOpenUserPage }: AppHeaderProps) {
+export function AppHeader({ activeTab, onLogoClick, isOnline, showUserPage, onOpenUserPage, isHidden }: AppHeaderProps) {
   return (
     <header className={cn(
-      "relative px-6 h-16 md:h-20 flex items-center justify-between bg-theme-surface/80 backdrop-blur-md border-b border-theme-base shrink-0 z-50 sticky top-0 transition-all max-md:landscape:hidden",
+      "relative px-6 flex items-center justify-between bg-theme-surface/80 backdrop-blur-md border-b border-theme-base shrink-0 z-50 sticky top-0 transition-[height,opacity] duration-300 ease-out max-md:landscape:hidden",
+      isHidden
+        ? "h-0 overflow-hidden border-b-0 opacity-0 pointer-events-none"
+        : "h-16 md:h-20 opacity-100",
       activeTab === 'plan' && "max-md:landscape:hidden"
-    )}>
+    )} aria-hidden={isHidden} inert={isHidden} data-testid="app-header">
       <button
         type="button"
         aria-label="Открыть главную страницу"

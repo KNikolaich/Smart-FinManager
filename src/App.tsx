@@ -25,6 +25,7 @@ import { ToastContainer, ToastType } from './components/ui/Toast';
 import { getTodayKey } from './lib/plannedPaymentOccurrences';
 import { useThemeDeviceClass } from './hooks/useThemeDeviceClass';
 import { usePrefersDarkColorScheme } from './hooks/usePrefersDarkColorScheme';
+import { useSmartHeader } from './hooks/useSmartHeader';
 import {
   applyTheme,
   isCompleteThemePreferences,
@@ -60,6 +61,7 @@ export default function App() {
   }, []);
 
   const { user, setUser, loading, handleLogout } = useAuth(addToast);
+  const { scrollContainerRef, isHeaderHidden } = useSmartHeader(activeTab);
   const dashboardDevice = useDashboardDevice();
   const themeDeviceClass = useThemeDeviceClass();
   const prefersDarkColorScheme = usePrefersDarkColorScheme();
@@ -561,11 +563,13 @@ export default function App() {
         isOnline={isOnline}
         showUserPage={showUserPage}
         onOpenUserPage={() => setShowUserPage(true)}
+        isHidden={isHeaderHidden}
       />
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
         <div
+          ref={scrollContainerRef}
           data-app-scroll-container
           className={cn(
           "absolute inset-0 overflow-y-auto no-scrollbar px-[2px] pt-0",
