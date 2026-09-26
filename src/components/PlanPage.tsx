@@ -147,9 +147,7 @@ export default function PlanPage({
   calendarNoteToCreate,
   onCalendarNoteCreateHandled,
 }: PlanPageProps) {
-  const [activeTab, setActiveTab] = useState<TabType>(() => (
-    calendarFocusDate || calendarPaymentToEdit || calendarPaymentToCreate || calendarNoteToCreate ? 'calendar' : 'now'
-  ));
+  const [activeTab, setActiveTab] = useState<TabType>('calendar');
   const [planData, setPlanData] = useState<PlanData | null>(null);
   const [loadedTabs, setLoadedTabs] = useState<Set<TabType>>(new Set());
   const [editingCell, setEditingCell] = useState<{ rowId: string, subjectId: string } | null>(null);
