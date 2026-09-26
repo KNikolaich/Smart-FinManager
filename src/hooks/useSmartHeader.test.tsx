@@ -30,7 +30,7 @@ describe('useSmartHeader', () => {
     scrollTo(container, 68);
     expect(visibility.textContent).toBe('false');
 
-    scrollTo(container, 40);
+    scrollTo(container, 80);
     expect(visibility.textContent).toBe('true');
     scrollTo(container, 12);
     expect(visibility.textContent).toBe('false');

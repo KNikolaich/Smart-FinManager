@@ -61,7 +61,6 @@ export default function App() {
   }, []);
 
   const { user, setUser, loading, handleLogout } = useAuth(addToast);
-  const { scrollContainerRef, isHeaderHidden } = useSmartHeader(activeTab);
   const dashboardDevice = useDashboardDevice();
   const themeDeviceClass = useThemeDeviceClass();
   const prefersDarkColorScheme = usePrefersDarkColorScheme();
@@ -87,6 +86,7 @@ export default function App() {
   } = useAppData({ user, addToast });
 
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const { scrollContainerRef, isHeaderHidden } = useSmartHeader(activeTab);
   const [calendarFocusDate, setCalendarFocusDate] = useState<string | undefined>();
   const [calendarPaymentToEdit, setCalendarPaymentToEdit] = useState<PlannedPayment | null>(null);
   const [calendarPaymentToCreate, setCalendarPaymentToCreate] = useState<PlannedPaymentDraft | null>(null);
