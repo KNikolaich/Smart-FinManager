@@ -3,6 +3,22 @@ export type AccountType = 'card' | 'cash' | 'bank' | 'credit';
 
 export type DashboardWidgetId = 'upcomingTasks' | 'accounts' | 'transactions' | 'balance' | 'goals';
 export type DashboardDevice = 'desktop' | 'tablet' | 'mobile';
+export type ThemeDeviceClass = 'desktop' | 'tablet' | 'mobile';
+export type ThemeId =
+  | 'theme-bw'
+  | 'theme-nordic'
+  | 'theme-light-blue'
+  | 'theme-light-orange'
+  | 'theme-light-ruby'
+  | 'theme-light-violet'
+  | 'theme-light-green'
+  | 'theme-midnight'
+  | 'theme-carbon'
+  | 'theme-oled'
+  | 'theme-forest-dark'
+  | 'theme-nocturnal'
+  | 'theme-cyber';
+export type ThemePreferences = Record<ThemeDeviceClass, ThemeId>;
 export type DashboardColumnSpan = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
 export interface DashboardDeviceLayout {
@@ -21,6 +37,7 @@ export interface UserSettings {
   showTotalBalance: boolean;
   lastNudgeTime?: string;
   dashboard?: DashboardLayoutSettings;
+  themeByDevice?: ThemePreferences;
 }
 
 export interface UserProfile {

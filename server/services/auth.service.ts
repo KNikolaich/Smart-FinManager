@@ -5,6 +5,7 @@ import { encrypt, decrypt } from "../crypto";
 import { JWT_SECRET_VALUE } from "../config";
 import { transporter } from "../mailer";
 import { isAccountLockedOut, recordAccountLoginFailure, resetAccountLoginFailures, ACCOUNT_WARNING_THRESHOLD } from "../rateLimitStore";
+import { mergeUserSettings } from "./userSettings";
 
 async function maybeSendAttackWarningEmail(email: string, attempts: number) {
   if (attempts !== ACCOUNT_WARNING_THRESHOLD) return; // fire once per lockout window
@@ -160,10 +161,7 @@ export async function updateMe(
       where: { id: userId },
       select: { settings: true },
     });
-    const currentSettings = current?.settings && typeof current.settings === "object" && !Array.isArray(current.settings)
-      ? current.settings
-      : {};
-    data.settings = { ...currentSettings, ...settings };
+    data.settings = mergeUserSettings(current?.settings, settings);
   }
 
   const user = await prisma.user.update({

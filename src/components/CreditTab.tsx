@@ -157,16 +157,16 @@ export default function CreditTab({ planData, onSave }: CreditTabProps) {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-neutral-50 overflow-y-auto no-scrollbar pb-10">
+    <div className="flex-1 flex flex-col min-h-0 bg-theme-main overflow-y-auto no-scrollbar pb-10">
       {/* Parameter inputs header panel */}
-      <div className="bg-white border-b border-neutral-100 p-6 space-y-4">
+      <div className="bg-theme-surface border-b border-theme-base p-6 space-y-4">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <h2 className="text-base sm:text-lg font-bold text-neutral-800 flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-bold text-theme-main flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-sky-500 shrink-0" />
               <span className="truncate">Кредитный калькулятор</span>
             </h2>
-            <p className="text-xs text-neutral-500 mt-0.5 max-w-[280px] sm:max-w-none truncate sm:normal-case">
+            <p className="text-xs text-theme-muted mt-0.5 max-w-[280px] sm:max-w-none truncate sm:normal-case">
               Моделирование планируемых кредитов с расчетом аннуитетного графика
             </p>
           </div>
@@ -177,8 +177,8 @@ export default function CreditTab({ planData, onSave }: CreditTabProps) {
             className={cn(
               "p-2.5 rounded-xl transition-all flex items-center justify-center cursor-pointer shrink-0 border border-transparent",
               showSaveSuccess
-                ? "bg-emerald-500 text-white shadow-md shadow-emerald-100"
-                : "bg-neutral-900 text-white hover:bg-neutral-800 shadow-md shadow-neutral-100 disabled:opacity-50"
+                ? "bg-emerald-500 text-theme-on-primary shadow-md shadow-emerald-100"
+                : "bg-theme-primary text-theme-on-primary hover:bg-theme-primary-dark shadow-md shadow-theme-primary-light disabled:opacity-50"
             )}
             title="Сохранить настройки кредита"
           >
@@ -194,23 +194,23 @@ export default function CreditTab({ planData, onSave }: CreditTabProps) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 pt-2">
           {/* Amount input */}
           <div className="space-y-1.5 flex flex-col justify-end">
-            <label className="text-[10px] font-black uppercase tracking-wider text-neutral-400">Сумма кредита</label>
+            <label className="text-[10px] font-black uppercase tracking-wider text-theme-muted">Сумма кредита</label>
             <div className="relative">
               <input
                 type="number"
                 value={amount === 0 ? '' : amount}
                 onChange={(e) => setAmount(Math.max(0, parseFloat(e.target.value) || 0))}
-                className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-sm text-neutral-800 font-bold focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-right pr-9"
+                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-3 text-sm text-theme-main font-bold focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-right pr-9"
                 placeholder="1 000 000"
                 min="0"
               />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400">₽</span>
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-theme-muted">₽</span>
             </div>
           </div>
 
           {/* Rate input */}
           <div className="space-y-1.5 flex flex-col justify-end">
-            <label className="text-[10px] font-black uppercase tracking-wider text-neutral-400">Процентная ставка</label>
+            <label className="text-[10px] font-black uppercase tracking-wider text-theme-muted">Процентная ставка</label>
             <div className="relative">
               <input
                 type="number"
@@ -219,26 +219,26 @@ export default function CreditTab({ planData, onSave }: CreditTabProps) {
                 max="100"
                 value={rate === 0 ? '' : rate}
                 onChange={(e) => setRate(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
-                className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-sm text-neutral-800 font-bold focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-right pr-9"
+                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-3 text-sm text-theme-main font-bold focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-right pr-9"
                 placeholder="12"
               />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400">%</span>
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-theme-muted">%</span>
             </div>
           </div>
 
           {/* Term input */}
           <div className="space-y-1.5 flex flex-col justify-end">
-            <label className="text-[10px] font-black uppercase tracking-wider text-neutral-400">Срок кредита</label>
+            <label className="text-[10px] font-black uppercase tracking-wider text-theme-muted">Срок кредита</label>
             <div className="relative">
               <input
                 type="number"
                 value={term === 0 ? '' : term}
                 onChange={(e) => setTerm(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-sm text-neutral-800 font-bold focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-right pr-12"
+                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-3 text-sm text-theme-main font-bold focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-right pr-12"
                 placeholder="24"
                 min="1"
               />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400">мес</span>
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-theme-muted">мес</span>
             </div>
           </div>
         </div>
@@ -247,47 +247,47 @@ export default function CreditTab({ planData, onSave }: CreditTabProps) {
       <div className="p-6 space-y-6">
         {/* Bento Grid layout for core metrics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white p-5 rounded-[22px] border border-neutral-100 shadow-sm flex flex-col justify-between">
-            <p className="text-[10px] font-black uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+          <div className="bg-theme-surface p-5 rounded-[22px] border border-theme-base shadow-sm flex flex-col justify-between">
+            <p className="text-[10px] font-black uppercase tracking-wider text-theme-muted flex items-center gap-1.5">
               Ежемесячный платеж
             </p>
             <div className="mt-4">
-              <p className="text-2xl font-black text-neutral-800 tracking-tight">
-                {Math.round(monthlyPayment).toLocaleString()} <span className="text-lg font-medium text-neutral-400">₽</span>
+              <p className="text-2xl font-black text-theme-main tracking-tight">
+                {Math.round(monthlyPayment).toLocaleString()} <span className="text-lg font-medium text-theme-muted">₽</span>
               </p>
-              <p className="text-[10px] text-neutral-400 mt-1">Аннуитетная схема выравнивания платежей</p>
+              <p className="text-[10px] text-theme-muted mt-1">Аннуитетная схема выравнивания платежей</p>
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-[22px] border border-neutral-100 shadow-sm flex flex-col justify-between">
-            <p className="text-[10px] font-black uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+          <div className="bg-theme-surface p-5 rounded-[22px] border border-theme-base shadow-sm flex flex-col justify-between">
+            <p className="text-[10px] font-black uppercase tracking-wider text-theme-muted flex items-center gap-1.5">
               Сумма переплаты по процентам
             </p>
             <div className="mt-4">
               <p className="text-2xl font-black text-amber-600 tracking-tight">
                 {Math.round(overpayment).toLocaleString()} <span className="text-lg font-medium text-amber-500/50">₽</span>
               </p>
-              <p className="text-[10px] text-neutral-400 mt-1">
+              <p className="text-[10px] text-theme-muted mt-1">
                 {amount > 0 ? `${Math.round((overpayment / amount) * 100)}% от изначального тела долга` : '0%'}
               </p>
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-[22px] border border-neutral-100 shadow-sm flex flex-col justify-between">
-            <p className="text-[10px] font-black uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+          <div className="bg-theme-surface p-5 rounded-[22px] border border-theme-base shadow-sm flex flex-col justify-between">
+            <p className="text-[10px] font-black uppercase tracking-wider text-theme-muted flex items-center gap-1.5">
               Общая сумма выплат
             </p>
             <div className="mt-4">
               <p className="text-2xl font-black text-indigo-700 tracking-tight">
                 {Math.round(totalPayout).toLocaleString()} <span className="text-lg font-medium text-indigo-400">₽</span>
               </p>
-              <p className="text-[10px] text-neutral-400 mt-1">Тело ({amount.toLocaleString()} ₽) + Начисленные проценты</p>
+              <p className="text-[10px] text-theme-muted mt-1">Тело ({amount.toLocaleString()} ₽) + Начисленные проценты</p>
             </div>
           </div>
         </div>
 
         {/* Stacked Payments Dynamics Chart matching the reference image perfectly */}
-        <div className="bg-[#0b1712] text-white p-6 rounded-[28px] shadow-lg border border-[#1b3427]/40 flex flex-col">
+        <div className="bg-[#0b1712] text-theme-on-primary p-6 rounded-[28px] shadow-lg border border-[#1b3427]/40 flex flex-col">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-sm font-bold tracking-wide font-sans text-neutral-100 uppercase py-0.5">
               Динамика платежей
@@ -321,7 +321,7 @@ export default function CreditTab({ planData, onSave }: CreditTabProps) {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-xs text-neutral-400 italic">
+              <div className="h-full flex items-center justify-center text-xs text-theme-muted italic">
                 Введите корректные параметры для отрисовки графиков
               </div>
             )}
@@ -329,12 +329,12 @@ export default function CreditTab({ planData, onSave }: CreditTabProps) {
         </div>
 
         {/* Detailed amortization table */}
-        <div className="bg-white rounded-[28px] border border-neutral-100 shadow-sm overflow-hidden flex flex-col">
-          <div className="p-5 border-b border-neutral-100 flex items-center justify-between">
+        <div className="bg-theme-surface rounded-[28px] border border-theme-base shadow-sm overflow-hidden flex flex-col">
+          <div className="p-5 border-b border-theme-base flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-neutral-800">Детализированный график амортизации</h3>
+              <h3 className="text-sm font-bold text-theme-main">Детализированный график амортизации</h3>
             </div>
-            <div className="px-3 py-1 bg-neutral-100 rounded-full text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
+            <div className="px-3 py-1 bg-theme-surface rounded-full text-[10px] font-bold text-theme-muted uppercase tracking-widest">
               Срок: {term} мес
             </div>
           </div>
@@ -342,7 +342,7 @@ export default function CreditTab({ planData, onSave }: CreditTabProps) {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-neutral-50/70 border-b border-neutral-100 text-[10px] font-black uppercase tracking-wider text-neutral-400 select-none">
+                <tr className="bg-theme-main border-b border-theme-base text-[10px] font-black uppercase tracking-wider text-theme-muted select-none">
                   <th className="py-3.5 px-6">№</th>
                   <th className="py-3.5 px-6 text-right">Сумма платежа</th>
                   <th className="py-3.5 px-6 text-right text-sky-600">Тело кредита</th>
@@ -352,11 +352,11 @@ export default function CreditTab({ planData, onSave }: CreditTabProps) {
               </thead>
               <tbody>
                 {schedule.map((item) => (
-                  <tr key={item.month} className="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors">
-                    <td className="py-3 px-6 font-bold text-neutral-700">
+                  <tr key={item.month} className="border-b border-theme-base hover:bg-theme-main/50 transition-colors">
+                    <td className="py-3 px-6 font-bold text-theme-main">
                       {item.month}
                     </td>
-                    <td className="py-3 px-6 text-right font-medium text-neutral-800">
+                    <td className="py-3 px-6 text-right font-medium text-theme-main">
                       {Math.round(item.payment || 0).toLocaleString()} ₽
                     </td>
                     <td className="py-3 px-6 text-right font-bold text-sky-600/90">
@@ -365,7 +365,7 @@ export default function CreditTab({ planData, onSave }: CreditTabProps) {
                     <td className="py-3 px-6 text-right font-medium text-amber-600">
                       {Math.round(item.interest || 0).toLocaleString()} ₽
                     </td>
-                    <td className="py-3 px-6 text-right font-mono text-neutral-400 font-medium">
+                    <td className="py-3 px-6 text-right font-mono text-theme-muted font-medium">
                       {Math.round(item.remaining || 0).toLocaleString()} ₽
                     </td>
                   </tr>

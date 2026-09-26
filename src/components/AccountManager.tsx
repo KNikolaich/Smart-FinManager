@@ -36,7 +36,7 @@ function AccountCard({ account, onEdit, currencySymbol }: AccountCardProps) {
       {/* Comment indicator */}
       {account.comment && (
         <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-amber-500 flex items-center justify-center shadow-sm z-10" title={account.comment}>
-          <span className="text-white font-black leading-none" style={{ fontSize: '8px' }}>!</span>
+          <span className="text-theme-on-primary font-black leading-none" style={{ fontSize: '8px' }}>!</span>
         </div>
       )}
 
@@ -45,7 +45,7 @@ function AccountCard({ account, onEdit, currencySymbol }: AccountCardProps) {
         <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5 sm:mb-1">
           <div 
             className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shrink-0 shadow-sm" 
-            style={hasColor ? { backgroundColor: account.color } : { backgroundColor: 'var(--color-theme-primary)' }}
+            style={hasColor ? { backgroundColor: account.color } : { backgroundColor: 'var(--color-action)' }}
           />
           <p className="text-theme-muted group-hover:text-theme-main text-[8.5px] sm:text-[10px] font-bold uppercase tracking-wider truncate transition-colors leading-tight">
             {account.name}
@@ -65,7 +65,7 @@ function AccountCard({ account, onEdit, currencySymbol }: AccountCardProps) {
       {/* Visibility dots and status at the bottom */}
       <div className="mt-2 flex items-center justify-center gap-1">
         {account.isArchived ? (
-          <span className="text-[6.5px] sm:text-[7.5px] font-black uppercase bg-neutral-100 dark:bg-neutral-800 text-neutral-500 px-1 py-0.5 rounded tracking-wide shadow-sm">
+          <span className="text-[6.5px] sm:text-[7.5px] font-black uppercase bg-theme-surface  text-theme-muted px-1 py-0.5 rounded tracking-wide shadow-sm">
             архив
           </span>
         ) : (
@@ -222,10 +222,10 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[120] flex items-center justify-center p-0 lg:p-4 animate-in fade-in duration-300">
-      <div className="bg-theme-main w-full h-full lg:max-h-full lg:max-w-5xl lg:rounded-xl lg:border border-neutral-100 overflow-hidden flex flex-col shadow-2xl relative shadow-black/50">
+      <div className="bg-theme-main w-full h-full lg:max-h-full lg:max-w-5xl lg:rounded-xl lg:border border-theme-base overflow-hidden flex flex-col shadow-2xl relative shadow-black/50">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between shrink-0 bg-theme-surface/10 backdrop-blur-sm">
+        <div className="px-6 py-4 border-b border-theme-base flex items-center justify-between shrink-0 bg-theme-surface/10 backdrop-blur-sm">
           <h3 className="text-2xl font-black text-theme-main uppercase tracking-widest drop-shadow-[0_2px_4px_rgba(0,0,0,0.15)] [text-shadow:_0_2px_10px_rgba(0,0,0,0.12)]">счета</h3>
           
           <div className="flex items-center gap-3">
@@ -236,7 +236,7 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
                 setName('');
                 setShowFormModal(true);
               }}
-              className="p-2 bg-sky-500 text-white rounded-xl shadow-lg shadow-sky-500/10 hover:bg-sky-600 transition-all active:scale-95 cursor-pointer flex items-center justify-center h-10 w-10"
+              className="p-2 bg-sky-500 text-theme-on-primary rounded-xl shadow-lg shadow-sky-500/10 hover:bg-sky-600 transition-all active:scale-95 cursor-pointer flex items-center justify-center h-10 w-10"
               title="Добавить счет"
             >
               <Plus className="w-5 h-5" />
@@ -296,8 +296,8 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
         {/* Separate Account Form Modal */}
         {showFormModal && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[200] flex items-center justify-center p-0 lg:p-4 animate-in fade-in duration-200">
-            <div className="bg-theme-main w-full h-full lg:max-h-full lg:max-w-xl lg:rounded-xl lg:border border-neutral-100 overflow-hidden flex flex-col shadow-2xl relative">
-              <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between shrink-0 bg-theme-surface/10 backdrop-blur-sm">
+            <div className="bg-theme-main w-full h-full lg:max-h-full lg:max-w-xl lg:rounded-xl lg:border border-theme-base overflow-hidden flex flex-col shadow-2xl relative">
+              <div className="px-6 py-4 border-b border-theme-base flex items-center justify-between shrink-0 bg-theme-surface/10 backdrop-blur-sm">
                 <h3 className="text-sm font-black text-theme-main uppercase tracking-widest drop-shadow-[0_1px_2px_rgba(0,0,0,0.15)] [text-shadow:_0_2px_8px_rgba(0,0,0,0.1)]">
                   {editingId ? 'редактировать' : 'новый счет'}
                 </h3>
@@ -320,7 +320,7 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
                     <div className="flex items-center gap-2 bg-theme-main border border-theme-base rounded-lg px-3 h-[48px] focus-within:ring-1 ring-theme-primary/20 transition-all">
                       {/* Type icon + hidden select */}
                       <div className="relative shrink-0">
-                        <div className="flex items-center justify-center w-10 h-8 rounded bg-theme-surface border border-neutral-50 text-theme-primary">
+                        <div className="flex items-center justify-center w-10 h-8 rounded bg-theme-surface border border-theme-base text-theme-primary">
                           {getAccountIcon(type, "w-5 h-5")}
                         </div>
                         <select
@@ -374,7 +374,7 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
                           onClick={() => setIsBalanceEditable(!isBalanceEditable)}
                           className={cn(
                             "w-10 sm:w-12 h-full flex items-center justify-center border-l border-theme-base transition-all shrink-0",
-                            isBalanceEditable ? "bg-theme-primary text-white" : "bg-theme-surface text-theme-muted"
+                            isBalanceEditable ? "bg-theme-primary text-theme-on-primary" : "bg-theme-surface text-theme-muted"
                           )}
                         >
                           {isBalanceEditable ? <Save size={16} /> : <Pencil size={16} />}
@@ -438,7 +438,7 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
                         {hintOpen === 'comment' && (
                           <div className="absolute left-0 top-6 z-50 w-56 bg-theme-surface border border-theme-base rounded-xl px-3 py-2 shadow-lg text-[11px] text-theme-main leading-snug animate-in fade-in zoom-in-95 duration-150">
                             Личная заметка к счёту. Отображается в виде значка&nbsp;
-                            <span className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-amber-500 text-white font-black align-middle" style={{fontSize:'7px'}}>!</span>
+                            <span className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-amber-500 text-theme-on-primary font-black align-middle" style={{fontSize:'7px'}}>!</span>
                             &nbsp;на карточке счёта (при наведении / тапе).
                             <button type="button" onClick={() => setHintOpen(null)} className="absolute top-1.5 right-1.5 text-theme-muted hover:text-theme-main">
                               <X size={11} />
@@ -457,7 +457,7 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
                   </div>
 
                   {/* Settings / Toggles */}
-                  <div className="grid grid-cols-3 gap-3 p-4 bg-theme-surface/30 rounded-xl border border-neutral-100">
+                  <div className="grid grid-cols-3 gap-3 p-4 bg-theme-surface/30 rounded-xl border border-theme-base">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={showOnDashboard} onChange={(e) => setShowOnDashboard(e.target.checked)} className="w-4 h-4 rounded-md bg-theme-main border-theme-base text-theme-primary focus:ring-0 shrink-0" />
                       <div className="flex flex-col min-w-0">
@@ -495,7 +495,7 @@ export default function AccountManager({ accounts, onClose, onRefresh, initialEd
                           <button
                             type="button"
                             onClick={() => handleDelete(editingId)}
-                            className="px-3 py-2 bg-rose-500 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 shadow-md"
+                            className="px-3 py-2 bg-rose-500 text-theme-on-primary rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 shadow-md"
                           >
                             ДА
                           </button>

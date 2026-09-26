@@ -739,14 +739,14 @@ export default function PlanPage({
   return (
     <div className="p-0 sm:p-0 space-y-0 max-w-[100vw] overflow-hidden h-full flex flex-col">
       {/* Custom Minimalist Tabs */}
-      <div className="flex items-end space-x-1 border-b border-neutral-200 px-1 pt-1 shrink-0">
+      <div className="flex items-end space-x-1 border-b border-theme-base px-1 pt-1 shrink-0">
         <button
           onClick={() => setActiveTab('now')}
           className={cn(
             "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
             activeTab === 'now' 
               ? "bg-emerald-500 text-white border-emerald-500 translate-y-[1px]" 
-              : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
+              : "bg-theme-surface text-theme-muted border-theme-base hover:bg-theme-main"
           )}
         >
           <span>Сейчас</span>
@@ -758,7 +758,7 @@ export default function PlanPage({
             "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
             activeTab === 'cashback' 
               ? "bg-purple-500 text-white border-purple-500 translate-y-[1px]" 
-              : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
+              : "bg-theme-surface text-theme-muted border-theme-base hover:bg-theme-main"
           )}
         >
          <span>Кэшбек</span>
@@ -769,7 +769,7 @@ export default function PlanPage({
             "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
             activeTab === 'calendar'
               ? "bg-orange-500 text-white border-orange-500 translate-y-[1px]"
-              : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
+              : "bg-theme-surface text-theme-muted border-theme-base hover:bg-theme-main"
           )}
         >
           <span>Календарь</span>
@@ -780,7 +780,7 @@ export default function PlanPage({
             "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
             activeTab === 'comment' 
               ? "bg-blue-500 text-white border-purple-500 translate-y-[1px]" 
-              : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
+              : "bg-theme-surface text-theme-muted border-theme-base hover:bg-theme-main"
           )}
         >
           <span>Заметки</span>
@@ -791,7 +791,7 @@ export default function PlanPage({
             "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
             activeTab === 'credit' 
               ? "bg-sky-500 text-white border-sky-500 translate-y-[1px]" 
-              : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
+              : "bg-theme-surface text-theme-muted border-theme-base hover:bg-theme-main"
           )}
         >
           <span>Кредит</span>
@@ -802,14 +802,14 @@ export default function PlanPage({
             "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
             activeTab === 'past' 
               ? "bg-amber-500 text-white border-amber-500 translate-y-[1px]" 
-              : "bg-neutral-50 text-neutral-400 border-neutral-200 hover:bg-neutral-100"
+              : "bg-theme-surface text-theme-muted border-theme-base hover:bg-theme-main"
           )}
         >
           <span>Прошлое</span>
         </button>
       </div>
 
-      <div className="bg-white p-0 border-none shadow-none overflow-hidden flex-1 flex flex-col">
+      <div className="bg-theme-surface p-0 border-none shadow-none overflow-hidden flex-1 flex flex-col">
         {activeTab === 'calendar' ? (
           <PaymentCalendarTab
             payments={calendarPayments}
@@ -853,7 +853,7 @@ export default function PlanPage({
               <thead className="sticky top-0 z-20">
                 <tr>
                   <th 
-                    className="p-1 border border-neutral-200 text-center w-10 sticky left-0 top-0 z-30 bg-neutral-50/90 backdrop-blur-sm"
+                    className="p-1 border border-theme-base text-center w-10 sticky left-0 top-0 z-30 bg-theme-surface/90 backdrop-blur-sm"
                   >
                     {activeTab === 'now' ? (
                       <button
@@ -868,7 +868,7 @@ export default function PlanPage({
                         className={cn(
                           "w-7 h-7 rounded-lg flex items-center justify-center mx-auto transition-all",
                           saveStatus === 'saved' && "text-emerald-400 bg-emerald-50 cursor-default opacity-50",
-                          saveStatus === 'saving' && "text-neutral-400 bg-neutral-100 cursor-default",
+                          saveStatus === 'saving' && "text-theme-muted bg-theme-main cursor-default",
                           saveStatus === 'queued' && "text-amber-500 bg-amber-50 cursor-default",
                           saveStatus === 'error' && "text-rose-500 bg-rose-50 hover:bg-rose-100 active:scale-95"
                         )}
@@ -881,14 +881,14 @@ export default function PlanPage({
                         }
                       </button>
                     ) : (
-                      <div className="rotate-180 [writing-mode:vertical-lr] mx-auto h-16 text-[10px] font-bold text-neutral-400 uppercase">план в тыс ₽</div>
+                      <div className="rotate-180 [writing-mode:vertical-lr] mx-auto h-16 text-[10px] font-bold text-theme-muted uppercase">план в тыс ₽</div>
                     )}
                   </th>
                   {visibleSubjects.map(subject => (
                     <th 
                       key={subject.id}
                       onClick={() => setEditingSubject({ ...subject })}
-                      className="p-1 border border-neutral-200 text-[10px] font-bold vertical-text h-22 relative group cursor-pointer hover:bg-neutral-100 transition-all sticky top-0 z-20 min-w-[44px] bg-neutral-50/90 backdrop-blur-sm hover:brightness-95"
+                      className="p-1 border border-theme-base text-[10px] font-bold vertical-text h-22 relative group cursor-pointer hover:bg-theme-main transition-all sticky top-0 z-20 min-w-[44px] bg-theme-surface/90 backdrop-blur-sm hover:brightness-95"
                     >
                       <div className="rotate-180 [writing-mode:vertical-lr] mx-auto">
                         {subject.name}
@@ -911,7 +911,7 @@ export default function PlanPage({
                     </th>
                   ))}
                   <th 
-                    className="p-1 border border-neutral-200 text-[10px] font-bold text-neutral-900 sticky top-0 z-20 min-w-[64px] bg-neutral-100/80 backdrop-blur-sm"
+                    className="p-1 border border-theme-base text-[10px] font-bold text-theme-main sticky top-0 z-20 min-w-[64px] bg-theme-main/80 backdrop-blur-sm"
                   >
                     <div className="rotate-180 [writing-mode:vertical-lr] mx-auto">Итого</div>
                   </th>
@@ -928,14 +928,14 @@ export default function PlanPage({
                       onContextMenu={(e) => handleContextMenu(e, row.id)}
                       className={cn(
                         row.type === 'min' && "bg-amber-50/40 font-bold",
-                        row.type === 'year' && "bg-neutral-100/50"
+                        row.type === 'year' && "bg-theme-main/50"
                       )}
                     >
                       <td 
                         className={cn(
-                          "p-1 border border-neutral-200 text-sm font-bold text-neutral-700 text-center w-10 overflow-visible sticky left-0 z-10 bg-white",
+                          "p-1 border border-theme-base text-sm font-bold text-theme-main text-center w-10 overflow-visible sticky left-0 z-10 bg-theme-surface",
                           row.type === 'month' && "bg-emerald-50/20",
-                          row.type === 'year' && "bg-neutral-100",
+                          row.type === 'year' && "bg-theme-main",
                           row.type === 'min' && "bg-amber-100/30"
                         )}
                       >
@@ -950,7 +950,7 @@ export default function PlanPage({
                         key={subject.id}
                         onClick={() => handleCellClick(row.id, subject.id)}
                         className={cn(
-                          "p-1 border border-neutral-200 text-[10px] text-center cursor-pointer hover:bg-neutral-50 transition-colors relative group min-w-[44px]",
+                          "p-1 border border-theme-base text-[10px] text-center cursor-pointer hover:bg-theme-main transition-colors relative group min-w-[44px]",
                           cell?.isBold && "font-bold"
                         )}
                         style={{ 
@@ -967,8 +967,8 @@ export default function PlanPage({
                       })}
                       <td 
                         className={cn(
-                          "p-1 border border-neutral-200 text-[10px] font-bold text-center min-w-[64px] bg-neutral-100/30",
-                          isOverTarget && row.type !== 'min' ? "text-rose-500" : "text-neutral-900"
+                          "p-1 border border-theme-base text-[10px] font-bold text-center min-w-[64px] bg-theme-main/50",
+                          isOverTarget && row.type !== 'min' ? "text-rose-500" : "text-theme-main"
                         )}
                       >
                         {total > 0 ? total.toLocaleString() : '-'}
@@ -990,7 +990,7 @@ export default function PlanPage({
                         value={newSubjectName}
                         onChange={(e) => setNewSubjectName(e.target.value)}
                         placeholder="Название графы"
-                        className="text-xs p-2 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="text-xs p-2 border border-theme-base bg-theme-surface text-theme-main rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         autoFocus
                       />
                       <button 
@@ -1001,7 +1001,7 @@ export default function PlanPage({
                       </button>
                       <button 
                         onClick={() => setShowAddSubject(false)}
-                        className="p-2 bg-neutral-100 text-neutral-500 rounded-xl hover:bg-neutral-200 transition-colors"
+                        className="p-2 bg-theme-main text-theme-muted rounded-xl hover:bg-theme-surface transition-colors"
                       >
                         <X size={14} />
                       </button>
@@ -1018,13 +1018,13 @@ export default function PlanPage({
                 </div>
 
                 {/* Config Section embedded at the bottom of NOW tab */}
-                <div className="border-t border-neutral-100 pt-6 pb-6 max-md:landscape:pb-0 space-y-4 max-w-xl">
-                  <h3 className="text-sm font-bold text-neutral-400 uppercase tracking-wider">Настройки таблицы</h3>
+                <div className="border-t border-theme-base pt-6 pb-6 max-md:landscape:pb-0 space-y-4 max-w-xl">
+                  <h3 className="text-sm font-bold text-theme-muted uppercase tracking-wider">Настройки таблицы</h3>
                   
                   <div className="space-y-4">
                   <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-neutral-400 uppercase">Сумма к которой стремимся</label>
+                      <label className="text-[10px] font-bold text-theme-muted uppercase">Сумма к которой стремимся</label>
                       <input 
                         type="number"
                         value={planData.config.targetAmount}
@@ -1032,7 +1032,7 @@ export default function PlanPage({
                           ...planData,
                           config: { ...planData.config, targetAmount: parseInt(e.target.value) || 0 }
                         }, 'config')}
-                        className="w-full p-2 bg-neutral-50 border border-neutral-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full p-2 bg-theme-main border border-theme-base text-theme-main rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                   </div>
@@ -1054,7 +1054,7 @@ export default function PlanPage({
                         data-testid="input-note-title"
                         value={editingNoteTitle}
                         onChange={(event) => setEditingNoteTitle(event.target.value)}
-                        className="h-11 w-full min-w-0 truncate rounded-xl border border-purple-200 bg-white px-3 text-sm font-semibold text-neutral-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                        className="h-11 w-full min-w-0 truncate rounded-xl border border-purple-200 bg-theme-surface px-3 text-sm font-semibold text-theme-main focus:outline-none focus:ring-2 focus:ring-purple-400"
                       />
                     </>
                   ) : (
@@ -1072,11 +1072,11 @@ export default function PlanPage({
                           const payload = setNotesSnapshot(currentNotes, nextId);
                           if (planData && nextNote) savePlanData({ ...planData, comment: payload }, 'comment');
                         }}
-                        className="h-11 w-full min-w-0 appearance-none truncate rounded-xl border border-neutral-200 bg-neutral-50 px-3 pr-8 text-sm font-semibold text-neutral-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                         className="h-11 w-full min-w-0 appearance-none truncate rounded-xl border border-theme-base bg-theme-main px-3 pr-8 text-sm font-semibold text-theme-main focus:outline-none focus:ring-2 focus:ring-purple-400"
                       >
                         {notes.map(note => <option key={note.id} value={note.id}>{note.title}</option>)}
                       </select>
-                      <ChevronDown size={14} className="pointer-events-none absolute right-3 text-neutral-400" />
+                       <ChevronDown size={14} className="pointer-events-none absolute right-3 text-theme-muted" />
                     </>
                   )}
                 </div>
@@ -1095,7 +1095,7 @@ export default function PlanPage({
                         setEditingNoteTitle(created.title);
                         setIsEditingComment(true);
                       }}
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-purple-500 transition-colors hover:bg-purple-50"
+                       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-theme-base bg-theme-surface text-purple-500 transition-colors hover:bg-purple-50"
                       title="Добавить заметку"
                     ><Plus size={17} /></button>
                     <button
@@ -1108,7 +1108,7 @@ export default function PlanPage({
                         if (activeNote) setNoteToDelete(activeNote);
                       }}
                       disabled={notes.length <= 1}
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-rose-400 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-30"
+                       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-theme-base bg-theme-surface text-rose-400 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-30"
                       title={notes.length <= 1 ? 'Нельзя удалить единственную заметку' : 'Удалить заметку'}
                     ><Trash2 size={16} /></button>
                   </>
@@ -1132,7 +1132,7 @@ export default function PlanPage({
                   }}
                   className={cn(
                     "h-11 w-11 shrink-0 flex items-center justify-center rounded-xl transition-all",
-                    isEditingComment ? "bg-purple-500 text-white shadow-lg shadow-purple-100" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+                     isEditingComment ? "bg-purple-500 text-white shadow-lg shadow-purple-100" : "bg-theme-main text-theme-muted hover:bg-theme-surface"
                   )}
                   title={isEditingComment ? "Сохранить" : "Редактировать"}
                 >
@@ -1141,7 +1141,7 @@ export default function PlanPage({
               </div>
               
               {isEditingComment && (
-                <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-xl">
+                 <div className="flex items-center gap-1 bg-theme-main p-1 rounded-xl">
                   <button 
                     onClick={() => {
                       const textarea = document.getElementById('comment-editor') as HTMLTextAreaElement;
@@ -1153,7 +1153,7 @@ export default function PlanPage({
                       const selected = text.substring(start, end);
                       setLocalComment(before + `**${selected}**` + after);
                     }}
-                    className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
+                     className="p-1 hover:bg-theme-surface hover:shadow-sm rounded-lg transition-all"
                     title="Жирный"
                   >
                     <Bold size={14} />
@@ -1169,7 +1169,7 @@ export default function PlanPage({
                       const selected = text.substring(start, end);
                       setLocalComment(before + `*${selected}*` + after);
                     }}
-                    className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
+                     className="p-1 hover:bg-theme-surface hover:shadow-sm rounded-lg transition-all"
                     title="Курсив"
                   >
                     <Italic size={14} />
@@ -1185,7 +1185,7 @@ export default function PlanPage({
                       const selected = text.substring(start, end);
                       setLocalComment(before + `~~${selected}~~` + after);
                     }}
-                    className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
+                     className="p-1 hover:bg-theme-surface hover:shadow-sm rounded-lg transition-all"
                     title="Зачеркнутый"
                   >
                     <Strikethrough size={14} />
@@ -1201,7 +1201,7 @@ export default function PlanPage({
                       const selected = text.substring(start, end);
                       setLocalComment(before + `\n# ${selected}` + after);
                     }}
-                    className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
+                     className="p-1 hover:bg-theme-surface hover:shadow-sm rounded-lg transition-all"
                     title="Заголовок"
                   >
                     <Heading1 size={14} />
@@ -1217,7 +1217,7 @@ export default function PlanPage({
                       const selected = text.substring(start, end);
                       setLocalComment(before + `\n## ${selected}` + after);
                     }}
-                    className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
+                     className="p-1 hover:bg-theme-surface hover:shadow-sm rounded-lg transition-all"
                     title="Заголок 2"
                   >
                     <Heading2 size={14} />
@@ -1233,7 +1233,7 @@ export default function PlanPage({
                       const selected = text.substring(start, end);
                       setLocalComment(before + `\n### ${selected}` + after);
                     }}
-                    className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
+                     className="p-1 hover:bg-theme-surface hover:shadow-sm rounded-lg transition-all"
                     title="Заголок 3"
                   >
                     <Heading3 size={14} />
@@ -1249,7 +1249,7 @@ export default function PlanPage({
                       const selected = text.substring(start, end);
                       setLocalComment(before + `\n- [ ] ${selected}` + after);
                     }}
-                    className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
+                     className="p-1 hover:bg-theme-surface hover:shadow-sm rounded-lg transition-all"
                     title="Список задач"
                   >
                     <ListChecks size={14} />
@@ -1266,7 +1266,7 @@ export default function PlanPage({
                       // PlainText - just inserted as is if wrapped, or maybe just inserted
                       setLocalComment(before + selected + after);
                     }}
-                    className="p-1 hover:bg-white hover:shadow-sm rounded-lg transition-all"
+                     className="p-1 hover:bg-theme-surface hover:shadow-sm rounded-lg transition-all"
                     title="Обычный текст"
                   >
                     <Type size={14} />
@@ -1282,12 +1282,12 @@ export default function PlanPage({
                   data-testid="textarea-note-editor"
                   value={localComment}
                   onChange={(e) => setLocalComment(e.target.value)}
-                  className="w-full h-full p-6 bg-neutral-50 border border-neutral-100 rounded-[32px] focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm resize-none shadow-inner no-scrollbar"
+                   className="w-full h-full p-6 bg-theme-main border border-theme-base text-theme-main rounded-[32px] focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm resize-none shadow-inner no-scrollbar"
                   placeholder="Введите текст в формате Markdown..."
                   autoFocus
                 />
               ) : (
-                <div className="w-full h-full p-8 bg-white border border-neutral-100 rounded-[32px] overflow-auto markdown-body shadow-sm no-scrollbar">
+                 <div className="w-full h-full p-8 bg-theme-surface border border-theme-base rounded-[32px] overflow-auto markdown-body shadow-sm no-scrollbar">
                   <InteractiveMarkdown 
                     content={localComment}
                     onUpdate={(newContent) => {
@@ -1314,14 +1314,14 @@ export default function PlanPage({
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-note-title"
-            className="w-full max-w-sm rounded-3xl border border-neutral-100 bg-white p-5 shadow-2xl"
+             className="w-full max-w-sm rounded-3xl border border-theme-base bg-theme-surface p-5 shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-500">
               <Trash2 size={20} />
             </div>
-            <h3 id="delete-note-title" className="text-lg font-bold text-neutral-900">Удалить заметку?</h3>
-            <p className="mt-2 text-sm leading-relaxed text-neutral-500">
+             <h3 id="delete-note-title" className="text-lg font-bold text-theme-main">Удалить заметку?</h3>
+             <p className="mt-2 text-sm leading-relaxed text-theme-muted">
               «{noteToDelete.title}» будет удалена без возможности восстановления.
             </p>
             <div className="mt-6 flex gap-2">
@@ -1329,7 +1329,7 @@ export default function PlanPage({
                 type="button"
                 data-testid="button-cancel-delete-note"
                 onClick={() => setNoteToDelete(null)}
-                className="flex-1 rounded-xl bg-neutral-100 px-4 py-2.5 text-sm font-bold text-neutral-600 hover:bg-neutral-200"
+                 className="flex-1 rounded-xl bg-theme-main px-4 py-2.5 text-sm font-bold text-theme-muted hover:bg-theme-surface"
               >
                 Отмена
               </button>
@@ -1355,17 +1355,17 @@ export default function PlanPage({
       {/* Cell Edit Modal */}
       {editingCell && cellEditValue && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-2">
-          <div className="bg-white rounded-[32px] p-3 w-full max-w-md shadow-2xl space-y-6">
+           <div className="bg-theme-surface rounded-[32px] p-3 w-full max-w-md shadow-2xl space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold">Редактирование ячейки</h3>
-              <button onClick={() => setEditingCell(null)} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
+              <button onClick={() => setEditingCell(null)} className="p-2 hover:bg-theme-main rounded-full transition-colors">
                 <X size={20} />
               </button>
             </div>
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-neutral-500 uppercase">Значение (в тыс ₽)</label>
+                 <label className="text-xs font-bold text-theme-muted uppercase">Значение (в тыс ₽)</label>
                 <div className="relative group">
                   <input 
                     type="text"
@@ -1376,13 +1376,13 @@ export default function PlanPage({
                         handleSaveCell();
                       }
                     }}
-                    className="w-full p-3 bg-neutral-50 border border-neutral-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-right pr-12"
+                     className="w-full p-3 bg-theme-main border border-theme-base text-theme-main rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-right pr-12"
                     placeholder="Напр. 22,5 или 😊"
                     autoFocus
                   />
                   <button 
                     onClick={() => setShowCalculator(true)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-white text-neutral-400 rounded-xl border border-neutral-100 shadow-sm transition-all hover:text-emerald-500"
+                     className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-theme-surface text-theme-muted rounded-xl border border-theme-base shadow-sm transition-all hover:text-emerald-500"
                     title="Калькулятор"
                   >
                     <CalcIcon size={16} />
@@ -1406,13 +1406,13 @@ export default function PlanPage({
               <div className="flex flex-col gap-6">
                 <div className="flex items-center gap-4">
                   <div className="flex-1 space-y-2">
-                    <label className="text-xs font-bold text-neutral-500 uppercase">Стиль текста</label>
+                     <label className="text-xs font-bold text-theme-muted uppercase">Стиль текста</label>
                     <div className="flex gap-2">
                       <button 
                         onClick={() => setCellEditValue({ ...cellEditValue, isBold: !cellEditValue.isBold })}
                         className={cn(
                           "flex-1 p-3 rounded-xl border transition-all flex items-center justify-center gap-2",
-                          cellEditValue.isBold ? "bg-theme-primary text-white border-theme-primary" : "bg-white text-neutral-400 border-neutral-200"
+                           cellEditValue.isBold ? "bg-theme-primary text-white border-theme-primary" : "bg-theme-surface text-theme-muted border-theme-base"
                         )}
                       >
                         <Bold size={16} />
@@ -1422,7 +1422,7 @@ export default function PlanPage({
                         onClick={() => setCellEditValue({ ...cellEditValue, fontSize: cellEditValue.fontSize === 14 ? 10 : (cellEditValue.fontSize === 12 ? 14 : 12) })}
                         className={cn(
                           "flex-1 p-3 rounded-xl border transition-all flex items-center justify-center gap-2",
-                          cellEditValue.fontSize ? "bg-theme-primary text-white border-theme-primary" : "bg-white text-neutral-400 border-neutral-200"
+                           cellEditValue.fontSize ? "bg-theme-primary text-white border-theme-primary" : "bg-theme-surface text-theme-muted border-theme-base"
                         )}
                       >
                         <Type size={16} />
@@ -1432,20 +1432,20 @@ export default function PlanPage({
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-neutral-500 uppercase">Цвет текста</label>
+                     <label className="text-xs font-bold text-theme-muted uppercase">Цвет текста</label>
                     <div className="flex items-center gap-2 h-[46px]">
                       <div className="relative group">
                         <input 
                           type="color"
                           value={cellEditValue.color || '#000000'}
                           onChange={(e) => setCellEditValue({ ...cellEditValue, color: e.target.value })}
-                          className="w-10 h-10 rounded-xl cursor-pointer border border-neutral-200 p-0 bg-transparent"
+                           className="w-10 h-10 rounded-xl cursor-pointer border border-theme-base p-0 bg-transparent"
                         />
-                        <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full border border-white shadow-sm" style={{ backgroundColor: cellEditValue.color || '#000000' }} />
+                         <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full border border-theme-base shadow-sm" style={{ backgroundColor: cellEditValue.color || '#000000' }} />
                       </div>
                       <button 
                         onClick={() => setCellEditValue({ ...cellEditValue, color: undefined })}
-                        className="text-[10px] text-neutral-400 underline hover:text-neutral-600"
+                         className="text-[10px] text-theme-muted underline hover:text-theme-main"
                       >
                         Сбросить
                       </button>
@@ -1455,11 +1455,11 @@ export default function PlanPage({
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-neutral-500 uppercase">Комментарий</label>
+                 <label className="text-xs font-bold text-theme-muted uppercase">Комментарий</label>
                 <textarea 
                   value={cellEditValue.comment || ''}
                   onChange={(e) => setCellEditValue({ ...cellEditValue, comment: e.target.value })}
-                  className="w-full p-3 bg-neutral-50 border border-neutral-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 h-24"
+                   className="w-full p-3 bg-theme-main border border-theme-base text-theme-main rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 h-24"
                   placeholder="Добавьте заметку к этой ячейке..."
                 />
               </div>
@@ -1475,7 +1475,7 @@ export default function PlanPage({
               </button>
               <button 
                 onClick={() => setEditingCell(null)}
-                className="flex-1 bg-neutral-100 text-neutral-600 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
+                 className="flex-1 bg-theme-main text-theme-muted py-4 rounded-2xl font-bold hover:bg-theme-surface transition-all"
               >
                 Отмена
               </button>
@@ -1487,35 +1487,35 @@ export default function PlanPage({
       {/* Subject (Column) Edit Modal */}
       {editingSubject && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6 sm:p-4">
-          <div className="bg-white rounded-[32px] p-6 w-full max-w-md shadow-2xl space-y-6">
+          <div className="bg-theme-surface rounded-[32px] p-6 w-full max-w-md shadow-2xl space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold">Настройка графы</h3>
-              <button onClick={() => setEditingSubject(null)} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
+              <button onClick={() => setEditingSubject(null)} className="p-2 hover:bg-theme-main rounded-full transition-colors">
                 <X size={20} />
               </button>
             </div>
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-neutral-500 uppercase">Название</label>
+                <label className="text-xs font-bold text-theme-muted uppercase">Название</label>
                 <input 
                   type="text"
                   value={editingSubject.name}
                   onChange={(e) => setEditingSubject({ ...editingSubject, name: e.target.value })}
-                  className="w-full p-3 bg-neutral-50 border border-neutral-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full p-3 bg-theme-main border border-theme-base text-theme-main rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   autoFocus
                 />
               </div>
 
-              <div className="flex items-center gap-2 p-3 bg-neutral-50 rounded-2xl border border-neutral-100">
+              <div className="flex items-center gap-2 p-3 bg-theme-main rounded-2xl border border-theme-base">
                 <input 
                   type="checkbox"
                   id="archive-subject"
                   checked={editingSubject.isArchived}
                   onChange={(e) => setEditingSubject({ ...editingSubject, isArchived: e.target.checked })}
-                  className="w-4 h-4 rounded border-neutral-300 text-emerald-600 focus:ring-emerald-500"
+                  className="w-4 h-4 rounded border-theme-base text-emerald-600 focus:ring-emerald-500"
                 />
-                <label htmlFor="archive-subject" className="text-sm font-medium text-neutral-700 cursor-pointer">
+                <label htmlFor="archive-subject" className="text-sm font-medium text-theme-main cursor-pointer">
                   В архив (скрыть из текущих)
                 </label>
               </div>
@@ -1531,7 +1531,7 @@ export default function PlanPage({
               </button>
               <button 
                 onClick={() => setEditingSubject(null)}
-                className="flex-1 bg-neutral-100 text-neutral-600 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
+                className="flex-1 bg-theme-main text-theme-muted py-4 rounded-2xl font-bold hover:bg-theme-surface transition-all"
               >
                 Отмена
               </button>
@@ -1574,7 +1574,7 @@ export default function PlanPage({
       {/* Row Editor Modal */}
       {rowEditor.mode && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6 sm:p-4">
-          <div className="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-2xl space-y-6">
+          <div className="bg-theme-surface rounded-[32px] p-6 w-full max-w-sm shadow-2xl space-y-6">
             <h3 className="text-xl font-bold text-center">Добавить строку</h3>
             <div className="space-y-4">
               <input 
@@ -1582,12 +1582,12 @@ export default function PlanPage({
                 placeholder="Текст"
                 value={rowEditor.label}
                 onChange={(e) => setRowEditor({ ...rowEditor, label: e.target.value })}
-                className="w-full p-3 border border-neutral-200 rounded-2xl"
+                className="w-full p-3 bg-theme-main text-theme-main border border-theme-base rounded-2xl"
               />
               <select 
                 value={rowEditor.type}
                 onChange={(e) => setRowEditor({ ...rowEditor, type: e.target.value as any })}
-                className="w-full p-3 border border-neutral-200 rounded-2xl"
+                className="w-full p-3 bg-theme-main text-theme-main border border-theme-base rounded-2xl"
               >
                 <option value="month">Месяц</option>
                 <option value="min">Минимум</option>
@@ -1603,7 +1603,7 @@ export default function PlanPage({
               </button>
               <button 
                 onClick={() => setRowEditor({ mode: null, rowId: null, label: '', type: 'month' })}
-                className="flex-1 bg-neutral-100 text-neutral-600 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
+                className="flex-1 bg-theme-main text-theme-muted py-4 rounded-2xl font-bold hover:bg-theme-surface transition-all"
               >
                 Отмена
               </button>
@@ -1615,13 +1615,13 @@ export default function PlanPage({
       {/* Delete Row Confirmation Modal */}
       {rowToDelete && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6 sm:p-4">
-          <div className="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-2xl space-y-6 text-center">
+          <div className="bg-theme-surface rounded-[32px] p-6 w-full max-w-sm shadow-2xl space-y-6 text-center">
             <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto">
               <Trash2 size={32} />
             </div>
             <div className="space-y-2">
               <h3 className="text-xl font-bold">Удалить строку?</h3>
-              <p className="text-sm text-neutral-500">
+              <p className="text-sm text-theme-muted">
                 Вы уверены, что хотите удалить эту строку? Это действие нельзя отменить.
               </p>
             </div>
@@ -1639,7 +1639,7 @@ export default function PlanPage({
               </button>
               <button 
                 onClick={() => setRowToDelete(null)}
-                className="flex-1 bg-neutral-100 text-neutral-600 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
+                className="flex-1 bg-theme-main text-theme-muted py-4 rounded-2xl font-bold hover:bg-theme-surface transition-all"
               >
                 Отмена
               </button>
@@ -1651,7 +1651,7 @@ export default function PlanPage({
       {/* Archive / Delete Subject Confirmation Modal */}
       {subjectToDelete && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6 sm:p-4">
-          <div className="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-2xl space-y-6 text-center">
+          <div className="bg-theme-surface rounded-[32px] p-6 w-full max-w-sm shadow-2xl space-y-6 text-center">
             {activeTab === 'now' ? (
               <>
                 <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto">
@@ -1659,7 +1659,7 @@ export default function PlanPage({
                 </div>
                 <div className="space-y-2">
                   <h3 className="text-xl font-bold">Архивировать графу?</h3>
-                  <p className="text-sm text-neutral-500">
+                  <p className="text-sm text-theme-muted">
                     Графа будет скрыта из вкладки «Сейчас», но останется видна в «Прошлом» со всеми данными.
                   </p>
                 </div>
@@ -1672,7 +1672,7 @@ export default function PlanPage({
                   </button>
                   <button
                     onClick={() => setSubjectToDelete(null)}
-                    className="flex-1 bg-neutral-100 text-neutral-600 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
+                    className="flex-1 bg-theme-main text-theme-muted py-4 rounded-2xl font-bold hover:bg-theme-surface transition-all"
                   >
                     Отмена
                   </button>
@@ -1685,7 +1685,7 @@ export default function PlanPage({
                 </div>
                 <div className="space-y-2">
                   <h3 className="text-xl font-bold">Удалить графу?</h3>
-                  <p className="text-sm text-neutral-500">
+                  <p className="text-sm text-theme-muted">
                     Графа будет удалена навсегда вместе со всеми данными. Это действие нельзя отменить.
                   </p>
                 </div>
@@ -1698,7 +1698,7 @@ export default function PlanPage({
                   </button>
                   <button
                     onClick={() => setSubjectToDelete(null)}
-                    className="flex-1 bg-neutral-100 text-neutral-600 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
+                    className="flex-1 bg-theme-main text-theme-muted py-4 rounded-2xl font-bold hover:bg-theme-surface transition-all"
                   >
                     Отмена
                   </button>

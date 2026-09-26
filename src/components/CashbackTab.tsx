@@ -86,12 +86,12 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
   const editorButtonClass = cn(
     "p-2 rounded-xl transition-all",
     isEditorMode 
-      ? (isGreyTheme ? "bg-neutral-600 text-white" : "bg-purple-500 text-white shadow-lg shadow-purple-100")
-      : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+      ? (isGreyTheme ? "bg-neutral-600 text-theme-on-primary" : "bg-purple-500 text-theme-on-primary shadow-lg shadow-purple-100")
+      : "bg-theme-surface text-theme-muted hover:bg-theme-surface"
   );
   const addAssetButtonClass = cn(
     "font-bold flex items-center justify-center gap-2 w-full",
-    isGreyTheme ? "text-neutral-600" : "text-emerald-600"
+    isGreyTheme ? "text-theme-main" : "text-emerald-600"
   );
 
   const handleSaveData = (data: any) => {
@@ -213,7 +213,7 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
   return (
     <div className="flex h-full w-full">
       {/* Vertical Month Tabs and Toolbar */}
-      <div className="flex flex-col border-r border-neutral-200 shrink-0 bg-neutral-50 overflow-y-auto no-scrollbar">
+      <div className="flex flex-col border-r border-theme-base shrink-0 bg-theme-main overflow-y-auto no-scrollbar">
         <div className="flex flex-col">
           {sortedMonths.map((m) => {
             const isPast = m.id < nowId;
@@ -222,10 +222,10 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
                 <button
                   onClick={() => setActiveMonthId(m.id)}
                   className={cn(
-                    "px-3 py-4 text-[11px] font-bold transition-all capitalize [writing-mode:vertical-rl] rotate-180 whitespace-nowrap border-b border-neutral-200 w-10 text-center",
+                    "px-3 py-4 text-[11px] font-bold transition-all capitalize [writing-mode:vertical-rl] rotate-180 whitespace-nowrap border-b border-theme-base w-10 text-center",
                     activeMonthId === m.id 
-                      ? (isGreyTheme ? "bg-neutral-200 text-neutral-900 shadow-inner" : "bg-purple-100 text-purple-900 shadow-inner")
-                      : "bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
+                      ? (isGreyTheme ? "bg-theme-surface text-theme-main shadow-inner" : "bg-purple-100 text-purple-900 shadow-inner")
+                      : "bg-theme-main text-theme-muted hover:bg-theme-surface"
                   )}
                 >
                   {m.label}
@@ -238,7 +238,7 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
                       e.preventDefault();
                       setMonthToDelete(m.id);
                     }}
-                    className="absolute bottom-1 right-1 p-1 bg-white/80 text-rose-500 rounded-md opacity-0 group-hover:opacity-100 shadow-sm transition-all z-10"
+                    className="absolute bottom-1 right-1 p-1 bg-theme-surface/80 text-rose-500 rounded-md opacity-0 group-hover:opacity-100 shadow-sm transition-all z-10"
                   >
                     <Trash2 size={10} />
                   </button>
@@ -249,7 +249,7 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
           
           <button
             onClick={handleAddMonth}
-            className="p-3 text-emerald-500 hover:bg-emerald-50 transition-colors border-b border-neutral-200 flex items-center justify-center"
+            className="p-3 text-emerald-500 hover:bg-emerald-50 transition-colors border-b border-theme-base flex items-center justify-center"
             title="Добавить месяц"
           >
             <Plus size={18} />
@@ -260,9 +260,9 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
       {/* Cashback Table Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header with Actions */}
-        <div className="px-4 py-2 bg-white border-b border-neutral-100 flex items-center justify-between shrink-0 h-12">
+        <div className="px-4 py-2 bg-theme-surface border-b border-theme-base flex items-center justify-between shrink-0 h-12">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold text-neutral-900 capitalize">{activeMonth?.label}</h2>
+            <h2 className="text-sm font-bold text-theme-main capitalize">{activeMonth?.label}</h2>
           </div>
           
           <div className="flex items-center gap-1.5 sm:gap-2">
@@ -285,7 +285,7 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
                   "p-2 h-8 rounded-lg flex items-center gap-1.5 text-[10px] font-bold transition-all",
                   filterCategoryId 
                     ? "bg-purple-100 text-purple-600 shadow-sm" 
-                    : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+                    : "bg-theme-surface text-theme-muted hover:bg-theme-surface"
                 )}
                 title="Фильтр по категориям"
               >
@@ -296,11 +296,11 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
               {showFilterDropdown && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowFilterDropdown(false)} />
-                  <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-neutral-100 p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="text-[10px] font-bold text-neutral-400 uppercase px-2 py-1 mb-1">Категории в этом месяце</div>
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-theme-surface rounded-xl shadow-xl border border-theme-base p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="text-[10px] font-bold text-theme-muted uppercase px-2 py-1 mb-1">Категории в этом месяце</div>
                     <div className="max-h-60 overflow-y-auto no-scrollbar space-y-0.5">
                       {categoriesInActiveMonth.length === 0 ? (
-                        <div className="px-2 py-3 text-center text-[10px] text-neutral-400 italic">Нет категорий</div>
+                        <div className="px-2 py-3 text-center text-[10px] text-theme-muted italic">Нет категорий</div>
                       ) : (
                         categoriesInActiveMonth.map(c => (
                           <button
@@ -311,7 +311,7 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
                             }}
                             className={cn(
                               "w-full flex items-center gap-2 p-2 rounded-lg text-left text-xs font-medium transition-colors",
-                              filterCategoryId === c.id ? "bg-purple-50 text-purple-700" : "hover:bg-neutral-50 text-neutral-600"
+                              filterCategoryId === c.id ? "bg-purple-50 text-purple-700" : "hover:bg-theme-main text-theme-main"
                             )}
                           >
                             <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
@@ -327,7 +327,7 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
                           setFilterCategoryId(null);
                           setShowFilterDropdown(false);
                         }}
-                        className="w-full mt-1 p-2 text-center text-[10px] font-bold text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border-t border-neutral-100"
+                        className="w-full mt-1 p-2 text-center text-[10px] font-bold text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border-t border-theme-base"
                       >
                         Сбросить
                       </button>
@@ -340,7 +340,7 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
             {!isEditorMode && Object.keys(groupedEntries).length > 0 && (
               <button
                 onClick={() => setShowExportModal(true)}
-                className="p-2 h-8 w-8 flex items-center justify-center bg-neutral-100 text-neutral-500 hover:bg-neutral-200 rounded-lg transition-colors"
+                className="p-2 h-8 w-8 flex items-center justify-center bg-theme-surface text-theme-muted hover:bg-theme-surface rounded-lg transition-colors"
                 title="Экспорт в картинку"
               >
                 <ImageDown size={16} />
@@ -352,8 +352,8 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
               className={cn(
                 "flex items-center gap-1.5 px-3 h-8 rounded-lg text-[10px] font-bold transition-all",
                 isEditorMode 
-                  ? (isGreyTheme ? "bg-neutral-600 text-white" : "bg-purple-500 text-white shadow-lg shadow-purple-100")
-                  : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+                  ? (isGreyTheme ? "bg-neutral-600 text-theme-on-primary" : "bg-purple-500 text-theme-on-primary shadow-lg shadow-purple-100")
+                  : "bg-theme-surface text-theme-muted hover:bg-theme-surface"
               )}
               title={isEditorMode ? "Сохранить" : "Редактировать"}
             >
@@ -372,7 +372,7 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
 
             <button
               onClick={() => setShowCategoryManager(true)}
-              className="p-2 bg-neutral-100 text-neutral-500 rounded-lg hover:bg-neutral-200 h-8 w-8 flex items-center justify-center transition-colors"
+              className="p-2 bg-theme-surface text-theme-muted rounded-lg hover:bg-theme-surface h-8 w-8 flex items-center justify-center transition-colors"
               title="Управление категориями"
             >
               <Tags size={15} />
@@ -384,7 +384,7 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
         {!isEditorMode && (
           <div className="flex-1 overflow-auto no-scrollbar p-3">
             {Object.keys(groupedEntries).length === 0 ? (
-              <div className="h-full flex items-center justify-center text-neutral-400 italic text-sm">
+              <div className="h-full flex items-center justify-center text-theme-muted italic text-sm">
                 Нет данных о кэшбеке на этот месяц
               </div>
             ) : (
@@ -392,7 +392,7 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
                 {Object.entries(groupedEntries).map(([assetId, entries]) => (
                   <div key={assetId} className="mb-3">
                     {/* Bank header */}
-                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-400 pb-1 mb-1.5 border-b border-neutral-200">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-theme-muted pb-1 mb-1.5 border-b border-theme-base">
                       {assetId}
                     </div>
                     {/* Entries */}
@@ -406,15 +406,15 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
                                 className="w-2.5 h-2.5 rounded-full shrink-0 mt-0.5"
                                 style={{ backgroundColor: category?.color || '#aaa' }}
                               />
-                              <span className="text-[13px] text-neutral-700 flex-1 leading-tight break-words">
+                              <span className="text-[13px] text-theme-main flex-1 leading-tight break-words">
                                 {category?.name || 'Неизвестно'}
                               </span>
-                              <span className="text-[14px] font-black text-neutral-900 tabular-nums shrink-0 ml-1">
+                              <span className="text-[14px] font-black text-theme-main tabular-nums shrink-0 ml-1">
                                 {entry.percent}%
                               </span>
                             </div>
                             {entry.comment && (
-                              <p className="text-[11px] italic text-neutral-400 ml-4 leading-tight -mt-0.5">
+                              <p className="text-[11px] italic text-theme-muted ml-4 leading-tight -mt-0.5">
                                 {entry.comment}
                               </p>
                             )}
@@ -433,53 +433,53 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
         {isEditorMode && (
           <div className="flex-1 overflow-auto no-scrollbar p-0">
             <table className="w-full border-collapse">
-              <thead className="sticky top-0 bg-white z-10 shadow-sm">
+              <thead className="sticky top-0 bg-theme-surface z-10 shadow-sm">
                 <tr>
-                  <th className="p-2 border border-neutral-200 text-[10px] font-bold text-neutral-400 uppercase tracking-wider text-left">Активы</th>
-                  <th className="p-2 border border-neutral-200 text-[10px] font-bold text-neutral-400 uppercase tracking-wider text-center w-20">Процент</th>
-                  <th className="p-2 border border-neutral-200 text-[10px] font-bold text-neutral-400 uppercase tracking-wider text-left">Комментарий</th>
+                  <th className="p-2 border border-theme-base text-[10px] font-bold text-theme-muted uppercase tracking-wider text-left">Активы</th>
+                  <th className="p-2 border border-theme-base text-[10px] font-bold text-theme-muted uppercase tracking-wider text-center w-20">Процент</th>
+                  <th className="p-2 border border-theme-base text-[10px] font-bold text-theme-muted uppercase tracking-wider text-left">Комментарий</th>
                 </tr>
               </thead>
               <tbody>
                 {Object.entries(groupedEntries).map(([assetId, entries]) => (
                   <React.Fragment key={assetId}>
-                    <tr className="bg-neutral-50/50">
-                      <td colSpan={3} className="px-3 py-2 font-bold text-xs flex justify-between items-center border border-neutral-200">
-                        <span className="text-neutral-700">{assetId}</span>
+                    <tr className="bg-theme-main/50">
+                      <td colSpan={3} className="px-3 py-2 font-bold text-xs flex justify-between items-center border border-theme-base">
+                        <span className="text-theme-main">{assetId}</span>
                         <button onClick={() => handleAddEntry(assetId)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md"><Plus size={14} /></button>
                       </td>
                     </tr>
                     {entries.map(entry => {
                       const category = cashbackData.categories.find(c => c.id === entry.categoryId);
                       return (
-                        <tr key={entry.id} className="hover:bg-neutral-50/30 transition-colors">
-                          <td className="p-1 border border-neutral-200 text-sm">
+                        <tr key={entry.id} className="hover:bg-theme-main/50 transition-colors">
+                          <td className="p-1 border border-theme-base text-sm">
                             <select
                               value={entry.categoryId}
                               onChange={(e) => handleUpdateEntry(entry.id, 'categoryId', e.target.value)}
-                              className="w-full p-1 bg-white border border-neutral-100 rounded text-xs focus:ring-1 focus:ring-purple-500 focus:outline-none"
+                              className="w-full p-1 bg-theme-surface border border-theme-base rounded text-xs focus:ring-1 focus:ring-purple-500 focus:outline-none"
                             >
                               {cashbackData.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                           </td>
-                          <td className="p-1 border border-neutral-200 text-sm text-center">
+                          <td className="p-1 border border-theme-base text-sm text-center">
                             <div className="flex items-center">
                               <input
                                 type="number"
                                 value={entry.percent}
                                 onChange={(e) => handleUpdateEntry(entry.id, 'percent', parseFloat(e.target.value))}
-                                className="w-full p-1 bg-white border border-neutral-100 rounded text-xs text-center focus:ring-1 focus:ring-purple-500 focus:outline-none"
+                                className="w-full p-1 bg-theme-surface border border-theme-base rounded text-xs text-center focus:ring-1 focus:ring-purple-500 focus:outline-none"
                               />
-                              <span className="text-[10px] ml-1 text-neutral-400">%</span>
+                              <span className="text-[10px] ml-1 text-theme-muted">%</span>
                             </div>
                           </td>
-                          <td className="p-1 border border-neutral-200 text-sm">
+                          <td className="p-1 border border-theme-base text-sm">
                             <div className="flex items-center gap-2">
                               <input
                                 type="text"
                                 value={entry.comment || ''}
                                 onChange={(e) => handleUpdateEntry(entry.id, 'comment', e.target.value)}
-                                className="flex-1 p-1 bg-white border border-neutral-100 rounded text-xs focus:ring-1 focus:ring-purple-500 focus:outline-none"
+                                className="flex-1 p-1 bg-theme-surface border border-theme-base rounded text-xs focus:ring-1 focus:ring-purple-500 focus:outline-none"
                                 placeholder="Прим."
                               />
                               <button onClick={() => handleDeleteEntry(entry.id)} className="p-1 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"><Trash2 size={14} /></button>
@@ -491,7 +491,7 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
                   </React.Fragment>
                 ))}
                 <tr>
-                  <td colSpan={3} className="p-3 border border-neutral-200">
+                  <td colSpan={3} className="p-3 border border-theme-base">
                     <button onClick={() => setShowAssetSelector(true)} className={addAssetButtonClass}>
                       <Plus size={16} /> <span className="text-xs">Добавить актив</span>
                     </button>
@@ -505,7 +505,7 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
 
       {showAssetSelector && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[80vh]">
+          <div className="bg-theme-surface rounded-[2rem] p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[80vh]">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-black uppercase text-theme-main drop-shadow-sm">Выберите актив</h3>
               <button 
@@ -521,7 +521,7 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
                 <button 
                   key={acc.id} 
                   onClick={() => handleAddAsset(acc.name)} 
-                  className="w-full p-4 text-left bg-neutral-50 hover:bg-neutral-100 border border-neutral-100 rounded-2xl transition-all font-bold text-sm text-neutral-700 flex items-center justify-between group"
+                  className="w-full p-4 text-left bg-theme-main hover:bg-theme-surface border border-theme-base rounded-2xl transition-all font-bold text-sm text-theme-main flex items-center justify-between group"
                 >
                   {acc.name}
                   <Plus size={16} className="text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -530,7 +530,7 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
             </div>
             <button 
               onClick={() => setShowAssetSelector(false)} 
-              className="mt-6 w-full p-4 bg-neutral-100 text-neutral-500 rounded-2xl font-bold text-sm hover:bg-neutral-200 transition-colors"
+              className="mt-6 w-full p-4 bg-theme-surface text-theme-muted rounded-2xl font-bold text-sm hover:bg-theme-surface transition-colors"
             >
               Отмена
             </button>
@@ -557,25 +557,25 @@ export default function CashbackTab({ planData, accounts, onSave }: CashbackTabP
       {/* Month Delete Confirmation Modal */}
       {monthToDelete && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[200] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-theme-surface rounded-3xl p-6 w-full max-w-xs shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex items-center gap-3 text-rose-500 mb-4">
               <Trash2 size={24} />
               <h4 className="font-bold text-lg">Удалить месяц?</h4>
             </div>
-            <p className="text-neutral-500 text-sm mb-6">
+            <p className="text-theme-muted text-sm mb-6">
               Вы хотите удалить данные за {cashbackData.months.find(m => m.id === monthToDelete)?.label}. Это действие нельзя отменить.
             </p>
             <div className="flex gap-3">
               <button 
                 onClick={() => setMonthToDelete(null)}
-                className="flex-1 px-4 py-2 bg-neutral-100 text-neutral-500 rounded-xl font-bold text-sm hover:bg-neutral-200 transition-colors"
+                className="flex-1 px-4 py-2 bg-theme-surface text-theme-muted rounded-xl font-bold text-sm hover:bg-theme-surface transition-colors"
                 type="button"
               >
                 Отмена
               </button>
               <button 
                 onClick={() => handleDeleteMonth(monthToDelete)}
-                className="flex-1 px-4 py-2 bg-rose-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-rose-200 hover:bg-rose-600 transition-colors"
+                className="flex-1 px-4 py-2 bg-rose-500 text-theme-on-primary rounded-xl font-bold text-sm shadow-lg shadow-rose-200 hover:bg-rose-600 transition-colors"
                 type="button"
               >
                 Удалить

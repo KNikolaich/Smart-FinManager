@@ -449,7 +449,7 @@ export default function CashbackExportModal({ cashbackData, groupedEntries, onCl
                 min={1} max={5} step={1}
                 value={fontSizeStep}
                 onChange={e => setFontSizeStep(Number(e.target.value))}
-                className="flex-1 h-1.5 accent-[var(--color-primary)] cursor-pointer"
+                className="flex-1 h-1.5 accent-[var(--color-action)] cursor-pointer"
               />
               <span className="text-[14px] font-black text-theme-muted">А</span>
             </div>
@@ -479,7 +479,7 @@ export default function CashbackExportModal({ cashbackData, groupedEntries, onCl
                 min={1} max={5} step={1}
                 value={sidePadStep}
                 onChange={e => setSidePadStep(Number(e.target.value))}
-                className="flex-1 h-1.5 accent-[var(--color-primary)] cursor-pointer"
+                className="flex-1 h-1.5 accent-[var(--color-action)] cursor-pointer"
               />
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 text-theme-muted">
                 <rect x="0" y="2" width="2.5" height="10" rx="1" fill="currentColor"/>

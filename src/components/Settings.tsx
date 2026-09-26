@@ -1,5 +1,5 @@
 import { LogOut, User as UserIcon, Database, Shield, Github, Info, Sparkles, CheckCircle2, Eraser, Trash2, AlertTriangle, Tag, FileDown, FileUp, X, ArrowRightLeft, AlertCircle, Copy, Palette, ArrowUp, CreditCard, TrendingUp, RefreshCw, ServerCrash, CircleCheck, LayoutDashboard } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { api } from '../lib/api';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -10,10 +10,17 @@ import { CurrencyTable } from './CurrencyTable';
 import { UserManager } from './UserManager';
 import { useDataManagement } from '../hooks/useDataManagement';
 import { APP_VERSION } from '../version';
-import { safeStorage } from '../lib/api';
 
-import { DashboardLayoutSettings, UserProfile, Account } from '../types';
+import type {
+  DashboardLayoutSettings,
+  UserProfile,
+  Account,
+  ThemeDeviceClass,
+  ThemeId,
+  ThemePreferences,
+} from '../types';
 import { DashboardLayoutEditor } from './settings/DashboardLayoutEditor';
+import { THEME_DEVICE_OPTIONS, THEME_GROUPS, isThemeId } from '../lib/themePreferences';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -26,9 +33,22 @@ interface SettingsProps {
   onShowLogs: () => void;
   onRefresh: () => void;
   onSaveDashboardLayout: (dashboard: DashboardLayoutSettings) => Promise<void>;
+  themePreferences: ThemePreferences;
+  themeDeviceClass: ThemeDeviceClass;
+  onSaveThemePreference: (deviceClass: ThemeDeviceClass, themeId: ThemeId) => Promise<void>;
 }
 
-export default function Settings({ user, accounts, onLogout, onShowLogs, onRefresh, onSaveDashboardLayout }: SettingsProps) {
+export default function Settings({
+  user,
+  accounts,
+  onLogout,
+  onShowLogs,
+  onRefresh,
+  onSaveDashboardLayout,
+  themePreferences,
+  themeDeviceClass,
+  onSaveThemePreference,
+}: SettingsProps) {
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showAccountManager, setShowAccountManager] = useState(false);
   const [showCurrencyTable, setShowCurrencyTable] = useState(false);
@@ -36,7 +56,13 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
   const [showUserManager, setShowUserManager] = useState(false);
   const [showDashboardLayoutEditor, setShowDashboardLayoutEditor] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState(safeStorage.getItem('theme') || 'theme-nordic');
+  const [selectedThemeDevice, setSelectedThemeDevice] = useState<ThemeDeviceClass>(themeDeviceClass);
+  const [themeSaving, setThemeSaving] = useState(false);
+  const [themeSaveError, setThemeSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedThemeDevice(themeDeviceClass);
+  }, [themeDeviceClass]);
 
   // DB migration panel (admin only)
   const [dbMigrateOpen, setDbMigrateOpen] = useState(false);
@@ -98,35 +124,22 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
     }
   };
 
-  const themes = [
-    { type: 'Светлые', items: [
-      { id: 'theme-bw', palette: ['bg-white', 'bg-neutral-200', 'bg-neutral-400', 'bg-neutral-900', 'bg-black'], name: 'ЧБ' },
-      { id: 'theme-nordic', palette: ['bg-sky-100', 'bg-sky-200', 'bg-sky-300', 'bg-sky-400', 'bg-sky-500'], name: 'Нордик' },
-      { id: 'theme-light-blue', palette: ['bg-blue-200', 'bg-blue-300', 'bg-blue-400', 'bg-blue-500', 'bg-blue-600'], name: 'Лазурь' },
-      { id: 'theme-light-orange', palette: ['bg-orange-100', 'bg-orange-200', 'bg-orange-300', 'bg-orange-400', 'bg-orange-500'], name: 'Пустыня' },
-      { id: 'theme-light-ruby', palette: ['bg-rose-200', 'bg-rose-300', 'bg-rose-400', 'bg-rose-500', 'bg-rose-600'], name: 'Рубин' },
-      { id: 'theme-light-violet', palette: ['bg-violet-200', 'bg-violet-300', 'bg-violet-400', 'bg-violet-500', 'bg-violet-600'], name: 'Фиалка' },
-      { id: 'theme-light-green', palette: ['bg-emerald-200', 'bg-emerald-300', 'bg-emerald-400', 'bg-emerald-500', 'bg-emerald-600'], name: 'Салат' },
-    ]},
-    { type: 'Темные', items: [
-      { id: 'theme-midnight', palette: ['bg-indigo-950', 'bg-indigo-900', 'bg-indigo-800', 'bg-indigo-700', 'bg-indigo-600'], name: 'Полночь' },
-      { id: 'theme-carbon', palette: ['bg-neutral-950', 'bg-neutral-900', 'bg-neutral-800', 'bg-neutral-700', 'bg-neutral-600'], name: 'Уголь' },
-      { id: 'theme-oled', palette: ['bg-black', 'bg-neutral-950', 'bg-neutral-900', 'bg-black', 'bg-black'], name: 'OLED' },
-      { id: 'theme-forest-dark', palette: ['bg-emerald-950', 'bg-emerald-900', 'bg-emerald-800', 'bg-emerald-700', 'bg-emerald-600'], name: 'Тайга' },
-      { id: 'theme-nocturnal', palette: ['bg-black', 'bg-neutral-900', 'bg-neutral-800', 'bg-neutral-700', 'bg-black'], name: 'Хронос' },
-      { id: 'theme-cyber', palette: ['bg-cyan-950', 'bg-cyan-900', 'bg-cyan-800', 'bg-cyan-500', 'bg-cyan-400'], name: 'Кибер' },
-    ]}
-  ];
+  const currentTheme = themePreferences[selectedThemeDevice];
+  const activeThemeObj = THEME_GROUPS.flatMap(group => group.items).find(theme => theme.id === currentTheme)
+    ?? THEME_GROUPS[0].items[0];
 
-  const activeThemeObj = themes.flatMap(g => g.items).find(t => t.id === currentTheme) || themes[0].items[0];
-
-  const handleThemeChange = (themeId: string) => {
-    const allThemeIds = themes.flatMap(g => g.items).map(t => t.id);
-    document.body.classList.remove(...allThemeIds);
-    document.body.classList.add(themeId);
-    safeStorage.setItem('theme', themeId);
-    setCurrentTheme(themeId);
-    setDropdownOpen(false);
+  const handleThemeChange = async (themeId: ThemeId) => {
+    if (!isThemeId(themeId) || themeSaving) return;
+    setThemeSaving(true);
+    setThemeSaveError(null);
+    try {
+      await onSaveThemePreference(selectedThemeDevice, themeId);
+      setDropdownOpen(false);
+    } catch {
+      setThemeSaveError('Не удалось сохранить выбор. Проверьте подключение и попробуйте снова.');
+    } finally {
+      setThemeSaving(false);
+    }
   };
   const {
     seeding, seedProgress, success, clearing, showClearConfirm, setShowClearConfirm,
@@ -451,27 +464,56 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
         {/* App Settings Section */}
         <section className="space-y-3">
           <h4 className="text-xs font-bold text-theme-primary uppercase tracking-widest px-4">Приложение</h4>
-          <div className="bg-white rounded-3xl border border-neutral-100 shadow-sm overflow-visible">
-            <div className="px-6 py-4 border-b border-neutral-50 last:border-0">
+          <div className="bg-theme-surface rounded-3xl border border-theme-base shadow-sm overflow-visible">
+            <div className="px-6 py-4 border-b border-theme-base last:border-0">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-10 h-10 bg-pink-100 dark:bg-pink-900/30 rounded-xl flex items-center justify-center">
-                  <Palette className="w-5 h-5 text-pink-600 dark:text-pink-400" />
+                <div className="w-10 h-10 bg-theme-primary-light rounded-xl flex items-center justify-center">
+                  <Palette className="w-5 h-5 text-theme-primary" />
                 </div>
                 <div>
-                  <p className="font-semibold text-sm">Тема оформления</p>
-                  <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-bold">Выберите настроение</p>
+                  <p className="font-semibold text-sm text-theme-main">Тема оформления</p>
+                  <p className="text-[10px] text-theme-muted uppercase tracking-wider font-bold">Отдельная тема для каждой группы экранов</p>
                 </div>
               </div>
               
               <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-1 rounded-2xl bg-theme-main p-1" role="group" aria-label="Группа экранов">
+                  {THEME_DEVICE_OPTIONS.map(option => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      aria-pressed={selectedThemeDevice === option.id}
+                      onClick={() => {
+                        setSelectedThemeDevice(option.id);
+                        setDropdownOpen(false);
+                        setThemeSaveError(null);
+                      }}
+                      className={cn(
+                        'rounded-xl px-2 py-2 text-[10px] sm:text-xs font-semibold transition-colors',
+                        selectedThemeDevice === option.id
+                          ? 'bg-theme-surface text-theme-primary shadow-sm'
+                          : 'text-theme-muted hover:text-theme-main',
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] leading-relaxed text-theme-muted">
+                  Сохраняется в аккаунте: телефон — до 767 px, планшет / ноутбук — 768–1439 px, большой экран — от 1440 px.
+                </p>
                 <div className="relative">
                   <button
+                    type="button"
                     onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="w-full flex items-center justify-between p-3 bg-neutral-50 rounded-2xl border border-neutral-100 hover:border-neutral-200 transition-all font-semibold text-sm"
+                    disabled={themeSaving}
+                    className="w-full flex items-center justify-between p-3 bg-theme-main rounded-2xl border border-theme-base hover:border-theme-primary transition-all font-semibold text-sm text-theme-main disabled:opacity-60"
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex -space-x-1">
-                        {activeThemeObj.palette.map((c, i) => <div key={i} className={cn("w-4 h-4 rounded-full border border-white", c)} />)}
+                        {activeThemeObj.palette.map((color, i) => (
+                          <div key={i} className="w-4 h-4 rounded-full border border-theme-base" style={{ backgroundColor: color }} />
+                        ))}
                       </div>
                       <span>{activeThemeObj.name}</span>
                     </div>
@@ -479,20 +521,24 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
                   </button>
                   
                   {dropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-3xl border border-neutral-100 shadow-xl z-50 animate-in fade-in slide-in-from-top-2 flex flex-col max-h-[400px]">
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-theme-surface rounded-3xl border border-theme-base shadow-xl z-50 animate-in fade-in slide-in-from-top-2 flex flex-col max-h-[400px]">
                       <div className="p-2 overflow-y-auto">
-                        {themes.map(group => (
+                        {THEME_GROUPS.map(group => (
                           <div key={group.type} className="mb-4 last:mb-0">
-                            <p className="text-[10px] font-bold text-neutral-400 uppercase mb-2 px-3">{group.type}</p>
+                            <p className="text-[10px] font-bold text-theme-muted uppercase mb-2 px-3">{group.type}</p>
                             {group.items.map((theme) => (
                               <button
                                 key={theme.id}
                                 onClick={() => handleThemeChange(theme.id)}
-                                className="w-full flex items-center justify-between px-3 py-2 hover:bg-neutral-50 rounded-xl transition-all"
+                                type="button"
+                                disabled={themeSaving}
+                                className="w-full flex items-center justify-between px-3 py-2 hover:bg-theme-main rounded-xl transition-all disabled:opacity-60"
                               >
-                                <span className={cn("text-sm font-medium", currentTheme === theme.id ? "text-theme-primary" : "text-neutral-700")}>{theme.name}</span>
+                                <span className={cn("text-sm font-medium", currentTheme === theme.id ? "text-theme-primary" : "text-theme-main")}>{theme.name}</span>
                                 <div className="flex -space-x-1">
-                                  {theme.palette.map((c, i) => <div key={i} className={cn("w-4 h-4 rounded-full border border-white", c)} />)}
+                                  {theme.palette.map((color, i) => (
+                                    <div key={i} className="w-4 h-4 rounded-full border border-theme-base" style={{ backgroundColor: color }} />
+                                  ))}
                                 </div>
                               </button>
                             ))}
@@ -502,6 +548,7 @@ export default function Settings({ user, accounts, onLogout, onShowLogs, onRefre
                     </div>
                   )}
                 </div>
+                {themeSaveError && <p role="alert" className="text-xs text-red-600">{themeSaveError}</p>}
               </div>
             </div>
 

@@ -6,6 +6,7 @@ import { useAuth } from './hooks/useAuth';
 import { useGlobalInputContextMenu } from './hooks/useGlobalInputContextMenu';
 import { api, safeStorage, syncOfflineQueue } from './lib/api';
 import { CalendarNoteDraft, DashboardLayoutSettings, PlannedPayment, PlannedPaymentDraft, Transaction, UserProfile } from './types';
+import type { ThemeDeviceClass, ThemeId, ThemePreferences } from './types';
 import type { PlannedPaymentOccurrence } from './lib/plannedPaymentOccurrences';
 import { getDashboardLayout } from './lib/dashboardLayout';
 import { useDashboardDevice } from './hooks/useDashboardDevice';
@@ -22,6 +23,13 @@ import { AppModals } from './components/app/AppModals';
 import { cn } from './lib/utils';
 import { ToastContainer, ToastType } from './components/ui/Toast';
 import { getTodayKey } from './lib/plannedPaymentOccurrences';
+import { useThemeDeviceClass } from './hooks/useThemeDeviceClass';
+import {
+  applyTheme,
+  isCompleteThemePreferences,
+  normalizeThemePreferences,
+  resolveThemePreferences,
+} from './lib/themePreferences';
 
 type Tab = 'dashboard' | 'plan' | 'analytics' | 'settings' | 'ai';
 
@@ -52,6 +60,15 @@ export default function App() {
 
   const { user, setUser, loading, handleLogout } = useAuth(addToast);
   const dashboardDevice = useDashboardDevice();
+  const themeDeviceClass = useThemeDeviceClass();
+  const [themePreferences, setThemePreferences] = useState<ThemePreferences>(() =>
+    resolveThemePreferences(undefined, safeStorage.getItem('theme')).preferences,
+  );
+  const themeSettingsQueueRef = useRef<Promise<UserProfile> | null>(null);
+  const currentUserIdRef = useRef<string | null>(user?.id ?? null);
+  const hydratedThemeUserIdRef = useRef<string | null>(null);
+  const themeMigrationStartedUserIdRef = useRef<string | null>(null);
+  currentUserIdRef.current = user?.id ?? null;
   const {
     accounts,
     transactions,
@@ -121,9 +138,82 @@ export default function App() {
   }, [aiTransactionDraftIndex, aiTransactionDrafts]);
 
   useEffect(() => {
-    const savedTheme = safeStorage.getItem('theme') || 'theme-nordic';
-    document.body.classList.add(savedTheme);
+    applyTheme(themePreferences[themeDeviceClass]);
+  }, [themePreferences, themeDeviceClass]);
+
+  const saveThemeSettings = useCallback((settings: { themeByDevice: Partial<ThemePreferences> }) => {
+    const previousRequest = themeSettingsQueueRef.current;
+    const request = previousRequest
+      ? previousRequest.catch(() => undefined).then(() => api.put<UserProfile>('/auth/me', { settings }))
+      : api.put<UserProfile>('/auth/me', { settings });
+    themeSettingsQueueRef.current = request;
+    return request;
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      if (hydratedThemeUserIdRef.current) {
+        hydratedThemeUserIdRef.current = null;
+        themeMigrationStartedUserIdRef.current = null;
+        setThemePreferences(resolveThemePreferences(undefined, null).preferences);
+      }
+      return;
+    }
+
+    hydratedThemeUserIdRef.current = user.id;
+    const legacyTheme = safeStorage.getItem('theme');
+    const { preferences, shouldPersist } = resolveThemePreferences(user.settings, legacyTheme);
+    setThemePreferences(preferences);
+
+    if (isCompleteThemePreferences(user.settings?.themeByDevice)) {
+      safeStorage.removeItem('theme');
+      return;
+    }
+    if (!shouldPersist || themeMigrationStartedUserIdRef.current === user.id) return;
+
+    themeMigrationStartedUserIdRef.current = user.id;
+    void saveThemeSettings({ themeByDevice: preferences })
+      .then(updatedUser => {
+        if (currentUserIdRef.current !== user.id) return;
+        setUser(updatedUser);
+        safeStorage.removeItem('theme');
+      })
+      .catch(error => {
+        themeMigrationStartedUserIdRef.current = null;
+        console.warn('Unable to migrate saved theme preferences to the account:', error);
+      });
+  }, [user?.id, user?.settings?.themeByDevice, saveThemeSettings, setUser]);
+
+  useEffect(() => {
+    if (!user) return;
+    let inFlight = false;
+    let lastSyncAt = 0;
+
+    const refreshThemeFromAccount = async () => {
+      if (document.visibilityState !== 'visible' || inFlight || Date.now() - lastSyncAt < 1500) return;
+      inFlight = true;
+      lastSyncAt = Date.now();
+      try {
+        const profile = await api.get<UserProfile>('/auth/me');
+        if (currentUserIdRef.current !== user.id || !profile.settings?.themeByDevice) return;
+        if (isCompleteThemePreferences(profile.settings.themeByDevice)) {
+          setThemePreferences(normalizeThemePreferences(profile.settings.themeByDevice));
+          setUser(profile);
+        }
+      } catch (error) {
+        console.warn('Unable to refresh theme preferences from the account:', error);
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    window.addEventListener('focus', refreshThemeFromAccount);
+    document.addEventListener('visibilitychange', refreshThemeFromAccount);
+    return () => {
+      window.removeEventListener('focus', refreshThemeFromAccount);
+      document.removeEventListener('visibilitychange', refreshThemeFromAccount);
+    };
+  }, [user?.id, setUser]);
 
   const handleAIResult = async (result: any) => {
     if (result.intent === 'transaction') {
@@ -257,6 +347,25 @@ export default function App() {
     addToast('Настройки дашборда сохранены', 'success');
   }, [addToast, setUser, user]);
 
+  const handleSaveThemePreference = useCallback(async (deviceClass: ThemeDeviceClass, themeId: ThemeId) => {
+    if (!user) return;
+    const previousTheme = themePreferences[deviceClass];
+    setThemePreferences(current => ({ ...current, [deviceClass]: themeId }));
+
+    try {
+      const updatedUser = await saveThemeSettings({ themeByDevice: { [deviceClass]: themeId } });
+      if (currentUserIdRef.current === user.id) setUser(updatedUser);
+    } catch (error) {
+      if (currentUserIdRef.current === user.id) {
+        setThemePreferences(current => current[deviceClass] === themeId
+          ? { ...current, [deviceClass]: previousTheme }
+          : current);
+      }
+      addToast('Не удалось синхронизировать тему с аккаунтом', 'error');
+      throw error;
+    }
+  }, [addToast, saveThemeSettings, setUser, themePreferences, user]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-theme-main">
@@ -363,7 +472,17 @@ export default function App() {
           />
         );
       case 'settings':
-        return <LazySettings user={user} accounts={accounts} onLogout={handleLogout} onShowLogs={() => setShowAILogs(true)} onRefresh={refreshData} onSaveDashboardLayout={handleSaveDashboardLayout} />;
+        return <LazySettings
+          user={user}
+          accounts={accounts}
+          onLogout={handleLogout}
+          onShowLogs={() => setShowAILogs(true)}
+          onRefresh={refreshData}
+          onSaveDashboardLayout={handleSaveDashboardLayout}
+          themePreferences={themePreferences}
+          themeDeviceClass={themeDeviceClass}
+          onSaveThemePreference={handleSaveThemePreference}
+        />;
       case 'ai':
         return (
           <LazyAIAssistant

@@ -691,7 +691,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
   };
 
   return (
-    <div className="flex flex-col h-full bg-neutral-50">
+    <div className="flex flex-col h-full bg-theme-main">
       {/* Chat Messages */}
       <div className="flex-1 relative min-h-0">
         <div className="h-full overflow-y-auto px-2 sm:px-4 py-3 sm:py-6 space-y-4 sm:space-y-6 no-scrollbar">
@@ -716,7 +716,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
             <div className="space-y-2 sm:space-y-3 max-w-[82%] sm:max-w-[85%]">
               <div className={cn(
                 "p-2.5 sm:p-4 rounded-xl sm:rounded-2xl text-xs sm:text-sm shadow-sm",
-                m.role === 'assistant' ? "bg-white text-neutral-800 rounded-tl-none" : "bg-theme-primary text-white rounded-tr-none"
+                m.role === 'assistant' ? "bg-theme-surface text-theme-main rounded-tl-none" : "bg-theme-primary text-theme-on-primary rounded-tr-none"
               )}>
                 <div className="markdown-body text-[12px] sm:text-sm">
                   <SimpleMarkdown 
@@ -743,13 +743,13 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
                         void confirmAction(m.id, m.actionType!, data);
                       }
                     }}
-                    className="bg-theme-primary text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all"
+                    className="bg-theme-primary text-theme-on-primary px-4 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all"
                   >
                     Подтвердить
                   </button>
                   <button 
                     onClick={() => deleteMessage(m.id)}
-                    className="bg-white border border-neutral-200 text-neutral-500 px-4 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all"
+                    className="bg-theme-surface border border-theme-base text-theme-muted px-4 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all"
                   >
                     Отмена
                   </button>
@@ -764,9 +764,9 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
             <div className="shrink-0 pt-0.5">
               <RobotIcon className="w-6 h-6 sm:w-10 sm:h-10 text-theme-primary" active />
             </div>
-            <div className="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
+            <div className="bg-theme-surface p-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
-              <span className="text-xs text-neutral-400">Думаю...</span>
+              <span className="text-xs text-theme-muted">Думаю...</span>
             </div>
           </div>
         )}
@@ -775,7 +775,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
         {/* Eraser — fixed to bottom-left of the chat viewport, never scrolls */}
         <button
           onClick={clearChat}
-          className="absolute bottom-4 left-3 w-9 h-9 bg-white text-neutral-400 rounded-full flex items-center justify-center hover:bg-neutral-100 transition-all active:scale-95 shadow-md border border-neutral-100 z-10"
+          className="absolute bottom-4 left-3 w-9 h-9 bg-theme-surface text-theme-muted rounded-full flex items-center justify-center hover:bg-theme-surface transition-all active:scale-95 shadow-md border border-theme-base z-10"
           title="Очистить чат"
         >
           <Eraser className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -783,7 +783,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
       </div>
 
       {/* Input Area */}
-      <div className="p-3 sm:p-4 bg-white border-t border-neutral-100 shrink-0">
+      <div className="p-3 sm:p-4 bg-theme-surface border-t border-theme-base shrink-0">
         {/* Row 1: Action Buttons & Quick Actions */}
         <div className="flex justify-between items-center mb-3">
           <div className="flex gap-1 items-center">
@@ -797,14 +797,14 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-8 h-8 sm:w-11 sm:h-11 bg-neutral-100 text-neutral-500 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-neutral-200 transition-all active:scale-95 shrink-0"
+              className="w-8 h-8 sm:w-11 sm:h-11 bg-theme-surface text-theme-muted rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-theme-surface transition-all active:scale-95 shrink-0"
               title="Прикрепить фото"
             >
               <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button
               onClick={() => setIsCapturing(true)}
-              className="w-8 h-8 sm:w-11 sm:h-11 bg-neutral-100 text-neutral-500 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-neutral-200 transition-all active:scale-95 shrink-0"
+              className="w-8 h-8 sm:w-11 sm:h-11 bg-theme-surface text-theme-muted rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-theme-surface transition-all active:scale-95 shrink-0"
               title="Сделать фото"
             >
               <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -813,7 +813,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
               onClick={isRecording ? stopListening : () => onVoiceInput()}
               className={cn(
                 "w-8 h-8 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center transition-all active:scale-95",
-                isRecording ? "bg-red-500 text-white animate-pulse" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+                isRecording ? "bg-red-500 text-theme-on-primary animate-pulse" : "bg-theme-surface text-theme-muted hover:bg-theme-surface"
               )}
               title={isRecording ? "Остановить запись" : "Голосовой ввод"}
             >
@@ -826,7 +826,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
               <button 
                 key={i}
                 onClick={() => setInput(action.text)}
-                className="shrink-0 flex items-center gap-1.5 sm:gap-2 bg-neutral-50 text-neutral-600 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-medium border border-neutral-100 hover:bg-neutral-100 transition-colors whitespace-nowrap"
+                className="shrink-0 flex items-center gap-1.5 sm:gap-2 bg-theme-main text-theme-main px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-medium border border-theme-base hover:bg-theme-surface transition-colors whitespace-nowrap"
               >
                 <action.icon className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-500" />
                 {action.label}
@@ -848,13 +848,13 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
             }}
             placeholder="Напиши мне или прикрепи фото..."
             rows={1}
-            className="flex-1 bg-neutral-50 border border-neutral-100 rounded-xl sm:rounded-2xl px-3 py-2 sm:px-4 sm:py-3.5 text-base sm:text-sm outline-none focus:border-emerald-500 transition-all resize-none max-h-32 mb-1"
+            className="flex-1 bg-theme-main border border-theme-base rounded-xl sm:rounded-2xl px-3 py-2 sm:px-4 sm:py-3.5 text-base sm:text-sm outline-none focus:border-emerald-500 transition-all resize-none max-h-32 mb-1"
           />
 
           <button
             onClick={() => handleSend()}
             disabled={(!input.trim() && attachments.length === 0) || loading}
-            className="w-10 h-10 sm:w-11 sm:h-11 bg-theme-primary text-white rounded-lg sm:rounded-xl flex items-center justify-center disabled:opacity-50 transition-all active:scale-95 shadow-sm shadow-theme-primary/20 mb-1 shrink-0"
+            className="w-10 h-10 sm:w-11 sm:h-11 bg-theme-primary text-theme-on-primary rounded-lg sm:rounded-xl flex items-center justify-center disabled:opacity-50 transition-all active:scale-95 shadow-sm shadow-theme-primary/20 mb-1 shrink-0"
           >
             {loading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <Send className="w-4 h-4 sm:w-5 sm:h-5" />}
           </button>
@@ -864,10 +864,10 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
            <div className="flex flex-wrap gap-1.5 mt-2">
             {attachments.map((base64, index) => (
               <div key={index} className="relative group w-10 h-10 sm:w-11 sm:h-11 shrink-0">
-                <img src={base64} alt="attachment" className="w-full h-full object-cover rounded-lg border border-neutral-200" />
+                <img src={base64} alt="attachment" className="w-full h-full object-cover rounded-lg border border-theme-base" />
                 <button 
                   onClick={() => removeAttachment(index)}
-                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-md flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+                  className="absolute -top-1 -right-1 bg-red-500 text-theme-on-primary rounded-full p-0.5 shadow-md flex items-center justify-center hover:bg-red-600 transition-colors z-10"
                 >
                   <CloseIcon size={10} />
                 </button>
@@ -882,10 +882,10 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
             <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
           </div>
           <div className="p-4 bg-black flex items-center justify-between gap-4">
-            <button onClick={() => setIsCapturing(false)} className="text-white text-sm font-medium">Отмена</button>
-            <button onClick={capturePhoto} className="w-16 h-16 rounded-full bg-white border-4 border-neutral-300 hover:bg-neutral-100 transition-all active:scale-95" />
+            <button onClick={() => setIsCapturing(false)} className="text-theme-on-primary text-sm font-medium">Отмена</button>
+            <button onClick={capturePhoto} className="w-16 h-16 rounded-full bg-theme-surface border-4 border-theme-base hover:bg-theme-surface transition-all active:scale-95" />
             {cameraDevices.length > 1 ? (
-              <select onChange={(e) => startStream(e.target.value)} value={selectedDeviceId} className="bg-transparent text-white text-sm">
+              <select onChange={(e) => startStream(e.target.value)} value={selectedDeviceId} className="bg-transparent text-theme-on-primary text-sm">
                 {cameraDevices.map(d => <option key={d.deviceId} value={d.deviceId} className="text-black">{d.label || 'Камера'}</option>)}
               </select>
             ) : <div className="w-12"></div>}

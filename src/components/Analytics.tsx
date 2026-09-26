@@ -308,7 +308,7 @@ export default function Analytics({
             }
             
             .recharts-pie-sector:hover {
-              stroke: var(--theme-primary, #3b82f6) !important;
+               stroke: var(--color-action, #3b82f6) !important;
               stroke-width: 3px !important;
               opacity: 0.92;
             }
@@ -360,8 +360,8 @@ export default function Analytics({
                     ))}
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'var(--theme-surface)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)', padding: '8px' }}
-                    itemStyle={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--theme-main)' }}
+                    contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'var(--surface-card)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)', padding: '8px' }}
+                    itemStyle={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--surface-page)' }}
                     labelStyle={{ color: 'var(--text-muted)' }}
                     formatter={(value: number, name: string, props: any) => [
                       `${value.toLocaleString()} ₽`, 
@@ -412,8 +412,8 @@ export default function Analytics({
                   tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip 
-                  cursor={{ fill: 'var(--theme-main)', opacity: 0.05 }}
-                  contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'var(--theme-surface)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}
+                  cursor={{ fill: 'var(--surface-page)', opacity: 0.05 }}
+                  contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'var(--surface-card)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}
                   itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
                 />
                 <Bar dataKey="income" name="Доход" fill="#10b981" radius={[4, 4, 0, 0]} barSize={12} />
@@ -451,11 +451,11 @@ export default function Analytics({
                   tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip 
-                  contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'var(--theme-surface)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}
+                  contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'var(--surface-card)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}
                   itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
                   formatter={(value: number) => [`${value.toLocaleString()} ₽`, 'Баланс']}
                 />
-                <Line type="monotone" dataKey="balance" stroke="var(--primary)" strokeWidth={3} dot={{ r: 4, fill: 'var(--primary)' }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="balance" stroke="var(--color-action)" strokeWidth={3} dot={{ r: 4, fill: 'var(--color-action)' }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>

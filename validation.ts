@@ -157,10 +157,31 @@ const dashboardLayoutSettingsSchema = z.object({
   tablet: dashboardDeviceLayoutSchema,
   mobile: dashboardDeviceLayoutSchema,
 }).strict();
+const themeIdSchema = z.enum([
+  "theme-bw",
+  "theme-nordic",
+  "theme-light-blue",
+  "theme-light-orange",
+  "theme-light-ruby",
+  "theme-light-violet",
+  "theme-light-green",
+  "theme-midnight",
+  "theme-carbon",
+  "theme-oled",
+  "theme-forest-dark",
+  "theme-nocturnal",
+  "theme-cyber",
+]);
+const themeByDeviceSchema = z.object({
+  mobile: themeIdSchema.optional(),
+  tablet: themeIdSchema.optional(),
+  desktop: themeIdSchema.optional(),
+}).strict();
 const userSettingsSchema = z.object({
   showTotalBalance: z.boolean().optional(),
   lastNudgeTime: z.string().max(100).optional(),
   dashboard: dashboardLayoutSettingsSchema.optional(),
+  themeByDevice: themeByDeviceSchema.optional(),
 }).strict();
 
 export const updateProfileSchema = z.object({
