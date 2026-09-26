@@ -24,7 +24,7 @@ interface BottomNavProps {
 export function BottomNav({ activeTab, onChangeTab, onDashboardClick, showUserPage, onOpenUserPage, isOnline }: BottomNavProps) {
   return (
     <nav aria-label="Основная навигация" className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 pb-0 h-[54px] shrink-0 z-40 flex items-center justify-center md:relative md:bottom-0 md:left-auto md:translate-x-0 md:max-w-none md:bg-theme-surface md:border-t border-theme-base md:rounded-none max-md:landscape:relative max-md:landscape:bottom-0 max-md:landscape:left-auto max-md:landscape:translate-x-0 max-md:landscape:w-20 max-md:landscape:h-full max-md:landscape:px-0 max-md:landscape:bg-theme-surface max-md:landscape:border-r max-md:landscape:border-t-0">
-      <div className="w-full bg-theme-surface/90 backdrop-blur-xl border border-theme-base shadow-elegant rounded-3xl flex items-center justify-around h-full px-2 md:bg-transparent md:backdrop-blur-none md:border-none md:shadow-none md:rounded-none max-md:landscape:flex-col max-md:landscape:py-4 max-md:landscape:bg-transparent max-md:landscape:backdrop-blur-none">
+      <div className="w-full bg-theme-surface/90 backdrop-blur-xl border border-theme-base shadow-elegant rounded-[18px] flex items-center justify-around h-full px-2 md:bg-transparent md:backdrop-blur-none md:border-none md:shadow-none md:rounded-none max-md:landscape:flex-col max-md:landscape:py-4 max-md:landscape:bg-transparent max-md:landscape:backdrop-blur-none">
 
         {/* Offline indicator - only shown in the mobile landscape sidebar */}
         <div className="hidden max-md:landscape:flex items-center justify-center">

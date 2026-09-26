@@ -132,23 +132,23 @@ export default function CreditTab({ planData, onSave }: CreditTabProps) {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-[#0f1d15] border border-[#234231] p-3 rounded-2xl shadow-xl text-xs text-white space-y-1.5 font-sans min-w-[150px]">
-          <p className="font-bold border-b border-[#234231] pb-1 mb-1 text-emerald-400">Месяц {data.monthNum}</p>
+        <div className="min-w-[150px] space-y-1.5 rounded-2xl border border-theme-base bg-theme-surface p-3 font-sans text-xs text-theme-main shadow-elegant">
+          <p className="mb-1 border-b border-theme-base pb-1 font-bold text-theme-primary">Месяц {data.monthNum}</p>
           <div className="flex justify-between gap-4">
-            <span className="text-neutral-400">Платеж:</span>
+            <span className="text-theme-muted">Платеж:</span>
             <span className="font-bold">{data.payment.toLocaleString()} ₽</span>
           </div>
           <div className="flex justify-between gap-4">
-            <span className="text-sky-400 font-medium">Долг:</span>
-            <span className="font-bold text-sky-400">{data.principal.toLocaleString()} ₽</span>
+            <span className="text-theme-muted font-medium">Долг:</span>
+            <span className="font-bold text-theme-primary">{data.principal.toLocaleString()} ₽</span>
           </div>
           <div className="flex justify-between gap-4">
-            <span className="text-amber-400 font-medium">Проценты:</span>
-            <span className="font-bold text-amber-500">{data.interest.toLocaleString()} ₽</span>
+            <span className="text-theme-muted font-medium">Проценты:</span>
+            <span className="font-bold text-finance-expense">{data.interest.toLocaleString()} ₽</span>
           </div>
-          <div className="flex justify-between gap-4 border-t border-[#234231] pt-1 mt-1">
-            <span className="text-neutral-400">Остаток:</span>
-            <span className="font-bold text-neutral-300">{data.remaining.toLocaleString()} ₽</span>
+          <div className="mt-1 flex justify-between gap-4 border-t border-theme-base pt-1">
+            <span className="text-theme-muted">Остаток:</span>
+            <span className="font-bold">{data.remaining.toLocaleString()} ₽</span>
           </div>
         </div>
       );
@@ -200,7 +200,7 @@ export default function CreditTab({ planData, onSave }: CreditTabProps) {
                 type="number"
                 value={amount === 0 ? '' : amount}
                 onChange={(e) => setAmount(Math.max(0, parseFloat(e.target.value) || 0))}
-                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-3 text-sm text-theme-main font-bold focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-right pr-9"
+                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-3 text-sm text-theme-main font-bold focus:outline-none focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary transition-all text-right pr-9"
                 placeholder="1 000 000"
                 min="0"
               />
@@ -219,7 +219,7 @@ export default function CreditTab({ planData, onSave }: CreditTabProps) {
                 max="100"
                 value={rate === 0 ? '' : rate}
                 onChange={(e) => setRate(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
-                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-3 text-sm text-theme-main font-bold focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-right pr-9"
+                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-3 text-sm text-theme-main font-bold focus:outline-none focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary transition-all text-right pr-9"
                 placeholder="12"
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-theme-muted">%</span>
@@ -234,7 +234,7 @@ export default function CreditTab({ planData, onSave }: CreditTabProps) {
                 type="number"
                 value={term === 0 ? '' : term}
                 onChange={(e) => setTerm(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-3 text-sm text-theme-main font-bold focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-right pr-12"
+                className="w-full bg-theme-main border border-theme-base rounded-xl px-4 py-3 text-sm text-theme-main font-bold focus:outline-none focus:ring-2 focus:ring-theme-primary/20 focus:border-theme-primary transition-all text-right pr-12"
                 placeholder="24"
                 min="1"
               />
@@ -278,8 +278,8 @@ export default function CreditTab({ planData, onSave }: CreditTabProps) {
               Общая сумма выплат
             </p>
             <div className="mt-4">
-              <p className="text-2xl font-black text-indigo-700 tracking-tight">
-                {Math.round(totalPayout).toLocaleString()} <span className="text-lg font-medium text-indigo-400">₽</span>
+              <p className="text-2xl font-black text-theme-primary tracking-tight">
+                {Math.round(totalPayout).toLocaleString()} <span className="text-lg font-medium text-theme-primary">₽</span>
               </p>
               <p className="text-[10px] text-theme-muted mt-1">Тело ({amount.toLocaleString()} ₽) + Начисленные проценты</p>
             </div>
@@ -287,19 +287,18 @@ export default function CreditTab({ planData, onSave }: CreditTabProps) {
         </div>
 
         {/* Stacked Payments Dynamics Chart matching the reference image perfectly */}
-        <div className="bg-[#0b1712] text-theme-on-primary p-6 rounded-[28px] shadow-lg border border-[#1b3427]/40 flex flex-col">
+        <div className="bg-theme-surface text-theme-main p-6 rounded-2xl shadow-soft border border-theme-base flex flex-col">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-sm font-bold tracking-wide font-sans text-neutral-100 uppercase py-0.5">
+            <h3 className="text-sm font-bold tracking-wide font-sans text-theme-main uppercase py-0.5">
               Динамика платежей
             </h3>
-            {/* Custom Legend closely styled after the screenshot */}
-            <div className="flex items-center gap-5 text-[10px] font-black uppercase tracking-widest text-[#93b39d]">
+            <div className="flex items-center gap-5 text-[10px] font-black uppercase tracking-widest text-theme-muted">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded bg-[#2563eb]" />
+                <span className="w-2.5 h-2.5 rounded bg-theme-primary" />
                 долг
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded bg-[#caa325]" />
+                <span className="w-2.5 h-2.5 rounded" style={{ backgroundColor: 'var(--color-warning)' }} />
                 проценты
               </div>
             </div>
@@ -314,10 +313,10 @@ export default function CreditTab({ planData, onSave }: CreditTabProps) {
                   barCategoryGap={1}
                   margin={{ top: 10, right: 0, left: 0, bottom: 0 }}
                 >
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--border-subtle)', fillOpacity: 0.35 }} />
                   {/* Stacked bars: principal first (bottom), interest second (top) */}
-                  <Bar dataKey="principal" stackId="dynamicPayments" fill="#2563eb" />
-                  <Bar dataKey="interest" stackId="dynamicPayments" fill="#caa325" />
+                  <Bar dataKey="principal" stackId="dynamicPayments" fill="var(--color-action)" />
+                  <Bar dataKey="interest" stackId="dynamicPayments" fill="var(--color-warning)" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (

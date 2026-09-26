@@ -481,7 +481,9 @@ table td { border-color: var(--border-color); }
 }
 
 .glass-morphism {
-  @apply bg-white/80 backdrop-blur-md border border-white/20;
+  background-color: color-mix(in srgb, var(--surface-card) 80%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
 }
 
 .safe-bottom {

@@ -37,15 +37,15 @@ const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({
   }, [toast.id, onRemove]);
 
   const icons = {
-    success: <CheckCircle2 className="w-4 h-4 text-emerald-500" />,
-    error: <AlertCircle className="w-4 h-4 text-rose-500" />,
-    info: <Info className="w-4 h-4 text-blue-500" />
+    success: <CheckCircle2 className="w-4 h-4 text-finance-income" />,
+    error: <AlertCircle className="w-4 h-4 text-finance-expense" />,
+    info: <Info className="w-4 h-4 text-finance-transfer" />
   };
 
-  const bgColors = {
-    success: 'bg-emerald-50/90 border-emerald-100',
-    error: 'bg-rose-50/90 border-rose-100',
-    info: 'bg-blue-50/90 border-blue-100'
+  const accentColors = {
+    success: 'var(--color-income)',
+    error: 'var(--color-expense)',
+    info: 'var(--color-transfer)'
   };
 
   return (
@@ -55,17 +55,19 @@ const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
       className={cn(
-        "pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-lg backdrop-blur-md w-full",
-        bgColors[toast.type]
+        "pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl border border-l-4 border-theme-base bg-theme-surface/95 text-theme-main shadow-elegant backdrop-blur-md w-full"
       )}
+      style={{ borderLeftColor: accentColors[toast.type] }}
     >
       <div className="flex-shrink-0">{icons[toast.type]}</div>
-      <p className="text-sm font-medium text-neutral-800 flex-grow leading-tight">
+      <p className="text-sm font-medium text-theme-main flex-grow leading-tight">
         {toast.message}
       </p>
       <button 
+        type="button"
+        aria-label="Закрыть уведомление"
         onClick={() => onRemove(toast.id)}
-        className="text-neutral-400 hover:text-neutral-600 transition-colors"
+        className="text-theme-muted hover:text-theme-main transition-colors"
       >
         <X className="w-4 h-4" />
       </button>

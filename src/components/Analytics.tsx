@@ -308,7 +308,7 @@ export default function Analytics({
             }
             
             .recharts-pie-sector:hover {
-               stroke: var(--color-action, #3b82f6) !important;
+               stroke: var(--color-action) !important;
               stroke-width: 3px !important;
               opacity: 0.92;
             }
@@ -360,8 +360,8 @@ export default function Analytics({
                     ))}
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'var(--surface-card)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)', padding: '8px' }}
-                    itemStyle={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--surface-page)' }}
+                    contentStyle={{ borderRadius: 'var(--radius-card)', border: '1px solid var(--border-subtle)', backgroundColor: 'var(--surface-card)', boxShadow: 'var(--shadow-elegant)', padding: '8px' }}
+                    itemStyle={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}
                     labelStyle={{ color: 'var(--text-muted)' }}
                     formatter={(value: number, name: string, props: any) => [
                       `${value.toLocaleString()} ₽`, 
@@ -412,22 +412,23 @@ export default function Analytics({
                   tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip 
-                  cursor={{ fill: 'var(--surface-page)', opacity: 0.05 }}
-                  contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'var(--surface-card)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}
-                  itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                  cursor={{ fill: 'var(--border-subtle)', fillOpacity: 0.25 }}
+                  contentStyle={{ borderRadius: 'var(--radius-card)', border: '1px solid var(--border-subtle)', backgroundColor: 'var(--surface-card)', boxShadow: 'var(--shadow-elegant)' }}
+                  itemStyle={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}
+                  labelStyle={{ color: 'var(--text-muted)' }}
                 />
-                <Bar dataKey="income" name="Доход" fill="#10b981" radius={[4, 4, 0, 0]} barSize={12} />
-                <Bar dataKey="expense" name="Расход" fill="#f43f5e" radius={[4, 4, 0, 0]} barSize={12} />
+                <Bar dataKey="income" name="Доход" fill="var(--color-income)" radius={[4, 4, 0, 0]} barSize={12} />
+                <Bar dataKey="expense" name="Расход" fill="var(--color-expense)" radius={[4, 4, 0, 0]} barSize={12} />
               </BarChart>
             </ResponsiveContainer>
           </div>
           <div className="flex justify-center gap-2 mt-6">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-emerald-500" />
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--color-income)' }} />
               <span className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">Доход</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-rose-500" />
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--color-expense)' }} />
               <span className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">Расход</span>
             </div>
           </div>
@@ -451,8 +452,9 @@ export default function Analytics({
                   tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip 
-                  contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'var(--surface-card)', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}
-                  itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                  contentStyle={{ borderRadius: 'var(--radius-card)', border: '1px solid var(--border-subtle)', backgroundColor: 'var(--surface-card)', boxShadow: 'var(--shadow-elegant)' }}
+                  itemStyle={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}
+                  labelStyle={{ color: 'var(--text-muted)' }}
                   formatter={(value: number) => [`${value.toLocaleString()} ₽`, 'Баланс']}
                 />
                 <Line type="monotone" dataKey="balance" stroke="var(--color-action)" strokeWidth={3} dot={{ r: 4, fill: 'var(--color-action)' }} activeDot={{ r: 6 }} />

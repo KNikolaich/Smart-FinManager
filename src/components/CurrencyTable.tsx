@@ -171,18 +171,45 @@ function RateHistoryChart({ iso }: { iso: string }) {
   const ChangeIcon = (market ? change?.direction === 'up' ? ArrowUpRight : change?.direction === 'down' ? ArrowDownRight : Minus : spreadChange == null || spreadChange === 0 ? Minus : spreadChange > 0 ? ArrowUpRight : ArrowDownRight);
   if (error) return <div className="py-6 text-center text-xs font-bold text-theme-muted">История пока недоступна. Попробуйте ещё раз позже.</div>;
    return <div><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><div className="text-[10px] font-black uppercase tracking-widest text-theme-muted">{iso} → RUB · {days} дней</div></div><div className="flex items-center gap-1"><button aria-label="Увеличить график" data-testid={`button-period-previous-${iso}`} disabled={periodIndex === 0} onClick={() => setPeriodIndex(i => Math.max(0, i - 1))} className="rounded border border-theme-base p-1.5 text-theme-muted disabled:opacity-30"><Plus size={14} /></button><span className="min-w-12 text-center text-[10px] font-black text-theme-main">{days} дн.</span><button aria-label="Уменьшить график" data-testid={`button-period-next-${iso}`} disabled={periodIndex === PERIODS.length - 1} onClick={() => setPeriodIndex(i => Math.min(PERIODS.length - 1, i + 1))} className="rounded border border-theme-base p-1.5 text-theme-muted disabled:opacity-30"><Minus size={14} /></button></div></div>
-      {history === null ? <div className="h-48 animate-pulse rounded-lg bg-theme-surface" /> : points.length < 2 ? <div className="rounded-lg border border-dashed border-theme-base px-4 py-10 text-center text-xs text-theme-muted">История накапливается. Для выбранного периода пока недостаточно котировок.</div> : <><div className="mb-2 flex flex-wrap items-center gap-4 text-[10px] font-bold">{market ? <><span className="text-theme-primary">Рыночная цена</span>{change && <span className="ml-auto flex items-center gap-1 text-theme-muted"><ChangeIcon size={13} />{money(change.absolute)} ₽{change.percent == null ? '' : ` · ${change.percent > 0 ? '+' : ''}${change.percent.toFixed(2)}%`}</span>}</> : <><span className="text-finance-income">Покупка</span><span className="text-finance-expense">Продажа</span>{currentSpread != null && <span className="ml-auto flex items-center gap-1 text-theme-muted"><ChangeIcon size={13} />Спред {money(currentSpread)} ₽{spreadChangePercent == null ? '' : ` · ${spreadChangePercent > 0 ? '+' : ''}${spreadChangePercent.toFixed(2)}%`}</span>}</>}</div><div className="h-56 w-full sm:h-64"><ResponsiveContainer width="100%" height="100%"><LineChart data={chartPoints} margin={{ top: 5, right: 8, bottom: 0, left: 0 }}><CartesianGrid strokeDasharray="3 3" strokeOpacity={.18} /><XAxis dataKey="label" tick={{ fontSize: 9 }} minTickGap={24} /><YAxis domain={[min - pad, max + pad]} tick={{ fontSize: 9 }} width={52} tickFormatter={v => money(Number(v))} /><Tooltip content={market ? <MarketTooltip /> : <BankTooltip />} />{market ? <Line type="monotone" dataKey="rate" name="Рыночная цена" stroke="#5678c7" strokeWidth={2} dot={false} activeDot={{ r: 4 }} /> : <><Line type="monotone" dataKey="buyRate" name="Покупка" stroke="#169b73" strokeWidth={2} dot={false} activeDot={{ r: 4 }} /><Line type="monotone" dataKey="sellRate" name="Продажа" stroke="#d05b58" strokeWidth={2} dot={false} activeDot={{ r: 4 }} /></>}</LineChart></ResponsiveContainer></div></>}</div>;
+      {history === null ? <div className="h-48 animate-pulse rounded-lg bg-theme-surface" /> : points.length < 2 ? <div className="rounded-lg border border-dashed border-theme-base px-4 py-10 text-center text-xs text-theme-muted">История накапливается. Для выбранного периода пока недостаточно котировок.</div> : <>
+        <div className="mb-2 flex flex-wrap items-center gap-4 text-[10px] font-bold">
+          {market ? <>
+            <span className="text-theme-primary">Рыночная цена</span>
+            {change && <span className="ml-auto flex items-center gap-1 text-theme-muted"><ChangeIcon size={13} />{money(change.absolute)} ₽{change.percent == null ? '' : ` · ${change.percent > 0 ? '+' : ''}${change.percent.toFixed(2)}%`}</span>}
+          </> : <>
+            <span className="text-finance-income">Покупка</span>
+            <span className="text-finance-expense">Продажа</span>
+            {currentSpread != null && <span className="ml-auto flex items-center gap-1 text-theme-muted"><ChangeIcon size={13} />Спред {money(currentSpread)} ₽{spreadChangePercent == null ? '' : ` · ${spreadChangePercent > 0 ? '+' : ''}${spreadChangePercent.toFixed(2)}%`}</span>}
+          </>}
+        </div>
+        <div className="h-56 w-full sm:h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartPoints} margin={{ top: 5, right: 8, bottom: 0, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" strokeOpacity={0.55} />
+              <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'var(--text-muted)' }} minTickGap={24} />
+              <YAxis domain={[min - pad, max + pad]} tick={{ fontSize: 9, fill: 'var(--text-muted)' }} width={52} tickFormatter={v => money(Number(v))} />
+              <Tooltip content={market ? <MarketTooltip /> : <BankTooltip />} cursor={{ fill: 'var(--border-subtle)', fillOpacity: 0.25 }} />
+              {market
+                ? <Line type="monotone" dataKey="rate" name="Рыночная цена" stroke="var(--color-action)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                : <>
+                    <Line type="monotone" dataKey="buyRate" name="Покупка" stroke="var(--color-income)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="sellRate" name="Продажа" stroke="var(--color-expense)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                  </>}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </>}</div>;
 }
 
 function MarketTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
-  return <div className="rounded-lg border border-theme-base bg-theme-main p-3 text-xs shadow-lg"><div className="mb-2 font-bold text-theme-main">{label}</div><div className="flex justify-between gap-6"><span className="text-theme-primary">Рыночная цена</span><b>{money(payload[0].payload.rate)} ₽</b></div></div>;
+  return <div className="rounded-2xl border border-theme-base bg-theme-surface p-3 text-xs text-theme-main shadow-elegant"><div className="mb-2 font-bold text-theme-main">{label}</div><div className="flex justify-between gap-6"><span className="text-theme-primary">Рыночная цена</span><b>{money(payload[0].payload.rate)} ₽</b></div></div>;
 }
 
 function BankTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   const point = payload[0].payload;
-  return <div className="rounded-lg border border-theme-base bg-theme-main p-3 text-xs shadow-lg"><div className="mb-2 font-bold text-theme-main">{label}</div><div className="flex justify-between gap-6"><span className="text-finance-income">Покупка</span><b>{money(point.buyRate)} ₽</b></div><div className="flex justify-between gap-6"><span className="text-finance-expense">Продажа</span><b>{money(point.sellRate)} ₽</b></div><div className="mt-2 border-t border-theme-base pt-2 text-theme-muted">Спред <b className="text-theme-main">{money(point.spread)} ₽ ({money(point.spreadPercent)}%)</b></div></div>;
+  return <div className="rounded-2xl border border-theme-base bg-theme-surface p-3 text-xs text-theme-main shadow-elegant"><div className="mb-2 font-bold text-theme-main">{label}</div><div className="flex justify-between gap-6"><span className="text-finance-income">Покупка</span><b>{money(point.buyRate)} ₽</b></div><div className="flex justify-between gap-6"><span className="text-finance-expense">Продажа</span><b>{money(point.sellRate)} ₽</b></div><div className="mt-2 border-t border-theme-base pt-2 text-theme-muted">Спред <b className="text-theme-main">{money(point.spread)} ₽ ({money(point.spreadPercent)}%)</b></div></div>;
 }
 
 interface CurrencyFormProps { currency: Currency | null; onClose: () => void; onSuccess: () => void; }
