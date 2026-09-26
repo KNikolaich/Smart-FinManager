@@ -1,51 +1,43 @@
-# Smart-FinManager design-system instructions
+# Smart-FinManager — инструкции для будущих UI-артефактов
 
-Use this artifact as the visual source of truth for future Smart-FinManager mockups and artifacts. It describes the existing product language; it is not permission to redesign the application.
+Этот каталог описывает существующий интерфейс. Он не задаёт новую систему и не даёт разрешения редактировать продукт.
 
-## Before authoring
+## Источники истины
 
-- Read `docs/design-system.md`, then load `src/tokens.css`.
-- Use Inter for all UI text. Keep the current Nordic light theme as the default: sky primary, emerald financial meaning, cool neutral surfaces, and warm coral as the existing muted-text exception.
-- Prefer semantic aliases (`--color-action`, `--color-income`, `--surface-page`) over raw values in new work.
-- Existing app screens and source files must not be changed until the user explicitly approves applying this system.
+Перед созданием макета сначала сверьтесь с:
 
-## Tokens and type
+1. `src/index.css` — актуальные CSS-переменные, Nordic по умолчанию, темы, типографика, ритм, радиусы, тени и focus-visible.
+2. `src/lib/themePreferences.ts` — актуальные имена тем, группы, тема `theme-system`, разрешение светлого/тёмного системного режима и границы устройств.
+3. Исходным компонентом для конкретного паттерна: `src/components/app/AppHeader.tsx`, `src/components/app/BottomNav.tsx` или `src/components/Settings.tsx`.
 
-- Base text is Inter 400–700. Use `--type-display` for balances, `--type-title` for section headings, `--type-label` for compact uppercase metadata, and `--type-body` for explanations.
-- Use the extracted 10 / 12 / 14 / 16 / 18 / 24 / 32px scale. Money figures may use 28–36px when they are the primary value.
-- Keep labels short, sentence case where possible, and use uppercase tracking only for compact metadata.
+`docs/design-system.md` и `src/tokens.css` этого каталога — справочный экстракт. Если он расходится с приложением, источник истины — перечисленные исходники приложения.
 
-## Layout
+## Идентичность и палитра
 
-- Use the 4px rhythm: 4, 8, 12, 16, 24, 32, 40px.
-- Use 12px for small controls, 16px for cards and account tiles, 24px for primary cards and 32px for modal tops on mobile.
-- Keep content mobile-first. Bottom navigation is a floating rounded 54px bar on narrow screens; desktop may use a full-width bottom rail; landscape may use a 80px vertical rail.
+- Сохраняйте сдержанный Nordic: `#0369a1` primary, `#e0f2fe` primary-light, `#075985` primary-dark; фон `#f8fafc`, поверхность `#ffffff`, текст `#0f172a`, приглушённый текст `#64748b`, граница `#e2e8f0`.
+- Финансовые роли из `src/index.css`: income `#10b981`, expense `#f43f5e`, transfer `#3b82f6`, warning `#f59e0b`.
+- Для смены темы используйте роли `--color-action`, `--surface-page`, `--surface-card`, `--surface-input`, `--text-primary`, `--border-subtle` и другие актуальные алиасы из источника. Не превращайте значения артефакта в новые переменные приложения без одобрения.
+- Не сочиняйте дополнительных цветов и не представляйте Tailwind-оттенки конкретного экрана как универсальные семантические токены.
 
-## Color roles
+## Типографика и геометрия
 
-- `--color-action` / `--color-action-strong`: Nordic sky blue for primary actions and selected navigation.
-- `--color-income`: emerald for positive money movement and success.
-- `--color-expense`: rose for negative balances and destructive/error states.
-- `--color-warning`: amber for stale/offline caution.
-- `--surface-page`, `--surface-card`, `--surface-input`: cool neutral layers, never arbitrary white/black substitutions.
-- Always pair status color with text or an icon; do not communicate meaning by color alone.
+- Основной шрифт приложения — Inter с подключёнными начертаниями 300, 400, 500, 600 и 700.
+- Сверяйте точные значения: `--type-display` 32 px / 700 / 1.05; `--type-title` 18 px / 700 / 1.2; `--type-body` 14 px / 400 / 1.5; `--type-label` 10 px / 700 / 1.2.
+- Используйте фактический набор spacing 4 / 8 / 12 / 16 / 24 / 32 / 40 px, радиусы 12 / 16 / 24 / 18 / 999 px и именованные тени `--shadow-soft`, `--shadow-elegant`. Это наблюдаемые опорные значения, не полный запрет на другие размеры.
 
-## Shape and elevation
+## Темы и устройства
 
-- Inputs and primary cards use rounded 2xl (16px); grouped settings and transaction surfaces use rounded 3xl (24px); compact navigation controls use 18px.
-- Use `--shadow-soft` for normal cards and `--shadow-elegant` for floating surfaces. Avoid hard, dark, or colorful glows.
-- Borders are quiet cool neutrals. Use backdrop blur only for sticky header and navigation surfaces.
+- Тема по умолчанию — `theme-nordic`. Существующие темы и отображаемые русские имена перечислены в `src/lib/themePreferences.ts`; сверяйте там и имя, и порядок.
+- `theme-system` — предпочтение, разрешаемое в Nordic при светлой системной теме и в Midnight при тёмной. Не изображайте его как отдельный CSS-класс палитры.
+- Настройки раздельны для mobile (<768 px), tablet (768–1439 px) и desktop (>=1440 px). В Settings пользователь выбирает устройство, может сохранить выбор для него, применить тему ко всем устройствам и вернуть значения по умолчанию.
+- Адаптивная навигация имеет конкретные варианты: нижняя фиксированная полоса на узком экране, навигация в потоке с верхней границей начиная с `md`, вертикальная полоса 80 px в мобильном landscape. AppHeader — sticky, высотой 64 / 80 px, с тематической полупрозрачной поверхностью.
 
-## Interaction and accessibility
+## Компоненты и состояния
 
-- Every control needs a visible hover, focus-visible, pressed, disabled, loading, and error treatment where applicable.
-- Use a 2px action-colored focus ring with at least 2px offset. Preserve keyboard access for menus, tabs, tooltips, and dialogs.
-- Icon-only actions need an accessible name and a 40px minimum hit area. Never rely on hover-only information on touch devices.
-- Respect `prefers-reduced-motion`; transitions should primarily animate opacity and transform.
-- Use semantic headings, `role="status"` for connectivity notices, and live regions for transient toasts.
+Не заявляйте общие UI-компоненты или состояния, не подтверждённые исходным компонентом. Достоверно наблюдаемы: фокус-обводка 2 px + 2 px offset; активная навигация; hover/tap у отдельных кнопок; блокировка сохранения темы и текст ошибки; `OfflineChip` в местах, указанных в документации. Empty states, тосты, диалоги и другие состояния описывайте только после проверки конкретного актуального файла.
 
-## Do / don't
+Для демонстраций обеспечивайте клавиатурный фокус, понятные подписи и различие состояний не только цветом. Не используйте emoji вместо иконок.
 
-**Do:** show balances with aligned numerals, make income/expense polarity explicit, preserve calm whitespace, use real empty/error/offline states, and keep destructive actions visually distinct.
+## Важное ограничение
 
-**Don't:** introduce a new brand palette, use emoji as icons, use neon gradients, use generic stock imagery, flatten all surfaces into one gray, or use colorless “minimalism” for financial meaning.
+Работайте только внутри разрешённого артефакта, если задача не говорит иного. **Не редактируйте и не меняйте ни один существующий экран или файл приложения до явного одобрения пользователя.** При необходимости изменения приложения сначала сообщите об этом и дождитесь разрешения.

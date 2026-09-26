@@ -1,43 +1,134 @@
-# Smart-FinManager design system
+# Smart-FinManager — система визуальных правил
 
-## What was extracted
+Это точная справка по существующему интерфейсу личных финансов: операции, бюджеты и планы, цели, счета и запланированные платежи. Это извлечение из актуального кода, а не предложение нового визуального языка.
 
-This system is an observation of the current Smart-FinManager interface, not a replacement identity. The source combines an approachable personal workspace with compact, precise finance patterns: a sticky branded header, a balance-and-trend card, horizontally scrolling account tiles, grouped transaction rows, a floating mobile navigation bar, and settings organized into generous rounded groups.
+## Источники и границы
 
-The visual language is **Nordic utility**: cool, bright surfaces and sky-blue actions create calm; emerald and rose are reserved for financial polarity; soft shadows and rounded geometry keep money operations friendly rather than institutional. Inter carries both the everyday and analytical voices.
+- `src/index.css` — текущий источник истины для шрифта, базовых токенов, темы Nordic по умолчанию, остальных палитр, семантических ролей, focus-visible и тематических алиасов.
+- `src/lib/themePreferences.ts` — текущий источник истины для имён тем, режима `theme-system`, выбора отдельной темы для устройства и границ классов устройств.
+- `src/components/app/AppHeader.tsx`, `src/components/app/BottomNav.tsx` и `src/components/Settings.tsx` — источники описанных ниже паттернов шапки, навигации и настройки темы.
+- `src/tokens.css` в этом артефакте — самодостаточная справочная копия токенов для HTML-каталога и будущих макетов; она не заменяет исходники приложения.
 
-## Product principles
+До одобрения пользователя не менять ни один существующий экран приложения и не переносить эти артефактные токены в `src/`.
 
-1. **Clarity before decoration.** The amount, direction, account, and date should scan in that order.
-2. **Calm confidence.** Cool surfaces, restrained borders, and soft elevation make the workspace feel dependable.
-3. **Polarity is explicit.** Income is emerald, expense is rose, transfer is blue; labels and signs reinforce the color.
-4. **Offline is a first-class state.** Cached data, staleness, queued operations, and automatic retry should be understandable without panic.
-5. **Small-screen competence.** Cards scroll horizontally, navigation floats within thumb reach, and modal forms become full-height on mobile.
+## Направление интерфейса
 
-## Observed source tokens
+Интерфейс использует сдержанный Nordic: прохладный светлый фон, белые поверхности, насыщенный сине-голубой акцент и негромкие границы. Основной текст тёмно-сине-серый. Зелёный, розово-красный, синий и янтарный дают финансовую полярность и статус. Inter используется для UI. Общий эффект — ясный и спокойный рабочий инструмент для регулярного использования, а не декоративная витрина.
 
-The source `src/index.css` defines Inter, `#0ea5e9` Nordic primary, `#e0f2fe` primary-light, `#0284c7` primary-dark, `#f8fafc` page background, `#ffffff` surfaces, `#0f172a` text, `#ff6b3d` muted text in the Nordic variant, and `#e2e8f0` borders. Shared shadows are `0 2px 15px -3px rgba(0,0,0,.07), 0 4px 6px -2px rgba(0,0,0,.05)` and `0 20px 25px -5px rgba(0,0,0,.05), 0 10px 10px -5px rgba(0,0,0,.02)`. The UI also uses emerald `#10b981`, rose `#f43f5e`/`#e11d48`, blue `#3b82f6`, amber `#f59e0b`, and translucent primary-light fills.
+## Nordic по умолчанию
 
-`src/tokens.css` keeps these observed values and adds recommended semantic aliases so artifacts can consume roles without coupling to implementation names.
+| Роль из `src/index.css` | Значение |
+| --- | --- |
+| `--primary` / `--color-action` | `#0369a1` |
+| `--primary-light` / `--color-action-soft` | `#e0f2fe` |
+| `--primary-dark` / `--color-action-strong` | `#075985` |
+| `--text-on-primary` / `--color-on-action` | `#ffffff` |
+| `--bg-main` / `--surface-page` | `#f8fafc` |
+| `--bg-surface` / `--surface-card` | `#ffffff` |
+| `--input-bg` / `--surface-input` | `#f8fafc` |
+| `--text-main` / `--text-primary` | `#0f172a` |
+| `--text-muted` | `#64748b` |
+| `--border-color` / `--border-subtle` | `#e2e8f0` |
+| `--focus-ring` | текущий `--color-action` |
 
-## Typography
+У действия также есть `--color-action-text` (в Nordic — `#0369a1`), используемый для текста на тематических поверхностях. Это не та же роль, что белый `--color-on-action` на сплошной основной кнопке.
 
-Inter is loaded at 300, 400, 500, 600, and 700. Compact labels use 10–12px, body copy 14px, controls 14–16px, section titles 18px, and hero balance values 28–36px. Labels often use bold uppercase tracking; body copy stays sentence case and relaxed.
+## Финансовые и статусные роли
 
-## Component taxonomy
+Эти роли заданы в `:root` и остаются отдельными от смены темы:
 
-- **Shell:** AppHeader, OfflineBanner/Chip, BottomNav.
-- **Financial summary:** TotalBalanceCard, income/expense stat tiles, area trend chart.
-- **Entity browsing:** account tiles with currency marker, comment badge, balance polarity, and context action.
-- **Activity:** grouped transaction surface with date dividers, account/category metadata, signed amounts, empty state, and add action.
-- **Entry:** full-height mobile / centered desktop transaction modal with segmented type control, amount field, date, account selectors, category, description, calculator, and save/cancel bar.
-- **Feedback:** success/error/info toasts, offline and stale-cache banners, disabled/loading states.
-- **Management:** rounded settings groups, icon-leading rows, theme picker, data tools, and confirmation surfaces.
+| Токен | Значение | Значение в интерфейсе |
+| --- | --- | --- |
+| `--color-income` | `#10b981` | Поступление |
+| `--color-expense` | `#f43f5e` | Расход |
+| `--color-transfer` | `#3b82f6` | Перевод |
+| `--color-warning` | `#f59e0b` | Предупреждение |
 
-## Theme strategy
+Показывайте направление также знаком, подписью или контекстом — одного цвета недостаточно. В реальных экранах встречаются и Tailwind-оттенки для конкретных уведомлений; перечисленные токены — именно общие роли из корневого набора, а не исчерпывающий каталог всех цветов приложения.
 
-Nordic is the default light theme. Existing alternatives are preserved as families: light-green, light-blue, light-ruby, light-orange, light-violet, midnight, carbon, OLED, forest-dark, nocturnal, cyber, and black-and-white. Each changes primary, page, surface, text, muted text, border, and input roles while component geometry remains stable. Dark families set `color-scheme: dark`; artifacts should use the same semantic roles rather than special-casing components.
+## Типографика
 
-## Application boundary
+`src/index.css` подключает Inter начертаний 300, 400, 500, 600 и 700. Токены задают:
 
-This documentation and catalog are design-system artifacts only. They do not modify the existing application screens. Apply these tokens to the main app only after explicit user approval.
+| Токен | CSS-значение | Применение в каталоге |
+| --- | --- | --- |
+| `--type-display` | `700 2rem/1.05` | Крупное значение / финансовый итог |
+| `--type-title` | `700 1.125rem/1.2` | Заголовок секции |
+| `--type-body` | `400 0.875rem/1.5` | Основной текст |
+| `--type-label` | `700 0.625rem/1.2` | Компактная метка |
+
+Это размеры 32, 18, 14 и 10 px соответственно. В реальном интерфейсе также используются другие Tailwind-размеры. Заглавные буквы и увеличенный трекинг встречаются у коротких меток, например подписи `Manager` в шапке.
+
+## Ритм, форма и глубина
+
+- Шаги отступов: `--space-1` 4 px, `--space-2` 8 px, `--space-3` 12 px, `--space-4` 16 px, `--space-6` 24 px, `--space-8` 32 px, `--space-10` 40 px. Это набор шагов, а не утверждение, что других отступов в экранах нет.
+- Радиусы: `--radius-control` 12 px, `--radius-card` 16 px, `--radius-group` 24 px, `--radius-nav` 18 px, `--radius-pill` 999 px.
+- `--shadow-soft`: `0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.05)`.
+- `--shadow-elegant`: `0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02)`.
+
+Это существующие именованные тени из `@theme` в `src/index.css`; приложение также применяет Tailwind-тени. Артефакт не переименовывает и не считает их единственными уровнями elevation.
+
+## Темы и разрешение системного режима
+
+Настройки хранят предпочтение отдельно для мобильного, планшетного/ноутбучного и большого экрана. `getThemeDeviceClass(width)` в `src/lib/themePreferences.ts` использует точные границы:
+
+| Класс | Ширина окна |
+| --- | --- |
+| `mobile` | меньше 768 px |
+| `tablet` | от 768 до 1439 px |
+| `desktop` | от 1440 px |
+
+`theme-system` — сохраняемое предпочтение, а не самостоятельный CSS-класс палитры: `resolveThemeChoice` выбирает `theme-nordic`, когда система светлая, и `theme-midnight`, когда система тёмная. Значения по умолчанию — `theme-nordic`; функции разрешения темы читают системный режим через `prefersDark`.
+
+Текущие варианты из `THEME_GROUPS` (название в настройках / CSS id):
+
+| Группа | Название | CSS id |
+| --- | --- | --- |
+| Светлые | ЧБ | `theme-bw` |
+| Светлые | Нордик | `theme-nordic` |
+| Светлые | Лазурь | `theme-light-blue` |
+| Светлые | Пустыня | `theme-light-orange` |
+| Светлые | Рубин | `theme-light-ruby` |
+| Светлые | Фиалка | `theme-light-violet` |
+| Светлые | Салат | `theme-light-green` |
+| Темные | Полночь | `theme-midnight` |
+| Темные | Уголь | `theme-carbon` |
+| Темные | OLED | `theme-oled` |
+| Темные | Тайга | `theme-forest-dark` |
+| Темные | Хронос | `theme-nocturnal` |
+| Темные | Кибер | `theme-cyber` |
+
+Отображаемые названия и порядок взяты из `THEME_GROUPS`, а значения палитр — из `.theme-*` правил в `src/index.css`. У тёмных CSS-тем задан `color-scheme: dark`, у светлых — `light`. Тематические алиасы связывают базовые переменные с `--color-action`, `--surface-page`, `--surface-card`, `--surface-input`, `--text-primary` и `--border-subtle`. Системное предпочтение не добавляет четырнадцатую палитру.
+
+## Наблюдаемые паттерны компонентов
+
+### AppHeader
+
+`AppHeader` — липкая верхняя полоса с тематической поверхностью `bg-theme-surface/80`, `backdrop-blur-md`, нижней границей и `z-50`. Высота — 64 px до `md` и 80 px начиная с `md`. Слева кнопка Wallet, подписи бренда `Finance` / `Manager`; справа — `OfflineChip` и кнопка профиля. Шапка скрывается в мобильном landscape, а также при вкладке `plan` в мобильном landscape; в скрытом состоянии сводится по высоте, становится прозрачной и недоступной указателю.
+
+### BottomNav
+
+`BottomNav` содержит Dashboard, Plan, центральный AI Assistant, Analytics и Settings. На узком экране навигация фиксируется снизу: высота 54 px, центрирование, контейнер `max-w-sm`, внутренняя поверхность с `backdrop-blur-xl`; активный пункт получает текст основного цвета и мягкий основной фон. На `md` полоса становится навигацией в потоке документа с верхней границей. В мобильной альбомной ориентации она становится вертикальной полосой шириной 80 px; в ней также доступны индикатор Offline и кнопка профиля. В коде это кнопки-иконки с `aria-label` и `aria-current`, а не подписанные пять вкладок.
+
+### Настройки темы
+
+В секции «Приложение» находится «Тема оформления»: переключатель групп устройств на три пункта, выбор темы, отображение активной палитры и пояснение о ширинах. Изменение можно сохранить для выбранной группы экранов либо применить для всех устройств; есть возврат к теме по умолчанию. Системный выбор показывает эффективный светлый/тёмный вариант. Ошибки сохранения представлены текстом. Это описывает реальные возможности `Settings.tsx` и `themePreferences.ts`, не обещая, что локальная демонстрация каталога сохраняет настройки аккаунта.
+
+## Состояния и доступность
+
+- Глобальный `:focus-visible` в `src/index.css` рисует обводку 2 px цветом `--focus-ring` с отступом 2 px.
+- В `BottomNav` активный пункт отличается от неактивного, а нажатие масштабирует его (`active:scale-95`); действия шапки и центральная кнопка AI имеют состояния hover/tap.
+- Настройки блокируют сохранение темы во время запроса и показывают сообщение об ошибке при неудаче. Для этих ситуаций не задана единая глобальная система компонентов.
+- `OfflineChip` входит в шапку и в мобильную landscape-навигацию. Не следует подменять его произвольным универсальным баннером или придумывать дополнительные варианты состояния.
+
+Каталог показывает репрезентативные состояния, подтверждённые исходниками. Он не является библиотекой React-компонентов и не утверждает наличие общей реализации для всех состояний hover, pressed, loading, empty, toast или error. Проверяйте конкретный исходный компонент до переноса паттерна.
+
+## Адаптивность
+
+Для темы используются границы 768 / 1440 px из `themePreferences.ts`. Каталог показывает мобильную, среднюю и широкую компоновки; детали поведения экрана могут дополнительно зависеть от Tailwind breakpoint, ориентации устройства и активной вкладки. Не выводите из токенов несуществующую универсальную сетку страниц.
+
+## Правила для будущей работы
+
+Соблюдайте наблюдаемые значения и паттерны; по возможности используйте тематические роли, а не фиксированные оттенки. Сохраняйте читабельность состояний и клавиатурный фокус. Перед добавлением новой общей конвенции сначала подтвердите её в актуальном исходнике.
+
+**Не меняйте существующие экраны и код приложения, пока пользователь явно не одобрит это.** Этот артефакт документирует текущее состояние, не является разрешением на применение правок.

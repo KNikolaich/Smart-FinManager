@@ -1,19 +1,26 @@
-# Smart-FinManager design system artifact
+# Smart-FinManager — справочник дизайн-системы
 
-This standalone artifact documents and showcases the existing Smart-FinManager visual system. It was extracted from the supplied `src/index.css`, `index.html`, AppHeader, BottomNav, dashboard cards and sections, transaction entry, feedback surfaces, offline banner, and Settings components.
+Актуализированный каталог существующего визуального языка приложения: личный финансовый workspace для счетов, операций, бюджетов, целей и плановых платежей. Это извлечение из исходников, не редизайн и не изменение приложения.
 
-## Contents
+## Файлы
 
-- `index.html` — dependency-free visual catalog; open it directly in a browser.
-- `src/tokens.css` — extracted source tokens plus semantic aliases and all existing theme families.
-- `docs/design-system.md` — principles, taxonomy, source observations, and theme strategy.
-- `docs/AGENTS.md` — concise authoring rules for future artifacts.
+- `index.html` — самодостаточный каталог на русском языке, CSS встроен в файл, внешние изображения не используются.
+- `src/tokens.css` — извлечённые базовые значения и актуальные палитры тем для статических макетов.
+- `docs/design-system.md` — значения, роли, темы, реальные паттерны и ограничения экстракта.
+- `docs/AGENTS.md` — инструкция для будущих UI-артефактов.
 
-## Consume it
+## Источники истины приложения
 
-1. Read `docs/AGENTS.md` before making a new mockup or artifact.
-2. Link `src/tokens.css` from a static HTML page or import it from a stylesheet.
-3. Prefer semantic aliases such as `--color-action`, `--surface-card`, `--text-primary`, and `--border-subtle`.
-4. Add one theme family class to a root element when previewing an alternative theme.
+- `src/index.css` — токены, текущая Nordic-палитра, варианты тем, шрифты и тематические алиасы.
+- `src/lib/themePreferences.ts` — имена и группы тем, поведение `theme-system`, настройки по устройствам и брейкпоинты.
+- `src/components/app/AppHeader.tsx`, `src/components/app/BottomNav.tsx`, `src/components/Settings.tsx` — описанные компонентные паттерны.
 
-This is documentation only. Do not apply changes to existing Smart-FinManager screens or source files until the user approves that application.
+Если артефакт разойдётся с текущим исходником, сверяйтесь с источником истины, а не со справочной копией.
+
+## Просмотр
+
+Откройте `index.html` локально в браузере. Переключатель палитры и пример Settings демонстрируют изменение вида только в этой странице: каталог не обращается к серверу и не сохраняет настройки аккаунта. Все образцы и цвета нарисованы HTML/CSS, без внешних изображений.
+
+## Граница изменений
+
+Не применяйте документацию к исходникам продукта автоматически. Не меняйте существующие экраны приложения, пока пользователь явно не одобрит такие изменения.
