@@ -741,15 +741,15 @@ export default function PlanPage({
       {/* Custom Minimalist Tabs */}
       <div className="flex items-end space-x-1 border-b border-theme-base px-1 pt-1 shrink-0">
         <button
-          onClick={() => setActiveTab('now')}
+          onClick={() => setActiveTab('calendar')}
           className={cn(
             "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
-            activeTab === 'now' 
-              ? "bg-emerald-500 text-white border-emerald-500 translate-y-[1px]" 
+            activeTab === 'calendar'
+              ? "bg-orange-500 text-white border-orange-500 translate-y-[1px]"
               : "bg-theme-surface text-theme-muted border-theme-base hover:bg-theme-main"
           )}
         >
-          <span>Сейчас</span>
+          <span>Календарь</span>
         </button>
         
         <button
@@ -764,15 +764,15 @@ export default function PlanPage({
          <span>Кэшбек</span>
         </button>
         <button
-          onClick={() => setActiveTab('calendar')}
+          onClick={() => setActiveTab('now')}
           className={cn(
             "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
-            activeTab === 'calendar'
-              ? "bg-orange-500 text-white border-orange-500 translate-y-[1px]"
+            activeTab === 'now' 
+              ? "bg-emerald-500 text-white border-emerald-500 translate-y-[1px]" 
               : "bg-theme-surface text-theme-muted border-theme-base hover:bg-theme-main"
           )}
         >
-          <span>Календарь</span>
+          <span>Сейчас</span>
         </button>
         <button
           onClick={() => setActiveTab('comment')}
