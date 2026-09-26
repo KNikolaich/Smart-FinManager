@@ -96,7 +96,7 @@ function SortableGoalItem({
     <div 
       ref={setNodeRef} 
       style={style}
-      className={`p-3 sm:p-5 rounded-2xl sm:rounded-3xl transition-all ${goal.isCompleted ? 'bg-neutral-50 opacity-75' : 'bg-white shadow-sm hover:shadow-md'}`}
+       className={`p-3 sm:p-5 rounded-2xl sm:rounded-3xl transition-all ${goal.isCompleted ? 'bg-theme-main opacity-75' : 'bg-theme-surface shadow-sm hover:shadow-md'}`}
     >
       {isEditing ? (
         <div className="space-y-3">
@@ -105,34 +105,34 @@ function SortableGoalItem({
               type="text" 
               value={name} 
               onChange={(e) => setName(e.target.value)} 
-              className="flex-1 bg-neutral-50 rounded-lg px-2 py-1 text-sm font-bold outline-none focus:ring-2 ring-emerald-500/20" 
+               className="flex-1 bg-theme-main rounded-lg px-2 py-1 text-sm font-bold outline-none focus:ring-2 ring-emerald-500/20" 
               placeholder="Название"
             />
             <input 
               type="date" 
               value={deadline} 
               onChange={(e) => setDeadline(e.target.value)} 
-              className="w-32 bg-neutral-50 rounded-lg px-2 py-1 text-[10px] outline-none focus:ring-2 ring-emerald-500/20"
+               className="w-32 bg-theme-main rounded-lg px-2 py-1 text-[10px] outline-none focus:ring-2 ring-emerald-500/20"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[9px] font-bold text-neutral-400 uppercase">Накоплено</label>
+              <label className="text-[9px] font-bold text-theme-muted uppercase">Накоплено</label>
               <input 
                 type="number" 
                 value={currentAmount} 
                 onChange={(e) => setCurrentAmount(e.target.value)} 
-                className="w-full bg-neutral-50 rounded-lg px-2 py-1 text-xs font-bold text-emerald-600 outline-none focus:ring-2 ring-emerald-500/20"
+                 className="w-full bg-theme-main rounded-lg px-2 py-1 text-xs font-bold text-emerald-600 outline-none focus:ring-2 ring-emerald-500/20"
               />
             </div>
             <div className="space-y-1 text-right">
-              <label className="text-[9px] font-bold text-neutral-400 uppercase">Цель</label>
+              <label className="text-[9px] font-bold text-theme-muted uppercase">Цель</label>
               <input 
                 type="number" 
                 value={targetAmount} 
                 onChange={(e) => setTargetAmount(e.target.value)} 
-                className="w-full bg-neutral-50 rounded-lg px-2 py-1 text-xs font-bold text-right outline-none focus:ring-2 ring-emerald-500/20"
+                 className="w-full bg-theme-main rounded-lg px-2 py-1 text-xs font-bold text-right outline-none focus:ring-2 ring-emerald-500/20"
               />
             </div>
           </div>
@@ -140,7 +140,7 @@ function SortableGoalItem({
           <textarea 
             value={description} 
             onChange={(e) => setDescription(e.target.value)} 
-            className="w-full bg-neutral-50 rounded-lg px-2 py-1 text-xs outline-none focus:ring-2 ring-emerald-500/20 min-h-[60px]" 
+            className="w-full bg-theme-main rounded-lg px-2 py-1 text-xs outline-none focus:ring-2 ring-emerald-500/20 min-h-[60px]" 
             placeholder="Описание (Markdown)"
           />
 
@@ -158,7 +158,7 @@ function SortableGoalItem({
                 <Trash2 className="w-4 h-4" />
               </button>
             <div className="flex gap-2">
-              <button onClick={onCancelEdit} className="p-2 bg-neutral-100 text-neutral-500 rounded-lg hover:bg-neutral-200 transition-all text-xs font-bold px-3">
+              <button onClick={onCancelEdit} className="p-2 bg-theme-main text-theme-muted rounded-lg hover:bg-theme-surface transition-all text-xs font-bold px-3">
                 Отмена
               </button>
               <button 
@@ -177,16 +177,16 @@ function SortableGoalItem({
           <div className="flex justify-between items-start mb-3 sm:mb-4">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <button 
-                className="cursor-grab active:cursor-grabbing text-neutral-300 hover:text-neutral-500 transition-colors p-1"
+                 className="cursor-grab active:cursor-grabbing text-theme-muted hover:text-theme-main transition-colors p-1"
                 {...attributes}
                 {...listeners}
               >
                 <GripVertical className="w-4 h-4" />
               </button>
               <div className="flex-1 min-w-0 pr-2">
-                <h3 className={`font-bold text-sm sm:text-lg truncate ${goal.isCompleted ? 'text-neutral-400 line-through' : 'text-neutral-900'}`}>{goal.name}</h3>
+                 <h3 className={`font-bold text-sm sm:text-lg truncate ${goal.isCompleted ? 'text-theme-muted line-through' : 'text-theme-main'}`}>{goal.name}</h3>
                 <div className="flex items-center gap-2 sm:gap-3 mt-0.5 sm:mt-1">
-                  <span className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-1">
+                   <span className="text-[9px] sm:text-[10px] font-bold text-theme-muted uppercase tracking-widest flex items-center gap-1">
                     <Calendar className="w-2.5 h-2.5 sm:w-3 h-3" />
                     {goal.deadline ? format(new Date(goal.deadline), 'dd.MM.yy', { locale: ru }) : 'Без срока'}
                   </span>
@@ -200,33 +200,33 @@ function SortableGoalItem({
               </div>
             </div>
             <div className="flex gap-1.5 sm:gap-2 shrink-0">
-              <button onClick={() => onToggleComplete(goal)} className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-all ${goal.isCompleted ? 'bg-theme-primary text-white' : 'bg-neutral-100 text-neutral-400 hover:bg-theme-primary-light hover:text-theme-primary-dark'}`}>
+               <button onClick={() => onToggleComplete(goal)} className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-all ${goal.isCompleted ? 'bg-theme-primary text-white' : 'bg-theme-main text-theme-muted hover:bg-theme-primary-light hover:text-theme-primary-dark'}`}>
                 <Check className="w-3.5 h-3.5 sm:w-4 h-4" />
               </button>
-              <button onClick={() => onEdit(goal)} className="p-1.5 sm:p-2 bg-neutral-100 text-neutral-400 hover:bg-blue-50 hover:text-blue-600 rounded-lg sm:rounded-xl transition-all">
+              <button onClick={() => onEdit(goal)} className="p-1.5 sm:p-2 bg-theme-main text-theme-muted hover:bg-theme-primary-light hover:text-theme-primary rounded-lg sm:rounded-xl transition-all">
                 <Edit2 className="w-3.5 h-3.5 sm:w-4 h-4" />
               </button>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-3 sm:mb-4">
-            <div className="bg-neutral-50 rounded-xl sm:rounded-2xl p-2 sm:p-3">
-              <p className="text-[8px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5 sm:mb-1 flex items-center gap-1">
+             <div className="bg-theme-main rounded-xl sm:rounded-2xl p-2 sm:p-3">
+               <p className="text-[8px] sm:text-[10px] font-bold text-theme-muted uppercase tracking-widest mb-0.5 sm:mb-1 flex items-center gap-1">
                 <TrendingUp className="w-2.5 h-2.5 sm:w-3 h-3" /> Накоплено
               </p>
               <p className="text-xs sm:text-base font-bold text-emerald-600">{formatGoalAmount(goal.currentAmount, goal.currency)}</p>
             </div>
-            <div className="bg-neutral-50 rounded-xl sm:rounded-2xl p-2 sm:p-3">
-              <p className="text-[8px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5 sm:mb-1 flex items-center gap-1">
+             <div className="bg-theme-main rounded-xl sm:rounded-2xl p-2 sm:p-3">
+               <p className="text-[8px] sm:text-[10px] font-bold text-theme-muted uppercase tracking-widest mb-0.5 sm:mb-1 flex items-center gap-1">
                 <Target className="w-2.5 h-2.5 sm:w-3 h-3" /> Цель
               </p>
-              <p className="text-xs sm:text-base font-bold text-neutral-900">{formatGoalAmount(goal.targetAmount, goal.currency)}</p>
+               <p className="text-xs sm:text-base font-bold text-theme-main">{formatGoalAmount(goal.targetAmount, goal.currency)}</p>
             </div>
           </div>
 
           {goal.description && (
-            <div className="mb-3 sm:mb-4 p-3 sm:p-4 bg-neutral-50 rounded-xl sm:rounded-2xl">
-              <div className="markdown-body text-neutral-600 text-[10px] sm:text-xs leading-relaxed">
+             <div className="mb-3 sm:mb-4 p-3 sm:p-4 bg-theme-main rounded-xl sm:rounded-2xl">
+               <div className="markdown-body text-theme-muted text-[10px] sm:text-xs leading-relaxed">
                 <SimpleMarkdown content={goal.description} />
               </div>
             </div>
@@ -234,10 +234,10 @@ function SortableGoalItem({
 
           <div className="space-y-1.5 sm:space-y-2">
             <div className="flex justify-between items-center text-[8px] sm:text-[10px] font-bold uppercase tracking-widest">
-              <span className="text-neutral-400">Прогресс</span>
+               <span className="text-theme-muted">Прогресс</span>
               <span className="text-emerald-600">{progress.toFixed(1)}%</span>
             </div>
-            <div className="h-1.5 sm:h-2 w-full bg-neutral-100 rounded-full overflow-hidden">
+             <div className="h-1.5 sm:h-2 w-full bg-theme-main rounded-full overflow-hidden">
               <div 
                 className="h-full bg-theme-primary transition-all duration-500"
                 style={{ width: `${progress}%` }}
@@ -285,7 +285,7 @@ export default function GoalManager({ goals, userId, onClose, onRefresh, initial
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[120] flex items-center justify-center">
-      <div className="bg-white w-full h-full sm:h-auto sm:max-w-lg sm:rounded-[32px] overflow-hidden flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 relative">
+      <div className="bg-theme-surface w-full h-full sm:h-auto sm:max-w-lg sm:rounded-[32px] overflow-hidden flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 relative">
         <div className="p-6 flex items-center justify-between shrink-0 border-b border-theme-base">
           <h2 className="text-xl font-black uppercase text-theme-main drop-shadow-sm">Новая цель</h2>
           <button 
@@ -299,44 +299,44 @@ export default function GoalManager({ goals, userId, onClose, onRefresh, initial
 
         <div className="p-6 space-y-4">
           <div className="space-y-2">
-            <label className="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">Что покупаем?</label>
+            <label className="text-xs font-bold text-theme-muted uppercase tracking-widest pl-1">Что покупаем?</label>
             <input 
               type="text" 
               value={name} 
               onChange={(e) => setName(e.target.value)} 
-              className="w-full bg-neutral-50 rounded-2xl px-4 py-3 text-lg font-bold outline-none focus:ring-2 ring-theme-primary/20" 
+              className="w-full bg-theme-main rounded-2xl px-4 py-3 text-lg font-bold outline-none focus:ring-2 ring-theme-primary/20" 
               placeholder="Название цели" 
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">Сумма цели (₽)</label>
+              <label className="text-xs font-bold text-theme-muted uppercase tracking-widest pl-1">Сумма цели (₽)</label>
               <input 
                 type="number" 
                 value={targetAmount} 
                 onChange={(e) => setTargetAmount(e.target.value)} 
-                className="w-full bg-neutral-50 rounded-2xl px-4 py-3 font-bold outline-none focus:ring-2 ring-theme-primary/20" 
+                className="w-full bg-theme-main rounded-2xl px-4 py-3 font-bold outline-none focus:ring-2 ring-theme-primary/20" 
                 placeholder="0" 
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">Дедлайн</label>
+              <label className="text-xs font-bold text-theme-muted uppercase tracking-widest pl-1">Дедлайн</label>
               <input 
                 type="date" 
                 value={deadline} 
                 onChange={(e) => setDeadline(e.target.value)} 
-                className="w-full bg-neutral-50 rounded-2xl px-4 py-3 outline-none focus:ring-2 ring-theme-primary/20" 
+                className="w-full bg-theme-main rounded-2xl px-4 py-3 outline-none focus:ring-2 ring-theme-primary/20" 
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">Описание</label>
+            <label className="text-xs font-bold text-theme-muted uppercase tracking-widest pl-1">Описание</label>
             <textarea 
               value={description} 
               onChange={(e) => setDescription(e.target.value)} 
-              className="w-full bg-neutral-50 rounded-2xl px-4 py-3 min-h-[100px] outline-none focus:ring-2 ring-theme-primary/20 resize-none" 
+              className="w-full bg-theme-main rounded-2xl px-4 py-3 min-h-[100px] outline-none focus:ring-2 ring-theme-primary/20 resize-none" 
               placeholder="Детали (Markdown)..." 
             />
           </div>

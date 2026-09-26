@@ -129,7 +129,7 @@ export function TotalBalanceCard({
             </div>
 
             {/* Hover effect overlay */}
-            <div className="absolute inset-0 bg-white/0 group-hover:bg-white/5 transition-colors pointer-events-none" />
+            <div className="absolute inset-0 bg-transparent group-hover:bg-theme-surface/5 transition-colors pointer-events-none" />
           </div>
     </motion.div>
   );

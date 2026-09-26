@@ -68,7 +68,7 @@ export default function AILogs({ userId, onClose }: AILogsProps) {
         } else if (/true|false/.test(match)) {
           cls = 'text-orange-600'; // boolean
         } else if (/null/.test(match)) {
-          cls = 'text-neutral-400'; // null
+          cls = 'text-theme-muted'; // null
         }
         return `<span class="${cls}">${match}</span>`;
       }
@@ -77,8 +77,8 @@ export default function AILogs({ userId, onClose }: AILogsProps) {
 
   return (
     <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-xl flex items-center justify-center p-0 lg:p-8">
-      <div className="relative w-full h-full lg:h-auto lg:max-w-5xl bg-theme-main lg:rounded-xl lg:border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden lg:max-h-[85vh]">
-        <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
+      <div className="relative w-full h-full lg:h-auto lg:max-w-5xl bg-theme-main lg:rounded-xl lg:border border-theme-base shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden lg:max-h-[85vh]">
+        <div className="px-6 py-4 border-b border-theme-base flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
           <div className="flex items-center gap-3">
             <Terminal className="w-5 h-5 text-theme-primary" />
             <div>
@@ -90,14 +90,14 @@ export default function AILogs({ userId, onClose }: AILogsProps) {
             <button 
               onClick={fetchLogs}
               disabled={loading}
-              className="p-2 text-theme-muted hover:text-theme-main hover:bg-neutral-100/50 rounded-full transition-colors disabled:opacity-50"
+              className="p-2 text-theme-muted hover:text-theme-main hover:bg-theme-main rounded-full transition-colors disabled:opacity-50"
               title="Обновить"
             >
               <RefreshCw className={cn("w-5 h-5", loading && "animate-spin")} />
             </button>
             <button 
               onClick={onClose} 
-              className="p-2 text-theme-muted hover:text-theme-main hover:bg-neutral-100/50 rounded-full transition-colors cursor-pointer"
+              className="p-2 text-theme-muted hover:text-theme-main hover:bg-theme-main rounded-full transition-colors cursor-pointer"
               aria-label="Закрыть"
             >
               <X className="w-6 h-6" />
@@ -113,23 +113,23 @@ export default function AILogs({ userId, onClose }: AILogsProps) {
           ) : error ? (
             <div className="text-center py-20 px-6">
               <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
-              <p className="text-neutral-900 font-bold mb-2">{error}</p>
-              <p className="text-neutral-500 text-sm">Проверьте соединение с сервером или попробуйте обновить страницу.</p>
+              <p className="text-theme-main font-bold mb-2">{error}</p>
+              <p className="text-theme-muted text-sm">Проверьте соединение с сервером или попробуйте обновить страницу.</p>
             </div>
           ) : logs.length === 0 ? (
             <div className="text-center py-20">
-              <Terminal className="w-12 h-12 text-neutral-200 mx-auto mb-4" />
-              <p className="text-neutral-400">Логов пока нет</p>
+              <Terminal className="w-12 h-12 text-theme-muted/50 mx-auto mb-4" />
+              <p className="text-theme-muted">Логов пока нет</p>
             </div>
           ) : (
             logs.map((log) => (
-              <div key={log.id} className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-sm">
+              <div key={log.id} className="bg-theme-surface rounded-2xl border border-theme-base overflow-hidden shadow-sm">
                 <button 
                   onClick={() => toggleExpand(log.id)}
-                  className="w-full p-4 flex items-center justify-between hover:bg-neutral-50 transition-colors"
+                  className="w-full p-4 flex items-center justify-between hover:bg-theme-main transition-colors"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 text-neutral-400">
+                    <div className="flex items-center gap-2 text-theme-muted">
                       <Clock className="w-4 h-4" />
                       <span className="text-xs font-mono">{new Date(log.createdAt).toLocaleTimeString()}</span>
                     </div>
@@ -137,20 +137,20 @@ export default function AILogs({ userId, onClose }: AILogsProps) {
                       <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-md uppercase">
                         {log.request.model || 'Gemini'}
                       </span>
-                      <span className="text-sm font-medium text-neutral-700 truncate max-w-[200px]">
+                      <span className="text-sm font-medium text-theme-main truncate max-w-[200px]">
                         {typeof log.request.contents === 'string' 
                           ? log.request.contents.slice(0, 50) 
                           : JSON.stringify(log.request.contents || 'Анализ данных').slice(0, 50)}...
                       </span>
                     </div>
                   </div>
-                  {expandedLogs.has(log.id) ? <ChevronDown className="w-5 h-5 text-neutral-400" /> : <ChevronRight className="w-5 h-5 text-neutral-400" />}
+                  {expandedLogs.has(log.id) ? <ChevronDown className="w-5 h-5 text-theme-muted" /> : <ChevronRight className="w-5 h-5 text-theme-muted" />}
                 </button>
 
                 {expandedLogs.has(log.id) && (
-                  <div className="p-4 border-t border-neutral-100 grid grid-cols-1 lg:grid-cols-2 gap-4 bg-white">
+                  <div className="p-4 border-t border-theme-base grid grid-cols-1 lg:grid-cols-2 gap-4 bg-theme-surface">
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-neutral-500 mb-1">
+                      <div className="flex items-center gap-2 text-theme-muted mb-1">
                         <User className="w-4 h-4" />
                         <span className="text-[10px] font-bold uppercase tracking-wider">Request</span>
                       </div>

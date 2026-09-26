@@ -103,8 +103,8 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-0 lg:p-8 bg-black/80 backdrop-blur-xl">
-      <div className="relative w-full h-full lg:max-h-full lg:max-w-3xl bg-theme-main lg:rounded-xl lg:border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
-        <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
+      <div className="relative w-full h-full lg:max-h-full lg:max-w-3xl bg-theme-main lg:rounded-xl lg:border border-theme-base shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
+        <div className="px-6 py-4 border-b border-theme-base flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
           <h3 className="text-sm font-black uppercase text-theme-main drop-shadow-sm">КАТЕГОРИИ</h3>
           <div className="flex items-center gap-2 relative z-20">
             <button 
@@ -132,7 +132,7 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
           {loading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-4">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-theme-primary" />
-              <p className="text-neutral-400 font-medium">Загрузка категорий...</p>
+              <p className="text-theme-muted font-medium">Загрузка категорий...</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -143,15 +143,15 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
                     <div className="w-2 h-2 rounded-full bg-rose-500" />
                     Расходы
                   </h3>
-                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest bg-white px-2 py-1 rounded-lg">
+                  <span className="text-[10px] font-bold text-theme-muted uppercase tracking-widest bg-theme-surface px-2 py-1 rounded-lg">
                     {groupedExpenseCategories.length} категорий
                   </span>
                 </div>
                 <div className="space-y-1">
                   {groupedExpenseCategories.length === 0 ? (
-                    <div className="text-center py-8 text-neutral-400 text-sm italic bg-white rounded-2xl">Нет категорий расходов</div>
+                    <div className="text-center py-8 text-theme-muted text-sm italic bg-theme-surface rounded-2xl">Нет категорий расходов</div>
                   ) : (
-                    <table className="w-full bg-white rounded-2xl shadow-sm overflow-hidden">
+                    <table className="w-full bg-theme-surface rounded-2xl shadow-sm overflow-hidden">
                       <tbody>
                         {groupedExpenseCategories.map(parent => (
                           <React.Fragment key={parent.id}>
@@ -160,11 +160,11 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
                                 setEditingCategory(parent);
                                 setShowFormModal(true);
                               }}
-                              className="cursor-pointer hover:bg-neutral-100 transition-colors border-b border-neutral-100 bg-neutral-100/50"
+                              className="cursor-pointer hover:bg-theme-main transition-colors border-b border-theme-base bg-theme-main/50"
                             >
                               <td className="p-1.5 text-lg w-10">{parent.icon}</td>
-                              <td className="p-1.5 font-semibold text-neutral-700 text-sm">{parent.name}</td>
-                              <td className="p-1.5 text-right text-neutral-400 text-xs font-medium pr-3">
+                              <td className="p-1.5 font-semibold text-theme-main text-sm">{parent.name}</td>
+                              <td className="p-1.5 text-right text-theme-muted text-xs font-medium pr-3">
                                 {parent.sortOrder ?? ''}
                               </td>
                             </tr>
@@ -175,11 +175,11 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
                                   setEditingCategory(child);
                                   setShowFormModal(true);
                                 }}
-                                className="cursor-pointer hover:bg-neutral-50 transition-colors border-b border-neutral-100"
+                                className="cursor-pointer hover:bg-theme-main transition-colors border-b border-theme-base"
                               >
                                 <td className="p-1.5 text-lg w-10 pl-6">{child.icon || parent.icon}</td>
-                                <td className="p-1.5 text-xs text-neutral-600">{child.name}</td>
-                                <td className="p-1.5 text-right text-neutral-400 text-xs font-medium pr-3">
+                                <td className="p-1.5 text-xs text-theme-muted">{child.name}</td>
+                                <td className="p-1.5 text-right text-theme-muted text-xs font-medium pr-3">
                                   {child.sortOrder ?? ''}
                                 </td>
                               </tr>
@@ -199,15 +199,15 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
                     <div className="w-2 h-2 rounded-full bg-emerald-500" />
                     Доходы
                   </h3>
-                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest bg-white px-2 py-1 rounded-lg">
+                  <span className="text-[10px] font-bold text-theme-muted uppercase tracking-widest bg-theme-surface px-2 py-1 rounded-lg">
                     {groupedIncomeCategories.length} категорий
                   </span>
                 </div>
                 <div className="space-y-1">
                   {groupedIncomeCategories.length === 0 ? (
-                    <div className="text-center py-8 text-neutral-400 text-sm italic bg-white rounded-2xl">Нет категорий доходов</div>
+                    <div className="text-center py-8 text-theme-muted text-sm italic bg-theme-surface rounded-2xl">Нет категорий доходов</div>
                   ) : (
-                    <table className="w-full bg-white rounded-2xl shadow-sm overflow-hidden">
+                    <table className="w-full bg-theme-surface rounded-2xl shadow-sm overflow-hidden">
                       <tbody>
                         {groupedIncomeCategories.map(parent => (
                           <React.Fragment key={parent.id}>
@@ -216,11 +216,11 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
                                 setEditingCategory(parent);
                                 setShowFormModal(true);
                               }}
-                              className="cursor-pointer hover:bg-neutral-100 transition-colors border-b border-neutral-100 bg-neutral-100/50"
+                              className="cursor-pointer hover:bg-theme-main transition-colors border-b border-theme-base bg-theme-main/50"
                             >
                               <td className="p-1.5 text-lg w-10">{parent.icon}</td>
-                              <td className="p-1.5 font-semibold text-neutral-700 text-sm">{parent.name}</td>
-                              <td className="p-1.5 text-right text-neutral-400 text-xs font-medium pr-3">
+                              <td className="p-1.5 font-semibold text-theme-main text-sm">{parent.name}</td>
+                              <td className="p-1.5 text-right text-theme-muted text-xs font-medium pr-3">
                                 {parent.sortOrder ?? ''}
                               </td>
                             </tr>
@@ -231,11 +231,11 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
                                   setEditingCategory(child);
                                   setShowFormModal(true);
                                 }}
-                                className="cursor-pointer hover:bg-neutral-50 transition-colors border-b border-neutral-100"
+                                className="cursor-pointer hover:bg-theme-main transition-colors border-b border-theme-base"
                               >
                                 <td className="p-1.5 text-lg w-10 pl-6">{child.icon || parent.icon}</td>
-                                <td className="p-1.5 text-xs text-neutral-600">{child.name}</td>
-                                <td className="p-1.5 text-right text-neutral-400 text-xs font-medium pr-3">
+                                <td className="p-1.5 text-xs text-theme-muted">{child.name}</td>
+                                <td className="p-1.5 text-right text-theme-muted text-xs font-medium pr-3">
                                   {child.sortOrder ?? ''}
                                 </td>
                               </tr>
@@ -270,16 +270,16 @@ export default function CategoryManager({ onClose, onRefresh }: CategoryManagerP
       {/* Delete Confirmation */}
       {deleteConfirmId && (
         <div className="fixed inset-0 z-[250] flex items-center justify-center p-6 sm:p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-3xl shadow-xl max-w-sm w-full text-center animate-in zoom-in duration-200">
+          <div className="bg-theme-surface p-6 rounded-3xl shadow-xl max-w-sm w-full text-center animate-in zoom-in duration-200">
             <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 mx-auto mb-4">
               <AlertTriangle size={32} />
             </div>
             <h3 className="text-xl font-bold mb-2">Удалить категорию?</h3>
-            <p className="text-neutral-500 mb-6 text-sm">Это действие нельзя будет отменить. Все транзакции в этой категории останутся, но без привязки к категории.</p>
+            <p className="text-theme-muted mb-6 text-sm">Это действие нельзя будет отменить. Все транзакции в этой категории останутся, но без привязки к категории.</p>
             <div className="flex gap-3">
               <button 
                 onClick={() => setDeleteConfirmId(null)} 
-                className="flex-1 py-3 rounded-2xl bg-neutral-100 font-bold hover:bg-neutral-200 transition-colors"
+                className="flex-1 py-3 rounded-2xl bg-theme-main font-bold hover:bg-theme-surface transition-colors"
               >
                 Отмена
               </button>
@@ -350,8 +350,8 @@ function CategoryForm({ category, categories, onClose, onSuccess, onDelete }: Ca
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 lg:p-8 bg-black/80 backdrop-blur-xl">
-      <div className="relative w-full h-full lg:max-h-full lg:max-w-4xl bg-theme-main lg:rounded-xl lg:border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
-        <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
+      <div className="relative w-full h-full lg:max-h-full lg:max-w-4xl bg-theme-main lg:rounded-xl lg:border border-theme-base shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
+        <div className="px-6 py-4 border-b border-theme-base flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
           <h3 className="text-sm font-black uppercase tracking-widest text-theme-main drop-shadow-sm">{category ? 'Изменить' : 'Новая'}</h3>
           <button 
             onClick={onClose} 
@@ -375,7 +375,7 @@ function CategoryForm({ category, categories, onClose, onSuccess, onDelete }: Ca
                 <button
                   type="button"
                   onClick={() => setShowIconPicker(true)}
-                  className="w-16 h-16 bg-theme-surface border border-neutral-100 rounded-lg flex items-center justify-center text-4xl hover:bg-theme-surface/50 transition-all hover:border-theme-primary group relative shadow-sm"
+                  className="w-16 h-16 bg-theme-surface border border-theme-base rounded-lg flex items-center justify-center text-4xl hover:bg-theme-surface/50 transition-all hover:border-theme-primary group relative shadow-sm"
                 >
                   {icon || (parentId ? categories.find(c => c.id === parentId)?.icon : '💰')}
                   <div className="absolute inset-0 bg-theme-primary/10 opacity-0 group-hover:opacity-100 rounded-lg transition-opacity flex items-center justify-center">
@@ -387,7 +387,7 @@ function CategoryForm({ category, categories, onClose, onSuccess, onDelete }: Ca
               <div className="space-y-1.5 flex flex-col items-center">
                 <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest">Тип категории</label>
                 <div className={cn(
-                  "grid grid-cols-2 gap-1 bg-theme-surface border border-neutral-100 p-1 rounded-lg h-16 w-48",
+                      "grid grid-cols-2 gap-1 bg-theme-surface border border-theme-base p-1 rounded-lg h-16 w-48",
                   parentId && "opacity-50 cursor-not-allowed"
                 )}>
                   <button
@@ -448,9 +448,9 @@ function CategoryForm({ category, categories, onClose, onSuccess, onDelete }: Ca
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-theme-muted uppercase tracking-widest ml-1">Цвет</label>
-                  <div className="flex items-center gap-3 bg-theme-surface border border-neutral-100 rounded-lg px-4 py-[11px]">
+                  <div className="flex items-center gap-3 bg-theme-surface border border-theme-base rounded-lg px-4 py-[11px]">
                     <div 
-                      className="w-5 h-5 rounded-full border border-neutral-200 shadow-sm"
+                      className="w-5 h-5 rounded-full border border-theme-base shadow-sm"
                       style={{ backgroundColor: color === '#000000' ? '#e5e5e5' : color }}
                     />
                     <input
@@ -502,12 +502,12 @@ function CategoryForm({ category, categories, onClose, onSuccess, onDelete }: Ca
             </div>
           </div>
 
-          <div className="p-6 border-t border-neutral-100 flex gap-3 bg-theme-surface/5">
+          <div className="p-6 border-t border-theme-base flex gap-3 bg-theme-surface/5">
             {category && (
               <button
                 type="button"
                 onClick={() => onDelete(category.id)}
-                className="p-3 text-theme-muted hover:text-rose-500 transition-colors border border-neutral-50 rounded-lg hover:bg-theme-main"
+                className="p-3 text-theme-muted hover:text-rose-500 transition-colors border border-theme-base rounded-lg hover:bg-theme-main"
               >
                 <Trash2 size={20} />
               </button>
@@ -531,9 +531,9 @@ function CategoryForm({ category, categories, onClose, onSuccess, onDelete }: Ca
 
         {showIconPicker && (
           <div className="absolute inset-0 bg-theme-main z-20 flex flex-col animate-in fade-in duration-300">
-            <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm">
+            <div className="px-6 py-4 border-b border-theme-base flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm">
               <h3 className="text-sm font-black uppercase tracking-widest text-theme-main">Выберите иконку</h3>
-              <button onClick={() => setShowIconPicker(false)} className="p-2 hover:bg-neutral-100/50 rounded-full transition-colors">
+              <button onClick={() => setShowIconPicker(false)} className="p-2 hover:bg-theme-main/50 rounded-full transition-colors">
                 <X className="w-5 h-5 text-theme-muted" />
               </button>
             </div>
@@ -570,7 +570,7 @@ function CategoryForm({ category, categories, onClose, onSuccess, onDelete }: Ca
                       "aspect-square flex items-center justify-center text-3xl rounded-xl transition-all hover:scale-110 border border-transparent shadow-sm",
                       icon === emoji 
                         ? 'bg-theme-primary text-theme-on-primary ring-2 ring-theme-primary ring-offset-2' 
-                        : 'bg-theme-surface hover:bg-theme-surface/50 border-neutral-100'
+                        : 'bg-theme-surface hover:bg-theme-surface/50 border-theme-base'
                     )}
                   >
                     {emoji}

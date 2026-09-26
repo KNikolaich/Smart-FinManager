@@ -188,7 +188,7 @@ export default function Calculator({ initialValue, onConfirm, onCancel }: Calcul
 
   const buttons = [
     { label: 'AC', action: handleClear, className: 'text-rose-500 font-bold', ariaLabel: 'Очистить' },
-    { label: <Delete size={18} />, action: handleBackspace, className: 'text-neutral-400', ariaLabel: 'Удалить последний знак' },
+    { label: <Delete size={18} />, action: handleBackspace, className: 'text-theme-muted', ariaLabel: 'Удалить последний знак' },
     { label: '/', action: () => handleOperator('/'), className: 'text-blue-500 font-bold bg-blue-50', ariaLabel: 'Разделить' },
     { label: '*', action: () => handleOperator('*'), className: 'text-blue-500 font-bold bg-blue-50', ariaLabel: 'Умножить' },
     
@@ -217,14 +217,14 @@ export default function Calculator({ initialValue, onConfirm, onCancel }: Calcul
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className="bg-white rounded-3xl p-4 shadow-2xl border border-neutral-100 w-[300px]"
+      className="bg-theme-surface rounded-3xl p-4 shadow-2xl border border-theme-base w-[300px]"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="mb-4">
-        <div className="text-[10px] text-neutral-400 h-4 text-right pr-1 font-mono">
+        <div className="text-[10px] text-theme-muted h-4 text-right pr-1 font-mono">
           {expression}
         </div>
-        <div data-testid="calculator-display" className="text-2xl font-bold font-mono text-right p-3 bg-neutral-50 rounded-2xl border border-neutral-100 overflow-hidden text-ellipsis">
+        <div data-testid="calculator-display" className="text-2xl font-bold font-mono text-right p-3 bg-theme-main rounded-2xl border border-theme-base overflow-hidden text-ellipsis">
           {display}
         </div>
       </div>
@@ -237,7 +237,7 @@ export default function Calculator({ initialValue, onConfirm, onCancel }: Calcul
             aria-label={btn.ariaLabel}
             className={cn(
               "h-12 rounded-xl flex items-center justify-center text-sm transition-all active:scale-95",
-              btn.className || "bg-neutral-50 text-neutral-600 hover:bg-neutral-100"
+              btn.className || "bg-theme-main text-theme-main hover:bg-theme-surface"
             )}
           >
             {btn.label}
@@ -247,7 +247,7 @@ export default function Calculator({ initialValue, onConfirm, onCancel }: Calcul
         <button
           onClick={onCancel}
           aria-label="Закрыть калькулятор"
-          className="col-span-1 h-12 rounded-xl bg-neutral-100 text-neutral-500 font-bold flex items-center justify-center transition-all active:scale-95"
+          className="col-span-1 h-12 rounded-xl bg-theme-main text-theme-muted font-bold flex items-center justify-center transition-all active:scale-95"
         >
           <X size={18} />
         </button>

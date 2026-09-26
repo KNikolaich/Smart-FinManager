@@ -18,7 +18,8 @@ export type ThemeId =
   | 'theme-forest-dark'
   | 'theme-nocturnal'
   | 'theme-cyber';
-export type ThemePreferences = Record<ThemeDeviceClass, ThemeId>;
+export type ThemePreferenceValue = ThemeId | 'theme-system';
+export type ThemePreferences = Record<ThemeDeviceClass, ThemePreferenceValue>;
 export type DashboardColumnSpan = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
 export interface DashboardDeviceLayout {

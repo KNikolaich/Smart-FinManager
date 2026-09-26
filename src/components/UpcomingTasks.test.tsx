@@ -645,7 +645,7 @@ describe('UpcomingTasks', () => {
     const paid = { ...makePayment(0), id: 'paid-tone', title: 'Серая выполненная', date: '2026-09-20', paidDates: ['2026-09-20'] };
     render(<UpcomingTasks payments={[paid]} startDate="2026-09-20" filter="paid" />);
 
-    expect(screen.getByTestId('payment-row-paid-tone-2026-09-20').className).toContain('bg-neutral-200');
+    expect(screen.getByTestId('payment-row-paid-tone-2026-09-20').className).toContain('bg-theme-main');
     expect(screen.getByTestId('payment-row-paid-tone-2026-09-20').className).not.toContain('bg-red-100');
     expect(screen.getByTestId('payment-row-paid-tone-2026-09-20').className).not.toContain('bg-lime-50');
   });

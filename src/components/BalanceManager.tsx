@@ -94,8 +94,8 @@ export default function BalanceManager({ onClose, onRefresh }: BalanceManagerPro
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-0 lg:p-8 bg-black/80 backdrop-blur-xl">
-      <div className="relative w-full h-full lg:h-auto lg:max-w-3xl bg-theme-main lg:rounded-xl lg:border border-neutral-100 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
-        <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
+      <div className="relative w-full h-full lg:h-auto lg:max-w-3xl bg-theme-main lg:rounded-xl lg:border border-theme-base shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 shadow-black/50 overflow-hidden">
+        <div className="px-6 py-4 border-b border-theme-base flex items-center justify-between bg-theme-surface/10 backdrop-blur-sm shrink-0">
           <h3 className="text-sm font-black uppercase tracking-widest text-theme-main drop-shadow-sm">История баланса</h3>
           <div className="flex items-center gap-2">
             <button 
@@ -123,7 +123,7 @@ export default function BalanceManager({ onClose, onRefresh }: BalanceManagerPro
           ) : (
             <div className="space-y-6">
               {isAdding && (
-                <div className="bg-theme-surface/10 p-5 rounded-xl border border-neutral-100/50 space-y-4 animate-in slide-in-from-top-4 duration-300">
+                <div className="bg-theme-surface/10 p-5 rounded-xl border border-theme-base/50 space-y-4 animate-in slide-in-from-top-4 duration-300">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[9px] font-black text-theme-muted uppercase tracking-widest ml-1">Месяц</label>
@@ -162,15 +162,15 @@ export default function BalanceManager({ onClose, onRefresh }: BalanceManagerPro
                 </div>
               )}
 
-              <div className="overflow-hidden bg-theme-surface/10 rounded-lg border border-neutral-100 shadow-sm shadow-black/5">
+              <div className="overflow-hidden bg-theme-surface/10 rounded-lg border border-theme-base shadow-sm shadow-black/5">
                 <table className="w-full text-left border-collapse table-fixed">
                   <thead>
-                    <tr className="bg-theme-surface/50 border-b border-neutral-50 text-[10px] font-black text-theme-muted uppercase tracking-tighter">
+                    <tr className="bg-theme-surface/50 border-b border-theme-base text-[10px] font-black text-theme-muted uppercase tracking-tighter">
                       <th className="px-6 py-3">Период</th>
                       <th className="px-6 py-3 text-right">Общий баланс</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-neutral-50">
+                  <tbody className="divide-y divide-theme-base">
                     {history.map((record) => (
                       <tr 
                         key={record.id} 
@@ -191,7 +191,7 @@ export default function BalanceManager({ onClose, onRefresh }: BalanceManagerPro
                             />
                           ) : (
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-theme-surface border border-neutral-50 flex items-center justify-center text-theme-muted group-hover:text-theme-primary transition-colors">
+                              <div className="w-8 h-8 rounded-lg bg-theme-surface border border-theme-base flex items-center justify-center text-theme-muted group-hover:text-theme-primary transition-colors">
                                 <Calendar className="w-4 h-4" />
                               </div>
                               <span className="font-bold text-sm text-theme-main">
@@ -220,7 +220,7 @@ export default function BalanceManager({ onClose, onRefresh }: BalanceManagerPro
                                     </button>
                                     <button 
                                       onClick={() => setDeleteConfirmId(null)}
-                                      className="px-2 py-1 bg-white text-theme-muted border border-neutral-200 rounded font-bold text-[10px] hover:bg-neutral-50 transition-colors"
+                                      className="px-2 py-1 bg-theme-surface text-theme-muted border border-theme-base rounded font-bold text-[10px] hover:bg-theme-main transition-colors"
                                     >
                                       НЕТ
                                     </button>
@@ -239,7 +239,7 @@ export default function BalanceManager({ onClose, onRefresh }: BalanceManagerPro
                                         setEditingId(null);
                                         setDeleteConfirmId(null);
                                       }}
-                                      className="p-1.5 text-theme-muted hover:bg-neutral-100/50 rounded-md transition-colors"
+                                      className="p-1.5 text-theme-muted hover:bg-theme-main/50 rounded-md transition-colors"
                                       title="Отмена"
                                     >
                                       <X size={16} />

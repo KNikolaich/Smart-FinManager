@@ -42,7 +42,7 @@ export default function CashbackCategoryManager({ categories, onSave, onClose }:
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[120] flex items-center justify-center">
-      <div className="bg-white w-full h-full sm:h-auto sm:max-w-lg sm:rounded-[32px] overflow-hidden flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 relative">
+      <div className="bg-theme-surface w-full h-full sm:h-auto sm:max-w-lg sm:rounded-[32px] overflow-hidden flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 relative">
         <div className="p-6 flex items-center justify-between shrink-0 border-b border-theme-base">
           <h3 className="text-xl font-black uppercase text-theme-main drop-shadow-sm">Категории кэшбека</h3>
           <button 
@@ -57,15 +57,15 @@ export default function CashbackCategoryManager({ categories, onSave, onClose }:
           {localCategories.map(c => (
             <div key={c.id} className="flex items-center gap-2">
               <input type="color" value={c.color} onChange={(e) => handleUpdate(c.id, c.name, e.target.value)} className="w-8 h-8 rounded-lg" />
-              <input type="text" value={c.name} onChange={(e) => handleUpdate(c.id, e.target.value, c.color)} className="flex-1 p-2 border border-neutral-200 rounded-xl" />
+              <input type="text" value={c.name} onChange={(e) => handleUpdate(c.id, e.target.value, c.color)} className="flex-1 p-2 border border-theme-base rounded-xl" />
               <button onClick={() => handleDelete(c.id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl"><Trash2 size={18} /></button>
             </div>
           ))}
           <div className="flex gap-2">
-            <button onClick={handleAdd} className="flex-1 flex items-center justify-center gap-2 p-2 text-neutral-600 font-bold bg-neutral-100 hover:bg-neutral-200 rounded-xl">
+            <button onClick={handleAdd} className="flex-1 flex items-center justify-center gap-2 p-2 text-theme-muted font-bold bg-theme-main hover:bg-theme-surface rounded-xl">
               <Plus size={18} /> Добавить
             </button>
-            <button onClick={handleGenerate} className="flex-1 flex items-center justify-center gap-2 p-2 text-neutral-600 font-bold bg-neutral-100 hover:bg-neutral-200 rounded-xl">
+            <button onClick={handleGenerate} className="flex-1 flex items-center justify-center gap-2 p-2 text-theme-muted font-bold bg-theme-main hover:bg-theme-surface rounded-xl">
               <Wand2 size={18} /> Сгенерировать
             </button>
           </div>

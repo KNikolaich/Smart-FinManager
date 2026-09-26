@@ -4,7 +4,9 @@ import {
   getThemeDeviceClass,
   isCompleteThemePreferences,
   isThemeId,
+  isThemePreference,
   normalizeThemePreferences,
+  resolveThemeChoice,
   resolveThemePreferences,
 } from './themePreferences';
 
@@ -19,6 +21,8 @@ describe('theme preferences', () => {
   it('validates theme ids and fills missing device preferences safely', () => {
     expect(isThemeId('theme-midnight')).toBe(true);
     expect(isThemeId('theme-injected')).toBe(false);
+    expect(isThemePreference('theme-system')).toBe(true);
+    expect(isThemePreference('theme-injected')).toBe(false);
     expect(normalizeThemePreferences(
       { mobile: 'theme-carbon', tablet: 'invalid', desktop: 'theme-oled' },
       'theme-light-blue',
@@ -27,6 +31,17 @@ describe('theme preferences', () => {
       tablet: 'theme-light-blue',
       desktop: 'theme-oled',
     });
+  });
+
+  it('resolves system mode to the light or dark default palette', () => {
+    expect(resolveThemeChoice('theme-system', false)).toBe(DEFAULT_THEME);
+    expect(resolveThemeChoice('theme-system', true)).toBe('theme-midnight');
+    expect(resolveThemeChoice('theme-carbon', true)).toBe('theme-carbon');
+    expect(isCompleteThemePreferences({
+      mobile: 'theme-system',
+      tablet: 'theme-light-blue',
+      desktop: 'theme-carbon',
+    })).toBe(true);
   });
 
   it('migrates the previous browser theme to all device classes', () => {

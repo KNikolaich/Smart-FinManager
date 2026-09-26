@@ -171,6 +171,7 @@ const themeIdSchema = z.enum([
   "theme-forest-dark",
   "theme-nocturnal",
   "theme-cyber",
+  "theme-system",
 ]);
 const themeByDeviceSchema = z.object({
   mobile: themeIdSchema.optional(),

@@ -107,7 +107,7 @@ export default function CalendarNoteDialog({
             <p className="text-sm font-semibold text-rose-900">Удалить эту записку?</p>
             <p className="mt-1 text-xs text-rose-800">Это действие нельзя отменить.</p>
             <div className="mt-3 flex justify-end gap-2">
-              <button type="button" onClick={onCancelDelete} disabled={saving} className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-theme-muted disabled:opacity-40">Оставить</button>
+              <button type="button" onClick={onCancelDelete} disabled={saving} className="rounded-lg bg-theme-surface px-3 py-2 text-xs font-bold text-theme-muted disabled:opacity-40">Оставить</button>
               <button type="button" data-testid="button-confirm-delete-calendar-note" onClick={onConfirmDelete} disabled={saving} className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{saving ? 'Удаляем…' : 'Удалить'}</button>
             </div>
           </div>

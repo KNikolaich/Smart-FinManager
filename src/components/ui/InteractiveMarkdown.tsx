@@ -138,13 +138,13 @@ export function parseMarkdown(text: string, onToggleCheckbox?: (index: number) =
         {parts.map((p, idx) => {
           const key = `${lineKey}-${idx}`;
           if (p.type === 'bold') {
-            return <strong key={key} className="font-bold text-neutral-900">{p.text}</strong>;
+            return <strong key={key} className="font-bold text-theme-main">{p.text}</strong>;
           }
           if (p.type === 'italic') {
-            return <em key={key} className="italic text-neutral-700">{p.text}</em>;
+            return <em key={key} className="italic text-theme-main">{p.text}</em>;
           }
           if (p.type === 'code') {
-            return <code key={key} className="bg-neutral-150 font-mono text-[11px] px-1 py-0.5 rounded text-neutral-800">{p.text}</code>;
+            return <code key={key} className="bg-theme-main font-mono text-[11px] px-1 py-0.5 rounded text-theme-main">{p.text}</code>;
           }
           if (p.type === 'link') {
             return (
@@ -169,7 +169,7 @@ export function parseMarkdown(text: string, onToggleCheckbox?: (index: number) =
         // End of code block
         const codeText = codeLines.join('\n');
         elements.push(
-          <pre key={key} className="bg-neutral-900 text-neutral-100 p-3 rounded-xl overflow-x-auto my-2 font-mono text-xs">
+          <pre key={key} className="bg-theme-main text-theme-main p-3 rounded-xl overflow-x-auto my-2 font-mono text-xs">
             <code>{codeText}</code>
           </pre>
         );
@@ -190,17 +190,17 @@ export function parseMarkdown(text: string, onToggleCheckbox?: (index: number) =
     // Headers
     if (rawLine.startsWith('# ')) {
       flushList();
-      elements.push(<h1 key={key} className="text-base sm:text-lg font-bold my-2 text-neutral-900 border-b border-neutral-100 pb-0.5">{parseInlineElements(rawLine.slice(2), key)}</h1>);
+      elements.push(<h1 key={key} className="text-base sm:text-lg font-bold my-2 text-theme-main border-b border-theme-base pb-0.5">{parseInlineElements(rawLine.slice(2), key)}</h1>);
       continue;
     }
     if (rawLine.startsWith('## ')) {
       flushList();
-      elements.push(<h2 key={key} className="text-xs sm:text-sm font-bold my-1.5 text-neutral-900">{parseInlineElements(rawLine.slice(3), key)}</h2>);
+      elements.push(<h2 key={key} className="text-xs sm:text-sm font-bold my-1.5 text-theme-main">{parseInlineElements(rawLine.slice(3), key)}</h2>);
       continue;
     }
     if (rawLine.startsWith('### ')) {
       flushList();
-      elements.push(<h3 key={key} className="text-[11px] sm:text-xs font-bold my-1 text-neutral-800">{parseInlineElements(rawLine.slice(4), key)}</h3>);
+      elements.push(<h3 key={key} className="text-[11px] sm:text-xs font-bold my-1 text-theme-main">{parseInlineElements(rawLine.slice(4), key)}</h3>);
       continue;
     }
 
@@ -209,7 +209,7 @@ export function parseMarkdown(text: string, onToggleCheckbox?: (index: number) =
       flushList();
       const content = rawLine.trim().replace(/^>\s*/, '');
       elements.push(
-        <blockquote key={key} className="border-l-2 border-neutral-300 pl-3 italic text-neutral-600 my-1">
+        <blockquote key={key} className="border-l-2 border-theme-base pl-3 italic text-theme-muted my-1">
           {parseInlineElements(content, key)}
         </blockquote>
       );
@@ -219,7 +219,7 @@ export function parseMarkdown(text: string, onToggleCheckbox?: (index: number) =
     // Horizontal Rule
     if (['---', '***', '___'].includes(rawLine.trim())) {
       flushList();
-      elements.push(<hr key={key} className="my-2 border-t border-neutral-150" />);
+      elements.push(<hr key={key} className="my-2 border-t border-theme-base" />);
       continue;
     }
 
@@ -241,9 +241,9 @@ export function parseMarkdown(text: string, onToggleCheckbox?: (index: number) =
                 onToggleCheckbox(index);
               }
             }}
-            className="mt-0.5 cursor-pointer h-3.5 w-3.5 rounded border-gray-300 text-theme-primary focus:ring-theme-primary"
+            className="mt-0.5 cursor-pointer h-3.5 w-3.5 rounded border-theme-base text-theme-primary focus:ring-theme-primary"
           />
-          <span className={cn("text-xs sm:text-sm leading-relaxed", checked ? "line-through text-neutral-400" : "text-neutral-800")}>
+          <span className={cn("text-xs sm:text-sm leading-relaxed", checked ? "line-through text-theme-muted" : "text-theme-main")}>
             {parseInlineElements(textContent, key)}
           </span>
         </div>
@@ -260,7 +260,7 @@ export function parseMarkdown(text: string, onToggleCheckbox?: (index: number) =
         currentList = { type: 'ul', items: [] };
       }
       currentList.items.push(
-        <li key={`li-${i}`} className="text-xs sm:text-sm text-neutral-800 leading-relaxed list-disc ml-4">
+        <li key={`li-${i}`} className="text-xs sm:text-sm text-theme-main leading-relaxed list-disc ml-4">
           {parseInlineElements(textContent, `li-content-${i}`)}
         </li>
       );
@@ -276,7 +276,7 @@ export function parseMarkdown(text: string, onToggleCheckbox?: (index: number) =
         currentList = { type: 'ol', items: [] };
       }
       currentList.items.push(
-        <li key={`li-${i}`} className="text-xs sm:text-sm text-neutral-800 leading-relaxed list-decimal ml-4">
+        <li key={`li-${i}`} className="text-xs sm:text-sm text-theme-main leading-relaxed list-decimal ml-4">
           {parseInlineElements(textContent, `li-content-${i}`)}
         </li>
       );
@@ -293,7 +293,7 @@ export function parseMarkdown(text: string, onToggleCheckbox?: (index: number) =
     // Standard Paragraph
     flushList();
     elements.push(
-      <p key={key} className="text-xs sm:text-sm text-neutral-800 leading-relaxed my-0.5">
+      <p key={key} className="text-xs sm:text-sm text-theme-main leading-relaxed my-0.5">
         {parseInlineElements(rawLine, key)}
       </p>
     );

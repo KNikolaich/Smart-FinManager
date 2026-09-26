@@ -789,7 +789,7 @@ export default function UpcomingTasks({
                           handleCarouselCheckbox(item.occurrence);
                         }}
                         data-testid={`button-toggle-payment-${item.occurrence.payment.id}-${item.occurrence.date}`}
-                        className={`mt-0.5 w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 disabled:cursor-not-allowed ${item.occurrence.transactionId ? 'border-neutral-300 bg-neutral-100 text-neutral-400' : 'border-current/30 bg-white/70'}`}
+                        className={`mt-0.5 w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 disabled:cursor-not-allowed ${item.occurrence.transactionId ? 'border-theme-base bg-theme-main text-theme-muted' : 'border-current/30 bg-theme-surface/70'}`}
                       >
                         {item.occurrence.transactionId && <Check size={14} strokeWidth={3} aria-hidden="true" />}
                       </button>
@@ -869,7 +869,7 @@ export default function UpcomingTasks({
               focusedOccurrence && occurrenceKey(item) === occurrenceKey(focusedOccurrence),
             );
             const focusedBorder = isFocused
-              ? `border-dashed ${isCompletedOccurrence(item) ? 'border-neutral-400' : 'border-theme-primary'}`
+              ? `border-dashed ${isCompletedOccurrence(item) ? 'border-theme-base' : 'border-theme-primary'}`
               : 'border-transparent';
             return (
               <article
@@ -889,7 +889,7 @@ export default function UpcomingTasks({
                     disabled={Boolean(item.transactionId)}
                     onClick={() => void toggleLocally(item)}
                     data-testid={`button-toggle-payment-${key}`}
-                    className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 disabled:cursor-not-allowed ${item.transactionId ? 'border-neutral-300 bg-neutral-100 text-neutral-400' : 'border-neutral-300 bg-white/70'}`}
+                    className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 disabled:cursor-not-allowed ${item.transactionId ? 'border-theme-base bg-theme-main text-theme-muted' : 'border-theme-base bg-theme-surface/70'}`}
                   >
                     {item.transactionId && <Check size={13} strokeWidth={3} aria-hidden="true" />}
                   </button>
@@ -1313,7 +1313,7 @@ function formatLongDate(date: string) {
 }
 
 function occurrenceTone(item: PlannedPaymentOccurrence) {
-  if (isCompletedOccurrence(item)) return 'bg-neutral-200 text-neutral-500 opacity-80';
+  if (isCompletedOccurrence(item)) return 'bg-theme-main text-theme-muted opacity-80';
   if (isPaymentOccurrenceOverdue(item.date)) return 'bg-red-100 text-red-800';
   return item.payment.transactionType === 'income'
     ? 'bg-lime-50 text-lime-700'
@@ -1321,7 +1321,7 @@ function occurrenceTone(item: PlannedPaymentOccurrence) {
 }
 
 function carouselTone(item: PlannedPaymentOccurrence, isPulsing = false) {
-  if (isCompletedOccurrence(item)) return 'border-neutral-300 bg-neutral-200 text-neutral-600 opacity-80';
+  if (isCompletedOccurrence(item)) return 'border-theme-base bg-theme-main text-theme-muted opacity-80';
   if (isPaymentOccurrenceOverdue(item.date)) {
     return `border-red-300 bg-red-100 text-red-900${isPulsing ? ' animate-overdue-pulse' : ''}`;
   }

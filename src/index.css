@@ -10,9 +10,9 @@
 
 /* Nordic is the default and the semantic roles below are shared by every theme. */
 :root {
-  --primary: #0ea5e9;
+  --primary: #0369a1;
   --primary-light: #e0f2fe;
-  --primary-dark: #0284c7;
+  --primary-dark: #075985;
   --text-on-primary: #ffffff;
   --bg-main: #f8fafc;
   --bg-surface: #ffffff;
@@ -33,6 +33,7 @@
   --color-action: var(--primary);
   --color-action-soft: var(--primary-light);
   --color-action-strong: var(--primary-dark);
+  --color-action-text: var(--primary);
   --color-on-action: var(--text-on-primary);
   --color-income: #10b981;
   --color-expense: #f43f5e;
@@ -47,67 +48,67 @@
 }
 
 .theme-light-green { 
-  --primary: #10b981; --primary-light: #d1fae5; --primary-dark: #059669; --text-on-primary: #ffffff;
+  --primary: #047857; --primary-light: #d1fae5; --primary-dark: #065f46; --text-on-primary: #ffffff; --color-action-text: #047857;
   --bg-main: #f5f5f4; --bg-surface: #ffffff; --text-main: #111827; --text-muted: #4b5563; --border-color: #d1fae5;
   --input-bg: #fafaf9;
 }
 .theme-light-blue { 
-  --primary: #3b82f6; --primary-light: #dbeafe; --primary-dark: #2563eb; --text-on-primary: #ffffff;
+  --primary: #1d4ed8; --primary-light: #dbeafe; --primary-dark: #1e40af; --text-on-primary: #ffffff; --color-action-text: #1d4ed8;
   --bg-main: #f0f9ff; --bg-surface: #ffffff; --text-main: #111827; --text-muted: #475569; --border-color: #e2e8f0;
   --input-bg: #f8fbff;
 }
 .theme-light-ruby { 
-  --primary: #e11d48; --primary-light: #fff1f2; --primary-dark: #be123c; --text-on-primary: #ffffff;
+  --primary: #e11d48; --primary-light: #fff1f2; --primary-dark: #be123c; --text-on-primary: #ffffff; --color-action-text: #be123c;
   --bg-main: #fff1f2; --bg-surface: #ffffff; --text-main: #111827; --text-muted: #9f1239; --border-color: #f1f5f9;
   --input-bg: #fff7f8;
 }
 .theme-light-orange { 
-  --primary: #f59e0b; --primary-light: #fffbeb; --primary-dark: #d97706; --text-on-primary: #ffffff;
+  --primary: #b45309; --primary-light: #fffbeb; --primary-dark: #92400e; --text-on-primary: #ffffff; --color-action-text: #b45309;
   --bg-main: #fffbeb; --bg-surface: #ffffff; --text-main: #111827; --text-muted: #92400e; --border-color: #f1f5f9;
   --input-bg: #fffdf5;
 }
 .theme-light-violet { 
-  --primary: #8b5cf6; --primary-light: #f5f3ff; --primary-dark: #7c3aed; --text-on-primary: #ffffff;
+  --primary: #6d28d9; --primary-light: #f5f3ff; --primary-dark: #5b21b6; --text-on-primary: #ffffff; --color-action-text: #5b21b6;
   --bg-main: #f5f3ff; --bg-surface: #ffffff; --text-main: #111827; --text-muted: #6d28d9; --border-color: #e5e7eb;
   --input-bg: #faf9ff;
 }
 .theme-midnight { 
-  --primary: #6366f1; --primary-light: rgba(99, 102, 241, 0.2); --primary-dark: #4f46e5; --text-on-primary: #ffffff;
+  --primary: #4f46e5; --primary-light: rgba(99, 102, 241, 0.2); --primary-dark: #4338ca; --text-on-primary: #ffffff; --color-action-text: #a5b4fc;
   --bg-main: #0b1120; --bg-surface: #172033; --text-main: #f8fafc; --text-muted: #cbd5e1; --border-color: #334155;
   --input-bg: #0f172a;
 }
 .theme-carbon { 
-  --primary: #10b981; --primary-light: rgba(16, 185, 129, 0.2); --primary-dark: #059669; --text-on-primary: #ffffff;
+  --primary: #047857; --primary-light: rgba(16, 185, 129, 0.2); --primary-dark: #065f46; --text-on-primary: #ffffff; --color-action-text: #6ee7b7;
   --bg-main: #0d0f10; --bg-surface: #1a1d1f; --text-main: #f3f4f6; --text-muted: #c4c9ce; --border-color: #3a4146;
   --input-bg: #262626;
 }
 .theme-oled { 
-  --primary: #10b981; --primary-light: rgba(16, 185, 129, 0.1); --primary-dark: #059669; --text-on-primary: #ffffff;
+  --primary: #047857; --primary-light: rgba(16, 185, 129, 0.1); --primary-dark: #065f46; --text-on-primary: #ffffff; --color-action-text: #6ee7b7;
   --bg-main: #000000; --bg-surface: #0b0b0b; --text-main: #ffffff; --text-muted: #b8b8b8; --border-color: #2b2b2b;
   --input-bg: #111111;
 }
 .theme-nordic { 
-  --primary: #0ea5e9; --primary-light: #e0f2fe; --primary-dark: #0284c7; --text-on-primary: #ffffff;
+  --primary: #0369a1; --primary-light: #e0f2fe; --primary-dark: #075985; --text-on-primary: #ffffff; --color-action-text: #0369a1;
   --bg-main: #f8fafc; --bg-surface: #ffffff; --text-main: #0f172a; --text-muted: #64748b; --border-color: #e2e8f0;
   --input-bg: #f8fafc;
 }
 .theme-bw { 
-  --primary: #000000; --primary-light: #e5e7eb; --primary-dark: #000000; --text-on-primary: #ffffff;
+  --primary: #000000; --primary-light: #e5e7eb; --primary-dark: #000000; --text-on-primary: #ffffff; --color-action-text: #000000;
   --bg-main: #ffffff; --bg-surface: #ffffff; --text-main: #000000; --text-muted: #374151; --border-color: #000000;
   --input-bg: #f9fafb;
 }
 .theme-forest-dark { 
-  --primary: #22c55e; --primary-light: rgba(34, 197, 94, 0.15); --primary-dark: #16a34a; --text-on-primary: #ffffff;
+  --primary: #15803d; --primary-light: rgba(34, 197, 94, 0.15); --primary-dark: #166534; --text-on-primary: #ffffff; --color-action-text: #86efac;
   --bg-main: #031c10; --bg-surface: #073b2c; --text-main: #f0fdf4; --text-muted: #bbf7d0; --border-color: #17633f;
   --input-bg: #052e16;
 }
 .theme-nocturnal { 
-  --primary: #00d4ff; --primary-light: rgba(0, 212, 255, 0.15); --primary-dark: #008ab3; --text-on-primary: #000000;
+  --primary: #00d4ff; --primary-light: rgba(0, 212, 255, 0.15); --primary-dark: #00a3c4; --text-on-primary: #000000; --color-action-text: #00d4ff;
   --bg-main: #000000; --bg-surface: #0b1118; --text-main: #f8fafc; --text-muted: #b9c7d6; --border-color: #263545;
   --input-bg: #050a0f;
 }
 .theme-cyber {
-  --primary: #00ffcc; --primary-light: rgba(0, 255, 204, 0.2); --primary-dark: #00b38f; --text-on-primary: #000000;
+  --primary: #00ffcc; --primary-light: rgba(0, 255, 204, 0.2); --primary-dark: #00b38f; --text-on-primary: #000000; --color-action-text: #00ffcc;
   --bg-main: #030606; --bg-surface: #101918; --text-main: #d7fff5; --text-muted: #8debd5; --border-color: rgba(0, 255, 204, 0.28);
   --input-bg: #000000;
 }
@@ -147,7 +148,7 @@
   
   /* Theme-aware utilities */
   .bg-theme-primary { background-color: var(--color-action); }
-  .text-theme-primary { color: var(--color-action); }
+  .text-theme-primary { color: var(--color-action-text); }
   .text-theme-on-primary { color: var(--color-on-action); }
   .border-theme-primary { border-color: var(--color-action); }
   .ring-theme-primary { --tw-ring-color: var(--focus-ring); }

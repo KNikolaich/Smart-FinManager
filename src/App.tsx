@@ -6,7 +6,7 @@ import { useAuth } from './hooks/useAuth';
 import { useGlobalInputContextMenu } from './hooks/useGlobalInputContextMenu';
 import { api, safeStorage, syncOfflineQueue } from './lib/api';
 import { CalendarNoteDraft, DashboardLayoutSettings, PlannedPayment, PlannedPaymentDraft, Transaction, UserProfile } from './types';
-import type { ThemeDeviceClass, ThemeId, ThemePreferences } from './types';
+import type { ThemeDeviceClass, ThemePreferenceValue, ThemePreferences } from './types';
 import type { PlannedPaymentOccurrence } from './lib/plannedPaymentOccurrences';
 import { getDashboardLayout } from './lib/dashboardLayout';
 import { useDashboardDevice } from './hooks/useDashboardDevice';
@@ -24,6 +24,7 @@ import { cn } from './lib/utils';
 import { ToastContainer, ToastType } from './components/ui/Toast';
 import { getTodayKey } from './lib/plannedPaymentOccurrences';
 import { useThemeDeviceClass } from './hooks/useThemeDeviceClass';
+import { usePrefersDarkColorScheme } from './hooks/usePrefersDarkColorScheme';
 import {
   applyTheme,
   isCompleteThemePreferences,
@@ -61,6 +62,7 @@ export default function App() {
   const { user, setUser, loading, handleLogout } = useAuth(addToast);
   const dashboardDevice = useDashboardDevice();
   const themeDeviceClass = useThemeDeviceClass();
+  const prefersDarkColorScheme = usePrefersDarkColorScheme();
   const [themePreferences, setThemePreferences] = useState<ThemePreferences>(() =>
     resolveThemePreferences(undefined, safeStorage.getItem('theme')).preferences,
   );
@@ -138,8 +140,8 @@ export default function App() {
   }, [aiTransactionDraftIndex, aiTransactionDrafts]);
 
   useEffect(() => {
-    applyTheme(themePreferences[themeDeviceClass]);
-  }, [themePreferences, themeDeviceClass]);
+    applyTheme(themePreferences[themeDeviceClass], prefersDarkColorScheme);
+  }, [themePreferences, themeDeviceClass, prefersDarkColorScheme]);
 
   const saveThemeSettings = useCallback((settings: { themeByDevice: Partial<ThemePreferences> }) => {
     const previousRequest = themeSettingsQueueRef.current;
@@ -367,21 +369,37 @@ export default function App() {
     addToast('Настройки дашборда сохранены', 'success');
   }, [addToast, setUser, user]);
 
-  const handleSaveThemePreference = useCallback(async (deviceClass: ThemeDeviceClass, themeId: ThemeId) => {
+  const handleSaveThemePreference = useCallback(async (deviceClass: ThemeDeviceClass, themeChoice: ThemePreferenceValue) => {
     if (!user) return;
     const previousTheme = themePreferences[deviceClass];
-    setThemePreferences(current => ({ ...current, [deviceClass]: themeId }));
+    setThemePreferences(current => ({ ...current, [deviceClass]: themeChoice }));
 
     try {
-      const updatedUser = await saveThemeSettings({ themeByDevice: { [deviceClass]: themeId } });
+      const updatedUser = await saveThemeSettings({ themeByDevice: { [deviceClass]: themeChoice } });
       if (currentUserIdRef.current === user.id) setUser(updatedUser);
     } catch (error) {
       if (currentUserIdRef.current === user.id) {
-        setThemePreferences(current => current[deviceClass] === themeId
+        setThemePreferences(current => current[deviceClass] === themeChoice
           ? { ...current, [deviceClass]: previousTheme }
           : current);
       }
       addToast('Не удалось синхронизировать тему с аккаунтом', 'error');
+      throw error;
+    }
+  }, [addToast, saveThemeSettings, setUser, themePreferences, user]);
+
+  const handleSaveThemeForAllDevices = useCallback(async (themeChoice: ThemePreferenceValue) => {
+    if (!user) return;
+    const previous = themePreferences;
+    const next: ThemePreferences = { mobile: themeChoice, tablet: themeChoice, desktop: themeChoice };
+    setThemePreferences(next);
+
+    try {
+      const updatedUser = await saveThemeSettings({ themeByDevice: next });
+      if (currentUserIdRef.current === user.id) setUser(updatedUser);
+    } catch (error) {
+      if (currentUserIdRef.current === user.id) setThemePreferences(previous);
+      addToast('Не удалось сохранить темы для всех экранов', 'error');
       throw error;
     }
   }, [addToast, saveThemeSettings, setUser, themePreferences, user]);
@@ -502,6 +520,7 @@ export default function App() {
           themePreferences={themePreferences}
           themeDeviceClass={themeDeviceClass}
           onSaveThemePreference={handleSaveThemePreference}
+          onSaveThemeForAllDevices={handleSaveThemeForAllDevices}
         />;
       case 'ai':
         return (

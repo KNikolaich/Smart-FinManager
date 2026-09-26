@@ -16,11 +16,20 @@ import type {
   UserProfile,
   Account,
   ThemeDeviceClass,
-  ThemeId,
+  ThemePreferenceValue,
   ThemePreferences,
 } from '../types';
 import { DashboardLayoutEditor } from './settings/DashboardLayoutEditor';
-import { THEME_DEVICE_OPTIONS, THEME_GROUPS, isThemeId } from '../lib/themePreferences';
+import {
+  DEFAULT_THEME,
+  SYSTEM_THEME_ID,
+  SYSTEM_THEME_PALETTE,
+  THEME_DEVICE_OPTIONS,
+  THEME_GROUPS,
+  isThemePreference,
+  resolveThemeChoice,
+} from '../lib/themePreferences';
+import { usePrefersDarkColorScheme } from '../hooks/usePrefersDarkColorScheme';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -35,7 +44,8 @@ interface SettingsProps {
   onSaveDashboardLayout: (dashboard: DashboardLayoutSettings) => Promise<void>;
   themePreferences: ThemePreferences;
   themeDeviceClass: ThemeDeviceClass;
-  onSaveThemePreference: (deviceClass: ThemeDeviceClass, themeId: ThemeId) => Promise<void>;
+  onSaveThemePreference: (deviceClass: ThemeDeviceClass, theme: ThemePreferenceValue) => Promise<void>;
+  onSaveThemeForAllDevices: (theme: ThemePreferenceValue) => Promise<void>;
 }
 
 export default function Settings({
@@ -48,6 +58,7 @@ export default function Settings({
   themePreferences,
   themeDeviceClass,
   onSaveThemePreference,
+  onSaveThemeForAllDevices,
 }: SettingsProps) {
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showAccountManager, setShowAccountManager] = useState(false);
@@ -57,12 +68,17 @@ export default function Settings({
   const [showDashboardLayoutEditor, setShowDashboardLayoutEditor] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedThemeDevice, setSelectedThemeDevice] = useState<ThemeDeviceClass>(themeDeviceClass);
+  const [themeDraft, setThemeDraft] = useState<ThemePreferenceValue>(themePreferences[themeDeviceClass]);
   const [themeSaving, setThemeSaving] = useState(false);
   const [themeSaveError, setThemeSaveError] = useState<string | null>(null);
+  const prefersDarkColorScheme = usePrefersDarkColorScheme();
 
   useEffect(() => {
     setSelectedThemeDevice(themeDeviceClass);
   }, [themeDeviceClass]);
+  useEffect(() => {
+    setThemeDraft(themePreferences[selectedThemeDevice]);
+  }, [selectedThemeDevice, themePreferences]);
 
   // DB migration panel (admin only)
   const [dbMigrateOpen, setDbMigrateOpen] = useState(false);
@@ -125,21 +141,58 @@ export default function Settings({
   };
 
   const currentTheme = themePreferences[selectedThemeDevice];
-  const activeThemeObj = THEME_GROUPS.flatMap(group => group.items).find(theme => theme.id === currentTheme)
+  const activeThemeObj = THEME_GROUPS.flatMap(group => group.items).find(theme => theme.id === themeDraft)
     ?? THEME_GROUPS[0].items[0];
+  const activeThemeName = themeDraft === SYSTEM_THEME_ID
+    ? `Системная · ${prefersDarkColorScheme ? 'тёмная' : 'светлая'}`
+    : activeThemeObj.name;
+  const activeThemePalette = themeDraft === SYSTEM_THEME_ID ? SYSTEM_THEME_PALETTE : activeThemeObj.palette;
+  const previewThemeId = resolveThemeChoice(themeDraft, prefersDarkColorScheme);
 
-  const handleThemeChange = async (themeId: ThemeId) => {
-    if (!isThemeId(themeId) || themeSaving) return;
+  const handleThemeChange = (theme: ThemePreferenceValue) => {
+    if (!isThemePreference(theme) || themeSaving) return;
+    setThemeDraft(theme);
+    setDropdownOpen(false);
+    setThemeSaveError(null);
+  };
+
+  const handleSaveCurrentTheme = async () => {
+    if (themeSaving || themeDraft === currentTheme) return;
     setThemeSaving(true);
     setThemeSaveError(null);
     try {
-      await onSaveThemePreference(selectedThemeDevice, themeId);
-      setDropdownOpen(false);
+      await onSaveThemePreference(selectedThemeDevice, themeDraft);
     } catch {
       setThemeSaveError('Не удалось сохранить выбор. Проверьте подключение и попробуйте снова.');
     } finally {
       setThemeSaving(false);
     }
+  };
+
+  const handleSaveThemeForAll = async (theme: ThemePreferenceValue) => {
+    if (themeSaving) return;
+    setThemeSaving(true);
+    setThemeSaveError(null);
+    try {
+      await onSaveThemeForAllDevices(theme);
+      setThemeDraft(theme);
+    } catch {
+      setThemeSaveError('Не удалось сохранить темы для экранов. Проверьте подключение и попробуйте снова.');
+    } finally {
+      setThemeSaving(false);
+    }
+  };
+
+  const handleResetAllThemes = async () => {
+    const allAlreadyDefault = themePreferences.mobile === DEFAULT_THEME
+      && themePreferences.tablet === DEFAULT_THEME
+      && themePreferences.desktop === DEFAULT_THEME;
+    if (allAlreadyDefault) {
+      setThemeDraft(DEFAULT_THEME);
+      setDropdownOpen(false);
+      return;
+    }
+    await handleSaveThemeForAll(DEFAULT_THEME);
   };
   const {
     seeding, seedProgress, success, clearing, showClearConfirm, setShowClearConfirm,
@@ -184,26 +237,26 @@ export default function Settings({
         {showLogModal && (
           <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-6 sm:p-2 bg-black/40 backdrop-blur-sm">
             <div className="absolute inset-0" onClick={() => setShowLogModal(false)} />
-            <div className="relative w-full max-w-2xl bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[90vh]">
-              <div className="p-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50 shrink-0">
+            <div className="relative w-full max-w-2xl bg-theme-surface rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[90vh]">
+              <div className="p-6 border-b border-theme-base flex items-center justify-between bg-theme-main shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-neutral-900 rounded-xl flex items-center justify-center text-white">
+                  <div className="w-10 h-10 bg-theme-primary rounded-xl flex items-center justify-center text-theme-on-primary">
                     <Database size={20} />
                   </div>
                   <div>
                     <h3 className="font-bold text-lg">Логи импорта</h3>
-                    <p className="text-xs text-neutral-400">Детальный отчет о процессе</p>
+                    <p className="text-xs text-theme-muted">Детальный отчет о процессе</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button 
                     onClick={copyLogsToClipboard}
-                    className="p-2.5 hover:bg-neutral-100 rounded-xl transition-all text-neutral-500 hover:text-neutral-900 flex items-center gap-2 text-sm font-bold"
+                    className="p-2.5 hover:bg-theme-main rounded-xl transition-all text-theme-muted hover:text-theme-main flex items-center gap-2 text-sm font-bold"
                   >
                     <Copy size={18} />
                     Копировать
                   </button>
-                  <button onClick={() => setShowLogModal(false)} className="p-2.5 hover:bg-neutral-100 rounded-xl transition-all text-neutral-400">
+                  <button onClick={() => setShowLogModal(false)} className="p-2.5 hover:bg-theme-main rounded-xl transition-all text-theme-muted">
                     <X size={20} />
                   </button>
                 </div>
@@ -211,7 +264,7 @@ export default function Settings({
               <div className="flex-1 overflow-y-auto p-6 font-mono text-xs space-y-1.5 bg-neutral-900 text-neutral-300 selection:bg-emerald-500/30 no-scrollbar">
                 {importLogs.map((log, idx) => (
                   <div key={idx} className="flex gap-3 py-0.5 border-b border-white/5 last:border-0">
-                    <span className="text-neutral-600 shrink-0">[{new Date().toLocaleTimeString()}]</span>
+                    <span className="text-neutral-500 shrink-0">[{new Date().toLocaleTimeString()}]</span>
                     <span className={cn(
                       "break-all",
                       log.includes('❌') ? "text-rose-400" : 
@@ -233,19 +286,19 @@ export default function Settings({
         {dbMigrateOpen && (
           <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-6 sm:p-2 bg-black/40 backdrop-blur-sm">
             <div className="absolute inset-0" onClick={() => setDbMigrateOpen(false)} />
-            <div className="relative w-full max-w-2xl bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="relative w-full max-w-2xl bg-theme-surface rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
               {/* Header */}
-              <div className="p-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50 shrink-0">
+              <div className="p-6 border-b border-theme-base flex items-center justify-between bg-theme-main/50 shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center text-white">
                     <Database size={20} />
                   </div>
                   <div>
                     <h3 className="font-bold text-lg">Обновление БД</h3>
-                    <p className="text-xs text-neutral-400">prisma db push — синхронизация схемы</p>
+                    <p className="text-xs text-theme-muted">prisma db push — синхронизация схемы</p>
                   </div>
                 </div>
-                <button onClick={() => setDbMigrateOpen(false)} className="p-2.5 hover:bg-neutral-100 rounded-xl transition-all text-neutral-400">
+                <button onClick={() => setDbMigrateOpen(false)} className="p-2.5 hover:bg-theme-main rounded-xl transition-all text-theme-muted">
                   <X size={20} />
                 </button>
               </div>
@@ -268,7 +321,7 @@ export default function Settings({
                   <button
                     onClick={handleDbStatus}
                     disabled={dbStatusLoading || dbMigrateRunning}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 transition-all disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-theme-main hover:bg-theme-primary-light text-theme-main transition-all disabled:opacity-50"
                   >
                     {dbStatusLoading
                       ? <RefreshCw size={13} className="animate-spin" />
@@ -308,8 +361,8 @@ export default function Settings({
                     className="w-4 h-4 accent-violet-600"
                   />
                   <div>
-                    <p className="text-sm font-semibold text-neutral-700">Разрешить удаление данных</p>
-                    <p className="text-xs text-neutral-400">Нужно только если схема удаляет колонки или таблицы. Обычно не требуется.</p>
+                    <p className="text-sm font-semibold text-theme-main">Разрешить удаление данных</p>
+                    <p className="text-xs text-theme-muted">Нужно только если схема удаляет колонки или таблицы. Обычно не требуется.</p>
                   </div>
                 </label>
 
@@ -319,7 +372,7 @@ export default function Settings({
                   className={cn(
                     "w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all",
                     dbMigrateRunning
-                      ? "bg-neutral-100 text-neutral-400 cursor-not-allowed"
+                      ? "bg-theme-main text-theme-muted cursor-not-allowed"
                       : "bg-violet-600 text-white hover:bg-violet-700 active:scale-[0.98] shadow-lg shadow-violet-100"
                   )}
                 >
@@ -450,8 +503,8 @@ export default function Settings({
               onClick={onShowLogs}
               className="w-full px-6 py-2 flex items-center gap-4 text-theme-main hover:bg-theme-main transition-colors"
             >
-              <div className="w-10 h-10 bg-neutral-900 rounded-xl flex items-center justify-center">
-                <Database className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 bg-theme-primary rounded-xl flex items-center justify-center">
+                <Database className="w-5 h-5 text-theme-on-primary" />
               </div>
               <div className="text-left">
                 <p className="font-semibold text-sm text-theme-main">Логи AI</p>
@@ -482,6 +535,7 @@ export default function Settings({
                     <button
                       key={option.id}
                       type="button"
+                      data-testid={`theme-device-${option.id}`}
                       aria-pressed={selectedThemeDevice === option.id}
                       onClick={() => {
                         setSelectedThemeDevice(option.id);
@@ -505,17 +559,18 @@ export default function Settings({
                 <div className="relative">
                   <button
                     type="button"
+                    data-testid="theme-picker-toggle"
                     onClick={() => setDropdownOpen(!dropdownOpen)}
                     disabled={themeSaving}
                     className="w-full flex items-center justify-between p-3 bg-theme-main rounded-2xl border border-theme-base hover:border-theme-primary transition-all font-semibold text-sm text-theme-main disabled:opacity-60"
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex -space-x-1">
-                        {activeThemeObj.palette.map((color, i) => (
+                        {activeThemePalette.map((color, i) => (
                           <div key={i} className="w-4 h-4 rounded-full border border-theme-base" style={{ backgroundColor: color }} />
                         ))}
                       </div>
-                      <span>{activeThemeObj.name}</span>
+                      <span>{activeThemeName}</span>
                     </div>
                     <ArrowUp className={cn("w-4 h-4 transition-transform", dropdownOpen ? "rotate-0" : "rotate-180")} />
                   </button>
@@ -523,18 +578,39 @@ export default function Settings({
                   {dropdownOpen && (
                     <div className="absolute top-full left-0 right-0 mt-2 bg-theme-surface rounded-3xl border border-theme-base shadow-xl z-50 animate-in fade-in slide-in-from-top-2 flex flex-col max-h-[400px]">
                       <div className="p-2 overflow-y-auto">
+                        <button
+                          type="button"
+                          data-testid="theme-option-system"
+                          aria-pressed={themeDraft === SYSTEM_THEME_ID}
+                          onClick={() => handleThemeChange(SYSTEM_THEME_ID)}
+                          disabled={themeSaving}
+                          className="w-full flex items-center justify-between px-3 py-2 hover:bg-theme-main rounded-xl transition-all disabled:opacity-60"
+                        >
+                          <span className="text-left">
+                            <span className={cn("block text-sm font-medium", themeDraft === SYSTEM_THEME_ID ? "text-theme-primary" : "text-theme-main")}>Системная</span>
+                            <span className="block text-[10px] text-theme-muted">Как в настройках устройства</span>
+                          </span>
+                          <div className="flex -space-x-1">
+                            {SYSTEM_THEME_PALETTE.map((color, i) => (
+                              <div key={i} className="w-4 h-4 rounded-full border border-theme-base" style={{ backgroundColor: color }} />
+                            ))}
+                          </div>
+                        </button>
+                        <div className="my-2 border-t border-theme-base" />
                         {THEME_GROUPS.map(group => (
                           <div key={group.type} className="mb-4 last:mb-0">
                             <p className="text-[10px] font-bold text-theme-muted uppercase mb-2 px-3">{group.type}</p>
                             {group.items.map((theme) => (
                               <button
                                 key={theme.id}
-                                onClick={() => handleThemeChange(theme.id)}
                                 type="button"
+                                data-testid={`theme-option-${theme.id}`}
+                                aria-pressed={themeDraft === theme.id}
+                                onClick={() => handleThemeChange(theme.id)}
                                 disabled={themeSaving}
                                 className="w-full flex items-center justify-between px-3 py-2 hover:bg-theme-main rounded-xl transition-all disabled:opacity-60"
                               >
-                                <span className={cn("text-sm font-medium", currentTheme === theme.id ? "text-theme-primary" : "text-theme-main")}>{theme.name}</span>
+                                <span className={cn("text-sm font-medium", themeDraft === theme.id ? "text-theme-primary" : "text-theme-main")}>{theme.name}</span>
                                 <div className="flex -space-x-1">
                                   {theme.palette.map((color, i) => (
                                     <div key={i} className="w-4 h-4 rounded-full border border-theme-base" style={{ backgroundColor: color }} />
@@ -548,6 +624,78 @@ export default function Settings({
                     </div>
                   )}
                 </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-theme-main">Предпросмотр темы</p>
+                    <p className="text-[10px] text-theme-muted">
+                      {themeDraft === SYSTEM_THEME_ID
+                        ? `Сейчас используется ${prefersDarkColorScheme ? 'тёмный' : 'светлый'} вариант`
+                        : 'Изменения пока не применены'}
+                    </p>
+                  </div>
+                  <div
+                    data-testid="theme-preview"
+                    aria-label={`Предпросмотр темы ${activeThemeName}`}
+                    className={cn(previewThemeId, 'rounded-2xl border border-theme-base p-3')}
+                  >
+                    <div className="bg-theme-main rounded-xl p-3">
+                      <div className="bg-theme-surface border border-theme-base rounded-xl p-3">
+                        <p className="text-[10px] uppercase tracking-wider font-bold text-theme-muted">Обзор месяца</p>
+                        <div className="mt-1 flex items-end justify-between gap-2">
+                          <div>
+                            <p className="text-xs text-theme-muted">Общий баланс</p>
+                            <p className="text-lg font-bold text-theme-main">128 450 ₽</p>
+                          </div>
+                          <span className="text-xs font-semibold text-theme-primary">+4,8%</span>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className="rounded-lg bg-theme-primary px-3 py-2 text-xs font-semibold text-theme-on-primary">Добавить операцию</span>
+                          <span className="rounded-lg bg-theme-primary-light px-3 py-2 text-xs font-semibold text-theme-primary">Доход +3 200 ₽</span>
+                        </div>
+                        <div className="mt-3 rounded-lg border border-theme-base bg-theme-main px-3 py-2 text-xs text-theme-muted">
+                          Поиск операции
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    data-testid="theme-apply-current"
+                    onClick={() => void handleSaveCurrentTheme()}
+                    disabled={themeSaving || themeDraft === currentTheme}
+                    className="flex items-center justify-center gap-2 rounded-xl bg-theme-primary px-3 py-2.5 text-xs font-semibold text-theme-on-primary transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {themeSaving ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                    Применить на этот экран
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="theme-apply-all"
+                    onClick={() => void handleSaveThemeForAll(themeDraft)}
+                    disabled={themeSaving || (themePreferences.mobile === themeDraft && themePreferences.tablet === themeDraft && themePreferences.desktop === themeDraft)}
+                    className="flex items-center justify-center gap-2 rounded-xl border border-theme-base bg-theme-main px-3 py-2.5 text-xs font-semibold text-theme-main transition-colors hover:border-theme-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <CheckCircle2 size={14} />
+                    Применить ко всем
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  data-testid="theme-reset-all"
+                  onClick={() => void handleResetAllThemes()}
+                  disabled={themeSaving || (
+                    themeDraft === DEFAULT_THEME
+                    && themePreferences.mobile === DEFAULT_THEME
+                    && themePreferences.tablet === DEFAULT_THEME
+                    && themePreferences.desktop === DEFAULT_THEME
+                  )}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-theme-muted transition-colors hover:bg-theme-main hover:text-theme-main disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <RefreshCw size={13} />
+                  Сбросить все темы · Нордик по умолчанию
+                </button>
                 {themeSaveError && <p role="alert" className="text-xs text-red-600">{themeSaveError}</p>}
               </div>
             </div>
@@ -555,7 +703,7 @@ export default function Settings({
             <button
               type="button"
               onClick={() => setShowDashboardLayoutEditor(true)}
-              className="w-full px-6 py-4 flex items-center gap-4 text-left hover:bg-theme-main transition-colors border-b border-neutral-50"
+              className="w-full px-6 py-4 flex items-center gap-4 text-left hover:bg-theme-main transition-colors border-b border-theme-base"
             >
               <div className="w-10 h-10 bg-theme-primary-light rounded-xl flex items-center justify-center">
                 <LayoutDashboard className="w-5 h-5 text-theme-primary" />
@@ -566,13 +714,13 @@ export default function Settings({
               </div>
             </button>
 
-            <div className="w-full px-6 py-2 flex items-center gap-4 border-b border-neutral-50">
+            <div className="w-full px-6 py-2 flex items-center gap-4 border-b border-theme-base">
               <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
                 <Info className="w-5 h-5 text-purple-600" />
               </div>
               <div className="text-left">
                 <p className="font-semibold text-sm">Версия приложения</p>
-                <p className="text-xs text-neutral-400">{APP_VERSION}</p>
+                <p className="text-xs text-theme-muted">{APP_VERSION}</p>
               </div>
             </div>
 
@@ -580,14 +728,14 @@ export default function Settings({
               href="https://github.com/KNikolaich/Smart-FinManager" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="w-full px-6 py-2 flex items-center gap-4 hover:bg-neutral-50 transition-colors"
+              className="w-full px-6 py-2 flex items-center gap-4 hover:bg-theme-main transition-colors"
             >
-              <div className="w-10 h-10 bg-neutral-100 rounded-xl flex items-center justify-center">
-                <Github className="w-5 h-5 text-neutral-600" />
+              <div className="w-10 h-10 bg-theme-primary-light rounded-xl flex items-center justify-center">
+                <Github className="w-5 h-5 text-theme-primary" />
               </div>
               <div className="text-left">
                 <p className="font-semibold text-sm">GitHub</p>
-                <p className="text-xs text-neutral-400">Исходный код проекта</p>
+                <p className="text-xs text-theme-muted">Исходный код проекта</p>
               </div>
             </a>
           </div>
