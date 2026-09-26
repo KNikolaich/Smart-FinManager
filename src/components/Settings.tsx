@@ -67,6 +67,7 @@ export default function Settings({
   const [showUserManager, setShowUserManager] = useState(false);
   const [showDashboardLayoutEditor, setShowDashboardLayoutEditor] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [themeHelpOpen, setThemeHelpOpen] = useState(false);
   const [selectedThemeDevice, setSelectedThemeDevice] = useState<ThemeDeviceClass>(themeDeviceClass);
   const [themeDraft, setThemeDraft] = useState<ThemePreferenceValue>(themePreferences[themeDeviceClass]);
   const [themeSaving, setThemeSaving] = useState(false);
@@ -519,13 +520,40 @@ export default function Settings({
           <h4 className="text-xs font-bold text-theme-primary uppercase tracking-widest px-4">Приложение</h4>
           <div className="bg-theme-surface rounded-3xl border border-theme-base shadow-sm overflow-visible">
             <div className="px-6 py-4 border-b border-theme-base last:border-0">
-              <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center gap-4 mb-4">
                 <div className="w-10 h-10 bg-theme-primary-light rounded-xl flex items-center justify-center">
                   <Palette className="w-5 h-5 text-theme-primary" />
                 </div>
                 <div>
                   <p className="font-semibold text-sm text-theme-main">Тема оформления</p>
-                  <p className="text-[10px] text-theme-muted uppercase tracking-wider font-bold">Отдельная тема для каждой группы экранов</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[10px] text-theme-muted uppercase tracking-wider font-bold">Отдельная тема для каждой группы экранов</p>
+                      <div className="relative group shrink-0">
+                        <button
+                          type="button"
+                          data-testid="theme-device-breakpoint-help"
+                          aria-label="Пояснение о группах экранов"
+                          aria-describedby="theme-device-breakpoint-tooltip"
+                          onClick={() => setThemeHelpOpen(open => !open)}
+                          className="flex h-5 w-5 items-center justify-center rounded-full text-theme-muted transition-colors hover:text-theme-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary"
+                        >
+                          <AlertCircle size={14} aria-hidden="true" />
+                        </button>
+                        <div
+                          id="theme-device-breakpoint-tooltip"
+                          role="tooltip"
+                          data-testid="theme-device-breakpoint-tooltip"
+                          className={cn(
+                            'absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-theme-base bg-theme-surface p-3 text-left text-[11px] font-normal leading-relaxed normal-case tracking-normal text-theme-main shadow-xl transition-opacity duration-150',
+                            themeHelpOpen
+                              ? 'visible opacity-100'
+                              : 'invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100',
+                          )}
+                        >
+                          Сохраняется в аккаунте: телефон — до 767 px, планшет / ноутбук — 768–1439 px, большой экран — от 1440 px.
+                        </div>
+                      </div>
+                    </div>
                 </div>
               </div>
               
@@ -553,9 +581,6 @@ export default function Settings({
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] leading-relaxed text-theme-muted">
-                  Сохраняется в аккаунте: телефон — до 767 px, планшет / ноутбук — 768–1439 px, большой экран — от 1440 px.
-                </p>
                 <div className="relative">
                   <button
                     type="button"

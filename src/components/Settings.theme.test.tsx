@@ -29,6 +29,25 @@ function renderSettings(themePreferences: ThemePreferences, themeDeviceClass: 'm
 }
 
 describe('Settings theme controls', () => {
+  it('shows device breakpoint details from the help tooltip', () => {
+    renderSettings({
+      mobile: 'theme-nordic',
+      tablet: 'theme-carbon',
+      desktop: 'theme-oled',
+    });
+
+    const helpButton = screen.getByTestId('theme-device-breakpoint-help');
+    const tooltip = screen.getByTestId('theme-device-breakpoint-tooltip');
+
+    expect(tooltip.className).toContain('invisible');
+    fireEvent.click(helpButton);
+
+    expect(tooltip.className).toContain('visible');
+    expect(tooltip.textContent).toContain(
+      'Сохраняется в аккаунте: телефон — до 767 px, планшет / ноутбук — 768–1439 px, большой экран — от 1440 px.',
+    );
+  });
+
   it('previews system mode and saves it for the selected device group', async () => {
     const preferences: ThemePreferences = {
       mobile: 'theme-nordic',
