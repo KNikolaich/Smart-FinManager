@@ -2,7 +2,8 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-export const PORT = 5000;
+// Replit and local dev use 5000; Docker sets PORT=3000.
+export const PORT = Number(process.env.PORT) || 5000;
 
 export const JWT_SECRET = process.env.JWT_SECRET;
 // AES-256-CBC requires 32 bytes key

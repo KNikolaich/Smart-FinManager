@@ -1,15 +1,46 @@
 services:
+  # PostgreSQL database
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-finance_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-finance_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   # Application service
   app:
     build: .
     restart: always
+    depends_on:
+      db:
+        condition: service_healthy
     ports:
       - "3000:3000"
     environment:
-      # Database connection URL for Prisma
-      DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}>
-      # JWT secret for authentication
-      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_here}
-      # DeepSeek API Key (provide this in your .env file)
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      # Database connection URL for Prisma (host "db" is the service above)
+      DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-finance_db}?schema=public
+      # Required: JWT secret for authentication
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      # Required: exactly 32 characters (AES-256)
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY (32 chars) in .env}
+      # Optional: AI assistant
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      # Optional: SMTP for password recovery emails
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
       NODE_ENV: production
+      PORT: 3000
+
+volumes:
+  postgres_data:

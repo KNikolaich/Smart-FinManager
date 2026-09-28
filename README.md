@@ -15,8 +15,13 @@ POSTGRES_USER=user
 POSTGRES_PASSWORD=password
 POSTGRES_DB=finance_db
 JWT_SECRET=your_secure_random_secret
+# Ровно 32 символа (ключ AES-256), например: openssl rand -hex 16
+ENCRYPTION_KEY=0123456789abcdef0123456789abcdef
+# Необязательно: ключ для AI-ассистента
 DEEPSEEK_API_KEY=your_deepseek_api_key
 ```
+
+`JWT_SECRET` и `ENCRYPTION_KEY` обязательны — без них сервер не запустится.
 
 ### 2. Запуск приложения
 
@@ -56,23 +61,34 @@ docker compose up -d --build
 
 ## Разработка без Docker
 
-Если вы хотите запустить проект локально для разработки:
+Если вы хотите запустить проект локально для разработки (нужны Node.js 20+ и PostgreSQL):
 
 1. **Установите зависимости:**
    ```bash
    npm install
    ```
 
-2. **Настройте базу данных:**
-   Укажите `DATABASE_URL` в `.env` и примените миграции:
+2. **Настройте окружение:**
+   Скопируйте `.env.example` в `.env` и заполните как минимум `DATABASE_URL`, `JWT_SECRET` и `ENCRYPTION_KEY` (ровно 32 символа).
+
+3. **Примените миграции базы данных:**
    ```bash
-   npx prisma migrate dev
+   npx prisma migrate deploy
    ```
 
-3. **Запустите сервер:**
+4. **Запустите сервер в режиме разработки** (Vite с горячей перезагрузкой):
    ```bash
    npm run dev
    ```
+   Приложение будет доступно по адресу [http://localhost:5000](http://localhost:5000). Порт можно изменить переменной `PORT`.
+
+### Production-запуск без Docker
+
+```bash
+npm run build
+# NODE_ENV=production в .env (или в окружении)
+npm start
+```
 
 ## Технологический стек
 

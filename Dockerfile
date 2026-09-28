@@ -48,6 +48,7 @@ USER app
 
 # Set environment to production
 ENV NODE_ENV=production
+ENV PORT=3000
 
 # Expose the application port
 EXPOSE 3000
