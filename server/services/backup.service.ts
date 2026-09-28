@@ -232,11 +232,15 @@ async function restoreBackupInternal(
   return prisma.$transaction(async tx => {
     const targetUser = await tx.user.findUnique({
       where: { id: userId },
-      select: { id: true },
+      select: { id: true, role: true },
     });
     if (!targetUser) throw new BackupServiceError("Пользователь для восстановления не найден", 404);
 
+    // Admins may restore any backup into their own account from the regular
+    // restore screen too (same as via user management), e.g. when moving data
+    // from another server where the account had a different ID.
     if (archive.sourceUserId !== userId && !options.allowSourceUserIdMismatch &&
+      targetUser.role !== "admin" &&
       !(await isFreshBootstrapTarget(tx, userId))) {
       throw new BackupServiceError("Резервная копия создана для другого аккаунта", 403);
     }

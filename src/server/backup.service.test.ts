@@ -280,13 +280,24 @@ describe("full backup round trip", () => {
   });
 
   it("rejects a backup belonging to another user before deleting current data", async () => {
-    const archive = await exportBackup("user-1", true);
+    const archive = await exportBackup("user-1");
     archive.sourceUserId = "another-user";
+    fake.userRecord.role = "user";
     const accountCountBefore = fake.tables.account.length;
 
-    await expect(restoreBackup("user-1", archive, true)).rejects.toThrow("другого аккаунта");
+    await expect(restoreBackup("user-1", archive)).rejects.toThrow("другого аккаунта");
     expect(fake.tables.account).toHaveLength(accountCountBefore);
     expect(fake.db.account.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("lets an admin restore another account's backup into their own account from the regular restore", async () => {
+    const archive = JSON.parse(JSON.stringify(await exportBackup("user-1")));
+    archive.sourceUserId = "user-from-old-server";
+    expect(fake.userRecord.role).toBe("admin");
+
+    const result = await restoreBackup("user-1", archive);
+    expect(result.restoredCounts.accounts).toBe(archive.data.accounts.length);
+    expect(fake.tables.account.every((row: any) => row.userId === "user-1")).toBe(true);
   });
 
   it("restores an old admin archive into a fresh single-admin database with a new user ID", async () => {
