@@ -1,0 +1,7 @@
+# Site address is taken from DOMAIN in .env.
+# Caddy obtains and renews the HTTPS certificate automatically
+# and proxies WebSocket (socket.io) traffic without extra config.
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:3000
+}

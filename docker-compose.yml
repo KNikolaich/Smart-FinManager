@@ -22,8 +22,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "3000:3000"
+    # Not published to the host: only reachable through Caddy below.
+    expose:
+      - "3000"
     environment:
       # Database connection URL for Prisma (host "db" is the service above)
       DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-finance_db}?schema=public
@@ -42,5 +43,25 @@ services:
       NODE_ENV: production
       PORT: 3000
 
+  # Reverse proxy with automatic HTTPS (Let's Encrypt).
+  # The site address comes from DOMAIN in .env.
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env (e.g. fin.example.com)}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:
