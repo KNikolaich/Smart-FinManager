@@ -112,3 +112,5 @@ npm start
 - **AI:** Google Gemini API.
 - **Database:** PostgreSQL.
 - **Deployment:** Docker, Docker Compose.
+
+## Тесты
