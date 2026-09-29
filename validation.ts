@@ -276,6 +276,49 @@ function rejectForbiddenKeys(data: Record<string, unknown>, ctx: z.RefinementCtx
   }
 }
 
+// --- Calendar (per-plan API) ---
+// Unlike plan-grid blobs these bodies may carry an `id`: a new plan or note is
+// created with the client's id, and the offline queue adds `id` to every POST
+// body it stores. Unknown keys (userId, createdAt, ...) are stripped.
+const calendarDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date");
+const calendarId = z.string().trim().min(1).max(191);
+
+export const calendarPlanSchema = z.object({
+  id: calendarId.optional(),
+  title: z.string().max(500),
+  amount: z.number().finite(),
+  date: calendarDate,
+  note: z.string().max(4000).nullish(),
+  time: z.string().max(5).nullish(),
+  recurrence: z.enum(["none", "weekly", "biweekly", "weekdays", "monthly", "quarterly", "yearly"]),
+  weekdays: z.array(z.number().int().min(1).max(7)).max(7).nullish(),
+  transactionType: z.enum(["expense", "income"]).optional(),
+  accountId: z.string().max(191).nullish(),
+  categoryId: z.string().max(191).nullish(),
+  color: z.string().max(50).nullish(),
+  disableFrom: z.union([calendarDate, z.literal("")]).nullish(),
+  excludedDates: z.array(calendarDate).max(1000).nullish(),
+});
+
+export const calendarPlanEditSchema = z.object({
+  id: calendarId.optional(),
+  plan: calendarPlanSchema,
+  originalDate: calendarDate.optional(),
+  scope: z.enum(["single", "following"]).optional(),
+  newPlanId: calendarId.optional(),
+});
+
+export const calendarOccurrenceSchema = z.object({
+  id: calendarId.optional(),
+  completed: z.boolean(),
+});
+
+export const calendarNoteSchema = z.object({
+  id: calendarId.optional(),
+  date: calendarDate,
+  text: z.string().max(2000),
+});
+
 export const planGridDataSchema = z
   .record(z.string(), z.any())
   .superRefine(rejectForbiddenKeys);
