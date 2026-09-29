@@ -52,7 +52,8 @@ import Calculator from './Calculator';
 import CreditTab from './CreditTab';
 import { normalizePlanNotes } from '../lib/planNotes';
 import { getTodayKey } from '../lib/plannedPaymentOccurrences';
-import { createEditedCalendarPlanVersion } from '../lib/calendarPlanVersions';
+import { applyCalendarPlanEdit, CalendarPlanEditOptions, createCalendarPlanId, isRecurringPlan } from '../lib/calendarPlanEditing';
+import { cacheCalendarSnapshot, calendarApi } from '../lib/calendarApi';
 import { applyCalendarPlanTrash, applyPastPlanCleanup } from '../lib/calendarPlanCleanup';
 import PaymentCalendarTab from './PaymentCalendarTab';
 
@@ -421,16 +422,20 @@ export default function PlanPage({
     }
   };
 
-  const saveCalendarPayments = async (
+  // Applies a calendar change locally right away, sends only that change to
+  // the server and rolls the screen back if the server rejects it.
+  const commitCalendarChange = async (
     payments: PlannedPayment[],
-    notes: CalendarNote[] = calendarNotes,
+    notes: CalendarNote[],
+    persist: () => Promise<unknown>,
   ) => {
     const previousPayments = calendarPayments;
     const previousNotes = calendarNotes;
     setCalendarPayments(payments);
     setCalendarNotes(notes);
     try {
-      await api.post('/plan-grid/calendar', { payments, notes });
+      await persist();
+      cacheCalendarSnapshot(payments, notes);
       setSaveStatus(!navigator.onLine ? 'queued' : 'saved');
     } catch (error) {
       console.error('Error saving payment calendar:', error);
@@ -441,13 +446,28 @@ export default function PlanPage({
     }
   };
 
-  const handleCalendarPaymentChange = async (payment: PlannedPayment) => {
-    const next = createEditedCalendarPlanVersion(calendarPayments, payment);
-    await saveCalendarPayments(next);
+  const handleCalendarPaymentChange = async (payment: PlannedPayment, options: CalendarPlanEditOptions = {}) => {
+    const existing = calendarPayments.find(item => item.id === payment.id);
+    if (!existing) {
+      const next = applyCalendarPlanEdit(calendarPayments, payment);
+      await commitCalendarChange(next, calendarNotes, () => calendarApi.createPlan(payment));
+      return;
+    }
+
+    const editOptions: CalendarPlanEditOptions = {
+      originalDate: options.originalDate ?? existing.date,
+      scope: isRecurringPlan(existing) ? options.scope ?? 'following' : undefined,
+      newPlanId: createCalendarPlanId(calendarPayments),
+    };
+    // Same computation as the server does, with the same new plan id, so the
+    // screen matches the stored result without waiting for a reload.
+    const next = applyCalendarPlanEdit(calendarPayments, payment, editOptions);
+    await commitCalendarChange(next, calendarNotes, () => calendarApi.applyEdit(existing.id, payment, editOptions));
   };
 
   const handleCalendarNotesChange = async (notes: CalendarNote[]) => {
-    await saveCalendarPayments(calendarPayments, notes);
+    const previousNotes = calendarNotes;
+    await commitCalendarChange(calendarPayments, notes, () => calendarApi.syncNotes(previousNotes, notes));
   };
 
   const handleCalendarStatusChange = async (id: string, date: string, status: PlannedPaymentStatus) => {
@@ -478,7 +498,8 @@ export default function PlanPage({
     });
     setCalendarPayments(next);
     try {
-      await api.post(`/plan-grid/calendar/${id}/occurrences/${date}`, { completed: status === 'paid' });
+      await calendarApi.setOccurrenceCompleted(id, date, status === 'paid');
+      cacheCalendarSnapshot(next);
     } catch (error) {
       setCalendarPayments(previous);
       throw error;
@@ -536,16 +557,21 @@ export default function PlanPage({
   };
 
   const handleCalendarPaymentDelete = async (id: string) => {
-    await saveCalendarPayments(applyCalendarPlanTrash(calendarPayments, id, getTodayKey()));
+    const previous = calendarPayments;
+    const next = applyCalendarPlanTrash(previous, id, getTodayKey());
+    await commitCalendarChange(next, calendarNotes, () => calendarApi.syncPlans(previous, next));
   };
 
   const handleCalendarPastCleanup = async (ids: string[], noteIds: string[] = []) => {
     const removedNoteIds = new Set(noteIds);
-    const nextNotes = calendarNotes.filter(note => !removedNoteIds.has(note.id));
-    await saveCalendarPayments(
-      applyPastPlanCleanup(calendarPayments, ids, getTodayKey()),
-      nextNotes,
-    );
+    const previousPayments = calendarPayments;
+    const previousNotes = calendarNotes;
+    const nextPayments = applyPastPlanCleanup(previousPayments, ids, getTodayKey());
+    const nextNotes = previousNotes.filter(note => !removedNoteIds.has(note.id));
+    await commitCalendarChange(nextPayments, nextNotes, async () => {
+      await calendarApi.syncPlans(previousPayments, nextPayments);
+      await calendarApi.syncNotes(previousNotes, nextNotes);
+    });
   };
 
   const handleManualSave = () => {

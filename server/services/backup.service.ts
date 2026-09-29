@@ -185,13 +185,13 @@ async function restoreBackupInternal(
   ], { userId, dates: ["updatedAt"], json: ["data"] });
   const calendarPlans = normalizeRows(data.calendarPlans, [
     "id", "title", "amount", "date", "note", "time", "recurrence", "weekdays",
-    "transactionType", "accountId", "categoryId", "color", "disableFrom", "archivedAt",
+    "transactionType", "accountId", "categoryId", "color", "disableFrom", "excludedDates", "archivedAt",
     "createdAt", "updatedAt",
   ], {
     userId,
     dates: ["date", "createdAt", "updatedAt"],
     nullableDates: ["disableFrom", "archivedAt"],
-    nullableJson: ["weekdays"],
+    nullableJson: ["weekdays", "excludedDates"],
   });
   const calendarOccurrences = normalizeRows(data.calendarOccurrences, [
     "id", "calendarPlanId", "date", "manuallyCompletedAt", "createdAt", "updatedAt",

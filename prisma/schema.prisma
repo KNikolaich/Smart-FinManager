@@ -165,6 +165,7 @@ model CalendarPlan {
   categoryId      String?
   color           String?
   disableFrom     DateTime? @db.Date
+  excludedDates   Json?
   archivedAt      DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

@@ -1,4 +1,14 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma";
+import type { PlannedPayment } from "../../src/types";
+import {
+  applyCalendarPlanEdit,
+  CalendarPlanEditError,
+  createCalendarPlanId,
+  getSeriesDateError,
+  isRecurringPlan,
+} from "../../src/lib/calendarPlanEditing";
+import { getPaymentOccurrencesInRange } from "../../src/lib/plannedPaymentOccurrences";
 
 const VALID_RECURRENCES = new Set([
   "none",
@@ -24,6 +34,7 @@ type LegacyPayment = {
   categoryId?: string;
   color?: string;
   disableFrom?: string | null;
+  excludedDates?: string[] | null;
   status?: string;
   paidDates?: string[];
 };
@@ -72,6 +83,16 @@ function weekdays(value: unknown) {
   return normalized.length > 0 ? normalized : null;
 }
 
+function excludedDates(value: unknown) {
+  if (!Array.isArray(value)) return null;
+  const normalized = Array.from(new Set(
+    value
+      .map(item => String(item || "").slice(0, 10))
+      .filter(item => /^\d{4}-\d{2}-\d{2}$/.test(item) && !Number.isNaN(Date.parse(`${item}T00:00:00Z`))),
+  )).sort();
+  return normalized.length > 0 ? normalized : null;
+}
+
 function transactionType(value: unknown) {
   return value === "income" ? "income" : "expense";
 }
@@ -113,7 +134,13 @@ function calendarText(value: unknown, maxLength: number, message: string) {
   return value.trim() || null;
 }
 
-async function upsertPlan(tx: any, userId: string, payment: LegacyPayment, strictReferences = false) {
+async function upsertPlan(
+  tx: any,
+  userId: string,
+  payment: LegacyPayment,
+  strictReferences = false,
+  { migratePaidDates = true }: { migratePaidDates?: boolean } = {},
+) {
   const amount = Number(payment.amount);
   if (!payment.title?.trim() || !Number.isFinite(amount) || amount <= 0 || !payment.date) {
     return null;
@@ -167,6 +194,7 @@ async function upsertPlan(tx: any, userId: string, payment: LegacyPayment, stric
     categoryId,
     color: payment.color || null,
     disableFrom: payment.disableFrom ? dateOnly(payment.disableFrom) : null,
+    excludedDates: excludedDates(payment.excludedDates) ?? Prisma.DbNull,
     archivedAt: null,
   };
 
@@ -182,6 +210,9 @@ async function upsertPlan(tx: any, userId: string, payment: LegacyPayment, stric
 
   // Existing paidDates are migrated as explicit manual completions. New
   // operation-backed completions are represented by the transaction relation.
+  // Per-plan endpoints manage completions through occurrence requests only.
+  if (!migratePaidDates) return plan;
+
   const paidDates = Array.isArray(payment.paidDates) ? payment.paidDates : [];
   if (payment.status === "paid" && paidDates.length === 0) {
     paidDates.push(payment.date);
@@ -260,17 +291,19 @@ async function replaceCalendarNotes(tx: any, userId: string, notes: LegacyCalend
   });
 }
 
+const PLAN_INCLUDE = {
+  account: { select: { name: true } },
+  category: { select: { name: true } },
+  occurrences: {
+    include: { transaction: { select: { id: true } } },
+    orderBy: { date: "asc" as const },
+  },
+};
+
 async function loadPlans(userId: string) {
   return prisma.calendarPlan.findMany({
     where: { userId, archivedAt: null },
-    include: {
-      account: { select: { name: true } },
-      category: { select: { name: true } },
-      occurrences: {
-        include: { transaction: { select: { id: true } } },
-        orderBy: { date: "asc" },
-      },
-    },
+    include: PLAN_INCLUDE,
     orderBy: [{ date: "asc" }, { createdAt: "asc" }],
   });
 }
@@ -303,6 +336,7 @@ function serializePlan(plan: any) {
     status: paidDates.includes(dateKey(plan.date)) ? "paid" : "pending",
     paidDates,
     disableFrom: plan.disableFrom ? dateKey(plan.disableFrom) : null,
+    excludedDates: excludedDates(plan.excludedDates) ?? [],
     color: plan.color || undefined,
     occurrences,
   };
@@ -379,6 +413,11 @@ export async function setManualCompletion(
   const occurrenceDate = dateOnly(date);
   if (plan.disableFrom && occurrenceDate > plan.disableFrom) {
     const error: any = new Error("План отключён с этой даты");
+    error.status = 400;
+    throw error;
+  }
+  if (completed && (excludedDates(plan.excludedDates) || []).includes(dateKey(occurrenceDate))) {
+    const error: any = new Error("Это событие перенесено отдельным планом");
     error.status = 400;
     throw error;
   }
@@ -466,4 +505,213 @@ export async function ensureOccurrenceOwned(
       date: occurrenceDate,
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Per-plan and per-note operations. Each request changes exactly one plan (or
+// the plans produced by one editor save), so a problem with some other plan
+// can never block it and concurrent devices do not overwrite each other.
+// ---------------------------------------------------------------------------
+
+type CalendarPlanInput = LegacyPayment & Record<string, unknown>;
+
+export interface CalendarPlanEditRequest {
+  plan?: CalendarPlanInput;
+  originalDate?: string;
+  scope?: string;
+  newPlanId?: string;
+}
+
+const TEMPLATE_FIELDS = [
+  "title", "amount", "date", "note", "time", "recurrence", "weekdays",
+  "transactionType", "accountId", "categoryId", "color", "disableFrom",
+] as const;
+
+function httpError(status: number, message: string) {
+  const error: any = new Error(message);
+  error.status = status;
+  return error;
+}
+
+function isDateKey(value: unknown): value is string {
+  return typeof value === "string"
+    && /^\d{4}-\d{2}-\d{2}$/.test(value)
+    && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+}
+
+function requirePlanInput(payment: unknown): CalendarPlanInput {
+  if (!payment || typeof payment !== "object" || Array.isArray(payment)) {
+    throw httpError(400, "Некорректные данные плана");
+  }
+  const input = payment as CalendarPlanInput;
+  const amount = Number(input.amount);
+  if (typeof input.title !== "string" || !input.title.trim()) {
+    throw httpError(400, "Укажите название плана");
+  }
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw httpError(400, "Сумма плана должна быть больше нуля");
+  }
+  if (!isDateKey(String(input.date || "").slice(0, 10))) {
+    throw httpError(400, "Некорректная дата плана");
+  }
+  if (input.disableFrom != null && input.disableFrom !== "" && !isDateKey(String(input.disableFrom).slice(0, 10))) {
+    throw httpError(400, "Некорректная дата отключения плана");
+  }
+  return input;
+}
+
+function seriesShape(payment: LegacyPayment) {
+  return {
+    date: String(payment.date || "").slice(0, 10),
+    recurrence: recurrence(payment.recurrence) as PlannedPayment["recurrence"],
+    weekdays: weekdays(payment.weekdays) ?? undefined,
+  };
+}
+
+function assertSeriesDate(payment: LegacyPayment) {
+  const error = getSeriesDateError(seriesShape(payment));
+  if (error) throw httpError(400, error);
+}
+
+/** Only the editable template fields; server-owned state is never taken from the client. */
+function pickTemplate(payment: CalendarPlanInput) {
+  const template: Record<string, unknown> = {};
+  for (const field of TEMPLATE_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(payment, field)) template[field] = payment[field];
+  }
+  return template as Partial<PlannedPayment>;
+}
+
+async function findOwnedPlan(db: any, userId: string, planId: string) {
+  const plan = await db.calendarPlan.findFirst({
+    where: { id: planId, userId, archivedAt: null },
+    include: PLAN_INCLUDE,
+  });
+  if (!plan) throw httpError(404, "План календаря не найден");
+  return plan;
+}
+
+async function readSerializedPlan(userId: string, planId: string) {
+  return serializePlan(await findOwnedPlan(prisma, userId, planId));
+}
+
+function toPlannedPayment(plan: any): PlannedPayment {
+  const serialized = serializePlan(plan);
+  return { ...serialized, weekdays: serialized.weekdays ?? undefined } as PlannedPayment;
+}
+
+export async function createPlan(userId: string, payment: unknown) {
+  const input = requirePlanInput(payment);
+  assertSeriesDate(input);
+
+  // A retried request (offline queue) reuses the same id and simply updates
+  // the plan it already created.
+  const plan = await prisma.$transaction((tx) =>
+    upsertPlan(tx, userId, input, true, { migratePaidDates: false }),
+  );
+  return readSerializedPlan(userId, plan.id);
+}
+
+export async function updatePlan(userId: string, planId: string, payment: unknown) {
+  const input = requirePlanInput(payment);
+  const existing = await findOwnedPlan(prisma, userId, planId);
+
+  // Only check the series when its shape changes: older plans may have been
+  // saved before this rule existed and must stay editable otherwise.
+  const before = seriesShape(toPlannedPayment(existing));
+  const after = seriesShape(input);
+  if (JSON.stringify(before) !== JSON.stringify(after)) assertSeriesDate(input);
+
+  // Detached events are managed by the edit endpoint, not by a plain update.
+  const kept = { ...input, id: planId, excludedDates: toPlannedPayment(existing).excludedDates };
+  await prisma.$transaction((tx) =>
+    upsertPlan(tx, userId, kept, true, { migratePaidDates: false }),
+  );
+  return readSerializedPlan(userId, planId);
+}
+
+export async function archivePlan(userId: string, planId: string) {
+  // Idempotent: repeating the request (offline queue) is not an error.
+  await prisma.calendarPlan.updateMany({
+    where: { id: planId, userId, archivedAt: null },
+    data: { archivedAt: new Date() },
+  });
+  return { success: true };
+}
+
+/**
+ * Applies a save from the plan editor. For an event of a recurring plan the
+ * `scope` decides between detaching that one event ("single") and changing the
+ * series from that event on ("following"); both are done in one transaction.
+ */
+export async function applyPlanEdit(userId: string, planId: string, request: CalendarPlanEditRequest) {
+  const input = requirePlanInput(request?.plan);
+  const existing = await findOwnedPlan(prisma, userId, planId);
+  const current = toPlannedPayment(existing);
+  const recurring = isRecurringPlan(current);
+
+  const scope = request.scope;
+  if (scope !== undefined && scope !== "single" && scope !== "following") {
+    throw httpError(400, "Некорректная область изменения плана");
+  }
+  if (recurring && !scope) {
+    throw httpError(400, "Укажите, изменить только это событие или все последующие");
+  }
+
+  const originalDate = request.originalDate ?? current.date;
+  if (!isDateKey(originalDate)) throw httpError(400, "Некорректная дата события");
+  if (recurring && getPaymentOccurrencesInRange(current, originalDate, originalDate).length === 0) {
+    throw httpError(400, "Такого события нет в серии плана");
+  }
+
+  let newPlanId = typeof request.newPlanId === "string" && request.newPlanId.trim()
+    ? request.newPlanId.trim()
+    : undefined;
+  if (newPlanId) {
+    const taken = await prisma.calendarPlan.findUnique({ where: { id: newPlanId }, select: { id: true } });
+    if (taken) newPlanId = undefined;
+  }
+  newPlanId ??= createCalendarPlanId([current]);
+
+  const edited: PlannedPayment = { ...current, ...pickTemplate(input), id: planId };
+  let result: PlannedPayment[];
+  try {
+    result = applyCalendarPlanEdit([current], edited, {
+      originalDate,
+      scope: scope as "single" | "following" | undefined,
+      newPlanId,
+    });
+  } catch (error) {
+    if (error instanceof CalendarPlanEditError) throw httpError(400, error.message);
+    throw error;
+  }
+
+  await prisma.$transaction(async (tx) => {
+    for (const plan of result) {
+      await upsertPlan(tx, userId, plan as LegacyPayment, true, { migratePaidDates: false });
+    }
+  });
+
+  const payments = [];
+  for (const plan of result) payments.push(await readSerializedPlan(userId, plan.id));
+  return { payments };
+}
+
+export async function createNote(userId: string, note: unknown) {
+  if (!note || typeof note !== "object") throw httpError(400, "Некорректная заметка календаря");
+  const saved = await upsertCalendarNote(prisma, userId, note as LegacyCalendarNote);
+  return { id: saved.id, date: dateKey(saved.date), text: saved.text };
+}
+
+export async function updateNote(userId: string, noteId: string, note: unknown) {
+  if (!note || typeof note !== "object") throw httpError(400, "Некорректная заметка календаря");
+  const existing = await prisma.calendarNote.findFirst({ where: { id: noteId, userId } });
+  if (!existing) throw httpError(404, "Заметка календаря не найдена");
+  const saved = await upsertCalendarNote(prisma, userId, { ...(note as LegacyCalendarNote), id: noteId });
+  return { id: saved.id, date: dateKey(saved.date), text: saved.text };
+}
+
+export async function deleteNote(userId: string, noteId: string) {
+  await prisma.calendarNote.deleteMany({ where: { id: noteId, userId } });
+  return { success: true };
 }

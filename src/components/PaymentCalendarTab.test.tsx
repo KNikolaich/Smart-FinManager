@@ -322,7 +322,7 @@ describe('PaymentCalendarTab', () => {
       title: 'Интернет',
       amount: 900,
       recurrence: 'none',
-    }));
+    }), { originalDate: undefined, scope: undefined });
   });
 
   it('opens the same edit form for a payment requested from the dashboard', () => {
@@ -401,7 +401,7 @@ describe('PaymentCalendarTab', () => {
     await waitFor(() => expect(onPaymentChange).toHaveBeenCalledWith(expect.objectContaining({
       title: 'Утренний платёж',
       time: '08:00',
-    })));
+    }), expect.anything()));
   });
 
   it('keeps an empty calendar grid while showing plans outside the current month', () => {
@@ -462,7 +462,7 @@ describe('PaymentCalendarTab', () => {
       paidDates: [],
       occurrences: [],
       disableFrom: null,
-    }));
+    }), { originalDate: undefined, scope: undefined });
   });
 
   it('passes the focused occurrence date when disabling a plan', () => {
@@ -476,5 +476,135 @@ describe('PaymentCalendarTab', () => {
     fireEvent.click(screen.getByTestId('button-upcoming-delete-confirm'));
 
     expect(onPaymentDelete).toHaveBeenCalledWith('rent', '2026-09-05');
+  });
+
+  describe('editing an event of a recurring plan', () => {
+    // 2026-09-14 is a Monday; the series repeats on Mon, Wed and Fri.
+    const mwf: PlannedPayment = {
+      id: 'mwf',
+      title: 'Секция',
+      amount: 1500,
+      date: '2026-09-07',
+      recurrence: 'weekdays',
+      weekdays: [1, 3, 5],
+      status: 'pending',
+      paidDates: [],
+      occurrences: [],
+    };
+
+    const openEventEditor = (onPaymentChange = vi.fn().mockResolvedValue(undefined)) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 8, 10, 12));
+      render(<PaymentCalendarTab payments={[mwf]} accounts={[]} onPaymentChange={onPaymentChange} />);
+      fireEvent.click(screen.getByTestId('calendar-day-2026-09-14'));
+      fireEvent.click(screen.getByTestId('button-upcoming-view'));
+      fireEvent.click(screen.getByTestId('button-plan-view-edit'));
+      return onPaymentChange;
+    };
+
+    it('asks whether to change only this event or all following ones', () => {
+      const onPaymentChange = openEventEditor();
+
+      expect(screen.getByTestId('payment-recurring-event-hint').textContent).toContain('14.09.2026');
+      fireEvent.change(screen.getByTestId('input-payment-date'), { target: { value: '2026-09-15' } });
+      fireEvent.click(screen.getByTestId('button-save-payment'));
+
+      expect(screen.getByTestId('dialog-recurring-edit-scope')).toBeTruthy();
+      expect(onPaymentChange).not.toHaveBeenCalled();
+    });
+
+    it('moves only this event to another day', async () => {
+      const onPaymentChange = openEventEditor();
+
+      fireEvent.change(screen.getByTestId('input-payment-date'), { target: { value: '2026-09-15' } });
+      fireEvent.click(screen.getByTestId('button-save-payment'));
+      fireEvent.click(screen.getByTestId('button-edit-scope-single'));
+
+      await waitFor(() => expect(onPaymentChange).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'mwf', date: '2026-09-15' }),
+        { originalDate: '2026-09-14', scope: 'single' },
+      ));
+      await waitFor(() => expect(screen.queryByTestId('dialog-recurring-edit-scope')).toBeNull());
+    });
+
+    it('does not apply a day outside the series weekdays to all following events', () => {
+      const onPaymentChange = openEventEditor();
+
+      fireEvent.change(screen.getByTestId('input-payment-date'), { target: { value: '2026-09-15' } });
+      fireEvent.click(screen.getByTestId('button-save-payment'));
+
+      const following = screen.getByTestId('button-edit-scope-following') as HTMLButtonElement;
+      expect(following.disabled).toBe(true);
+      expect(screen.getByTestId('edit-scope-series-warning').textContent).toContain('вторник');
+      fireEvent.click(following);
+      expect(onPaymentChange).not.toHaveBeenCalled();
+    });
+
+    it('applies a day that belongs to the series to all following events', async () => {
+      const onPaymentChange = openEventEditor();
+
+      fireEvent.change(screen.getByTestId('input-payment-date'), { target: { value: '2026-09-16' } });
+      fireEvent.change(screen.getByTestId('input-payment-amount'), { target: { value: '1800' } });
+      fireEvent.click(screen.getByTestId('button-save-payment'));
+      fireEvent.click(screen.getByTestId('button-edit-scope-following'));
+
+      await waitFor(() => expect(onPaymentChange).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'mwf', date: '2026-09-16', amount: 1800, weekdays: [1, 3, 5] }),
+        { originalDate: '2026-09-14', scope: 'following' },
+      ));
+    });
+
+    it('keeps the editor open when the scope question is cancelled', () => {
+      const onPaymentChange = openEventEditor();
+
+      fireEvent.click(screen.getByTestId('button-save-payment'));
+      fireEvent.click(screen.getByTestId('button-edit-scope-cancel'));
+
+      expect(screen.queryByTestId('dialog-recurring-edit-scope')).toBeNull();
+      expect(screen.getByTestId('input-payment-title')).toBeTruthy();
+      expect(onPaymentChange).not.toHaveBeenCalled();
+    });
+
+    it('saves a one-time plan without asking about the series', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 8, 10, 12));
+      const onPaymentChange = vi.fn().mockResolvedValue(undefined);
+      const oneTime = { ...mwf, id: 'once', recurrence: 'none' as const, weekdays: undefined, date: '2026-09-14' };
+      render(<PaymentCalendarTab payments={[oneTime]} accounts={[]} onPaymentChange={onPaymentChange} initialPaymentToEdit={oneTime} />);
+
+      fireEvent.change(screen.getByTestId('input-payment-date'), { target: { value: '2026-09-15' } });
+      fireEvent.click(screen.getByTestId('button-save-payment'));
+
+      expect(screen.queryByTestId('dialog-recurring-edit-scope')).toBeNull();
+      await waitFor(() => expect(onPaymentChange).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'once', date: '2026-09-15' }),
+        { originalDate: '2026-09-14', scope: undefined },
+      ));
+    });
+  });
+
+  it('refuses to create a weekday series whose date is not one of its weekdays', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 21, 12)); // Monday
+    const onPaymentChange = vi.fn();
+    render(<PaymentCalendarTab payments={[]} accounts={[]} onPaymentChange={onPaymentChange} />);
+
+    fireEvent.click(screen.getByTestId('button-add-payment'));
+    fireEvent.change(screen.getByTestId('input-payment-title'), { target: { value: 'Бассейн' } });
+    fireEvent.change(screen.getByTestId('input-payment-amount'), { target: { value: '700' } });
+    fireEvent.change(screen.getByTestId('select-payment-recurrence'), { target: { value: 'weekdays' } });
+    fireEvent.click(screen.getByTestId('weekday-2'));
+    fireEvent.click(screen.getByTestId('weekday-1'));
+    fireEvent.click(screen.getByTestId('button-save-payment'));
+
+    expect(onPaymentChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog').textContent).toContain('не входит в дни повторения');
+
+    fireEvent.change(screen.getByTestId('input-payment-date'), { target: { value: '2026-09-22' } });
+    fireEvent.click(screen.getByTestId('button-save-payment'));
+    expect(onPaymentChange).toHaveBeenCalledWith(
+      expect.objectContaining({ date: '2026-09-22', recurrence: 'weekdays', weekdays: [2] }),
+      { originalDate: undefined, scope: undefined },
+    );
   });
 });

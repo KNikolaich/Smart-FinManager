@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PlannedPayment } from '../types';
-import { getPaymentOccurrencesInRange } from './plannedPaymentOccurrences';
+import { getPaymentOccurrencesInRange, matchesPlanRecurrence } from './plannedPaymentOccurrences';
 
 describe('planned payment weekday recurrence', () => {
   it('generates only the selected weekdays', () => {
@@ -46,5 +46,52 @@ describe('planned payment weekday recurrence', () => {
     expect(occurrences.map(item => item.date)).toContain('2026-09-23');
     expect(occurrences.find(item => item.date === '2026-09-23')?.status).toBe('pending');
     expect(occurrences.find(item => item.date === '2026-09-23')?.transactionId).toBe('transaction-1');
+  });
+});
+describe('planned payment excluded dates', () => {
+  const weekly: PlannedPayment = {
+    id: 'weekly-plan',
+    title: 'Уборка',
+    amount: 2000,
+    date: '2026-09-07',
+    recurrence: 'weekly',
+    status: 'pending',
+    excludedDates: ['2026-09-14'],
+  };
+
+  it('skips a date detached from the series', () => {
+    expect(getPaymentOccurrencesInRange(weekly, '2026-09-07', '2026-09-21').map(item => item.date))
+      .toEqual(['2026-09-07', '2026-09-21']);
+  });
+
+  it('still shows a detached date that was already completed', () => {
+    const completed: PlannedPayment = {
+      ...weekly,
+      occurrences: [{ id: 'occ', date: '2026-09-14', transactionId: 'tx-1', manuallyCompleted: false }],
+    };
+    expect(getPaymentOccurrencesInRange(completed, '2026-09-07', '2026-09-21').map(item => item.date))
+      .toEqual(['2026-09-07', '2026-09-14', '2026-09-21']);
+  });
+
+  it('hides a detached date whose stored occurrence is not completed', () => {
+    const stored: PlannedPayment = {
+      ...weekly,
+      occurrences: [{ id: 'occ', date: '2026-09-14', transactionId: null, manuallyCompleted: false }],
+    };
+    expect(getPaymentOccurrencesInRange(stored, '2026-09-07', '2026-09-21').map(item => item.date))
+      .toEqual(['2026-09-07', '2026-09-21']);
+  });
+});
+
+describe('matchesPlanRecurrence', () => {
+  it('matches weekday series only on the selected weekdays', () => {
+    const plan = { date: '2026-09-07', recurrence: 'weekdays' as const, weekdays: [1, 3, 5] };
+    expect(matchesPlanRecurrence(plan, '2026-09-14')).toBe(true);
+    expect(matchesPlanRecurrence(plan, '2026-09-15')).toBe(false);
+    expect(matchesPlanRecurrence(plan, '2026-09-16')).toBe(true);
+  });
+
+  it('never matches before the series start', () => {
+    expect(matchesPlanRecurrence({ date: '2026-09-07', recurrence: 'weekly' }, '2026-08-31')).toBe(false);
   });
 });

@@ -218,11 +218,9 @@ describe('UpcomingTasks', () => {
 
     await waitFor(() => expect(screen.queryByText('Просроченная задача')).toBeNull());
     expect(screen.getByText('Сегодняшняя задача')).toBeTruthy();
-    expect(postSpy).toHaveBeenCalledWith('/plan-grid/calendar', expect.objectContaining({
-      payments: expect.arrayContaining([
-        expect.objectContaining({ id: 'overdue', status: 'paid' }),
-      ]),
-    }));
+    // Only the completed occurrence is sent, not the whole calendar.
+    expect(postSpy).toHaveBeenCalledWith('/calendar/plans/overdue/occurrences/2026-09-17', { completed: true });
+    expect(postSpy).not.toHaveBeenCalledWith('/plan-grid/calendar', expect.anything());
 
     getSpy.mockRestore();
     postSpy.mockRestore();
@@ -239,6 +237,8 @@ describe('UpcomingTasks', () => {
     ];
     vi.spyOn(api, 'get').mockResolvedValue({ payments, notes });
     const postSpy = vi.spyOn(api, 'post').mockResolvedValue({});
+    const putSpy = vi.spyOn(api, 'put').mockResolvedValue({});
+    const deleteSpy = vi.spyOn(api, 'delete').mockResolvedValue({});
 
     render(
       <UpcomingTasks
@@ -270,22 +270,20 @@ describe('UpcomingTasks', () => {
     });
     fireEvent.click(screen.getByTestId('button-save-calendar-note'));
 
-    await waitFor(() => expect(postSpy).toHaveBeenCalledTimes(1));
-    expect(postSpy).toHaveBeenNthCalledWith(1, '/plan-grid/calendar', expect.objectContaining({
-      payments,
-      notes: expect.arrayContaining([
-        expect.objectContaining({ id: 'dashboard-note-first', text: 'Исправленная первая записка' }),
-      ]),
-    }));
+    await waitFor(() => expect(putSpy).toHaveBeenCalledTimes(1));
+    expect(putSpy).toHaveBeenCalledWith('/calendar/notes/dashboard-note-first', {
+      date: '2026-09-21',
+      text: 'Исправленная первая записка',
+    });
+    expect(postSpy).not.toHaveBeenCalled();
     expect(screen.queryByTestId('dialog-calendar-note')).toBeNull();
 
     fireEvent.click(screen.getByTestId('button-upcoming-view'));
     fireEvent.click(screen.getByTestId('button-delete-calendar-note'));
     fireEvent.click(screen.getByTestId('button-confirm-delete-calendar-note'));
 
-    await waitFor(() => expect(postSpy).toHaveBeenCalledTimes(2));
-    const deleteRequest = postSpy.mock.calls[1][1] as { notes: CalendarNote[] };
-    expect(deleteRequest.notes.map(note => note.id)).toEqual(['dashboard-note-second']);
+    await waitFor(() => expect(deleteSpy).toHaveBeenCalledTimes(1));
+    expect(deleteSpy).toHaveBeenCalledWith('/calendar/notes/dashboard-note-first');
     expect(screen.queryByTestId('dialog-calendar-note')).toBeNull();
   });
 
@@ -400,6 +398,7 @@ describe('UpcomingTasks', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 8, 24, 12));
     const payment = { ...makePayment(0), id: 'dashboard-delete', date: '2026-09-25' };
+    const deleteSpy = vi.spyOn(api, 'delete').mockResolvedValue({});
     const postSpy = vi.spyOn(api, 'post').mockResolvedValue({});
     render(
       <UpcomingTasks
@@ -416,8 +415,9 @@ describe('UpcomingTasks', () => {
     fireEvent.click(screen.getByTestId('button-upcoming-delete-confirm'));
 
     await waitFor(() => {
-      expect(postSpy).toHaveBeenCalledWith('/plan-grid/calendar', { payments: [] });
+      expect(deleteSpy).toHaveBeenCalledWith('/calendar/plans/dashboard-delete');
     });
+    expect(postSpy).not.toHaveBeenCalled();
   });
 
   it('uses header actions for the focused list task', () => {

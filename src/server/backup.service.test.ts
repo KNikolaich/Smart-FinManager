@@ -164,7 +164,7 @@ function seedDatabase() {
   fake.tables.calendarPlan.push({
     id: "plan-1", userId: "user-1", title: "Оплата интернета", amount: 900,
     date: date("2026-04-01T00:00:00.000Z"), note: "До 5 числа", time: "09:30",
-    recurrence: "monthly", weekdays: [1], transactionType: "expense",
+    recurrence: "monthly", weekdays: [1], excludedDates: ["2026-05-01"], transactionType: "expense",
     accountId: "account-1", categoryId: "category-1", color: "#7c3aed",
     disableFrom: null, archivedAt: null, createdAt: date("2025-12-01T00:00:00.000Z"),
     updatedAt: date("2026-01-01T00:00:00.000Z"),

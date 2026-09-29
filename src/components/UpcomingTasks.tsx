@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, Check, CircleDashed, Copy, Eraser, Eye, Hand, Pencil, Plus, RefreshCw, ScrollText, StickyNote, Trash2, X } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { api } from '../lib/api';
+import { cacheCalendarSnapshot, calendarApi } from '../lib/calendarApi';
 import { CalendarNote, PlannedPayment, PlannedPaymentRecurrence } from '../types';
 import CalendarNoteDialog from './CalendarNoteDialog';
 import { mergeCalendarDashboardItems, mergeCalendarPlanItems } from '../lib/calendarDashboardItems';
@@ -315,7 +316,8 @@ export default function UpcomingTasks({
     if (payments !== undefined) setLocalPayments(nextPayments);
     else setLoadedPayments(nextPayments);
     try {
-      await api.post('/plan-grid/calendar', { payments: nextPayments });
+      await calendarApi.setOccurrenceCompleted(item.payment.id, item.date, true);
+      cacheCalendarSnapshot(nextPayments);
     } catch {
       if (payments !== undefined) setLocalPayments(previousPayments);
       else setLoadedPayments(previousPayments);
@@ -395,9 +397,11 @@ export default function UpcomingTasks({
 
   const persistNotes = async (nextNotes: CalendarNote[]) => {
     const previousLocalNotes = localNotes;
+    const previousNotes = sourceNotes;
     setLocalNotes(nextNotes);
     try {
-      await api.post('/plan-grid/calendar', { payments: sourcePayments, notes: nextNotes });
+      await calendarApi.syncNotes(previousNotes, nextNotes);
+      cacheCalendarSnapshot(sourcePayments, nextNotes);
     } catch (error) {
       setLocalNotes(previousLocalNotes);
       throw error;
@@ -481,7 +485,8 @@ export default function UpcomingTasks({
           if (payments !== undefined) setLocalPayments(nextPayments);
           else setLoadedPayments(nextPayments);
           try {
-            await api.post('/plan-grid/calendar', { payments: nextPayments });
+            await calendarApi.syncPlans(previousPayments, nextPayments);
+            cacheCalendarSnapshot(nextPayments);
           } catch (error) {
             if (payments !== undefined) setLocalPayments(previousPayments);
             else setLoadedPayments(previousPayments);

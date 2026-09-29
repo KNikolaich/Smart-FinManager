@@ -27,6 +27,8 @@ export function describeQueueItem(item: { method?: string; endpoint?: string }):
   else if (endpoint.startsWith('/goals'))    noun = 'цели';
   else if (endpoint.startsWith('/balance-history')) noun = 'записи истории баланса';
   else if (endpoint.startsWith('/plan-grid')) noun = 'плана';
+  else if (endpoint.startsWith('/calendar/notes')) noun = 'заметки календаря';
+  else if (endpoint.startsWith('/calendar')) noun = 'плана календаря';
   else if (endpoint.startsWith('/budget'))   noun = 'бюджета';
 
   return `${verb} ${noun}`;
@@ -79,6 +81,7 @@ const DATA_RESET_ENDPOINT_PREFIXES = [
   '/ai-logs',
   '/chat-history',
   '/plan-grid',
+  '/calendar',
   '/data/clear-transactions',
 ];
 

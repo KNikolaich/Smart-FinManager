@@ -225,6 +225,8 @@ export interface PlannedPayment {
   accountId?: string;
   accountName?: string;
   disableFrom?: string | null;
+  /** Series dates detached from this plan ("edit only this event"). */
+  excludedDates?: string[];
   status: PlannedPaymentStatus;
   paidDates?: string[];
   occurrences?: Array<{

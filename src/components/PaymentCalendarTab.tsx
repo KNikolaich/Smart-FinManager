@@ -9,6 +9,7 @@ import {
   CircleAlert,
   Plus,
   RefreshCw,
+  Repeat,
   ScrollText,
   StickyNote,
   X,
@@ -31,6 +32,13 @@ import AccountSelect from './AccountSelect';
 import { cn } from '../lib/utils';
 import { isCompletedOccurrence } from '../lib/calendarPlanCleanup';
 import {
+  CalendarPlanEditError,
+  CalendarPlanEditOptions,
+  CalendarPlanEditScope,
+  getSeriesDateError,
+  isRecurringPlan,
+} from '../lib/calendarPlanEditing';
+import {
   getPaymentOccurrencesInRange,
   getTodayKey,
   isPaymentOccurrenceOverdue,
@@ -52,7 +60,7 @@ interface PaymentCalendarTabProps {
   onStatusChange?: (id: string, date: string, status: PlannedPaymentStatus) => void;
   onRequestTransaction?: (payment: PlannedPayment, date: string, onCreated?: (transactionId: string) => void) => void;
   onTransactionCreated?: (paymentId: string, date: string, transactionId: string) => void;
-  onPaymentChange?: (payment: PlannedPayment) => void | Promise<void>;
+  onPaymentChange?: (payment: PlannedPayment, options?: CalendarPlanEditOptions) => void | Promise<void>;
   onPaymentDelete?: (id: string, date: string) => void | Promise<void>;
   onCleanupPastPayments?: (ids: string[], noteIds?: string[]) => void | Promise<void>;
   onNotesChange?: (notes: CalendarNote[]) => void | Promise<void>;
@@ -146,6 +154,10 @@ export default function PaymentCalendarTab({
   const [filter, setFilter] = useState<Filter>('all');
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [editingPayment, setEditingPayment] = useState<PlannedPayment | null>(null);
+  // Date of the event opened for editing; the user may move it in the form.
+  const [editingOccurrenceDate, setEditingOccurrenceDate] = useState<string | null>(null);
+  const [scopePromptOpen, setScopePromptOpen] = useState(false);
+  const [isSavingPayment, setIsSavingPayment] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [noteDialogMode, setNoteDialogMode] = useState<'create' | 'view' | 'edit' | null>(null);
   const [editingNote, setEditingNote] = useState<CalendarNote | null>(null);
@@ -173,6 +185,8 @@ export default function PaymentCalendarTab({
       setSelectedDate(initialPaymentToEdit.date);
       setListStartDate(initialPaymentToEdit.date);
       setEditingPayment({ ...initialPaymentToEdit });
+      setEditingOccurrenceDate(initialPaymentToEdit.date);
+      setSaveError(null);
       setDialogMode('edit');
     }
     onInitialPaymentEditHandled?.();
@@ -235,6 +249,8 @@ export default function PaymentCalendarTab({
       occurrences: [],
       color: initialData.color ?? 'plum',
     });
+    setEditingOccurrenceDate(null);
+    setSaveError(null);
     setDialogMode('create');
   }, [accounts, categories, cursor, selectedDate]);
 
@@ -349,18 +365,65 @@ export default function PaymentCalendarTab({
     }
   };
 
-  const savePayment = async () => {
+  const editingOriginal = dialogMode === 'edit' && editingPayment
+    ? payments.find(payment => payment.id === editingPayment.id)
+    : undefined;
+  const editingRecurringEvent = isRecurringPlan(editingOriginal);
+
+  const closePaymentDialog = () => {
+    if (isSavingPayment) return;
+    setDialogMode(null);
+    setEditingPayment(null);
+    setEditingOccurrenceDate(null);
+    setScopePromptOpen(false);
+    setSaveError(null);
+  };
+
+  const savePayment = async (scope?: CalendarPlanEditScope) => {
     if (!editingPayment?.title.trim() || editingPayment.amount <= 0 || !editingPayment.date) return;
+
+    // An event of a recurring plan: ask whether only it or the whole rest of
+    // the series should change before anything is saved.
+    if (editingRecurringEvent && !scope) {
+      setSaveError(null);
+      setScopePromptOpen(true);
+      return;
+    }
+    setScopePromptOpen(false);
+
+    // Whatever is saved as a series must start on one of its own days.
+    if (!(editingRecurringEvent && scope === 'single')) {
+      const seriesError = getSeriesDateError(editingPayment);
+      if (seriesError) {
+        setSaveError(seriesError);
+        return;
+      }
+    }
+
     try {
       setSaveError(null);
-      await onPaymentChange?.({ ...editingPayment, title: editingPayment.title.trim() });
+      setIsSavingPayment(true);
+      await onPaymentChange?.(
+        { ...editingPayment, title: editingPayment.title.trim() },
+        {
+          originalDate: editingOccurrenceDate ?? undefined,
+          scope: editingRecurringEvent ? scope : undefined,
+        },
+      );
       setCursor(new Date(`${editingPayment.date}T12:00:00`));
       setSelectedDate(editingPayment.date);
       setDialogMode(null);
       setEditingPayment(null);
+      setEditingOccurrenceDate(null);
     } catch (error) {
+      if (error instanceof CalendarPlanEditError) {
+        setSaveError(error.message);
+        return;
+      }
       console.error('Payment save error:', error);
-       setSaveError('Не удалось сохранить запись. Проверьте подключение и попробуйте ещё раз.');
+      setSaveError('Не удалось сохранить запись. Проверьте подключение и попробуйте ещё раз.');
+    } finally {
+      setIsSavingPayment(false);
     }
   };
 
@@ -501,6 +564,8 @@ export default function PaymentCalendarTab({
             }}
             onEditTask={item => {
               setEditingPayment({ ...item.payment, date: item.date });
+              setEditingOccurrenceDate(item.date);
+              setSaveError(null);
               setDialogMode('edit');
             }}
              onCopyTask={item => {
@@ -513,7 +578,9 @@ export default function PaymentCalendarTab({
                  paidDates: [],
                  occurrences: [],
                  disableFrom: null,
+                 excludedDates: undefined,
                });
+               setEditingOccurrenceDate(null);
                setDialogMode('create');
              }}
             onDeleteTask={item => onPaymentDelete?.(item.payment.id, item.date)}
@@ -533,9 +600,19 @@ export default function PaymentCalendarTab({
           transactions={transactions}
           categories={categories}
           onChange={setEditingPayment}
-          onClose={() => { setDialogMode(null); setEditingPayment(null); }}
-          onSave={savePayment}
+          onClose={closePaymentDialog}
+          onSave={() => void savePayment()}
           saveError={saveError}
+          saving={isSavingPayment}
+          recurringEventDate={editingRecurringEvent ? editingOccurrenceDate : null}
+        />
+      )}
+      {scopePromptOpen && editingPayment && (
+        <RecurringEditScopeDialog
+          seriesDateError={getSeriesDateError(editingPayment)}
+          onSingle={() => void savePayment('single')}
+          onFollowing={() => void savePayment('following')}
+          onCancel={() => setScopePromptOpen(false)}
         />
       )}
       {noteDialogMode && editingNote && (
@@ -585,7 +662,7 @@ function occurrenceDotTone(item: PlannedPaymentOccurrence) {
   return item.payment.transactionType === 'income' ? 'bg-lime-500' : 'bg-pink-300';
 }
 
-function PaymentDialog({ mode, payment, accounts, transactions, categories, onChange, onClose, onSave, saveError }: { mode: 'create' | 'edit'; payment: PlannedPayment; accounts: Account[]; transactions: Transaction[]; categories: Category[]; onChange: (payment: PlannedPayment) => void; onClose: () => void; onSave: () => void; saveError?: string | null }) {
+function PaymentDialog({ mode, payment, accounts, transactions, categories, onChange, onClose, onSave, saveError, saving = false, recurringEventDate = null }: { mode: 'create' | 'edit'; payment: PlannedPayment; accounts: Account[]; transactions: Transaction[]; categories: Category[]; onChange: (payment: PlannedPayment) => void; onClose: () => void; onSave: () => void; saveError?: string | null; saving?: boolean; recurringEventDate?: string | null }) {
   const set = <K extends keyof PlannedPayment>(field: K, value: PlannedPayment[K]) => onChange({ ...payment, [field]: value });
   const transactionType = payment.transactionType || 'expense';
   const selectedWeekdays = payment.weekdays || [];
@@ -601,6 +678,12 @@ function PaymentDialog({ mode, payment, accounts, transactions, categories, onCh
       <section className="w-full max-w-lg h-full max-h-full sm:h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto no-scrollbar rounded-none sm:rounded-2xl bg-theme-surface shadow-2xl" role="dialog" aria-modal="true" onMouseDown={event => event.stopPropagation()}>
         <header className="flex items-center justify-between p-4 border-b border-theme-base"><h3 className="text-lg font-bold text-theme-main">{mode === 'create' ? 'Новая запись' : 'Изменить'}</h3><button type="button" aria-label="Закрыть" data-testid="button-close-payment-dialog" onClick={onClose} className="p-2 rounded-lg hover:bg-theme-main"><X size={16} /></button></header>
         <div className="p-4 space-y-3">
+          {recurringEventDate && (
+            <p data-testid="payment-recurring-event-hint" className="flex items-start gap-2 rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-[11px] text-theme-muted">
+              <Repeat size={14} className="mt-px shrink-0 text-theme-primary" aria-hidden="true" />
+              <span>Событие повторяющегося плана от {formatDateKey(recurringEventDate)}. Его можно перенести на другой день — при сохранении выберите, изменить только это событие или все последующие.</span>
+            </p>
+          )}
           <label className="block text-xs font-bold text-theme-muted">Название<input data-testid="input-payment-title" value={payment.title} onChange={event => set('title', event.target.value)} placeholder="Аренда квартиры" className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main" autoFocus /></label>
            <label className="block text-xs font-bold text-theme-muted">Заметка к плану<textarea data-testid="input-payment-note" maxLength={4000} rows={3} value={payment.note || ''} onChange={event => set('note', event.target.value || undefined)} placeholder="Комментарий, связанный с этим планом" className="mt-1 w-full resize-y rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-normal text-amber-950 placeholder:text-amber-700/60" /></label>
            <label className="block text-xs font-bold text-theme-muted">Сумма<input data-testid="input-payment-amount" type="number" min="1" value={payment.amount || ''} onChange={event => set('amount', Number(event.target.value))} className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main" /></label>
@@ -689,10 +772,59 @@ function PaymentDialog({ mode, payment, accounts, transactions, categories, onCh
           </div>
         </div>
         {saveError && <p className="px-4 pb-3 text-xs text-rose-600">{saveError}</p>}
-        <footer className="flex justify-end gap-2 p-4 border-t border-theme-base"><button type="button" data-testid="button-cancel-payment" onClick={onClose} className="px-3 py-2 rounded-xl bg-theme-main text-theme-muted text-xs font-bold">Отмена</button><button type="button" data-testid="button-save-payment" disabled={!payment.title.trim() || payment.amount <= 0} onClick={onSave} className="px-3 py-2 rounded-xl bg-theme-primary text-theme-on-primary text-xs font-bold disabled:opacity-40">{mode === 'create' ? <Plus size={14} className="inline mr-1" /> : <Check size={14} className="inline mr-1" />}{mode === 'create' ? 'Запланировать' : 'Сохранить'}</button></footer>
+        <footer className="flex justify-end gap-2 p-4 border-t border-theme-base"><button type="button" data-testid="button-cancel-payment" onClick={onClose} className="px-3 py-2 rounded-xl bg-theme-main text-theme-muted text-xs font-bold">Отмена</button><button type="button" data-testid="button-save-payment" disabled={saving || !payment.title.trim() || payment.amount <= 0} onClick={onSave} className="px-3 py-2 rounded-xl bg-theme-primary text-theme-on-primary text-xs font-bold disabled:opacity-40">{mode === 'create' ? <Plus size={14} className="inline mr-1" /> : <Check size={14} className="inline mr-1" />}{mode === 'create' ? 'Запланировать' : 'Сохранить'}</button></footer>
       </section>
     </div>
   );
+}
+
+function RecurringEditScopeDialog({
+  seriesDateError,
+  onSingle,
+  onFollowing,
+  onCancel,
+}: {
+  seriesDateError: string | null;
+  onSingle: () => void;
+  onFollowing: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[110] bg-black/40 p-3 flex items-center justify-center" role="presentation" onMouseDown={onCancel}>
+      <section
+        className="w-full max-w-sm rounded-2xl bg-theme-surface p-4 shadow-2xl space-y-3"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="recurring-edit-scope-title"
+        data-testid="dialog-recurring-edit-scope"
+        onMouseDown={event => event.stopPropagation()}
+      >
+        <h3 id="recurring-edit-scope-title" className="text-base font-bold text-theme-main">Изменить повторяющийся план</h3>
+        <p className="text-xs text-theme-muted">Применить изменения только к этому событию или ко всем последующим событиям серии?</p>
+        <div className="space-y-2">
+          <button type="button" data-testid="button-edit-scope-single" onClick={onSingle} className="w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-left text-xs text-theme-main hover:bg-theme-primary-light">
+            <span className="block font-bold">Только это событие</span>
+            <span className="block text-[11px] text-theme-muted">Событие отделится от серии и станет однократным, остальные повторы не изменятся.</span>
+          </button>
+          <button type="button" data-testid="button-edit-scope-following" disabled={Boolean(seriesDateError)} onClick={onFollowing} className="w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-left text-xs text-theme-main hover:bg-theme-primary-light disabled:opacity-50 disabled:pointer-events-none">
+            <span className="block font-bold">Это и все последующие</span>
+            <span className="block text-[11px] text-theme-muted">Изменится шаблон плана начиная с этого события, прошлые события останутся как были.</span>
+          </button>
+          {seriesDateError && (
+            <p data-testid="edit-scope-series-warning" className="rounded-xl bg-rose-50 px-3 py-2 text-[11px] text-rose-700">{seriesDateError}</p>
+          )}
+        </div>
+        <footer className="flex justify-end">
+          <button type="button" data-testid="button-edit-scope-cancel" onClick={onCancel} className="px-3 py-2 rounded-xl bg-theme-main text-theme-muted text-xs font-bold">Отмена</button>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
+function formatDateKey(dateKey: string) {
+  const [year, month, day] = dateKey.split('-');
+  return `${day}.${month}.${year}`;
 }
 
 function CalendarState({ title, description, action, actionLabel, error = false }: { title: string; description?: string; action?: () => void; actionLabel?: string; error?: boolean }) {

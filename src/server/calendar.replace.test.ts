@@ -40,4 +40,31 @@ describe("replaceCalendar", () => {
     expect(fake.prisma.calendarPlan.findMany).not.toHaveBeenCalled();
     expect(fake.prisma.calendarNote.findMany).not.toHaveBeenCalled();
   });
+
+  it("stores the dates detached from a recurring plan normalized", async () => {
+    const tx = {
+      calendarPlan: {
+        findFirst: vi.fn(async () => null),
+        findUnique: vi.fn(async () => null),
+        create: vi.fn(async ({ data }: any) => ({ id: "plan-1", ...data })),
+        updateMany: fake.prisma.calendarPlan.updateMany,
+      },
+      calendarOccurrence: { upsert: vi.fn() },
+    };
+    fake.prisma.$transaction.mockImplementationOnce(async (callback: (tx: any) => unknown) => callback(tx));
+
+    await replaceCalendar("user-1", [{
+      id: "plan-1",
+      title: "Секция",
+      amount: 1500,
+      date: "2026-09-07",
+      recurrence: "weekdays",
+      weekdays: [1, 3, 5],
+      excludedDates: ["2026-09-16", "2026-09-14", "2026-09-14", "garbage"],
+    }]);
+
+    expect(tx.calendarPlan.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ excludedDates: ["2026-09-14", "2026-09-16"] }),
+    }));
+  });
 });
