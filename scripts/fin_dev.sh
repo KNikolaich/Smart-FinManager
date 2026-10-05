@@ -5,8 +5,12 @@
 #   scripts/fin_dev.sh try/feature     switch to a branch from the local clone and start
 #   scripts/fin_dev.sh --prod [branch] production build + start, like on the server
 #
+# Run it in the WSL clone ~/Smart-FinManager, or from Windows with
+# scripts\fin_dev.bat (double-click; branch main unless one is given).
+#
 # The WSL clone is view-only: its "origin" is the Windows clone
-# (git clone /mnt/f/Docs/Git/Smart-FinManager), so unpushed commits are visible here.
+# (git clone /mnt/f/Docs/Git/Smart-FinManager ~/Smart-FinManager), so unpushed
+# commits are visible here, uncommitted changes are not.
 # The database is not touched, except: if schema.prisma is ahead of the local DB,
 # the script asks before syncing it (prisma db push). The in-app
 # «Обновление БД» cannot do that when the users table changes.
