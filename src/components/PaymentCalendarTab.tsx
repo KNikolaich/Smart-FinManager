@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ArrowLeft,
   ArrowRight,
@@ -28,6 +29,7 @@ import {
 import CategorySelect from './CategorySelect';
 import CalendarNoteDialog from './CalendarNoteDialog';
 import UpcomingTasks from './UpcomingTasks';
+import { useMinuteClock } from '../hooks/useMinuteClock';
 import AccountSelect from './AccountSelect';
 import { cn } from '../lib/utils';
 import { isCompletedOccurrence } from '../lib/calendarPlanCleanup';
@@ -41,7 +43,7 @@ import {
 import {
   getPaymentOccurrencesInRange,
   getTodayKey,
-  isPaymentOccurrenceOverdue,
+  isOccurrenceOverdue,
   parseDateKey,
   PlannedPaymentFilter,
   PlannedPaymentOccurrence,
@@ -82,6 +84,13 @@ const MONTHS = [
   'январь', 'февраль', 'март', 'апрель', 'май', 'июнь',
   'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь',
 ];
+/** Rows of plans/notes a calendar day shows before collapsing into "+ ещё N". */
+const MAX_DAY_ROWS = 3;
+
+type CalendarDayEntry =
+  | { kind: 'plan'; item: PlannedPaymentOccurrence }
+  | { kind: 'note'; note: CalendarNote };
+
 const RECURRENCES: Array<{ value: PlannedPaymentRecurrence; label: string }> = [
   { value: 'none', label: 'Однократно' },
   { value: 'weekly', label: 'Еженедельно' },
@@ -147,7 +156,8 @@ export default function PaymentCalendarTab({
   initialNoteToCreate,
   onInitialNoteCreateHandled,
 }: PaymentCalendarTabProps) {
-  const now = new Date();
+  // Re-render every minute: a plan for 12:30 turns overdue at 12:30, not at midnight.
+  const now = useMinuteClock();
   const [cursor, setCursor] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState(getTodayKey());
   const [listStartDate, setListStartDate] = useState(getTodayKey());
@@ -157,6 +167,8 @@ export default function PaymentCalendarTab({
   // Date of the event opened for editing; the user may move it in the form.
   const [editingOccurrenceDate, setEditingOccurrenceDate] = useState<string | null>(null);
   const [scopePromptOpen, setScopePromptOpen] = useState(false);
+  // Day whose full plan list is open from "+ ещё N".
+  const [openDayList, setOpenDayList] = useState<{ dateKey: string; anchor: DOMRect } | null>(null);
   const [isSavingPayment, setIsSavingPayment] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [noteDialogMode, setNoteDialogMode] = useState<'create' | 'view' | 'edit' | null>(null);
@@ -213,7 +225,7 @@ export default function PaymentCalendarTab({
   );
   const visibleOccurrences = occurrences.filter(item => {
     if (filter === 'all') return true;
-    if (filter === 'overdue') return item.status !== 'paid' && isPaymentOccurrenceOverdue(item.date);
+    if (filter === 'overdue') return item.status !== 'paid' && isOccurrenceOverdue(item, now);
     return item.status === filter;
   });
   const byDate = new Map<string, PlannedPaymentOccurrence[]>();
@@ -500,35 +512,75 @@ export default function PaymentCalendarTab({
               {monthCells.map(cell => {
                 const dayItems = byDate.get(cell.key) || [];
                 const dayNotes = notesByDate.get(cell.key) || [];
+                const entries: CalendarDayEntry[] = [
+                  ...dayItems.map(item => ({ kind: 'plan' as const, item })),
+                  ...dayNotes.map(note => ({ kind: 'note' as const, note })),
+                ];
+                // Up to MAX_DAY_ROWS entries fit; with more, the last row says how many are hidden.
+                const visibleEntries = entries.length > MAX_DAY_ROWS ? entries.slice(0, MAX_DAY_ROWS - 1) : entries;
+                const hiddenCount = entries.length - visibleEntries.length;
+                const overflowOpen = openDayList?.dateKey === cell.key;
+                const selectDay = () => { setSelectedDate(cell.key); setListStartDate(cell.key); };
                 return (
-                  <button
+                  <div
                     key={cell.key}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     data-testid={`calendar-day-${cell.key}`}
-                    onClick={() => { setSelectedDate(cell.key); setListStartDate(cell.key); }}
-                    className={`min-w-0 min-h-[60px] sm:min-h-[106px] p-1 sm:p-2 text-left border-b border-r border-theme-base ${!cell.currentMonth ? 'bg-theme-main text-theme-muted' : 'bg-theme-surface'} ${selectedDate === cell.key ? 'ring-2 ring-inset ring-theme-primary bg-theme-primary-light' : 'hover:bg-theme-main'}`}
+                    onClick={selectDay}
+                    onKeyDown={event => {
+                      if (event.target !== event.currentTarget) return;
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        selectDay();
+                      }
+                    }}
+                    className={`min-w-0 min-h-[60px] sm:min-h-[106px] p-1 sm:p-2 flex flex-col items-stretch justify-start text-left cursor-pointer border-b border-r border-theme-base outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-theme-primary ${!cell.currentMonth ? 'bg-theme-main text-theme-muted' : 'bg-theme-surface'} ${selectedDate === cell.key ? 'ring-2 ring-inset ring-theme-primary bg-theme-primary-light' : 'hover:bg-theme-main'}`}
                   >
-                    <span className={`inline-flex min-w-6 h-6 items-center justify-center rounded-lg text-xs font-mono ${cell.key === getTodayKey() ? 'bg-theme-primary text-theme-on-primary' : 'text-theme-muted'}`}>{cell.day}</span>
-                    <span className="block mt-1 space-y-1">
-                      {dayItems.slice(0, 2).map(item => (
-                         <span key={`${item.payment.id}-${item.date}`} className={`hidden sm:flex min-w-0 items-center gap-1 rounded px-1 py-1 text-[10px] ${occurrenceTone(item)}`}>
-                           <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
-                           <span className="min-w-0 flex-1 truncate">{item.payment.title}</span>
-                            {item.payment.note?.trim() && <StickyNote size={10} className="shrink-0 text-amber-700" aria-label="У плана есть записка" />}
-                           {item.payment.time && <time className="shrink-0 tabular-nums">{item.payment.time}</time>}
-                        </span>
-                      ))}
-                       {dayNotes.slice(0, 1).map(note => (
-                         <span key={note.id} data-testid={`calendar-note-chip-${note.id}`} className="hidden sm:flex min-w-0 items-start gap-1 rounded bg-amber-50 px-1 py-1 text-[9px] leading-tight text-amber-900">
-                            <ScrollText size={10} className="mt-px shrink-0 text-amber-700" aria-hidden="true" />
-                           <span className="min-w-0 line-clamp-2 break-words">{note.text}</span>
-                         </span>
-                       ))}
-                       {dayNotes.length > 1 && <span className="hidden sm:block text-[9px] text-amber-800">+ ещё записки: {dayNotes.length - 1}</span>}
-                      {dayItems.length > 2 && <span className="text-[9px] text-theme-muted">+ ещё {dayItems.length - 2}</span>}
-                       {(dayItems.length > 0 || dayNotes.length > 0) && <span className="sm:hidden flex gap-0.5">{dayItems.slice(0, 3).map(item => <span key={`${item.payment.id}-${item.date}-dot`} className={`w-1.5 h-1.5 rounded-full ${occurrenceDotTone(item)}`} />)}{dayNotes.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" aria-label="Есть записка" />}</span>}
-                    </span>
-                  </button>
+                    <span className={`self-start inline-flex min-w-6 h-6 items-center justify-center rounded-lg text-xs font-mono ${cell.key === getTodayKey() ? 'bg-theme-primary text-theme-on-primary' : 'text-theme-muted'}`}>{cell.day}</span>
+                    {entries.length > 0 && (
+                      <span className="hidden sm:flex min-w-0 flex-col gap-1 mt-1">
+                        {visibleEntries.map(entry => entry.kind === 'plan' ? (
+                          <span key={`${entry.item.payment.id}-${entry.item.date}`} className={`flex min-w-0 items-center gap-1 rounded px-1 py-1 text-[10px] ${occurrenceTone(entry.item, now)}`}>
+                            <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+                            <span className="min-w-0 flex-1 truncate">{entry.item.payment.title}</span>
+                            {entry.item.payment.note?.trim() && <StickyNote size={10} className="shrink-0 text-amber-700" aria-label="У плана есть записка" />}
+                            {entry.item.payment.time && <time className="shrink-0 tabular-nums">{entry.item.payment.time}</time>}
+                          </span>
+                        ) : (
+                          <span key={entry.note.id} data-testid={`calendar-note-chip-${entry.note.id}`} className="flex min-w-0 items-center gap-1 rounded bg-amber-50 px-1 py-1 text-[10px] text-amber-900">
+                            <ScrollText size={10} className="shrink-0 text-amber-700" aria-hidden="true" />
+                            <span className="min-w-0 truncate">{entry.note.text}</span>
+                          </span>
+                        ))}
+                        {hiddenCount > 0 && (
+                          <button
+                            type="button"
+                            data-testid={`calendar-day-more-${cell.key}`}
+                            aria-haspopup="dialog"
+                            aria-expanded={overflowOpen}
+                            title="Показать все планы дня"
+                            onClick={event => {
+                              event.stopPropagation();
+                              const rect = event.currentTarget.getBoundingClientRect();
+                              setOpenDayList(current => current?.dateKey === cell.key ? null : { dateKey: cell.key, anchor: rect });
+                            }}
+                            className="self-start inline-flex items-center gap-1 rounded px-1 text-[9px] text-theme-muted hover:bg-theme-primary-light hover:text-theme-primary"
+                          >
+                            + ещё {hiddenCount}
+                            <ChevronDown size={11} className={`transition-transform ${overflowOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                          </button>
+                        )}
+                      </span>
+                    )}
+                    {entries.length > 0 && (
+                      <span className="sm:hidden mt-1 flex items-center gap-0.5">
+                        {dayItems.slice(0, 3).map(item => <span key={`${item.payment.id}-${item.date}-dot`} className={`w-1.5 h-1.5 rounded-full ${occurrenceDotTone(item, now)}`} />)}
+                        {dayNotes.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" aria-label="Есть записка" />}
+                        {entries.length > MAX_DAY_ROWS && <span className="text-[8px] leading-none text-theme-muted">+{entries.length - MAX_DAY_ROWS}</span>}
+                      </span>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -607,6 +659,23 @@ export default function PaymentCalendarTab({
           recurringEventDate={editingRecurringEvent ? editingOccurrenceDate : null}
         />
       )}
+      {openDayList && (
+        <CalendarDayListPopover
+          dateKey={openDayList.dateKey}
+          anchor={openDayList.anchor}
+          entries={[
+            ...(byDate.get(openDayList.dateKey) || []).map(item => ({ kind: 'plan' as const, item })),
+            ...(notesByDate.get(openDayList.dateKey) || []).map(note => ({ kind: 'note' as const, note })),
+          ]}
+          now={now}
+          onClose={() => setOpenDayList(null)}
+          onSelectDay={() => {
+            setSelectedDate(openDayList.dateKey);
+            setListStartDate(openDayList.dateKey);
+            setOpenDayList(null);
+          }}
+        />
+      )}
       {scopePromptOpen && editingPayment && (
         <RecurringEditScopeDialog
           seriesDateError={getSeriesDateError(editingPayment)}
@@ -648,17 +717,17 @@ function moveMonth(offset: number, cursor: Date, setCursor: (date: Date) => void
   setListStartDate(nextKey);
 }
 
-function occurrenceTone(item: PlannedPaymentOccurrence) {
+function occurrenceTone(item: PlannedPaymentOccurrence, now = new Date()) {
   if (isCompletedOccurrence(item)) return 'bg-neutral-200 text-neutral-500 opacity-80';
-  if (isPaymentOccurrenceOverdue(item.date)) return 'bg-red-100 text-red-800';
+  if (isOccurrenceOverdue(item, now)) return 'bg-red-100 text-red-800';
   return item.payment.transactionType === 'income'
     ? 'bg-lime-50 text-lime-700'
     : 'bg-pink-50 text-pink-700';
 }
 
-function occurrenceDotTone(item: PlannedPaymentOccurrence) {
+function occurrenceDotTone(item: PlannedPaymentOccurrence, now = new Date()) {
   if (isCompletedOccurrence(item)) return 'bg-neutral-400';
-  if (isPaymentOccurrenceOverdue(item.date)) return 'bg-red-500';
+  if (isOccurrenceOverdue(item, now)) return 'bg-red-500';
   return item.payment.transactionType === 'income' ? 'bg-lime-500' : 'bg-pink-300';
 }
 
@@ -776,6 +845,113 @@ function PaymentDialog({ mode, payment, accounts, transactions, categories, onCh
       </section>
     </div>
   );
+}
+
+const DAY_LIST_WIDTH = 272;
+
+/** Short list of every plan and note of one day, opened from "+ ещё N ▾". */
+function CalendarDayListPopover({
+  dateKey,
+  anchor,
+  entries,
+  now,
+  onClose,
+  onSelectDay,
+}: {
+  dateKey: string;
+  anchor: DOMRect;
+  entries: CalendarDayEntry[];
+  now: Date;
+  onClose: () => void;
+  onSelectDay: () => void;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [position, setPosition] = useState<{ left: number; top?: number; bottom?: number }>(() => ({
+    left: anchor.left,
+    top: anchor.bottom + 4,
+  }));
+
+  useLayoutEffect(() => {
+    const height = ref.current?.offsetHeight ?? 0;
+    const left = Math.max(8, Math.min(anchor.left, window.innerWidth - DAY_LIST_WIDTH - 8));
+    const fitsBelow = anchor.bottom + 4 + height <= window.innerHeight - 8;
+    setPosition(fitsBelow || anchor.top < height + 12
+      ? { left, top: anchor.bottom + 4 }
+      : { left, bottom: window.innerHeight - anchor.top + 4 });
+  }, [anchor]);
+
+  useEffect(() => {
+    const closeOnOutside = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (target && ref.current?.contains(target)) return;
+      if (target instanceof Element && target.closest(`[data-testid="calendar-day-more-${dateKey}"]`)) return;
+      onClose();
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    const closeOnScroll = (event: Event) => {
+      if (event.target instanceof Node && ref.current?.contains(event.target)) return;
+      onClose();
+    };
+    document.addEventListener('mousedown', closeOnOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    window.addEventListener('scroll', closeOnScroll, true);
+    window.addEventListener('resize', onClose);
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+      window.removeEventListener('scroll', closeOnScroll, true);
+      window.removeEventListener('resize', onClose);
+    };
+  }, [dateKey, onClose]);
+
+  const title = new Date(`${dateKey}T12:00:00`).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  return createPortal(
+    <div
+      ref={ref}
+      role="dialog"
+      aria-label={`Все планы на ${title}`}
+      data-testid={`calendar-day-list-${dateKey}`}
+      style={{ position: 'fixed', width: DAY_LIST_WIDTH, ...position }}
+      className="z-[90] max-h-[60vh] overflow-y-auto rounded-xl border border-theme-base bg-theme-surface p-2 shadow-xl"
+    >
+      <div className="mb-1 flex items-center justify-between gap-2 px-1">
+        <span className="text-[11px] font-bold capitalize text-theme-main">{title}</span>
+        <button type="button" aria-label="Закрыть список" onClick={onClose} className="rounded p-1 text-theme-muted hover:bg-theme-main"><X size={12} /></button>
+      </div>
+      <ul className="space-y-1">
+        {entries.map(entry => entry.kind === 'plan' ? (
+          <li key={`${entry.item.payment.id}-${entry.item.date}`}>
+            <button
+              type="button"
+              onClick={onSelectDay}
+              className={`flex w-full min-w-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-[11px] ${occurrenceTone(entry.item, now)}`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+              {entry.item.payment.time && <time className="shrink-0 tabular-nums">{entry.item.payment.time}</time>}
+              <span className="min-w-0 flex-1 truncate">{entry.item.payment.title}</span>
+              <span className="shrink-0 tabular-nums">{formatPlanAmount(entry.item.payment)}</span>
+            </button>
+          </li>
+        ) : (
+          <li key={entry.note.id}>
+            <button type="button" onClick={onSelectDay} className="flex w-full min-w-0 items-start gap-1.5 rounded-lg bg-amber-50 px-2 py-1.5 text-left text-[11px] text-amber-900">
+              <ScrollText size={11} className="mt-px shrink-0 text-amber-700" aria-hidden="true" />
+              <span className="min-w-0 line-clamp-2 break-words">{entry.note.text}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>,
+    document.body,
+  );
+}
+
+function formatPlanAmount(payment: PlannedPayment) {
+  const sign = payment.transactionType === 'income' ? '+' : '−';
+  return `${sign}${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(payment.amount)} ₽`;
 }
 
 function RecurringEditScopeDialog({

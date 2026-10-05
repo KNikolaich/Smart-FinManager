@@ -3,6 +3,7 @@ import { CalendarDays, Check, CircleDashed, Copy, Eraser, Eye, Hand, Pencil, Plu
 import { io } from 'socket.io-client';
 import { api } from '../lib/api';
 import { cacheCalendarSnapshot, calendarApi } from '../lib/calendarApi';
+import { useMinuteClock } from '../hooks/useMinuteClock';
 import { CalendarNote, PlannedPayment, PlannedPaymentRecurrence } from '../types';
 import CalendarNoteDialog from './CalendarNoteDialog';
 import { mergeCalendarDashboardItems, mergeCalendarPlanItems } from '../lib/calendarDashboardItems';
@@ -10,7 +11,8 @@ import {
   getTodayKey,
   getOutstandingPaymentOccurrences,
   getPaymentOccurrencesForFilter,
-  isPaymentOccurrenceOverdue,
+  isOccurrenceOverdue,
+  isPlanOccurrenceOverdue,
   PlannedPaymentFilter,
   PlannedPaymentOccurrence,
 } from '../lib/plannedPaymentOccurrences';
@@ -162,6 +164,8 @@ export default function UpcomingTasks({
 
   const sourcePayments = localPayments ?? payments ?? loadedPayments;
   const sourceNotes = localNotes ?? notes ?? loadedNotes;
+  // Re-render every minute: a plan for 12:30 turns overdue at 12:30, not at midnight.
+  const now = useMinuteClock();
   const todayKey = getTodayKey();
   const pastCleanupCandidates = useMemo(
     () => getPastPlanCleanupCandidates(sourcePayments, todayKey),
@@ -544,7 +548,7 @@ export default function UpcomingTasks({
   };
 
   const quietOverdueOccurrence = (item: PlannedPaymentOccurrence) => {
-    if (!isPaymentOccurrenceOverdue(item.date)) return;
+    if (!isOccurrenceOverdue(item, now)) return;
     const key = occurrenceKey(item);
     setQuietOverdue(current => {
       if (current.has(key)) return current;
@@ -722,7 +726,7 @@ export default function UpcomingTasks({
             const isActive = stackIndex === 0;
             const occurrence = item.kind === 'payment' ? item.occurrence : undefined;
             const isPulsing = Boolean(
-              isActive && occurrence && isPaymentOccurrenceOverdue(occurrence.date) && !quietOverdue.has(item.key),
+              isActive && occurrence && isOccurrenceOverdue(occurrence, now) && !quietOverdue.has(item.key),
             );
             const stackStyle = isActive
               ? { transform: `translateX(${dragOffset}px)`, zIndex: 30 }
@@ -732,7 +736,7 @@ export default function UpcomingTasks({
                 ? 'border-amber-200 bg-amber-50 text-amber-950'
                 : 'border-theme-base bg-theme-main text-theme-muted'
               : isActive
-                ? carouselTone(item.occurrence, isPulsing)
+                ? carouselTone(item.occurrence, isPulsing, now)
                 : 'border-theme-base bg-theme-main text-theme-muted';
             return (
               <article
@@ -768,7 +772,7 @@ export default function UpcomingTasks({
                     <ScrollText size={17} className="mt-0.5 shrink-0 text-amber-700" aria-hidden="true" />
                     <div className="min-w-0 flex-1">
                       <span className="block text-[10px] uppercase tracking-wider font-bold opacity-70">
-                        {carouselDateLabel(item.note.date)}
+                        {carouselDateLabel(item.note.date, undefined, now)}
                       </span>
                       <strong
                         className="mt-1 block overflow-hidden whitespace-pre-wrap break-words text-sm sm:text-base leading-tight line-clamp-2"
@@ -804,7 +808,7 @@ export default function UpcomingTasks({
                       className="min-w-0 flex-1 text-left"
                     >
                       <span className="block text-[10px] uppercase tracking-wider font-bold opacity-70">
-                        {carouselDateLabel(item.occurrence.date)}
+                        {carouselDateLabel(item.occurrence.date, item.occurrence.payment.time, now)}
                         {item.occurrence.payment.time && <> · <time>{item.occurrence.payment.time}</time></>}
                       </span>
                       <strong className="mt-1 flex min-w-0 items-center gap-1 text-sm sm:text-base leading-tight">
@@ -879,7 +883,7 @@ export default function UpcomingTasks({
             return (
               <article
                 key={entry.key}
-                className={`flex items-center gap-2 rounded-xl px-2 py-2 border ${focusedBorder} ${occurrenceTone(item)}`}
+                className={`flex items-center gap-2 rounded-xl px-2 py-2 border ${focusedBorder} ${occurrenceTone(item, now)}`}
                 data-testid={`payment-row-${key}`}
                 data-upcoming-task={key}
                 data-calendar-plan-entry="payment"
@@ -1317,17 +1321,17 @@ function formatLongDate(date: string) {
   });
 }
 
-function occurrenceTone(item: PlannedPaymentOccurrence) {
+function occurrenceTone(item: PlannedPaymentOccurrence, now = new Date()) {
   if (isCompletedOccurrence(item)) return 'bg-theme-main text-theme-muted opacity-80';
-  if (isPaymentOccurrenceOverdue(item.date)) return 'bg-red-100 text-red-800';
+  if (isOccurrenceOverdue(item, now)) return 'bg-red-100 text-red-800';
   return item.payment.transactionType === 'income'
     ? 'bg-lime-50 text-lime-700'
     : 'bg-pink-50 text-pink-700';
 }
 
-function carouselTone(item: PlannedPaymentOccurrence, isPulsing = false) {
+function carouselTone(item: PlannedPaymentOccurrence, isPulsing = false, now = new Date()) {
   if (isCompletedOccurrence(item)) return 'border-theme-base bg-theme-main text-theme-muted opacity-80';
-  if (isPaymentOccurrenceOverdue(item.date)) {
+  if (isOccurrenceOverdue(item, now)) {
     return `border-red-300 bg-red-100 text-red-900${isPulsing ? ' animate-overdue-pulse' : ''}`;
   }
   return item.payment.transactionType === 'income'
@@ -1344,7 +1348,7 @@ function getDefaultFocusOccurrence(
   anchorDate: string,
 ) {
   const incomplete = occurrences.filter(item => !isCompletedOccurrence(item));
-  const firstOverdue = incomplete.find(item => isPaymentOccurrenceOverdue(item.date));
+  const firstOverdue = incomplete.find(item => isOccurrenceOverdue(item));
   if (firstOverdue) return firstOverdue;
 
   const todayKey = getTodayKey();
@@ -1377,8 +1381,8 @@ function formatMoney(amount: number) {
   return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(amount)} ₽`;
 }
 
-function carouselDateLabel(date: string) {
-  if (isPaymentOccurrenceOverdue(date)) return `Просрочено · ${formatTaskDate(date)}`;
+function carouselDateLabel(date: string, time?: string, now = new Date()) {
+  if (isPlanOccurrenceOverdue(date, time, now)) return `Просрочено · ${formatTaskDate(date)}`;
   return formatTaskDate(date);
 }
 

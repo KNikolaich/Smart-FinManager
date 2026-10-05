@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PaymentCalendarTab from './PaymentCalendarTab';
 import type { Account, CalendarNote, PlannedPayment } from '../types';
@@ -606,5 +606,130 @@ describe('PaymentCalendarTab', () => {
       expect.objectContaining({ date: '2026-09-22', recurrence: 'weekdays', weekdays: [2] }),
       { originalDate: undefined, scope: undefined },
     );
+  });
+
+  describe('day cells', () => {
+    // 2026-10-06 is a Tuesday.
+    const plansOn = (count: number, date = '2026-10-06'): PlannedPayment[] =>
+      Array.from({ length: count }, (_, index) => ({
+        id: `day-plan-${index + 1}`,
+        title: `План ${index + 1}`,
+        amount: 100 * (index + 1),
+        date,
+        recurrence: 'none' as const,
+        status: 'pending' as const,
+        paidDates: [],
+      }));
+    const renderOctober = (payments: PlannedPayment[], notes: CalendarNote[] = []) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 9, 1, 9));
+      return render(<PaymentCalendarTab payments={payments} notes={notes} accounts={[]} />);
+    };
+
+    it('shows three plans of a day without a "more" row', () => {
+      renderOctober(plansOn(3));
+      const day = screen.getByTestId('calendar-day-2026-10-06');
+
+      for (const title of ['План 1', 'План 2', 'План 3']) expect(within(day).getByText(title)).toBeTruthy();
+      expect(within(day).queryByText(/ещё/)).toBeNull();
+      expect(screen.queryByTestId('calendar-day-more-2026-10-06')).toBeNull();
+    });
+
+    it('collapses more than three entries into two rows and "+ ещё N"', () => {
+      renderOctober(plansOn(2), [
+        { id: 'note-a', date: '2026-10-06', text: 'Записка A' },
+        { id: 'note-b', date: '2026-10-06', text: 'Записка B' },
+      ]);
+      const day = screen.getByTestId('calendar-day-2026-10-06');
+
+      expect(within(day).getByText('План 1')).toBeTruthy();
+      expect(within(day).getByText('План 2')).toBeTruthy();
+      expect(within(day).queryByText('Записка A')).toBeNull();
+      expect(screen.getByTestId('calendar-day-more-2026-10-06').textContent).toContain('+ ещё 2');
+    });
+
+    it('opens a list of every plan of the day from the triangle and closes it with Escape', () => {
+      renderOctober(plansOn(5));
+      const more = screen.getByTestId('calendar-day-more-2026-10-06');
+      expect(more.textContent).toContain('+ ещё 3');
+      expect(more.getAttribute('aria-expanded')).toBe('false');
+
+      fireEvent.click(more);
+
+      const list = screen.getByTestId('calendar-day-list-2026-10-06');
+      for (const title of ['План 1', 'План 2', 'План 3', 'План 4', 'План 5']) {
+        expect(within(list).getByText(title)).toBeTruthy();
+      }
+      expect(list.textContent).toContain('500 ₽');
+      expect(more.getAttribute('aria-expanded')).toBe('true');
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByTestId('calendar-day-list-2026-10-06')).toBeNull();
+    });
+
+    it('selects the day from the list without selecting it from the triangle click', () => {
+      renderOctober(plansOn(5));
+
+      fireEvent.click(screen.getByTestId('calendar-day-more-2026-10-06'));
+      expect(screen.getByTestId('calendar-day-2026-10-06').className).not.toContain('ring-2 ring-inset ring-theme-primary bg-theme-primary-light');
+
+      fireEvent.click(within(screen.getByTestId('calendar-day-list-2026-10-06')).getByText('План 4'));
+      expect(screen.queryByTestId('calendar-day-list-2026-10-06')).toBeNull();
+      expect(screen.getByTestId('calendar-day-2026-10-06').className).toContain('ring-theme-primary');
+    });
+
+    it('keeps the date of every cell in the top-left corner', () => {
+      renderOctober(plansOn(1));
+      for (const key of ['2026-10-05', '2026-10-06']) {
+        const day = screen.getByTestId(`calendar-day-${key}`);
+        expect(day.className).toContain('flex-col');
+        expect(day.className).toContain('justify-start');
+        expect(day.className).toContain('text-left');
+      }
+    });
+
+    it('is selectable with the keyboard', () => {
+      renderOctober([]);
+      const day = screen.getByTestId('calendar-day-2026-10-08');
+      fireEvent.keyDown(day, { key: 'Enter' });
+      expect(day.className).toContain('ring-theme-primary');
+    });
+  });
+
+  describe('overdue plans with a time', () => {
+    const todayPlans: PlannedPayment[] = [
+      { id: 'at-1230', title: 'В 12:30', amount: 100, date: '2026-10-05', time: '12:30', recurrence: 'none', status: 'pending', paidDates: [] },
+      { id: 'no-time', title: 'Без времени', amount: 100, date: '2026-10-05', recurrence: 'none', status: 'pending', paidDates: [] },
+    ];
+    const chip = (title: string) => within(screen.getByTestId('calendar-day-2026-10-05')).getByText(title).parentElement!;
+
+    it('is not red on its day before its time and turns red once the time comes', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 9, 5, 10, 0, 0));
+      render(<PaymentCalendarTab payments={todayPlans} accounts={[]} />);
+
+      expect(chip('В 12:30').className).not.toContain('bg-red-100');
+      expect(chip('Без времени').className).toContain('bg-red-100');
+
+      // 12:29 — still not overdue.
+      act(() => { vi.advanceTimersByTime((2 * 60 + 29) * 60 * 1000 + 1000); });
+      expect(chip('В 12:30').className).not.toContain('bg-red-100');
+
+      // 12:30 — the minute clock re-renders the calendar on its own.
+      act(() => { vi.advanceTimersByTime(60 * 1000); });
+      expect(chip('В 12:30').className).toContain('bg-red-100');
+    });
+
+    it('is not counted as overdue by the filter before its time', () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 9, 5, 10, 0, 0));
+      render(<PaymentCalendarTab payments={todayPlans} accounts={[]} />);
+
+      fireEvent.change(screen.getByTestId('select-payment-filter'), { target: { value: 'overdue' } });
+
+      const day = screen.getByTestId('calendar-day-2026-10-05');
+      expect(within(day).queryByText('В 12:30')).toBeNull();
+      expect(within(day).getByText('Без времени')).toBeTruthy();
+    });
   });
 });

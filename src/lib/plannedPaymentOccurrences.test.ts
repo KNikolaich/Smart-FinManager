@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { PlannedPayment } from '../types';
-import { getPaymentOccurrencesInRange, matchesPlanRecurrence } from './plannedPaymentOccurrences';
+import {
+  getPaymentOccurrencesForFilter,
+  getPaymentOccurrencesInRange,
+  isPlanOccurrenceOverdue,
+  matchesPlanRecurrence,
+} from './plannedPaymentOccurrences';
+import { afterEach, vi } from 'vitest';
 
 describe('planned payment weekday recurrence', () => {
   it('generates only the selected weekdays', () => {
@@ -93,5 +99,49 @@ describe('matchesPlanRecurrence', () => {
 
   it('never matches before the series start', () => {
     expect(matchesPlanRecurrence({ date: '2026-09-07', recurrence: 'weekly' }, '2026-08-31')).toBe(false);
+  });
+});
+
+describe('isPlanOccurrenceOverdue', () => {
+  const at = (hours: number, minutes = 0) => new Date(2026, 9, 5, hours, minutes);
+
+  it('treats past days as overdue and future days as not', () => {
+    expect(isPlanOccurrenceOverdue('2026-10-04', '23:00', at(0, 1))).toBe(true);
+    expect(isPlanOccurrenceOverdue('2026-10-06', undefined, at(23, 59))).toBe(false);
+  });
+
+  it('treats a plan for today without a time as overdue all day', () => {
+    expect(isPlanOccurrenceOverdue('2026-10-05', undefined, at(0, 0))).toBe(true);
+    expect(isPlanOccurrenceOverdue('2026-10-05', '', at(0, 0))).toBe(true);
+  });
+
+  it('waits for the time of a plan for today', () => {
+    expect(isPlanOccurrenceOverdue('2026-10-05', '12:30', at(12, 29))).toBe(false);
+    expect(isPlanOccurrenceOverdue('2026-10-05', '12:30', at(12, 30))).toBe(true);
+    expect(isPlanOccurrenceOverdue('2026-10-05', '12:30', at(18, 0))).toBe(true);
+  });
+});
+
+describe('pending and overdue filters with a time', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('keeps a plan later today pending until its time', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 5, 10, 0));
+    const plans: PlannedPayment[] = [
+      { id: 'later', title: 'Позже', amount: 1, date: '2026-10-05', time: '12:30', recurrence: 'none', status: 'pending' },
+      { id: 'all-day', title: 'Весь день', amount: 1, date: '2026-10-05', recurrence: 'none', status: 'pending' },
+      { id: 'tomorrow', title: 'Завтра', amount: 1, date: '2026-10-06', recurrence: 'none', status: 'pending' },
+    ];
+
+    const ids = (filter: 'pending' | 'overdue') =>
+      getPaymentOccurrencesForFilter(plans, '2026-10-05', filter).map(item => item.payment.id);
+
+    expect(ids('pending')).toEqual(['later', 'tomorrow']);
+    expect(ids('overdue')).toEqual(['all-day']);
+
+    vi.setSystemTime(new Date(2026, 9, 5, 13, 0));
+    expect(ids('pending')).toEqual(['tomorrow']);
+    expect(ids('overdue').sort()).toEqual(['all-day', 'later']);
   });
 });

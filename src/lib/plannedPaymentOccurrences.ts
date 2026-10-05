@@ -24,6 +24,26 @@ export function getTodayKey() {
   return toDateKey(new Date());
 }
 
+/**
+ * Whether a planned event is overdue at `now` (device local time).
+ * A past day is overdue; a future day is not. On the day itself a plan with a
+ * time becomes overdue only once that time has come, a plan without a time
+ * is overdue for the whole day.
+ */
+export function isPlanOccurrenceOverdue(dateKey: string, time?: string | null, now: Date = new Date()) {
+  const todayKey = toDateKey(now);
+  if (dateKey !== todayKey) return dateKey < todayKey;
+  const match = typeof time === 'string' ? /^(\d{2}):(\d{2})$/.exec(time) : null;
+  if (!match) return true;
+  return now.getHours() * 60 + now.getMinutes() >= Number(match[1]) * 60 + Number(match[2]);
+}
+
+/** {@link isPlanOccurrenceOverdue} for one occurrence of a plan, using the plan's time. */
+export function isOccurrenceOverdue(item: Pick<PlannedPaymentOccurrence, 'date' | 'payment'>, now: Date = new Date()) {
+  return isPlanOccurrenceOverdue(item.date, item.payment.time, now);
+}
+
+/** Date-only check (ignores the plan's time); prefer {@link isOccurrenceOverdue}. */
 export function isPaymentOccurrenceOverdue(dateKey: string, todayKey = getTodayKey()) {
   return dateKey <= todayKey;
 }
@@ -147,7 +167,8 @@ export function getPaymentOccurrencesForFilter(
   offset = 0,
 ) {
   const anchor = parseDateKey(anchorKey);
-  const todayKey = getTodayKey();
+  const now = new Date();
+  const todayKey = toDateKey(now);
   const today = parseDateKey(todayKey);
   const start = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
   const end = new Date(anchor.getFullYear() + 5, anchor.getMonth(), anchor.getDate());
@@ -155,8 +176,8 @@ export function getPaymentOccurrencesForFilter(
   if (filter === 'all' || filter === 'paid') {
     start.setFullYear(start.getFullYear() - 5);
   } else if (filter === 'pending') {
+    // Today is included: a plan later today is still pending, not overdue.
     const pendingStart = anchor > today ? anchor : new Date(today);
-    if (pendingStart <= today) pendingStart.setDate(pendingStart.getDate() + 1);
     start.setTime(pendingStart.getTime());
   } else if (filter === 'overdue') {
     start.setFullYear(start.getFullYear() - 5);
@@ -168,8 +189,8 @@ export function getPaymentOccurrencesForFilter(
     .flatMap(payment => getPaymentOccurrencesInRange(payment, toDateKey(start), toDateKey(end)))
     .filter(item => {
       if (filter === 'all') return true;
-      if (filter === 'overdue') return item.status === 'pending' && isPaymentOccurrenceOverdue(item.date, todayKey);
-      if (filter === 'pending') return item.status === 'pending' && item.date > todayKey;
+      if (filter === 'overdue') return item.status === 'pending' && isOccurrenceOverdue(item, now);
+      if (filter === 'pending') return item.status === 'pending' && !isOccurrenceOverdue(item, now);
       return item.status === 'paid';
     })
     .sort((a, b) => a.date.localeCompare(b.date) || a.payment.title.localeCompare(b.payment.title))
