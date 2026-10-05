@@ -661,6 +661,8 @@ describe('PaymentCalendarTab', () => {
         expect(within(list).getByText(title)).toBeTruthy();
       }
       expect(list.textContent).toContain('500 ₽');
+      expect(list.querySelector('span')?.className).toContain('first-letter:uppercase');
+      expect(list.querySelector('span')?.className).not.toContain('capitalize');
       expect(more.getAttribute('aria-expanded')).toBe('true');
 
       fireEvent.keyDown(document, { key: 'Escape' });

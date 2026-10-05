@@ -565,7 +565,7 @@ export default function PaymentCalendarTab({
                               const rect = event.currentTarget.getBoundingClientRect();
                               setOpenDayList(current => current?.dateKey === cell.key ? null : { dateKey: cell.key, anchor: rect });
                             }}
-                            className="self-start inline-flex items-center gap-1 rounded px-1 text-[9px] text-theme-muted hover:bg-theme-primary-light hover:text-theme-primary"
+                            className="self-start inline-flex items-center gap-1 rounded px-1 py-0.5 text-[9px] text-theme-muted hover:bg-theme-primary-light hover:text-theme-primary"
                           >
                             + ещё {hiddenCount}
                             <ChevronDown size={11} className={`transition-transform ${overflowOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
@@ -918,7 +918,7 @@ function CalendarDayListPopover({
       className="z-[90] max-h-[60vh] overflow-y-auto rounded-xl border border-theme-base bg-theme-surface p-2 shadow-xl"
     >
       <div className="mb-1 flex items-center justify-between gap-2 px-1">
-        <span className="text-[11px] font-bold capitalize text-theme-main">{title}</span>
+        <span className="text-[11px] font-bold text-theme-main first-letter:uppercase">{title}</span>
         <button type="button" aria-label="Закрыть список" onClick={onClose} className="rounded p-1 text-theme-muted hover:bg-theme-main"><X size={12} /></button>
       </div>
       <ul className="space-y-1">
