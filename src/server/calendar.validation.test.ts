@@ -44,6 +44,22 @@ describe("calendar route schemas accept the client's requests", () => {
     expect(calendarPlanSchema.safeParse(put.mock.calls[0][1]).success).toBe(true);
   });
 
+  it("planned transfer keeps its type and target account", async () => {
+    const post = captured("post");
+    await calendarApi.createPlan({
+      ...plan,
+      recurrence: "none",
+      weekdays: undefined,
+      transactionType: "transfer",
+      accountId: "card",
+      targetAccountId: "savings",
+    });
+
+    const parsed = calendarPlanSchema.safeParse(post.mock.calls[0][1]);
+    expect(parsed.success).toBe(true);
+    expect(parsed.data).toMatchObject({ transactionType: "transfer", accountId: "card", targetAccountId: "savings" });
+  });
+
   it("editor save", async () => {
     const post = captured("post");
     await calendarApi.applyEdit("payment-1", plan, { originalDate: "2026-10-12", scope: "single", newPlanId: "p-2" });
