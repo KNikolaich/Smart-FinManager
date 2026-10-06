@@ -57,6 +57,7 @@ model Account {
   transactions Transaction[] @relation("AccountTransactions")
   targetTrans  Transaction[] @relation("TargetAccountTransactions")
   calendarPlans CalendarPlan[]
+  calendarTransferPlans CalendarPlan[] @relation("CalendarPlanTargetAccount")
 
   @@index([userId])
   @@map("accounts")
@@ -160,8 +161,11 @@ model CalendarPlan {
   time            String?  @db.VarChar(5)
   recurrence      String   @default("none")
   weekdays        Json?
+  // "expense" | "income" | "transfer"; a transfer moves money from
+  // accountId to targetAccountId and has no category.
   transactionType String   @default("expense")
   accountId       String?
+  targetAccountId String?
   categoryId      String?
   color           String?
   disableFrom     DateTime? @db.Date
@@ -172,11 +176,13 @@ model CalendarPlan {
 
   user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   account     Account?               @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  targetAccount Account?             @relation("CalendarPlanTargetAccount", fields: [targetAccountId], references: [id], onDelete: SetNull)
   category    Category?              @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   occurrences CalendarOccurrence[]
 
   @@index([userId, archivedAt])
   @@index([accountId])
+  @@index([targetAccountId])
   @@index([categoryId])
   @@map("calendar_plans")
 }

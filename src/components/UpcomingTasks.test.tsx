@@ -226,7 +226,7 @@ describe('UpcomingTasks', () => {
     postSpy.mockRestore();
   });
 
-  it('loads calendar notes into the dashboard carousel in date order with planned payments', async () => {
+  it('loads calendar notes into the dashboard strip in date order with planned payments', async () => {
     const payments: PlannedPayment[] = [
       { ...makePayment(1), id: 'dashboard-plan-first', title: 'Первый план', date: '2026-09-22' },
       { ...makePayment(2), id: 'dashboard-plan-last', title: 'Последний план', date: '2026-09-24' },
@@ -250,18 +250,22 @@ describe('UpcomingTasks', () => {
     await waitFor(() => expect(screen.getByTestId('upcoming-note-card-dashboard-note-first')).toBeTruthy());
     const firstNoteCard = screen.getByTestId('upcoming-note-card-dashboard-note-first');
     expect(firstNoteCard.querySelector('strong')?.textContent).toContain('Первая записка');
-    expect(firstNoteCard.textContent).not.toContain('Записка календаря');
+    expect(firstNoteCard.dataset.planKind).toBe('note');
     const carousel = screen.getByTestId('upcoming-tasks-carousel');
-    const visibleStack = Array.from(carousel.querySelectorAll<HTMLElement>('[data-upcoming-item]'))
-      .map(item => `${item.dataset.upcomingDate}:${item.dataset.upcomingItem?.startsWith('note-') ? 'note' : 'payment'}`);
+    const strip = Array.from(carousel.querySelectorAll<HTMLElement>('[data-upcoming-item]'))
+      .map(item => `${item.dataset.upcomingDate}:${item.dataset.planKind}`);
 
-    expect(visibleStack).toEqual([
+    expect(strip).toEqual([
       '2026-09-21:note',
-      '2026-09-22:payment',
+      '2026-09-22:expense',
       '2026-09-23:note',
+      '2026-09-24:expense',
     ]);
-    expect((screen.getByTestId('button-upcoming-view') as HTMLButtonElement).disabled).toBe(false);
-    fireEvent.click(screen.getByTestId('button-upcoming-view'));
+    // A note has no "execute" action.
+    expect(firstNoteCard.textContent).not.toContain('Исполнить');
+
+    const noteKey = firstNoteCard.dataset.upcomingItem;
+    fireEvent.click(screen.getByTestId(`button-upcoming-card-view-${noteKey}`));
     expect(screen.getByTestId('dialog-calendar-note').textContent).toContain('Первая записка');
 
     fireEvent.click(screen.getByTestId('button-edit-calendar-note'));
@@ -278,76 +282,58 @@ describe('UpcomingTasks', () => {
     expect(postSpy).not.toHaveBeenCalled();
     expect(screen.queryByTestId('dialog-calendar-note')).toBeNull();
 
-    fireEvent.click(screen.getByTestId('button-upcoming-view'));
-    fireEvent.click(screen.getByTestId('button-delete-calendar-note'));
-    fireEvent.click(screen.getByTestId('button-confirm-delete-calendar-note'));
+    fireEvent.click(screen.getByTestId(`button-upcoming-card-delete-${noteKey}`));
+    expect(screen.getByTestId('dialog-plan-cleanup').textContent).toContain('Удалить записку?');
+    fireEvent.click(screen.getByTestId('button-upcoming-delete-confirm'));
 
     await waitFor(() => expect(deleteSpy).toHaveBeenCalledTimes(1));
     expect(deleteSpy).toHaveBeenCalledWith('/calendar/notes/dashboard-note-first');
-    expect(screen.queryByTestId('dialog-calendar-note')).toBeNull();
   });
 
-  it('keeps stacked carousel cards the same height and clamps banner text', () => {
-    const longPlan: PlannedPayment = {
-      ...makePayment(0),
-      id: 'long-plan',
-      title: 'Очень длинное название плана, которое не должно вытолкнуть соседние баннеры вниз',
-      categoryName: 'Очень длинное название категории для проверки многоточия',
-    };
-    const longNote: CalendarNote = {
-      id: 'long-note',
-      date: '2026-09-20',
-      text: 'Длинная записка, которая может занимать несколько строк и должна обрезаться после второй строки.',
-    };
-
-    render(
-      <UpcomingTasks
-        payments={[longPlan, makePayment(1)]}
-        notes={[longNote]}
-        variant="carousel"
-        startDate="2026-09-18"
-      />,
-    );
-
-    const cards = Array.from(
-      screen.getByTestId('upcoming-tasks-carousel').querySelectorAll<HTMLElement>('[data-upcoming-item]'),
-    );
-    expect(cards).toHaveLength(3);
-    expect(cards.every(card => card.className.includes('h-24'))).toBe(true);
-
-    const banner = screen.getByTestId('upcoming-banner-long-plan-2026-09-18');
-    const title = banner.querySelector('strong')?.querySelectorAll('span')[2];
-    const category = banner.querySelector('strong')?.nextElementSibling;
-    expect(title?.className).toContain('truncate');
-    expect(category?.className).toContain('truncate');
-
-    const noteCard = screen.getByTestId('upcoming-note-card-long-note');
-    expect(noteCard.querySelector('strong')?.className).toContain('line-clamp-2');
-  });
-
-  it('moves to the next stacked banner with a horizontal swipe', () => {
-    const payments: PlannedPayment[] = [
-      { ...makePayment(0), id: 'overdue', title: 'Просроченная задача', date: '2026-09-17' },
-      { ...makePayment(1), id: 'today', title: 'Сегодняшняя задача', date: '2026-09-19' },
+  it('lays plan cards out one after another, sized by their text, with a type tile', () => {
+    const plans: PlannedPayment[] = [
+      { ...makePayment(0), id: 'expense-plan', title: 'Очень длинное название плана, которое должно переноситься на две строки' },
+      { ...makePayment(1), id: 'income-plan', transactionType: 'income' },
+      {
+        ...makePayment(2),
+        id: 'transfer-plan',
+        title: 'На накопительный',
+        transactionType: 'transfer',
+        accountId: 'card',
+        accountName: 'Карта',
+        targetAccountId: 'savings',
+        targetAccountName: 'Накопительный',
+      },
     ];
-    render(<UpcomingTasks payments={payments} variant="carousel" startDate="2026-09-19" />);
 
+    render(<UpcomingTasks payments={plans} variant="carousel" startDate="2026-09-18" />);
+
+    const section = screen.getByTestId('upcoming-tasks');
+    expect(section.className).not.toContain('max-w-md');
     const carousel = screen.getByTestId('upcoming-tasks-carousel');
-    fireEvent.pointerDown(carousel, { clientX: 220, pointerId: 1 });
-    fireEvent.pointerMove(carousel, { clientX: 120, pointerId: 1 });
-    fireEvent.pointerUp(carousel, { clientX: 120, pointerId: 1 });
+    expect(carousel.className).toContain('overflow-x-auto');
+    expect(carousel.className).toContain('snap-x');
 
-    expect(screen.getByText('Сегодняшняя задача')).toBeTruthy();
+    const cards = Array.from(carousel.querySelectorAll<HTMLElement>('[data-upcoming-item]'));
+    expect(cards.map(card => card.dataset.planKind)).toEqual(['expense', 'income', 'transfer']);
+    expect(cards.every(card => card.className.includes('w-max') && card.className.includes('shrink-0'))).toBe(true);
+    expect(cards.every(card => card.className.includes('bg-theme-primary-light'))).toBe(true);
 
-    fireEvent.click(screen.getByTestId('button-upcoming-first'));
+    const tiles = cards.map(card => card.querySelector<HTMLElement>('[data-testid="upcoming-card-tile"]')!);
+    expect(tiles[0].className).toContain('bg-pink-100');
+    expect(tiles[1].className).toContain('bg-lime-100');
+    expect(tiles[2].className).toContain('bg-sky-100');
+    expect(tiles[0].textContent).toContain('0 ₽');
+    expect(tiles[2].textContent).toContain('200 ₽');
 
-    expect(screen.getByText('Просроченная задача')).toBeTruthy();
+    expect(cards[0].querySelector('strong')?.className).toContain('line-clamp-2');
+    expect(cards[2].textContent).toContain('Карта → Накопительный');
+    expect(cards[2].textContent).toContain('Исполнить');
   });
 
-  it('renders the calendar title and button in the dashboard carousel header', () => {
+  it('keeps the calendar title button and drops the old reset button', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 19, 12));
-    const onTaskClick = vi.fn();
     const onOpenCalendar = vi.fn();
     const payment = { ...makePayment(0), id: 'clickable-task', date: '2026-09-20' };
     render(
@@ -355,22 +341,54 @@ describe('UpcomingTasks', () => {
         payments={[payment]}
         variant="carousel"
         startDate="2026-09-19"
-        onTaskClick={onTaskClick}
         onOpenCalendar={onOpenCalendar}
       />,
     );
 
-    fireEvent.click(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20'));
-    fireEvent.click(screen.getByTestId('button-upcoming-first'));
     fireEvent.click(screen.getByTestId('button-upcoming-calendar'));
 
-    expect(onTaskClick).not.toHaveBeenCalled();
     expect(screen.getByText('Предстоящие планы')).toBeTruthy();
     expect(onOpenCalendar).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('upcoming-banner-clickable-task-2026-09-20').className).toContain('bg-pink-50');
+    expect(screen.queryByTestId('button-upcoming-first')).toBeNull();
+    expect(screen.getByTestId('upcoming-card-date').textContent).toBe('Завтра');
   });
 
-  it('places the current-plan view button before refresh and opens editing from the viewer', () => {
+  it('opens a preview with only today\'s and overdue open plans', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 19, 9));
+    const payments: PlannedPayment[] = [
+      { ...makePayment(0), id: 'overdue', title: 'Просроченная задача', date: '2026-09-17' },
+      { ...makePayment(1), id: 'today', title: 'Сегодняшняя задача', date: '2026-09-19', time: '18:00' },
+      { ...makePayment(2), id: 'future', title: 'Будущая задача', date: '2026-09-20' },
+      {
+        ...makePayment(3),
+        id: 'done-today',
+        title: 'Уже выполнена',
+        date: '2026-09-19',
+        paidDates: ['2026-09-19'],
+      },
+    ];
+    const notes: CalendarNote[] = [
+      { id: 'today-note', date: '2026-09-19', text: 'Записка на сегодня' },
+      { id: 'future-note', date: '2026-09-22', text: 'Записка на потом' },
+    ];
+    render(<UpcomingTasks payments={payments} notes={notes} variant="carousel" startDate="2026-09-19" />);
+
+    expect(screen.getByTestId('upcoming-today-count').textContent).toBe('3');
+    expect(screen.getByTestId('upcoming-today-count').className).toContain('bg-red-500');
+    fireEvent.click(screen.getByTestId('button-upcoming-today'));
+
+    const dialog = screen.getByTestId('dialog-upcoming-today');
+    expect(screen.getByTestId('upcoming-today-overdue').textContent).toContain('Просроченная задача');
+    const current = screen.getByTestId('upcoming-today-current');
+    expect(current.textContent).toContain('Сегодняшняя задача');
+    expect(current.textContent).toContain('Записка на сегодня');
+    expect(dialog.textContent).not.toContain('Будущая задача');
+    expect(dialog.textContent).not.toContain('Уже выполнена');
+    expect(dialog.textContent).not.toContain('Записка на потом');
+  });
+
+  it('opens the plan viewer from the card and edits from it', () => {
     const onEditTask = vi.fn();
     const payment = { ...makePayment(0), id: 'editable-task', note: 'Оплатить после получения счёта' };
     render(
@@ -382,11 +400,7 @@ describe('UpcomingTasks', () => {
       />,
     );
 
-    const viewButton = screen.getByTestId('button-upcoming-view');
-    const refreshButton = screen.getByTestId('button-upcoming-first');
-    expect(viewButton.compareDocumentPosition(refreshButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-
-    fireEvent.click(viewButton);
+    fireEvent.click(screen.getByTestId('button-upcoming-card-view-editable-task-2026-09-18'));
     expect(screen.getByTestId('dialog-plan-view').textContent).toContain('Оплатить после получения счёта');
     fireEvent.click(screen.getByTestId('button-plan-view-edit'));
     expect(onEditTask).toHaveBeenCalledWith(expect.objectContaining({
@@ -394,7 +408,7 @@ describe('UpcomingTasks', () => {
     }));
   });
 
-  it('lets the dashboard plan viewer delete and persist a plan', async () => {
+  it('deletes a plan from the card trash button', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 8, 24, 12));
     const payment = { ...makePayment(0), id: 'dashboard-delete', date: '2026-09-25' };
@@ -409,8 +423,7 @@ describe('UpcomingTasks', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('button-upcoming-view'));
-    fireEvent.click(screen.getByTestId('button-plan-view-delete'));
+    fireEvent.click(screen.getByTestId('button-upcoming-card-delete-dashboard-delete-2026-09-25'));
     expect(screen.getByTestId('dialog-plan-cleanup')).toBeTruthy();
     fireEvent.click(screen.getByTestId('button-upcoming-delete-confirm'));
 
@@ -877,7 +890,7 @@ describe('UpcomingTasks', () => {
     }));
   });
 
-  it('pulses overdue banners until the user taps them', () => {
+  it('pulses overdue cards until the user taps them', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 19, 12));
     const payment = { ...makePayment(0), id: 'overdue-pulse', date: '2026-09-19' };
@@ -885,7 +898,8 @@ describe('UpcomingTasks', () => {
 
     const banner = screen.getByTestId('upcoming-banner-overdue-pulse-2026-09-19');
     expect(banner.className).toContain('animate-overdue-pulse');
-    expect(banner.className).toContain('bg-red-100');
+    expect(banner.className).toContain('border-red-300');
+    expect(banner.textContent).toContain('Просрочено');
 
     fireEvent.click(banner);
 

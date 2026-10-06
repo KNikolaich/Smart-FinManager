@@ -185,7 +185,7 @@ async function restoreBackupInternal(
   ], { userId, dates: ["updatedAt"], json: ["data"] });
   const calendarPlans = normalizeRows(data.calendarPlans, [
     "id", "title", "amount", "date", "note", "time", "recurrence", "weekdays",
-    "transactionType", "accountId", "categoryId", "color", "disableFrom", "excludedDates", "archivedAt",
+    "transactionType", "accountId", "targetAccountId", "categoryId", "color", "disableFrom", "excludedDates", "archivedAt",
     "createdAt", "updatedAt",
   ], {
     userId,
@@ -551,6 +551,9 @@ function assertSnapshotReferences(data: BackupArchive["data"]) {
   for (const plan of data.calendarPlans) {
     if (plan.accountId && !accountIds.has(plan.accountId)) {
       throw new BackupServiceError("План календаря ссылается на отсутствующий счёт");
+    }
+    if (plan.targetAccountId && !accountIds.has(plan.targetAccountId)) {
+      throw new BackupServiceError("План календаря ссылается на отсутствующий счёт зачисления");
     }
     if (plan.categoryId && !categoryIds.has(plan.categoryId)) {
       throw new BackupServiceError("План календаря ссылается на отсутствующую категорию");

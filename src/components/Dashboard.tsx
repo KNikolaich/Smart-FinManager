@@ -6,6 +6,7 @@ import { AccountsSection } from './dashboard/AccountsSection';
 import { TransactionsSection } from './dashboard/TransactionsSection';
 import { GoalsSection } from './dashboard/GoalsSection';
 import UpcomingTasks from './UpcomingTasks';
+import { plannedTransactionDraft } from '../lib/plannedTransactionDraft';
 import { DEFAULT_DASHBOARD_WIDGET_ORDER } from '../lib/dashboardLayout';
 
 export type { DashboardWidgetId };
@@ -119,12 +120,7 @@ export default function Dashboard({
             onOpenCalendar={onOpenCalendar}
             onEditTask={onEditUpcomingTask}
             onRequestTransaction={(item, onCompleted) => onOpenAddTransaction?.({
-              type: item.payment.transactionType,
-              amount: item.payment.amount,
-              accountId: item.payment.accountId || '',
-              categoryId: item.payment.categoryId || '',
-              description: item.payment.title,
-              createdAt: new Date().toISOString(),
+              ...plannedTransactionDraft(item.payment, item.date),
               __onTransactionCreated: onCompleted,
             })}
           />
