@@ -4,7 +4,7 @@ import type { PlannedPayment } from '../types';
 
 const base: PlannedPayment = {
   id: 'plan-1',
-  title: 'Ηΰπολΰςΰ',
+  title: 'Π—Π°Ρ€ΠΏΠ»Π°Ρ‚Π°',
   amount: 5000,
   date: '2026-10-01',
   recurrence: 'monthly',

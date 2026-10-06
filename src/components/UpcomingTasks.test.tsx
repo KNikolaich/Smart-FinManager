@@ -749,6 +749,52 @@ describe('UpcomingTasks', () => {
     }));
   });
 
+  it('keeps earlier plans folded while scrolling and unfolds them only on tap', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 20, 12));
+    const earlier = { ...makePayment(0), id: 'earlier-done', date: '2026-09-10', paidDates: ['2026-09-10'] };
+    const upcoming = { ...makePayment(1), id: 'upcoming', date: '2026-09-22' };
+    render(<UpcomingTasks payments={[earlier, upcoming]} startDate="2026-09-20" />);
+
+    const list = screen.getByTestId('upcoming-tasks-list');
+    expect(list.className).not.toContain('overscroll-contain');
+    const loadPrevious = screen.getByTestId('button-upcoming-load-previous');
+    expect(loadPrevious.className).not.toContain('w-full');
+
+    fireEvent.scroll(list, { target: { scrollTop: 0 } });
+    expect(screen.queryByTestId('payment-row-earlier-done-2026-09-10')).toBeNull();
+
+    fireEvent.click(loadPrevious);
+    expect(screen.getByTestId('payment-row-earlier-done-2026-09-10')).toBeTruthy();
+  });
+
+  it('outlines every plan and note of the selected day and shows note text before its date', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 20, 12));
+    const first = { ...makePayment(1), id: 'day-first', date: '2026-09-22' };
+    const second = { ...makePayment(2), id: 'day-second', date: '2026-09-22', time: '15:00' };
+    const other = { ...makePayment(3), id: 'other-day', date: '2026-09-23' };
+    const note: CalendarNote = { id: 'day-note', date: '2026-09-22', text: 'Отложить на отпуск' };
+    render(
+      <UpcomingTasks
+        payments={[first, second, other]}
+        notes={[note]}
+        startDate="2026-09-22"
+        focusedDate="2026-09-22"
+        onNoteClick={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('payment-row-day-first-2026-09-22').dataset.selectedDay).toBe('true');
+    expect(screen.getByTestId('payment-row-day-second-2026-09-22').dataset.selectedDay).toBe('true');
+    expect(screen.getByTestId('payment-row-other-day-2026-09-23').dataset.selectedDay).toBeUndefined();
+    const noteRow = screen.getByTestId('calendar-note-row-day-note');
+    expect(noteRow.dataset.selectedDay).toBe('true');
+    const lines = Array.from(noteRow.querySelectorAll('span.block')).map(item => item.textContent);
+    expect(lines[0]).toBe('Отложить на отпуск');
+    expect(lines[1]).toContain('22 сент');
+  });
+
   it('focuses the nearest incomplete future plan when there are no overdue plans', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 20, 12));
