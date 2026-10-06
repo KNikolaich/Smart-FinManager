@@ -851,6 +851,12 @@ export default function UpcomingTasks({
             onEditTask(item);
           } : undefined}
           onDelete={onDeleteTask || variant === 'carousel' ? () => requestDelete(viewItem) : undefined}
+          onExecute={variant === 'carousel' || onToggleTask ? () => {
+            const item = viewItem;
+            setViewItem(null);
+            if (variant === 'carousel') executeOccurrence(item);
+            else void toggleLocally(item);
+          } : undefined}
         />
       )}
       {cleanupConfirmation && (
@@ -940,8 +946,8 @@ function PlanCard({
       className={`flex gap-3 rounded-2xl border p-2.5 pr-3 transition-colors ${layout === 'strip'
         ? 'w-max min-w-[220px] max-w-[min(85%,360px)] shrink-0 snap-start'
         : 'w-full'} ${overdue
-        ? `border-red-300 bg-theme-primary-light${pulsing ? ' animate-overdue-pulse' : ''}`
-        : 'border-transparent bg-theme-primary-light'} ${completed ? 'opacity-70' : ''}`}
+        ? `border-red-300 bg-theme-primary-pastel${pulsing ? ' animate-overdue-pulse' : ''}`
+        : 'border-transparent bg-theme-primary-pastel'} ${completed ? 'opacity-70' : ''}`}
       data-testid={item.kind === 'note'
         ? `upcoming-note-card-${item.note.id}`
         : `upcoming-banner-${item.occurrence.payment.id}-${item.occurrence.date}`}
@@ -1109,13 +1115,16 @@ function PlanViewDialog({
   onClose,
   onEdit,
   onDelete,
+  onExecute,
 }: {
   item: PlannedPaymentOccurrence;
   onClose: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onExecute?: () => void;
 }) {
   const payment = item.payment;
+  const executed = Boolean(item.transactionId);
   return (
     <div
       className="fixed inset-0 z-[118] flex items-center justify-center bg-black/45 p-3 sm:p-5"
@@ -1165,21 +1174,45 @@ function PlanViewDialog({
             </div>
           )}
         </div>
-        <footer className="mt-5 flex flex-wrap justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-xl bg-theme-main px-3 py-2 text-xs font-bold text-theme-muted">
-            Закрыть
-          </button>
-          {onEdit && (
-            <button type="button" data-testid="button-plan-view-edit" onClick={onEdit} className="inline-flex items-center gap-1 rounded-xl bg-theme-primary px-3 py-2 text-xs font-bold text-white">
-              <Pencil size={13} />
-              Редактировать
-            </button>
-          )}
+        <footer className="mt-5 flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {onExecute && (
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={executed}
+                disabled={executed}
+                data-testid="button-plan-view-execute"
+                title={executed ? 'Операция уже создана' : 'Создать операцию по плану'}
+                onClick={onExecute}
+                className="inline-flex items-center gap-2 rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-xs font-bold text-theme-main hover:border-theme-primary disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className={`flex h-4 w-4 items-center justify-center rounded border ${executed ? 'border-theme-primary bg-theme-primary text-white' : 'border-theme-base bg-theme-surface'}`}>
+                  {executed && <Check size={11} strokeWidth={3} aria-hidden="true" />}
+                </span>
+                {executed ? 'Исполнено' : 'Исполнить'}
+              </button>
+            )}
+            {onEdit && (
+              <button type="button" data-testid="button-plan-view-edit" onClick={onEdit} className="inline-flex items-center gap-1 rounded-xl bg-theme-primary px-3 py-2 text-xs font-bold text-white">
+                <Pencil size={13} />
+                Редактировать
+              </button>
+            )}
+          </div>
           {onDelete && (
-            <button type="button" data-testid="button-plan-view-delete" onClick={onDelete} className="inline-flex items-center gap-1 rounded-xl bg-rose-600 px-3 py-2 text-xs font-bold text-white">
-              <Trash2 size={13} />
-              Удалить
-            </button>
+            <div className="ml-auto flex items-center border-l border-theme-base pl-2">
+              <button
+                type="button"
+                aria-label="Удалить план"
+                title="Удалить план"
+                data-testid="button-plan-view-delete"
+                onClick={onDelete}
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-rose-600 hover:bg-rose-50"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
           )}
         </footer>
       </section>
