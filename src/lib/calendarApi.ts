@@ -16,7 +16,7 @@ export const CALENDAR_CACHE_KEY = 'api_cache_/plan-grid/calendar';
 /** Fields of a plan the user edits; everything else is owned by the server. */
 const TEMPLATE_FIELDS = [
   'title', 'amount', 'date', 'note', 'time', 'recurrence', 'weekdays',
-  'transactionType', 'accountId', 'categoryId', 'color', 'disableFrom',
+  'transactionType', 'accountId', 'targetAccountId', 'categoryId', 'color', 'disableFrom',
 ] as const;
 
 export type CalendarPlanTemplate = Pick<PlannedPayment, 'id'> & Partial<Pick<PlannedPayment, typeof TEMPLATE_FIELDS[number]>>;

@@ -55,6 +55,7 @@ import { getTodayKey } from '../lib/plannedPaymentOccurrences';
 import { applyCalendarPlanEdit, CalendarPlanEditOptions, createCalendarPlanId, isRecurringPlan } from '../lib/calendarPlanEditing';
 import { cacheCalendarSnapshot, calendarApi } from '../lib/calendarApi';
 import { applyCalendarPlanTrash, applyPastPlanCleanup } from '../lib/calendarPlanCleanup';
+import { plannedTransactionDraft } from '../lib/plannedTransactionDraft';
 import PaymentCalendarTab from './PaymentCalendarTab';
 
 interface PlanPageProps {
@@ -511,16 +512,8 @@ export default function PlanPage({
     date: string,
     onCreated?: (transactionId: string) => void,
   ) => {
-    const transactionType = payment.transactionType || 'expense';
     onOpenAddTransaction?.({
-      type: transactionType,
-      amount: payment.amount,
-      accountId: payment.accountId || '',
-      categoryId: payment.categoryId || '',
-      description: payment.title,
-      createdAt: new Date().toISOString(),
-      calendarPlanId: payment.id,
-      calendarDate: date,
+      ...plannedTransactionDraft(payment, date),
       __onTransactionCreated: (transaction?: { id?: string }) => {
         if (transaction?.id) onCreated?.(transaction.id);
       },

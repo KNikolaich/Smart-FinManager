@@ -1,12 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, Check, CircleDashed, Copy, Eraser, Eye, Hand, Pencil, Plus, RefreshCw, ScrollText, StickyNote, Trash2, X } from 'lucide-react';
+import { ArrowLeftRight, CalendarClock, CalendarDays, Check, CircleDashed, Copy, Eraser, Eye, Hand, Pencil, Plus, ScrollText, StickyNote, Trash2, X } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { api } from '../lib/api';
 import { cacheCalendarSnapshot, calendarApi } from '../lib/calendarApi';
 import { useMinuteClock } from '../hooks/useMinuteClock';
 import { CalendarNote, PlannedPayment, PlannedPaymentRecurrence } from '../types';
 import CalendarNoteDialog from './CalendarNoteDialog';
-import { mergeCalendarDashboardItems, mergeCalendarPlanItems } from '../lib/calendarDashboardItems';
+import { CalendarDashboardItem, mergeCalendarDashboardItems, mergeCalendarPlanItems } from '../lib/calendarDashboardItems';
 import {
   getTodayKey,
   getOutstandingPaymentOccurrences,
@@ -85,7 +85,6 @@ export default function UpcomingTasks({
   const [localNotes, setLocalNotes] = useState<CalendarNote[] | null>(null);
   const [loading, setLoading] = useState(payments === undefined);
   const [error, setError] = useState<string | null>(null);
-  const [carouselIndex, setCarouselIndex] = useState(0);
   const [carouselLimit, setCarouselLimit] = useState(limit);
   const [listWindow, setListWindow] = useState({ start: 0, end: 50 });
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
@@ -104,10 +103,8 @@ export default function UpcomingTasks({
   >(null);
   const [cleanupError, setCleanupError] = useState<string | null>(null);
   const [isCleaningUp, setIsCleaningUp] = useState(false);
-  const [dragOffset, setDragOffset] = useState(0);
   const [quietOverdue, setQuietOverdue] = useState<Set<string>>(new Set());
-  const pointerStartX = useRef<number | null>(null);
-  const suppressCarouselClick = useRef(false);
+  const [todayPreviewOpen, setTodayPreviewOpen] = useState(false);
   const previousStartDate = useRef(startDate);
   const listRef = useRef<HTMLDivElement | null>(null);
   const previousListHeight = useRef<number | null>(null);
@@ -207,25 +204,34 @@ export default function UpcomingTasks({
     () => variant === 'list' ? mergeCalendarPlanItems(occurrences, sortedCalendarNotes) : [],
     [occurrences, sortedCalendarNotes, variant],
   );
-  const activeCarouselIndex = carouselItems.length === 0 ? 0 : Math.min(carouselIndex, carouselItems.length - 1);
-  const activeCarouselItem = carouselItems[activeCarouselIndex];
+  // Today's preview: everything still open for today plus the overdue tail.
+  const todayItems = useMemo(
+    () => variant === 'carousel'
+      ? mergeCalendarPlanItems(
+        getOutstandingPaymentOccurrences(sourcePayments, todayKey, Number.MAX_SAFE_INTEGER)
+          .filter(item => item.date <= todayKey),
+        sortedCalendarNotes.filter(note => note.date === todayKey),
+      )
+      : [],
+    [sourcePayments, sortedCalendarNotes, todayKey, variant],
+  );
   const focusedOccurrence = useMemo(
     () => variant === 'carousel'
-      ? activeCarouselItem?.kind === 'payment' ? activeCarouselItem.occurrence : undefined
+      ? undefined
       : occurrences.find(item => occurrenceKey(item) === focusedKey)
         || (focusedDate && focusedDate !== getTodayKey()
           ? occurrences.find(item => item.date === focusedDate)
           : undefined)
         || getDefaultFocusOccurrence(occurrences, startDate)
         || occurrences[0],
-    [activeCarouselItem, occurrences, focusedDate, focusedKey, startDate, variant],
+    [occurrences, focusedDate, focusedKey, startDate, variant],
   );
   const focusedCalendarNote = useMemo(
     () => variant === 'carousel'
-      ? activeCarouselItem?.kind === 'note' ? activeCarouselItem.note : undefined
+      ? undefined
       : sortedCalendarNotes.find(note => note.id === focusedNoteId
         && (!focusedDate || note.date === focusedDate)),
-    [activeCarouselItem, variant, sortedCalendarNotes, focusedNoteId, focusedDate],
+    [variant, sortedCalendarNotes, focusedNoteId, focusedDate],
   );
   const focusedIsCompleted = Boolean(
     focusedOccurrence
@@ -243,24 +249,12 @@ export default function UpcomingTasks({
       setFocusedKey(next ? occurrenceKey(next) : null);
       return;
     }
-    if (variant === 'carousel') {
-      if (activeCarouselItem?.kind === 'payment') {
-        setFocusedNoteId(null);
-        setFocusedKey(occurrenceKey(activeCarouselItem.occurrence));
-      } else if (activeCarouselItem?.kind === 'note') {
-        setFocusedNoteId(activeCarouselItem.note.id);
-        setFocusedKey(activeCarouselItem.key);
-      } else {
-        setFocusedNoteId(null);
-        setFocusedKey(null);
-      }
-      return;
-    }
+    if (variant === 'carousel') return;
     if (!occurrences.some(item => occurrenceKey(item) === focusedKey)) {
       const next = getDefaultFocusOccurrence(occurrences, startDate);
       setFocusedKey(next ? occurrenceKey(next) : null);
     }
-  }, [activeCarouselIndex, activeCarouselItem, occurrences, startDate, variant, focusedKey]);
+  }, [occurrences, startDate, variant, focusedKey]);
 
   useEffect(() => {
     if (variant !== 'list') return;
@@ -303,12 +297,6 @@ export default function UpcomingTasks({
     }
   }, [focusedKey, listWindow.start, listWindow.end, occurrences.length, variant]);
 
-  useEffect(() => {
-    if (carouselIndex >= carouselItems.length && carouselItems.length > 0) {
-      setCarouselIndex(carouselItems.length - 1);
-    }
-  }, [carouselIndex, carouselItems.length]);
-
   const toggleLocally = async (item: PlannedPaymentOccurrence) => {
     if (item.transactionId) return;
     if (onToggleTask) {
@@ -329,20 +317,14 @@ export default function UpcomingTasks({
     }
   };
 
-  const moveCarousel = (direction: -1 | 1) => {
-    setCarouselIndex(index => {
-      if (carouselItems.length < 2) return index;
-      const nextIndex = Math.max(0, Math.min(index + direction, carouselItems.length - 1));
-      if (direction === 1 && nextIndex >= carouselItems.length - 2) {
-        setCarouselLimit(current => current + limit);
-      }
-      return nextIndex;
-    });
-  };
-
-  const resetCarousel = () => {
-    setCarouselIndex(0);
-    setCarouselLimit(limit);
+  // The strip grows lazily: when the user scrolls close to its right edge,
+  // the next page of plans is merged in.
+  const handleCarouselScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    const element = event.currentTarget;
+    if (carouselItems.length < carouselLimit) return;
+    if (element.scrollWidth - element.scrollLeft - element.clientWidth < 240) {
+      setCarouselLimit(current => current + limit);
+    }
   };
 
   const loadMore = () => {
@@ -498,8 +480,9 @@ export default function UpcomingTasks({
           }
         }
       } else if (cleanupConfirmation.type === 'note') {
-        if (!onDeleteNote) throw new Error('Calendar note deletion is unavailable');
-        await onDeleteNote(cleanupConfirmation.note);
+        const noteId = cleanupConfirmation.note.id;
+        if (onDeleteNote) await onDeleteNote(cleanupConfirmation.note);
+        else await persistNotes(sourceNotes.filter(note => note.id !== noteId));
       } else if (cleanupConfirmation.noteIds.length > 0) {
         await onCleanupPastTasks?.(cleanupConfirmation.paymentIds, cleanupConfirmation.noteIds);
       } else {
@@ -514,34 +497,17 @@ export default function UpcomingTasks({
     }
   };
 
-  const handleCarouselPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    pointerStartX.current = event.clientX;
-    suppressCarouselClick.current = false;
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-  };
-
-  const handleCarouselPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (pointerStartX.current === null) return;
-    const offset = event.clientX - pointerStartX.current;
-    setDragOffset(offset);
-  };
-
-  const handleCarouselPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (pointerStartX.current === null) return;
-    const offset = event.clientX - pointerStartX.current;
-    if (Math.abs(offset) >= 50) {
-      moveCarousel(offset < 0 ? 1 : -1);
-      suppressCarouselClick.current = true;
-    }
-    pointerStartX.current = null;
-    setDragOffset(0);
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
-  };
-
   const handleCarouselCheckbox = (item: PlannedPaymentOccurrence) => {
     if (item.transactionId) return;
     if (onRequestTransaction) {
-      onRequestTransaction(item, () => toggleLocally(item));
+      // The created operation is linked to this occurrence on the server
+      // (calendarPlanId + calendarDate), so only the local copy is updated
+      // here; the socket refresh brings the stored link.
+      onRequestTransaction(item, () => {
+        const nextPayments = updatePaymentStatus(sourcePayments, item);
+        if (payments !== undefined) setLocalPayments(nextPayments);
+        else setLoadedPayments(nextPayments);
+      });
       return;
     }
     void toggleLocally(item);
@@ -558,8 +524,37 @@ export default function UpcomingTasks({
     });
   };
 
+  const executeOccurrence = (item: PlannedPaymentOccurrence) => {
+    quietOverdueOccurrence(item);
+    handleCarouselCheckbox(item);
+  };
+
+  const renderPlanCard = (item: CalendarDashboardItem, layout: 'strip' | 'stack' = 'strip') => {
+    const occurrence = item.kind === 'payment' ? item.occurrence : undefined;
+    const overdue = Boolean(occurrence && isOccurrenceOverdue(occurrence, now));
+    return (
+      <PlanCard
+        key={item.key}
+        item={item}
+        layout={layout}
+        overdue={overdue}
+        pulsing={overdue && !quietOverdue.has(item.key)}
+        onSelect={() => occurrence && quietOverdueOccurrence(occurrence)}
+        onView={() => {
+          if (item.kind === 'note') openNoteDialog(item.note);
+          else {
+            quietOverdueOccurrence(item.occurrence);
+            setViewItem(item.occurrence);
+          }
+        }}
+        onExecute={occurrence ? () => executeOccurrence(occurrence) : undefined}
+        onDelete={() => item.kind === 'note' ? requestNoteDelete(item.note) : requestDelete(item.occurrence)}
+      />
+    );
+  };
+
   return (
-    <section className={`h-full w-full ${variant === 'carousel' ? 'max-w-md' : ''} rounded-2xl border border-theme-base bg-theme-surface p-4 ${className || ''}`} data-testid="upcoming-tasks">
+    <section className={`h-full w-full rounded-2xl border border-theme-base bg-theme-surface p-4 ${className || ''}`} data-testid="upcoming-tasks">
       <header className="flex items-center justify-between gap-2">
         {variant === 'carousel' && (
           onOpenCalendar ? (
@@ -584,29 +579,21 @@ export default function UpcomingTasks({
           {variant === 'carousel' && (
             <button
               type="button"
-              aria-label="Открыть выбранный план или записку"
-              title="Посмотреть план, записку и действия"
-              data-testid="button-upcoming-view"
-              disabled={!focusedOccurrence && !focusedCalendarNote}
-              onClick={() => {
-                if (focusedCalendarNote) openNoteDialog(focusedCalendarNote);
-                else if (focusedOccurrence) setViewItem(focusedOccurrence);
-              }}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-theme-muted hover:bg-theme-main disabled:opacity-30 disabled:pointer-events-none"
+              aria-label="Показать планы на сегодня и просроченные"
+              title="Сегодня и просрочка"
+              data-testid="button-upcoming-today"
+              onClick={() => setTodayPreviewOpen(true)}
+              className="relative w-8 h-8 rounded-lg flex items-center justify-center text-theme-muted hover:bg-theme-main hover:text-theme-primary active:scale-95 transition-all"
             >
-              <Eye size={15} />
-            </button>
-          )}
-          {variant === 'carousel' && (
-            <button
-              type="button"
-              aria-label="Показать первую запись"
-              title="Показать первую запись"
-              data-testid="button-upcoming-first"
-              onClick={resetCarousel}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-theme-muted hover:bg-theme-main"
-            >
-              <RefreshCw size={15} />
+              <CalendarClock size={16} />
+              {todayItems.length > 0 && (
+                <span
+                  data-testid="upcoming-today-count"
+                  className={`absolute -top-0.5 -right-0.5 min-w-4 h-4 rounded-full px-1 text-[9px] font-bold leading-4 text-white ${todayItems.some(item => item.kind === 'payment' && isOccurrenceOverdue(item.occurrence, now)) ? 'bg-red-500' : 'bg-theme-primary'}`}
+                >
+                  {todayItems.length}
+                </span>
+              )}
             </button>
           )}
           {onAdd && (
@@ -712,127 +699,14 @@ export default function UpcomingTasks({
           Предстоящих задач нет
         </div>
       ) : variant === 'carousel' ? (
-        <div
-          className="relative min-h-[142px] max-md:min-h-[116px] pt-3 touch-pan-y select-none"
-          data-testid="upcoming-tasks-carousel"
-          onPointerDown={handleCarouselPointerDown}
-          onPointerMove={handleCarouselPointerMove}
-          onPointerUp={handleCarouselPointerUp}
-          onPointerCancel={handleCarouselPointerUp}
-        >
-          {[0, 1, 2].map(stackIndex => {
-            const item = carouselItems[activeCarouselIndex + stackIndex];
-            if (!item) return null;
-            const isActive = stackIndex === 0;
-            const occurrence = item.kind === 'payment' ? item.occurrence : undefined;
-            const isPulsing = Boolean(
-              isActive && occurrence && isOccurrenceOverdue(occurrence, now) && !quietOverdue.has(item.key),
-            );
-            const stackStyle = isActive
-              ? { transform: `translateX(${dragOffset}px)`, zIndex: 30 }
-              : { transform: `translateY(${stackIndex * 8}px) scale(${1 - stackIndex * 0.04})`, zIndex: 30 - stackIndex };
-            const cardTone = item.kind === 'note'
-              ? isActive
-                ? 'border-amber-200 bg-amber-50 text-amber-950'
-                : 'border-theme-base bg-theme-main text-theme-muted'
-              : isActive
-                ? carouselTone(item.occurrence, isPulsing, now)
-                : 'border-theme-base bg-theme-main text-theme-muted';
-            return (
-              <article
-                key={item.key}
-                className={`absolute inset-x-0 top-3 h-24 overflow-hidden rounded-2xl border p-4 transition-transform ${cardTone}`}
-                style={stackStyle}
-                data-testid={item.kind === 'note'
-                  ? `upcoming-note-card-${item.note.id}`
-                  : isActive
-                    ? `upcoming-banner-${item.occurrence.payment.id}-${item.occurrence.date}`
-                    : undefined}
-                data-upcoming-item={item.key}
-                data-upcoming-date={item.date}
-                aria-hidden={!isActive}
-                onClick={() => {
-                  if (suppressCarouselClick.current) {
-                    suppressCarouselClick.current = false;
-                    return;
-                  }
-                  if (!isActive) return;
-                  if (item.kind === 'note') {
-                    setFocusedNoteId(item.note.id);
-                    setFocusedKey(item.key);
-                  } else {
-                    quietOverdueOccurrence(item.occurrence);
-                    setFocusedNoteId(null);
-                    setFocusedKey(occurrenceKey(item.occurrence));
-                  }
-                }}
-              >
-                {item.kind === 'note' ? (
-                  <div className="flex items-start gap-3">
-                    <ScrollText size={17} className="mt-0.5 shrink-0 text-amber-700" aria-hidden="true" />
-                    <div className="min-w-0 flex-1">
-                      <span className="block text-[10px] uppercase tracking-wider font-bold opacity-70">
-                        {carouselDateLabel(item.note.date, undefined, now)}
-                      </span>
-                      <strong
-                        className="mt-1 block overflow-hidden whitespace-pre-wrap break-words text-sm sm:text-base leading-tight line-clamp-2"
-                        title={item.note.text}
-                      >
-                        {item.note.text}
-                      </strong>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-start gap-3">
-                    {isActive && (
-                      <button
-                        type="button"
-                        aria-label={item.occurrence.transactionId ? `Операция уже создана: ${item.occurrence.payment.title}` : `Отметить задачу: ${item.occurrence.payment.title}`}
-                        title={item.occurrence.transactionId ? 'Операция уже создана' : 'Создать операцию'}
-                        disabled={Boolean(item.occurrence.transactionId)}
-                        onPointerDown={event => event.stopPropagation()}
-                        onPointerUp={event => event.stopPropagation()}
-                        onClick={event => {
-                          event.stopPropagation();
-                          quietOverdueOccurrence(item.occurrence);
-                          handleCarouselCheckbox(item.occurrence);
-                        }}
-                        data-testid={`button-toggle-payment-${item.occurrence.payment.id}-${item.occurrence.date}`}
-                        className={`mt-0.5 w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 disabled:cursor-not-allowed ${item.occurrence.transactionId ? 'border-theme-base bg-theme-main text-theme-muted' : 'border-current/30 bg-theme-surface/70'}`}
-                      >
-                        {item.occurrence.transactionId && <Check size={14} strokeWidth={3} aria-hidden="true" />}
-                      </button>
-                    )}
-                    <div
-                      tabIndex={isActive ? 0 : -1}
-                      className="min-w-0 flex-1 text-left"
-                    >
-                      <span className="block text-[10px] uppercase tracking-wider font-bold opacity-70">
-                        {carouselDateLabel(item.occurrence.date, item.occurrence.payment.time, now)}
-                        {item.occurrence.payment.time && <> · <time>{item.occurrence.payment.time}</time></>}
-                      </span>
-                      <strong className="mt-1 flex min-w-0 items-center gap-1 text-sm sm:text-base leading-tight">
-                        <span className="shrink-0 whitespace-nowrap">{formatMoney(item.occurrence.payment.amount)}</span>
-                        <span className="shrink-0" aria-hidden="true">·</span>
-                        <span className="min-w-0 flex-1 truncate" title={item.occurrence.payment.title}>
-                          {item.occurrence.payment.title}
-                        </span>
-                        {item.occurrence.payment.note?.trim() && (
-                          <StickyNote size={13} className="shrink-0 text-amber-700" aria-label="У плана есть записка" />
-                        )}
-                      </strong>
-                      <span
-                        className="mt-1 block truncate text-xs opacity-75 leading-snug"
-                        title={`${item.occurrence.payment.categoryName || 'Без категории'} · ${recurrenceLabel(item.occurrence.payment)}`}
-                      >
-                        {item.occurrence.payment.categoryName || 'Без категории'} · {recurrenceLabel(item.occurrence.payment)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </article>
-            );
-          })}
+        <div className="mt-3 -mx-2 overflow-hidden">
+          <div
+            className="flex items-stretch gap-3 overflow-x-auto px-2 pb-1 no-scrollbar snap-x snap-mandatory overscroll-x-contain"
+            data-testid="upcoming-tasks-carousel"
+            onScroll={handleCarouselScroll}
+          >
+            {carouselItems.map(item => renderPlanCard(item))}
+          </div>
         </div>
       ) : (
           <div ref={listRef} className="max-h-[min(65vh,620px)] overflow-y-auto no-scrollbar overscroll-contain touch-pan-y space-y-2 pt-3 pr-1" onScroll={handleListScroll} data-testid="upcoming-tasks-list">
@@ -938,6 +812,14 @@ export default function UpcomingTasks({
           )}
         </div>
       )}
+      {todayPreviewOpen && (
+        <TodayPlansDialog
+          todayKey={todayKey}
+          items={todayItems}
+          renderItem={item => renderPlanCard(item, 'stack')}
+          onClose={() => setTodayPreviewOpen(false)}
+        />
+      )}
       {noteDialogMode && editingNote && (
         <CalendarNoteDialog
           mode={noteDialogMode}
@@ -991,6 +873,232 @@ export default function UpcomingTasks({
   );
 }
 
+type PlanKind = 'expense' | 'income' | 'transfer' | 'note';
+
+function planKind(item: CalendarDashboardItem): PlanKind {
+  if (item.kind === 'note') return 'note';
+  const type = item.occurrence.payment.transactionType;
+  return type === 'income' || type === 'transfer' ? type : 'expense';
+}
+
+const PLAN_KIND_TILE: Record<PlanKind, string> = {
+  expense: 'bg-pink-100 text-pink-800',
+  income: 'bg-lime-100 text-lime-800',
+  transfer: 'bg-sky-100 text-blue-600',
+  note: 'bg-amber-100 text-amber-800',
+};
+
+const PLAN_KIND_LABEL: Record<PlanKind, string> = {
+  expense: 'Расход',
+  income: 'Доход',
+  transfer: 'Перевод',
+  note: 'Записка',
+};
+
+/**
+ * One dashboard plan card: a coloured tile on the left (amount of the plan,
+ * or a scroll for a standalone note) and the title, date and actions on the
+ * right. In the strip the card is only as wide as its text, so the next card
+ * peeks out on the right.
+ */
+function PlanCard({
+  item,
+  layout,
+  overdue,
+  pulsing,
+  onSelect,
+  onView,
+  onExecute,
+  onDelete,
+}: {
+  item: CalendarDashboardItem;
+  layout: 'strip' | 'stack';
+  overdue: boolean;
+  pulsing: boolean;
+  onSelect: () => void;
+  onView: () => void;
+  onExecute?: () => void;
+  onDelete: () => void;
+}) {
+  const kind = planKind(item);
+  const occurrence = item.kind === 'payment' ? item.occurrence : undefined;
+  const payment = occurrence?.payment;
+  const title = item.kind === 'note' ? item.note.text : item.occurrence.payment.title;
+  const completed = Boolean(occurrence && isCompletedOccurrence(occurrence));
+  const executed = Boolean(occurrence?.transactionId);
+  const dateLine = item.kind === 'note'
+    ? formatTaskDate(item.note.date)
+    : [
+      overdue ? `Просрочено · ${formatTaskDate(item.occurrence.date)}` : formatTaskDate(item.occurrence.date),
+      item.occurrence.payment.time,
+      item.occurrence.payment.recurrence !== 'none' ? recurrenceLabel(item.occurrence.payment) : undefined,
+    ].filter(Boolean).join(' · ');
+  const stopPointer = (event: React.SyntheticEvent) => event.stopPropagation();
+
+  return (
+    <article
+      className={`flex gap-3 rounded-2xl border p-2.5 pr-3 transition-colors ${layout === 'strip'
+        ? 'w-max min-w-[220px] max-w-[min(85%,360px)] shrink-0 snap-start'
+        : 'w-full'} ${overdue
+        ? `border-red-300 bg-theme-primary-light${pulsing ? ' animate-overdue-pulse' : ''}`
+        : 'border-transparent bg-theme-primary-light'} ${completed ? 'opacity-70' : ''}`}
+      data-testid={item.kind === 'note'
+        ? `upcoming-note-card-${item.note.id}`
+        : `upcoming-banner-${item.occurrence.payment.id}-${item.occurrence.date}`}
+      data-upcoming-item={item.key}
+      data-upcoming-date={item.date}
+      data-plan-kind={kind}
+      onClick={onSelect}
+    >
+      <div
+        className={`flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-center ${PLAN_KIND_TILE[kind]}`}
+        data-testid="upcoming-card-tile"
+        title={PLAN_KIND_LABEL[kind]}
+      >
+        {item.kind === 'note' ? (
+          <ScrollText size={28} aria-label="Записка" />
+        ) : (
+          <>
+            {kind === 'transfer' && <ArrowLeftRight size={13} aria-hidden="true" />}
+            <span className={`max-w-full rounded-full bg-white/70 py-0.5 font-bold leading-tight tabular-nums whitespace-nowrap ${formatTileAmount(payment!.amount).length > 8 ? 'px-1 text-[11px]' : 'px-1.5 text-[13px]'}`}>
+              {formatTileAmount(payment!.amount)}
+            </span>
+            <span className="sr-only">{PLAN_KIND_LABEL[kind]}</span>
+          </>
+        )}
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <strong
+          className="block overflow-hidden whitespace-pre-wrap break-words text-sm font-semibold leading-snug text-theme-main line-clamp-2"
+          title={title}
+        >
+          {title}
+          {payment?.note?.trim() && (
+            <StickyNote size={12} className="ml-1 inline-block align-[-1px] text-amber-700" aria-label="У плана есть записка" />
+          )}
+        </strong>
+        <span
+          className={`mt-0.5 block truncate text-xs ${overdue ? 'font-semibold text-red-600' : 'text-theme-muted'}`}
+          data-testid="upcoming-card-date"
+        >
+          {dateLine}
+          {kind === 'transfer' && payment?.accountName && payment.targetAccountName
+            ? ` · ${payment.accountName} → ${payment.targetAccountName}`
+            : ''}
+        </span>
+        <div className="mt-auto flex items-center gap-1 pt-2" onPointerDown={stopPointer}>
+          <button
+            type="button"
+            aria-label={item.kind === 'note' ? 'Посмотреть записку' : `Посмотреть план: ${title}`}
+            title="Посмотреть"
+            data-testid={`button-upcoming-card-view-${item.key}`}
+            onClick={event => {
+              event.stopPropagation();
+              onView();
+            }}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-theme-surface text-theme-muted hover:text-theme-primary active:scale-95"
+          >
+            <Eye size={15} />
+          </button>
+          {occurrence && onExecute && (
+            <button
+              type="button"
+              aria-label={executed ? `Операция уже создана: ${title}` : `Исполнить план: ${title}`}
+              title={executed ? 'Операция уже создана' : 'Создать операцию по плану'}
+              disabled={executed}
+              data-testid={`button-toggle-payment-${occurrence.payment.id}-${occurrence.date}`}
+              onClick={event => {
+                event.stopPropagation();
+                onExecute();
+              }}
+              className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-theme-surface px-3 text-xs font-bold text-theme-main hover:text-theme-primary active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {executed && <Check size={13} strokeWidth={3} aria-hidden="true" />}
+              {executed ? 'Исполнено' : 'Исполнить'}
+            </button>
+          )}
+          <button
+            type="button"
+            aria-label={item.kind === 'note' ? 'Удалить записку' : `Удалить план: ${title}`}
+            title="Удалить"
+            data-testid={`button-upcoming-card-delete-${item.key}`}
+            onClick={event => {
+              event.stopPropagation();
+              onDelete();
+            }}
+            className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-rose-600 hover:bg-rose-50 active:scale-95"
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function TodayPlansDialog({
+  todayKey,
+  items,
+  renderItem,
+  onClose,
+}: {
+  todayKey: string;
+  items: CalendarDashboardItem[];
+  renderItem: (item: CalendarDashboardItem) => React.ReactNode;
+  onClose: () => void;
+}) {
+  const overdueItems = items.filter(item => item.date < todayKey);
+  const todaysItems = items.filter(item => item.date === todayKey);
+  return (
+    <div
+      className="fixed inset-0 z-[105] flex items-center justify-center bg-black/45 p-3 sm:p-5"
+      role="presentation"
+      onMouseDown={event => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        className="flex w-full max-w-md max-h-[min(88dvh,760px)] flex-col rounded-2xl border border-theme-base bg-theme-surface p-4 shadow-2xl sm:p-5"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="today-plans-title"
+        data-testid="dialog-upcoming-today"
+        onMouseDown={event => event.stopPropagation()}
+      >
+        <header className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 id="today-plans-title" className="text-base font-bold text-theme-main">Сегодня</h2>
+            <p className="text-xs text-theme-muted first-letter:uppercase">{formatLongTaskDate(todayKey)}</p>
+          </div>
+          <button type="button" aria-label="Закрыть просмотр на сегодня" onClick={onClose} className="rounded-lg p-1 text-theme-muted hover:bg-theme-main">
+            <X size={18} />
+          </button>
+        </header>
+        <div className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto no-scrollbar">
+          {items.length === 0 && (
+            <p className="py-8 text-center text-xs text-theme-muted">
+              <CircleDashed size={20} className="mx-auto mb-2" />
+              На сегодня планов нет, просрочки тоже нет
+            </p>
+          )}
+          {overdueItems.length > 0 && (
+            <div className="space-y-2" data-testid="upcoming-today-overdue">
+              <h3 className="text-[11px] font-bold uppercase tracking-wider text-red-600">Просрочено · {overdueItems.length}</h3>
+              {overdueItems.map(item => renderItem(item))}
+            </div>
+          )}
+          {todaysItems.length > 0 && (
+            <div className="space-y-2" data-testid="upcoming-today-current">
+              <h3 className="text-[11px] font-bold uppercase tracking-wider text-theme-muted">На сегодня · {todaysItems.length}</h3>
+              {todaysItems.map(item => renderItem(item))}
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 type PlanCleanupConfirmation =
   | { type: 'single'; item: PlannedPaymentOccurrence }
   | { type: 'note'; note: CalendarNote }
@@ -1038,13 +1146,14 @@ function PlanViewDialog({
         <div className="mt-4 space-y-2 text-sm text-theme-main">
           <p className="font-semibold">{formatMoney(payment.amount)}</p>
           <p className="text-xs text-theme-muted">
-            {payment.transactionType === 'income' ? 'Доход' : 'Расход'}
+            {transactionTypeLabel(payment)}
             {payment.time ? ` · ${payment.time}` : ''}
             {` · ${recurrenceLabel(payment)}`}
           </p>
           <p className="text-xs text-theme-muted">
-            {payment.categoryName || 'Без категории'}
-            {payment.accountName ? ` · ${payment.accountName}` : ''}
+            {payment.transactionType === 'transfer'
+              ? accountsLabel(payment)
+              : <>{payment.categoryName || 'Без категории'}{payment.accountName ? ` · ${payment.accountName}` : ''}</>}
           </p>
           {payment.note?.trim() && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-950">
@@ -1290,9 +1399,10 @@ function SinglePlanCleanupDetails({
           {formatMoney(payment.amount)} · {dateLabel}{payment.time ? ` · ${payment.time}` : ''}
         </p>
         <p className="mt-1 text-xs text-theme-muted">
-          {payment.transactionType === 'income' ? 'Доход' : 'Расход'} · {recurrenceLabel(payment)} · {payment.categoryName || 'Без категории'}
+          {transactionTypeLabel(payment)} · {recurrenceLabel(payment)}
+          {payment.transactionType !== 'transfer' && ` · ${payment.categoryName || 'Без категории'}`}
         </p>
-        {payment.accountName && <p className="mt-1 text-xs text-theme-muted">Счёт: {payment.accountName}</p>}
+        {accountsLabel(payment) && <p className="mt-1 text-xs text-theme-muted">Счёт: {accountsLabel(payment)}</p>}
         <p className={`mt-2 text-xs font-bold ${completed ? 'text-emerald-700' : 'text-rose-700'}`}>
           Выбранное вхождение: {completed ? 'выполнено' : 'НЕ выполнено'}
         </p>
@@ -1324,19 +1434,22 @@ function formatLongDate(date: string) {
 function occurrenceTone(item: PlannedPaymentOccurrence, now = new Date()) {
   if (isCompletedOccurrence(item)) return 'bg-theme-main text-theme-muted opacity-80';
   if (isOccurrenceOverdue(item, now)) return 'bg-red-100 text-red-800';
+  if (item.payment.transactionType === 'transfer') return 'bg-sky-50 text-blue-600';
   return item.payment.transactionType === 'income'
     ? 'bg-lime-50 text-lime-700'
     : 'bg-pink-50 text-pink-700';
 }
 
-function carouselTone(item: PlannedPaymentOccurrence, isPulsing = false, now = new Date()) {
-  if (isCompletedOccurrence(item)) return 'border-theme-base bg-theme-main text-theme-muted opacity-80';
-  if (isOccurrenceOverdue(item, now)) {
-    return `border-red-300 bg-red-100 text-red-900${isPulsing ? ' animate-overdue-pulse' : ''}`;
+function transactionTypeLabel(payment: PlannedPayment) {
+  if (payment.transactionType === 'transfer') return 'Перевод';
+  return payment.transactionType === 'income' ? 'Доход' : 'Расход';
+}
+
+function accountsLabel(payment: PlannedPayment) {
+  if (payment.transactionType === 'transfer') {
+    return `${payment.accountName || 'Счёт не выбран'} → ${payment.targetAccountName || 'Счёт не выбран'}`;
   }
-  return item.payment.transactionType === 'income'
-    ? 'border-lime-200 bg-lime-50 text-lime-900'
-    : 'border-pink-200 bg-pink-50 text-pink-800';
+  return payment.accountName || '';
 }
 
 function occurrenceKey(item: PlannedPaymentOccurrence) {
@@ -1381,9 +1494,11 @@ function formatMoney(amount: number) {
   return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(amount)} ₽`;
 }
 
-function carouselDateLabel(date: string, time?: string, now = new Date()) {
-  if (isPlanOccurrenceOverdue(date, time, now)) return `Просрочено · ${formatTaskDate(date)}`;
-  return formatTaskDate(date);
+function formatTileAmount(amount: number) {
+  if (Math.abs(amount) >= 1_000_000) {
+    return `${new Intl.NumberFormat('ru-RU', { notation: 'compact', maximumFractionDigits: 1 }).format(amount)} ₽`;
+  }
+  return formatMoney(amount);
 }
 
 function updatePaymentStatus(payments: PlannedPayment[], item: PlannedPaymentOccurrence) {

@@ -163,6 +163,42 @@ describe("per-plan calendar service", () => {
   });
 
   describe("createPlan", () => {
+    it("stores a planned transfer with its target account and no category", async () => {
+      const created = await createPlan("user-1", input({
+        id: "transfer-1",
+        recurrence: "monthly",
+        weekdays: undefined,
+        transactionType: "transfer",
+        accountId: "card",
+        targetAccountId: "savings",
+        categoryId: "category",
+      }));
+
+      expect(created).toMatchObject({
+        id: "transfer-1",
+        transactionType: "transfer",
+        accountId: "card",
+        targetAccountId: "savings",
+        categoryId: undefined,
+      });
+      expect(db.state.plans.get("transfer-1")).toMatchObject({ targetAccountId: "savings", categoryId: null });
+    });
+
+    it("rejects a planned transfer to the same account", async () => {
+      await expect(createPlan("user-1", input({
+        transactionType: "transfer",
+        accountId: "card",
+        targetAccountId: "card",
+      }))).rejects.toMatchObject({ status: 400 });
+      expect(db.state.plans.size).toBe(0);
+    });
+
+    it("drops the target account from a non-transfer plan", async () => {
+      await createPlan("user-1", input({ id: "expense-1", accountId: "card", targetAccountId: "savings" }));
+
+      expect(db.state.plans.get("expense-1")).toMatchObject({ transactionType: "expense", targetAccountId: null });
+    });
+
     it("creates one plan with the client id", async () => {
       const created = await createPlan("user-1", input({ id: "payment-1" }));
 

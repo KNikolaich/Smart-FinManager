@@ -209,6 +209,7 @@ export interface PlanData {
 
 export type PlannedPaymentRecurrence = 'none' | 'weekly' | 'biweekly' | 'weekdays' | 'monthly' | 'quarterly' | 'yearly';
 export type PlannedPaymentStatus = 'paid' | 'pending';
+export type PlannedPaymentType = 'expense' | 'income' | 'transfer';
 
 export interface PlannedPayment {
   id: string;
@@ -219,11 +220,14 @@ export interface PlannedPayment {
   time?: string;
   recurrence: PlannedPaymentRecurrence;
   weekdays?: number[];
-  transactionType?: 'expense' | 'income';
+  transactionType?: PlannedPaymentType;
   categoryId?: string;
   categoryName?: string;
   accountId?: string;
   accountName?: string;
+  /** Destination account of a planned transfer (transactionType 'transfer'). */
+  targetAccountId?: string;
+  targetAccountName?: string;
   disableFrom?: string | null;
   /** Series dates detached from this plan ("edit only this event"). */
   excludedDates?: string[];
@@ -241,7 +245,7 @@ export interface PlannedPayment {
 export type PlannedPaymentDraft = Partial<Pick<
   PlannedPayment,
   'title' | 'amount' | 'date' | 'note' | 'time' | 'recurrence' | 'weekdays' |
-  'transactionType' | 'categoryId' | 'accountId' | 'color'
+  'transactionType' | 'categoryId' | 'accountId' | 'targetAccountId' | 'color'
 >>;
 
 export interface CalendarNote {

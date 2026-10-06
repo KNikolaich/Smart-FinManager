@@ -21,6 +21,7 @@ import {
   PlannedPayment,
   PlannedPaymentDraft,
   PlannedPaymentRecurrence,
+  PlannedPaymentType,
   PlannedPaymentStatus,
   Category,
   CalendarNote,
@@ -231,11 +232,13 @@ export default function PaymentCalendarTab({
   const byDate = new Map<string, PlannedPaymentOccurrence[]>();
   visibleOccurrences.forEach(item => byDate.set(item.date, [...(byDate.get(item.date) || []), item]));
   const openCreate = useCallback((date = selectedDate, initialData: PlannedPaymentDraft = {}) => {
-    const transactionType = initialData.transactionType === 'income' ? 'income' : 'expense';
+    const transactionType = initialData.transactionType === 'income' || initialData.transactionType === 'transfer'
+      ? initialData.transactionType
+      : 'expense';
     const account = initialData.accountId === ''
       ? undefined
       : accounts.find(item => item.id === initialData.accountId) || (!initialData.accountId ? accounts[0] : undefined);
-    const category = initialData.categoryId === ''
+    const category = initialData.categoryId === '' || transactionType === 'transfer'
       ? undefined
       : categories.find(item => item.id === initialData.categoryId && item.type === transactionType) ||
         (!initialData.categoryId ? categories.find(item => item.type === transactionType) : undefined);
@@ -255,6 +258,10 @@ export default function PaymentCalendarTab({
       categoryName: category?.name,
       accountId: initialData.accountId ?? account?.id,
       accountName: account?.name || '',
+      targetAccountId: transactionType === 'transfer' ? initialData.targetAccountId : undefined,
+      targetAccountName: transactionType === 'transfer'
+        ? accounts.find(item => item.id === initialData.targetAccountId)?.name
+        : undefined,
       status: 'pending',
       paidDates: [],
       disableFrom: null,
@@ -720,6 +727,7 @@ function moveMonth(offset: number, cursor: Date, setCursor: (date: Date) => void
 function occurrenceTone(item: PlannedPaymentOccurrence, now = new Date()) {
   if (isCompletedOccurrence(item)) return 'bg-neutral-200 text-neutral-500 opacity-80';
   if (isOccurrenceOverdue(item, now)) return 'bg-red-100 text-red-800';
+  if (item.payment.transactionType === 'transfer') return 'bg-sky-50 text-blue-600';
   return item.payment.transactionType === 'income'
     ? 'bg-lime-50 text-lime-700'
     : 'bg-pink-50 text-pink-700';
@@ -728,12 +736,16 @@ function occurrenceTone(item: PlannedPaymentOccurrence, now = new Date()) {
 function occurrenceDotTone(item: PlannedPaymentOccurrence, now = new Date()) {
   if (isCompletedOccurrence(item)) return 'bg-neutral-400';
   if (isOccurrenceOverdue(item, now)) return 'bg-red-500';
+  if (item.payment.transactionType === 'transfer') return 'bg-blue-400';
   return item.payment.transactionType === 'income' ? 'bg-lime-500' : 'bg-pink-300';
 }
 
 function PaymentDialog({ mode, payment, accounts, transactions, categories, onChange, onClose, onSave, saveError, saving = false, recurringEventDate = null }: { mode: 'create' | 'edit'; payment: PlannedPayment; accounts: Account[]; transactions: Transaction[]; categories: Category[]; onChange: (payment: PlannedPayment) => void; onClose: () => void; onSave: () => void; saveError?: string | null; saving?: boolean; recurringEventDate?: string | null }) {
   const set = <K extends keyof PlannedPayment>(field: K, value: PlannedPayment[K]) => onChange({ ...payment, [field]: value });
   const transactionType = payment.transactionType || 'expense';
+  const isTransfer = transactionType === 'transfer';
+  const transferAccountsInvalid = isTransfer
+    && (!payment.accountId || !payment.targetAccountId || payment.accountId === payment.targetAccountId);
   const selectedWeekdays = payment.weekdays || [];
   const activeAccounts = accounts.filter(account => !account.isArchived || account.id === payment.accountId);
   const setRecurrence = (value: PlannedPaymentRecurrence) => {
@@ -763,7 +775,7 @@ function PaymentDialog({ mode, payment, accounts, transactions, categories, onCh
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
              <label className="block text-xs font-bold text-theme-muted">Повторение<select data-testid="select-payment-recurrence" value={payment.recurrence} onChange={event => setRecurrence(event.target.value as PlannedPaymentRecurrence)} className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main">{RECURRENCES.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
              <div className="space-y-1.5">
-               <label className="text-xs font-bold text-theme-muted">Счёт</label>
+               <label className="text-xs font-bold text-theme-muted">{isTransfer ? 'Со счёта' : 'Счёт'}</label>
                <AccountSelect
                  accounts={activeAccounts}
                  selectedAccountId={payment.accountId || ''}
@@ -827,7 +839,35 @@ function PaymentDialog({ mode, payment, accounts, transactions, categories, onCh
              </label>
            )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label className="block text-xs font-bold text-theme-muted">Тип операции<select data-testid="select-payment-type" value={transactionType} onChange={event => { const nextType = event.target.value as 'expense' | 'income'; const category = categories.find(item => item.type === nextType); onChange({ ...payment, transactionType: nextType, categoryId: category?.id, categoryName: category?.name }); }} className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main"><option value="expense">Расход</option><option value="income">Доход</option></select></label>
+            <label className="block text-xs font-bold text-theme-muted">Тип операции<select data-testid="select-payment-type" value={transactionType} onChange={event => {
+              const nextType = event.target.value as PlannedPaymentType;
+              if (nextType === 'transfer') {
+                const target = activeAccounts.find(item => item.id !== payment.accountId);
+                onChange({ ...payment, transactionType: nextType, categoryId: undefined, categoryName: undefined, targetAccountId: payment.targetAccountId || target?.id, targetAccountName: payment.targetAccountName || target?.name });
+                return;
+              }
+              const category = categories.find(item => item.type === nextType);
+              onChange({ ...payment, transactionType: nextType, categoryId: category?.id, categoryName: category?.name, targetAccountId: undefined, targetAccountName: undefined });
+            }} className="mt-1 w-full rounded-xl border border-theme-base bg-theme-main px-3 py-2 text-sm font-normal text-theme-main"><option value="expense">Расход</option><option value="income">Доход</option><option value="transfer">Перевод</option></select></label>
+            {isTransfer ? (
+              <div className="space-y-1.5" data-testid="payment-transfer-target">
+                <label className="text-xs font-bold text-theme-muted">На счёт</label>
+                <AccountSelect
+                  accounts={activeAccounts.filter(account => account.id !== payment.accountId || account.id === payment.targetAccountId)}
+                  selectedAccountId={payment.targetAccountId || ''}
+                  onChange={accountId => {
+                    const account = activeAccounts.find(item => item.id === accountId);
+                    onChange({ ...payment, targetAccountId: account?.id, targetAccountName: account?.name || '' });
+                  }}
+                  label=""
+                  transactions={transactions}
+                  type="transfer"
+                />
+                {transferAccountsInvalid && (
+                  <p className="text-[10px] font-normal text-rose-600">Выберите два разных счёта для перевода.</p>
+                )}
+              </div>
+            ) : (
             <CategorySelect
               categories={categories}
               selectedCategoryId={payment.categoryId || ''}
@@ -838,10 +878,11 @@ function PaymentDialog({ mode, payment, accounts, transactions, categories, onCh
               type={transactionType}
               label="Категория"
             />
+            )}
           </div>
         </div>
         {saveError && <p className="px-4 pb-3 text-xs text-rose-600">{saveError}</p>}
-        <footer className="flex justify-end gap-2 p-4 border-t border-theme-base"><button type="button" data-testid="button-cancel-payment" onClick={onClose} className="px-3 py-2 rounded-xl bg-theme-main text-theme-muted text-xs font-bold">Отмена</button><button type="button" data-testid="button-save-payment" disabled={saving || !payment.title.trim() || payment.amount <= 0} onClick={onSave} className="px-3 py-2 rounded-xl bg-theme-primary text-theme-on-primary text-xs font-bold disabled:opacity-40">{mode === 'create' ? <Plus size={14} className="inline mr-1" /> : <Check size={14} className="inline mr-1" />}{mode === 'create' ? 'Запланировать' : 'Сохранить'}</button></footer>
+        <footer className="flex justify-end gap-2 p-4 border-t border-theme-base"><button type="button" data-testid="button-cancel-payment" onClick={onClose} className="px-3 py-2 rounded-xl bg-theme-main text-theme-muted text-xs font-bold">Отмена</button><button type="button" data-testid="button-save-payment" disabled={saving || !payment.title.trim() || payment.amount <= 0 || transferAccountsInvalid} onClick={onSave} className="px-3 py-2 rounded-xl bg-theme-primary text-theme-on-primary text-xs font-bold disabled:opacity-40">{mode === 'create' ? <Plus size={14} className="inline mr-1" /> : <Check size={14} className="inline mr-1" />}{mode === 'create' ? 'Запланировать' : 'Сохранить'}</button></footer>
       </section>
     </div>
   );
@@ -950,7 +991,7 @@ function CalendarDayListPopover({
 }
 
 function formatPlanAmount(payment: PlannedPayment) {
-  const sign = payment.transactionType === 'income' ? '+' : '−';
+  const sign = payment.transactionType === 'income' ? '+' : payment.transactionType === 'transfer' ? '' : '−';
   return `${sign}${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(payment.amount)} ₽`;
 }
 

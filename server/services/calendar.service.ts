@@ -31,6 +31,7 @@ type LegacyPayment = {
   weekdays?: number[];
   transactionType?: string;
   accountId?: string;
+  targetAccountId?: string;
   categoryId?: string;
   color?: string;
   disableFrom?: string | null;
@@ -94,7 +95,7 @@ function excludedDates(value: unknown) {
 }
 
 function transactionType(value: unknown) {
-  return value === "income" ? "income" : "expense";
+  return value === "income" || value === "transfer" ? value : "expense";
 }
 
 async function migrateLegacyCalendar(userId: string) {
@@ -156,8 +157,16 @@ async function upsertPlan(
     ? await tx.calendarPlan.findUnique({ where: { id: requestedId }, select: { id: true } })
     : null;
 
+  const type = transactionType(payment.transactionType);
   let accountId = payment.accountId || null;
-  let categoryId = payment.categoryId || null;
+  // A transfer has no category; its destination is the target account.
+  let categoryId = type === "transfer" ? null : payment.categoryId || null;
+  let targetAccountId = type === "transfer" ? payment.targetAccountId || null : null;
+  if (strictReferences && type === "transfer" && accountId && targetAccountId === accountId) {
+    const error: any = new Error("Счета перевода должны различаться");
+    error.status = 400;
+    throw error;
+  }
   if (accountId) {
     const account = await tx.account.findFirst({ where: { id: accountId, userId } });
     if (!account) {
@@ -167,6 +176,17 @@ async function upsertPlan(
         throw error;
       }
       accountId = null;
+    }
+  }
+  if (targetAccountId) {
+    const targetAccount = await tx.account.findFirst({ where: { id: targetAccountId, userId } });
+    if (!targetAccount) {
+      if (strictReferences) {
+        const error: any = new Error("Счёт зачисления перевода не найден");
+        error.status = 400;
+        throw error;
+      }
+      targetAccountId = null;
     }
   }
   if (categoryId) {
@@ -189,8 +209,9 @@ async function upsertPlan(
     time: paymentTime(payment.time),
     recurrence: recurrence(payment.recurrence),
     weekdays: weekdays(payment.weekdays),
-    transactionType: transactionType(payment.transactionType),
+    transactionType: type,
     accountId,
+    targetAccountId,
     categoryId,
     color: payment.color || null,
     disableFrom: payment.disableFrom ? dateOnly(payment.disableFrom) : null,
@@ -293,6 +314,7 @@ async function replaceCalendarNotes(tx: any, userId: string, notes: LegacyCalend
 
 const PLAN_INCLUDE = {
   account: { select: { name: true } },
+  targetAccount: { select: { name: true } },
   category: { select: { name: true } },
   occurrences: {
     include: { transaction: { select: { id: true } } },
@@ -330,6 +352,8 @@ function serializePlan(plan: any) {
     transactionType: plan.transactionType,
     accountId: plan.accountId || undefined,
     accountName: plan.account?.name,
+    targetAccountId: plan.targetAccountId || undefined,
+    targetAccountName: plan.targetAccount?.name,
     categoryId: plan.categoryId || undefined,
     categoryName: plan.category?.name,
     note: plan.note || undefined,
@@ -524,7 +548,7 @@ export interface CalendarPlanEditRequest {
 
 const TEMPLATE_FIELDS = [
   "title", "amount", "date", "note", "time", "recurrence", "weekdays",
-  "transactionType", "accountId", "categoryId", "color", "disableFrom",
+  "transactionType", "accountId", "targetAccountId", "categoryId", "color", "disableFrom",
 ] as const;
 
 function httpError(status: number, message: string) {

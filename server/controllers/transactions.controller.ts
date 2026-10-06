@@ -51,7 +51,7 @@ export async function create(req: any, res: any) {
   try {
     const result = await transactionsService.createTransaction(req.user.userId, req.body);
     notifyUser(req.user.userId, "data:updated", { type: "transactions" });
-    if (req.body.calendarOccurrenceId) {
+    if (req.body.calendarOccurrenceId || (req.body.calendarPlanId && req.body.calendarDate)) {
       notifyUser(req.user.userId, "data:updated", { type: "plan-grid", planType: "calendar" });
     }
     res.json(result);
