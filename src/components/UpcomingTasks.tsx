@@ -347,7 +347,8 @@ export default function UpcomingTasks({
 
   const handleListScroll = (event: React.UIEvent<HTMLDivElement>) => {
     const element = event.currentTarget;
-    if (element.scrollTop < 120) loadPrevious();
+    // Earlier (mostly completed) plans stay folded until the user taps the
+    // "earlier" row; scrolling to the top must not unfold them.
     if (element.scrollHeight - element.scrollTop - element.clientHeight < 120) loadMore();
   };
 
@@ -709,9 +710,9 @@ export default function UpcomingTasks({
           </div>
         </div>
       ) : (
-          <div ref={listRef} className="max-h-[min(65vh,620px)] overflow-y-auto no-scrollbar overscroll-contain touch-pan-y space-y-2 pt-3 pr-1" onScroll={handleListScroll} data-testid="upcoming-tasks-list">
+          <div ref={listRef} className="max-h-[min(65vh,620px)] overflow-y-auto no-scrollbar touch-pan-y space-y-2 pt-3 pr-1" onScroll={handleListScroll} data-testid="upcoming-tasks-list">
           {hasPrevious && (
-            <button type="button" data-testid="button-upcoming-load-previous" onClick={loadPrevious} className="w-full rounded-xl border border-dashed border-theme-base px-3 py-2 text-xs text-theme-muted hover:bg-theme-main">
+            <button type="button" data-testid="button-upcoming-load-previous" onClick={loadPrevious} className="mx-auto block rounded-full border border-dashed border-theme-base px-4 py-1 text-[11px] text-theme-muted hover:bg-theme-main">
               Показать более ранние
             </button>
           )}
@@ -732,14 +733,15 @@ export default function UpcomingTasks({
                     onNoteClick?.(note);
                   }}
                   disabled={!onNoteClick}
-                  className={`flex w-full items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-left text-amber-950 disabled:cursor-default ${focusedCalendarNote?.id === note.id ? 'ring-2 ring-inset ring-amber-300' : ''}`}
+                  data-selected-day={focusedDate === note.date ? 'true' : undefined}
+                  className={`flex w-full items-start gap-2 rounded-xl border bg-amber-50 px-3 py-2 text-left text-amber-950 disabled:cursor-default ${focusedDate === note.date ? 'border-dashed border-amber-500' : 'border-amber-200'} ${focusedCalendarNote?.id === note.id ? 'ring-2 ring-inset ring-amber-300' : ''}`}
                 >
                   <ScrollText size={15} data-testid={`calendar-note-icon-${note.id}`} className="mt-0.5 shrink-0 text-amber-700" aria-hidden="true" />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[10px] font-semibold text-amber-800">
-                      {formatLongTaskDate(note.date)}
+                    <span className="block whitespace-pre-wrap break-words text-xs font-semibold leading-tight">{note.text}</span>
+                    <span className="block text-[10px] text-amber-800 opacity-75 leading-snug">
+                      {formatTaskDate(note.date)} · Записка
                     </span>
-                    <span className="block whitespace-pre-wrap break-words text-xs">{note.text}</span>
                   </span>
                 </button>
               );
@@ -751,14 +753,21 @@ export default function UpcomingTasks({
             const isFocused = Boolean(
               focusedOccurrence && occurrenceKey(item) === occurrenceKey(focusedOccurrence),
             );
+            // Every plan of the selected day is outlined; the focused one (the
+            // target of the header actions) gets a solid outline.
+            const onSelectedDay = Boolean(focusedDate && item.date === focusedDate);
+            const outlineTone = isCompletedOccurrence(item) ? 'border-theme-base' : 'border-theme-primary';
             const focusedBorder = isFocused
-              ? `border-dashed ${isCompletedOccurrence(item) ? 'border-theme-base' : 'border-theme-primary'}`
-              : 'border-transparent';
+              ? `border-solid ${outlineTone}`
+              : onSelectedDay
+                ? `border-dashed ${outlineTone}`
+                : 'border-transparent';
             return (
               <article
                 key={entry.key}
                 className={`flex items-center gap-2 rounded-xl px-2 py-2 border ${focusedBorder} ${occurrenceTone(item, now)}`}
                 data-testid={`payment-row-${key}`}
+                data-selected-day={onSelectedDay ? 'true' : undefined}
                 data-upcoming-task={key}
                 data-calendar-plan-entry="payment"
                 data-calendar-item-key={entry.key}
