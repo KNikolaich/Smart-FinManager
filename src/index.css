@@ -165,6 +165,8 @@
   .divide-theme-base { border-color: var(--border-subtle); }
 
   .bg-theme-primary-light { background-color: var(--color-action-soft); }
+  /* Softer, pastel version of the theme accent for large surfaces (dashboard plan cards). */
+  .bg-theme-primary-pastel { background-color: color-mix(in srgb, var(--color-action-soft) 45%, var(--surface-card)); }
   .hover\:bg-theme-primary-dark:hover { background-color: var(--color-action-strong); }
   .shadow-theme-primary-light { --tw-shadow-color: var(--color-action-soft); --tw-shadow: var(--tw-shadow-colored); }
   .ring-theme-primary-light { --tw-ring-color: var(--color-action-soft); }

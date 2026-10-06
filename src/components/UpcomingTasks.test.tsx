@@ -317,7 +317,7 @@ describe('UpcomingTasks', () => {
     const cards = Array.from(carousel.querySelectorAll<HTMLElement>('[data-upcoming-item]'));
     expect(cards.map(card => card.dataset.planKind)).toEqual(['expense', 'income', 'transfer']);
     expect(cards.every(card => card.className.includes('w-max') && card.className.includes('shrink-0'))).toBe(true);
-    expect(cards.every(card => card.className.includes('bg-theme-primary-light'))).toBe(true);
+    expect(cards.every(card => card.className.includes('bg-theme-primary-pastel'))).toBe(true);
 
     const tiles = cards.map(card => card.querySelector<HTMLElement>('[data-testid="upcoming-card-tile"]')!);
     expect(tiles[0].className).toContain('bg-pink-100');
@@ -406,6 +406,36 @@ describe('UpcomingTasks', () => {
     expect(onEditTask).toHaveBeenCalledWith(expect.objectContaining({
       payment,
     }));
+  });
+
+  it('executes a plan from the viewer checkbox placed before edit, with delete as a separate icon', () => {
+    const onRequestTransaction = vi.fn();
+    const payment = { ...makePayment(0), id: 'view-execute', date: '2026-09-19' };
+    render(
+      <UpcomingTasks
+        payments={[payment]}
+        variant="carousel"
+        startDate="2026-09-19"
+        onEditTask={vi.fn()}
+        onRequestTransaction={onRequestTransaction}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('button-upcoming-card-view-view-execute-2026-09-19'));
+    const dialog = screen.getByTestId('dialog-plan-view');
+    const execute = screen.getByTestId('button-plan-view-execute');
+    const edit = screen.getByTestId('button-plan-view-edit');
+    expect(execute.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByTestId('button-plan-view-delete').textContent).toBe('');
+    expect(dialog.textContent).not.toContain('Закрыть');
+
+    fireEvent.click(execute);
+
+    expect(onRequestTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({ payment: expect.objectContaining({ id: 'view-execute' }) }),
+      expect.any(Function),
+    );
+    expect(screen.queryByTestId('dialog-plan-view')).toBeNull();
   });
 
   it('deletes a plan from the card trash button', async () => {
