@@ -54,6 +54,7 @@ import Calculator from './Calculator';
 import CreditTab from './CreditTab';
 import { normalizePlanNotes, pruneNoteImages } from '../lib/planNotes';
 import { compressImageFile, TABLE_TEMPLATE } from '../lib/markdownImages';
+import { newNoteImageId, uploadNoteImage } from '../lib/noteImageStore';
 import { getTodayKey } from '../lib/plannedPaymentOccurrences';
 import { applyCalendarPlanEdit, CalendarPlanEditOptions, createCalendarPlanId, isRecurringPlan } from '../lib/calendarPlanEditing';
 import { cacheCalendarSnapshot, calendarApi } from '../lib/calendarApi';
@@ -195,14 +196,15 @@ export default function PlanPage({
       return;
     }
     try {
+      if (!navigator.onLine) {
+        setNoteImageError('Картинку можно добавить только при подключении к интернету');
+        return;
+      }
       const dataUrl = await compressImageFile(file);
-      const imageId = `i${Date.now().toString(36)}`;
-      const content = insertNoteBlock(`![](img:${imageId})`);
-      const next = notesRef.current.map(note => note.id === activeNoteIdRef.current
-        ? { ...note, content, images: { ...(note.images || {}), [imageId]: dataUrl } }
-        : note);
-      const payload = setNotesSnapshot(next, activeNoteIdRef.current);
-      if (planData) savePlanData({ ...planData, comment: payload }, 'comment');
+      const imageId = newNoteImageId();
+      // The picture goes to its own table; only a reference lands in the note text.
+      await uploadNoteImage(imageId, dataUrl);
+      setLocalComment(current => insertNoteBlock(`![](img:${imageId})`, current));
     } catch (error) {
       setNoteImageError(error instanceof Error ? error.message : 'Не удалось добавить картинку');
     }
@@ -224,6 +226,45 @@ export default function PlanPage({
   useEffect(() => {
     isEditingCommentRef.current = isEditingComment;
   }, [isEditingComment]);
+
+  // Notes saved before pictures had their own table carry them inline. Move
+  // each to the server (same id, so the text stays valid), then drop them from
+  // the note. Retried on the next visit if anything fails.
+  const migratingNoteImagesRef = useRef(false);
+  useEffect(() => {
+    if (!planData || isEditingComment || migratingNoteImagesRef.current || !navigator.onLine) return;
+    const legacy = notes.filter(note => note.images && Object.keys(note.images).length > 0);
+    if (legacy.length === 0) return;
+    migratingNoteImagesRef.current = true;
+    (async () => {
+      try {
+        const uploaded = new Set<string>();
+        for (const note of legacy) {
+          for (const [id, dataUrl] of Object.entries(note.images || {})) {
+            await uploadNoteImage(id, dataUrl);
+            uploaded.add(`${note.id}:${id}`);
+          }
+        }
+        // Typing started meanwhile: leave the swap for the next pass, so the
+        // text being edited is not replaced.
+        if (isEditingCommentRef.current) return;
+        const next = notesRef.current.map(note => {
+          if (!note.images) return note;
+          const remaining = Object.fromEntries(
+            Object.entries(note.images).filter(([id]) => !uploaded.has(`${note.id}:${id}`)),
+          );
+          const { images: _images, ...rest } = note;
+          return Object.keys(remaining).length ? { ...rest, images: remaining } : rest;
+        });
+        const payload = setNotesSnapshot(next, activeNoteIdRef.current);
+        await savePlanData({ ...planData, comment: payload }, 'comment');
+      } catch (error) {
+        console.error('Moving note pictures to the server failed:', error);
+      } finally {
+        migratingNoteImagesRef.current = false;
+      }
+    })();
+  }, [notes, planData, isEditingComment]);
 
   // Debounced save
   useEffect(() => {

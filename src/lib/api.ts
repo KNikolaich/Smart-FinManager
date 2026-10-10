@@ -614,6 +614,16 @@ export const api = {
     return handleResponse(res);
   },
 
+  /** Fetches a binary resource (e.g. a note picture) with the session token. */
+  async getBlob(endpoint: string): Promise<Blob> {
+    const res = await fetch(`${API_URL}${endpoint}`, { headers: getHeaders() });
+    await handleAuthError(res, endpoint);
+    if (!res.ok) {
+      throw createHttpError(res.status, getHttpErrorMessage(await res.text(), res.status, res.statusText));
+    }
+    return res.blob();
+  },
+
   async deleteDirect<T>(endpoint: string): Promise<T> {
     const res = await fetch(`${API_URL}${endpoint}`, {
       method: 'DELETE',

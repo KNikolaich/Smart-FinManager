@@ -63,6 +63,7 @@ export async function clearAllUserData(userId: string) {
       transactions: await tx.transaction.deleteMany({ where: { userId } }),
       calendarPlans: await tx.calendarPlan.deleteMany({ where: { userId } }),
       calendarNotes: await tx.calendarNote.deleteMany({ where: { userId } }),
+      noteImages: await tx.noteImage.deleteMany({ where: { userId } }),
       goals: await tx.goal.deleteMany({ where: { userId } }),
       accounts: await tx.account.deleteMany({ where: { userId } }),
       balanceHistory: await tx.balanceHistory.deleteMany({ where: { userId } }),

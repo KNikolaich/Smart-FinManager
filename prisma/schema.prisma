@@ -28,6 +28,7 @@ model User {
   planGrid       PlanGrid[]
   calendarPlans  CalendarPlan[]
   calendarNotes  CalendarNote[]
+  noteImages     NoteImage[]
   chatMessages   ChatMessage[]
   aiLogs         AiLog[]
   balanceHistory BalanceHistory[]
@@ -149,6 +150,22 @@ model PlanGrid {
 
   @@unique([userId, type])
   @@map("plan_grids")
+}
+
+// Pictures of plan notes. The note text only holds a reference (`img:<id>`), so
+// saving a note never re-sends the picture bytes.
+model NoteImage {
+  userId    String
+  id        String
+  mime      String
+  data      Bytes
+  size      Int
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, id])
+  @@map("note_images")
 }
 
 model CalendarPlan {

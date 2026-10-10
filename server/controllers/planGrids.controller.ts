@@ -1,5 +1,6 @@
 import * as planGridsService from "../services/planGrids.service";
 import * as calendarService from "../services/calendar.service";
+import * as noteImagesService from "../services/noteImages.service";
 import { notifyUser } from "../socket";
 
 export async function list(req: any, res: any) {
@@ -43,6 +44,12 @@ export async function setByType(req: any, res: any) {
     }
 
     const result = await planGridsService.setPlanGrid(userId, type, data);
+    if (type === "comment") {
+      // Pictures live in their own table; drop those no note refers to any more.
+      await noteImagesService.pruneUnreferencedNoteImages(userId, data).catch(error => {
+        console.error("Note image cleanup failed:", error);
+      });
+    }
     notifyUser(userId, "data:updated", { type: "plan-grid", planType: type });
     res.json(result);
   } catch (error: any) {

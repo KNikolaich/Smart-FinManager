@@ -320,6 +320,10 @@ export const calendarNoteSchema = z.object({
   text: z.string().max(2000),
 });
 
+export const noteImageSchema = z.object({
+  dataUrl: z.string().min(20).max(5 * 1024 * 1024),
+}).strict();
+
 export const planGridDataSchema = z
   .record(z.string(), z.any())
   .superRefine(rejectForbiddenKeys);
@@ -482,6 +486,7 @@ export const backupRestoreSchema = z.object({
     calendarPlans: backupRowsSchema,
     calendarOccurrences: backupRowsSchema,
     calendarNotes: backupRowsSchema,
+    noteImages: backupRowsSchema.optional(),
     balanceHistory: backupRowsSchema,
     chatMessages: backupRowsSchema,
     aiLogs: backupRowsSchema,

@@ -1,5 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+const store = vi.hoisted(() => ({ loadNoteImage: vi.fn() }));
+vi.mock('../../lib/noteImageStore', () => store);
+
 import InteractiveMarkdown from './InteractiveMarkdown';
 
 describe('InteractiveMarkdown', () => {
@@ -45,10 +48,27 @@ describe('InteractiveMarkdown', () => {
     expect(center.className).not.toContain('float');
   });
 
-  it('shows a placeholder instead of a broken picture', () => {
+  it('downloads a picture that is stored on the server', async () => {
+    store.loadNoteImage.mockResolvedValueOnce('blob:server-picture');
+    render(<InteractiveMarkdown content="![чек](img:srv1)" onUpdate={vi.fn()} />);
+    expect(screen.getByTestId('markdown-image-missing').textContent).toContain('Загрузка');
+    const image = await screen.findByTestId('markdown-image') as HTMLImageElement;
+    expect(image.getAttribute('src')).toBe('blob:server-picture');
+    expect(store.loadNoteImage).toHaveBeenCalledWith('srv1');
+  });
+
+  it('does not download a picture that an old note still embeds', () => {
+    store.loadNoteImage.mockClear();
+    render(<InteractiveMarkdown content="![](img:a1)" images={{ a1: 'data:image/png;base64,AAAA' }} onUpdate={vi.fn()} />);
+    expect(screen.getByTestId('markdown-image')).toBeTruthy();
+    expect(store.loadNoteImage).not.toHaveBeenCalled();
+  });
+
+  it('shows a placeholder when the picture cannot be loaded', async () => {
+    store.loadNoteImage.mockRejectedValueOnce(new Error('offline'));
     render(<InteractiveMarkdown content="![](img:missing)" onUpdate={vi.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('markdown-image-missing').textContent).toContain('недоступна'));
     expect(screen.queryByTestId('markdown-image')).toBeNull();
-    expect(screen.getByText('[картинка не найдена]')).toBeTruthy();
   });
 
   it('renders a markdown table with aligned columns', () => {

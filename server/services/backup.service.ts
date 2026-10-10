@@ -26,6 +26,8 @@ export interface BackupArchive {
     calendarPlans: Row[];
     calendarOccurrences: Row[];
     calendarNotes: Row[];
+    /** Pictures of notes; `data` is base64. Absent in archives made before pictures had their own table. */
+    noteImages?: Row[];
     balanceHistory: Row[];
     chatMessages: Row[];
     aiLogs: Row[];
@@ -60,6 +62,7 @@ export async function exportBackup(userId: string, includeReferenceData = false)
       planGrids,
       calendarPlans,
       calendarNotes,
+      noteImageRows,
       balanceHistory,
       chatMessages,
       aiLogs,
@@ -71,6 +74,7 @@ export async function exportBackup(userId: string, includeReferenceData = false)
       tx.planGrid.findMany({ where: { userId }, orderBy: { id: "asc" } }),
       tx.calendarPlan.findMany({ where: { userId }, orderBy: { id: "asc" } }),
       tx.calendarNote.findMany({ where: { userId }, orderBy: [{ date: "asc" }, { id: "asc" }] }),
+      tx.noteImage.findMany({ where: { userId }, orderBy: { id: "asc" } }),
       tx.balanceHistory.findMany({ where: { userId }, orderBy: [{ month: "asc" }, { id: "asc" }] }),
       tx.chatMessage.findMany({ where: { userId }, orderBy: { id: "asc" } }),
       tx.aiLog.findMany({ where: { userId }, orderBy: { id: "asc" } }),
@@ -82,6 +86,14 @@ export async function exportBackup(userId: string, includeReferenceData = false)
         orderBy: [{ date: "asc" }, { id: "asc" }],
       })
       : [];
+
+    const noteImages = noteImageRows.map((image: Row) => ({
+      id: image.id,
+      mime: image.mime,
+      size: image.size,
+      createdAt: image.createdAt,
+      data: Buffer.from(image.data).toString("base64"),
+    }));
 
     const archive: BackupArchive = {
       format: BACKUP_FORMAT,
@@ -103,6 +115,7 @@ export async function exportBackup(userId: string, includeReferenceData = false)
         calendarPlans,
         calendarOccurrences,
         calendarNotes,
+        noteImages,
         balanceHistory,
         chatMessages,
         aiLogs,
@@ -202,6 +215,7 @@ async function restoreBackupInternal(
   const calendarNotes = normalizeRows(data.calendarNotes, [
     "id", "date", "text", "createdAt", "updatedAt",
   ], { userId, dates: ["date", "createdAt", "updatedAt"] });
+  const noteImages = normalizeNoteImages(data.noteImages, userId);
   const balanceHistory = normalizeRows(data.balanceHistory, [
     "id", "month", "totalBalance", "details", "createdAt",
   ], { userId, dates: ["createdAt"], nullableJson: ["details"] });
@@ -257,6 +271,7 @@ async function restoreBackupInternal(
     }
     await tx.calendarPlan.deleteMany({ where: { userId } });
     await tx.calendarNote.deleteMany({ where: { userId } });
+    await tx.noteImage.deleteMany({ where: { userId } });
     await tx.balanceHistory.deleteMany({ where: { userId } });
     await tx.chatMessage.deleteMany({ where: { userId } });
     await tx.aiLog.deleteMany({ where: { userId } });
@@ -377,6 +392,7 @@ async function restoreBackupInternal(
     await createManyIfAny(tx.calendarOccurrence, calendarOccurrences);
     await createManyIfAny(tx.transaction, transactions);
     await createManyIfAny(tx.calendarNote, calendarNotes);
+    await createManyIfAny(tx.noteImage, noteImages);
     await createManyIfAny(tx.balanceHistory, balanceHistory);
     await createManyIfAny(tx.chatMessage, chatMessages);
     await createManyIfAny(tx.aiLog, aiLogs);
@@ -399,6 +415,7 @@ async function restoreBackupInternal(
         calendarPlans: calendarPlans.length,
         calendarOccurrences: calendarOccurrences.length,
         calendarNotes: calendarNotes.length,
+        noteImages: noteImages.length,
         balanceHistory: balanceHistory.length,
         chatMessages: chatMessages.length,
         aiLogs: aiLogs.length,
@@ -463,6 +480,20 @@ function normalizeRows(
     for (const field of options.json || []) row[field] = jsonValue(source[field], false, field);
     for (const field of options.nullableJson || []) row[field] = jsonValue(source[field], true, field);
     return row;
+  });
+}
+
+function normalizeNoteImages(rows: Row[] | undefined, userId: string) {
+  if (rows === undefined) return [];
+  return normalizeRows(rows, ["id", "mime", "size", "createdAt", "data"], {
+    userId,
+    dates: ["createdAt"],
+  }).map(row => {
+    if (typeof row.data !== "string" || !/^[A-Za-z0-9+/=]*$/.test(row.data)) {
+      throw new BackupServiceError(`Некорректная картинка заметки: ${row.id}`);
+    }
+    const bytes = Buffer.from(row.data, "base64");
+    return { ...row, data: bytes, size: bytes.length };
   });
 }
 

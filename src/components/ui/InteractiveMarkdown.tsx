@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../../lib/utils';
+import { loadNoteImage } from '../../lib/noteImageStore';
 export { referencedImageIds } from '../../lib/markdownImages';
 
 interface InteractiveMarkdownProps {
@@ -24,11 +25,6 @@ const IMAGE_PATTERN = /(!\[[^\]\n]*\]\([^)\s]+(?:\s+"[^"\n]*")?\))/g;
 const IMAGE_MATCH = /^!\[([^\]\n]*)\]\(([^)\s]+)(?:\s+"([^"\n]*)")?\)$/;
 const TABLE_SEPARATOR = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
 
-function resolveImageSource(src: string, images?: Record<string, string>) {
-  if (src.startsWith('img:')) return images?.[src.slice(4)];
-  if (/^(https?:|data:image\/)/i.test(src)) return src;
-  return undefined;
-}
 
 /**
  * Picture placement from the optional title: `"right"`, `"center"` (no text
@@ -39,6 +35,61 @@ function imageLayout(title?: string) {
   const width = words.find(word => /^\d{1,3}%$/.test(word));
   const align = words.includes('right') ? 'right' : words.includes('center') ? 'center' : 'left';
   return { align, width };
+}
+
+/**
+ * A picture of a note. `img:<id>` pictures come from the note itself (old notes
+ * that still embed them) or are downloaded from the server; plain http(s) and
+ * data URLs are shown as they are.
+ */
+function MarkdownPicture({ src, alt, title, images }: {
+  src: string;
+  alt: string;
+  title?: string;
+  images?: Record<string, string>;
+}) {
+  const isStored = src.startsWith('img:');
+  const embedded = isStored ? images?.[src.slice(4)] : undefined;
+  const direct = !isStored && /^(https?:|data:image\/)/i.test(src) ? src : undefined;
+  const [loaded, setLoaded] = React.useState<string | undefined>(undefined);
+  const [failed, setFailed] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isStored || embedded) return;
+    let active = true;
+    setFailed(false);
+    loadNoteImage(src.slice(4))
+      .then(url => { if (active) setLoaded(url); })
+      .catch(() => { if (active) setFailed(true); });
+    return () => { active = false; };
+  }, [src, isStored, embedded]);
+
+  const resolved = embedded || direct || loaded;
+  if (!resolved) {
+    return (
+      <span className="text-theme-muted italic" data-testid="markdown-image-missing">
+        {failed || (!isStored && !direct) ? '[картинка недоступна]' : 'Загрузка картинки…'}
+      </span>
+    );
+  }
+  const { align, width } = imageLayout(title);
+  return (
+    <img
+      src={resolved}
+      alt={alt}
+      title={alt || undefined}
+      loading="lazy"
+      data-testid="markdown-image"
+      data-align={align}
+      style={width ? { width } : undefined}
+      className={cn(
+        'rounded-xl object-contain',
+        align === 'left' && 'float-left mr-3 mb-2 max-w-[45%]',
+        align === 'right' && 'float-right ml-3 mb-2 max-w-[45%]',
+        align === 'center' && 'mx-auto my-2 block max-w-full',
+      )}
+    />
+  );
 }
 
 function splitTableRow(line: string): string[] {
@@ -222,29 +273,7 @@ export function parseMarkdown(
             return <s key={key}>{p.text}</s>;
           }
           if (p.type === 'image') {
-            const src = resolveImageSource(p.url || '', options.images);
-            if (!src) {
-              return <span key={key} className="text-theme-muted italic">[картинка не найдена]</span>;
-            }
-            const { align, width } = imageLayout(p.title);
-            return (
-              <img
-                key={key}
-                src={src}
-                alt={p.text}
-                title={p.text || undefined}
-                loading="lazy"
-                data-testid="markdown-image"
-                data-align={align}
-                style={width ? { width } : undefined}
-                className={cn(
-                  'rounded-xl object-contain',
-                  align === 'left' && 'float-left mr-3 mb-2 max-w-[45%]',
-                  align === 'right' && 'float-right ml-3 mb-2 max-w-[45%]',
-                  align === 'center' && 'mx-auto my-2 block max-w-full',
-                )}
-              />
-            );
+            return <MarkdownPicture key={key} src={p.url || ''} alt={p.text} title={p.title} images={options.images} />;
           }
           if (p.type === 'code') {
             return <code key={key} className="bg-theme-main font-mono text-[11px] px-1 py-0.5 rounded text-theme-main">{p.text}</code>;
@@ -346,7 +375,7 @@ export function parseMarkdown(
         aligns[column] === 'right' && 'text-right',
       );
       elements.push(
-        <div key={key} className="my-2 max-w-full overflow-x-auto" data-testid="markdown-table">
+        <div key={key} className="clear-both my-2 max-w-full overflow-x-auto" data-testid="markdown-table">
           <table className="border-collapse text-xs sm:text-sm text-theme-main">
             <thead>
               <tr className="bg-theme-main">

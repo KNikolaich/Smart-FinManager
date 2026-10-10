@@ -4,7 +4,7 @@ import { backupRestoreSchema } from "../../validation";
 const fake = vi.hoisted(() => {
   const names = [
     "account", "category", "transaction", "goal", "planGrid", "calendarPlan",
-    "calendarOccurrence", "calendarNote", "balanceHistory", "chatMessage", "aiLog",
+    "calendarOccurrence", "calendarNote", "noteImage", "balanceHistory", "chatMessage", "aiLog",
     "currency", "currencyRateSnapshot", "currencyRateCollectionRun",
   ];
   const tables: Record<string, any[]> = Object.fromEntries(names.map(name => [name, []]));
@@ -128,6 +128,10 @@ function seedDatabase() {
     password: "not-exported",
   });
 
+  fake.tables.noteImage.push({
+    userId: "user-1", id: "img1", mime: "image/png", data: Buffer.from([1, 2, 3]), size: 3,
+    createdAt: date("2025-03-01T10:00:00.000Z"),
+  });
   fake.tables.account.push(accountFixture());
   fake.tables.category.push({
     id: "category-1", userId: "user-1", name: "Дом", type: "expense",
@@ -222,6 +226,9 @@ describe("full backup round trip", () => {
     expect(backupRestoreSchema.safeParse(archive).success).toBe(true);
     expect(archive.data.profile).not.toHaveProperty("password");
     expect(archive.data.accounts[0].balance).toBe(17342.61);
+    expect(archive.data.noteImages).toEqual([
+      { id: "img1", mime: "image/png", size: 3, createdAt: "2025-03-01T10:00:00.000Z", data: "AQID" },
+    ]);
     expect(archive.referenceData).toMatchObject({
       currencies: [{ currency: "RUB" }],
       currencyRateSnapshots: [{ iso: "USD", buyRate: 90.1 }],
@@ -251,6 +258,7 @@ describe("full backup round trip", () => {
       calendarPlans: 1,
       calendarOccurrences: 1,
       calendarNotes: 1,
+      noteImages: 1,
       balanceHistory: 1,
       chatMessages: 1,
       aiLogs: 1,
@@ -269,6 +277,15 @@ describe("full backup round trip", () => {
     expect(JSON.parse(JSON.stringify(restored.referenceData?.currencyRateCollectionRuns)))
       .toEqual(archive.referenceData.currencyRateCollectionRuns);
     expect(fake.userRecord.password).toBe("not-exported");
+  });
+
+  it("restores an older archive that has no note pictures", async () => {
+    const archive = JSON.parse(JSON.stringify(await exportBackup("user-1")));
+    delete archive.data.noteImages;
+    expect(backupRestoreSchema.safeParse(archive).success).toBe(true);
+    const result = await restoreBackup("user-1", archive);
+    expect(result.restoredCounts.noteImages).toBe(0);
+    expect(fake.tables.noteImage).toHaveLength(0);
   });
 
   it("creates personal backups without shared currency tables", async () => {
@@ -335,7 +352,7 @@ describe("full backup round trip", () => {
     const archive = JSON.parse(JSON.stringify(await exportBackup("user-1")));
     const personalTables = [
       "account", "category", "transaction", "goal", "planGrid", "calendarPlan",
-      "calendarOccurrence", "calendarNote", "balanceHistory", "chatMessage", "aiLog",
+      "calendarOccurrence", "calendarNote", "noteImage", "balanceHistory", "chatMessage", "aiLog",
     ];
     for (const name of personalTables) fake.tables[name].splice(0, fake.tables[name].length);
     fake.tables.currency[0].id = "currency-rub-current";
@@ -376,7 +393,7 @@ describe("full backup round trip", () => {
     const archive = JSON.parse(JSON.stringify(await exportBackup("user-1", true)));
     const personalTables = [
       "account", "category", "transaction", "goal", "planGrid", "calendarPlan",
-      "calendarOccurrence", "calendarNote", "balanceHistory", "chatMessage", "aiLog",
+      "calendarOccurrence", "calendarNote", "noteImage", "balanceHistory", "chatMessage", "aiLog",
     ];
     for (const name of personalTables) fake.tables[name].splice(0, fake.tables[name].length);
     fake.tables.currency[0].id = "currency-rub-current";
