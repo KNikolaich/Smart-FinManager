@@ -260,7 +260,8 @@ const AIAssistant = forwardRef<AIAssistantHandle, AIAssistantProps>(function AIA
 
       const findAccount = (idOrName?: string, name?: string) => {
         if (!idOrName && !name) return null;
-        const filteredAccounts = accounts.filter(a => a.showOnDashboard && !a.isArchived);
+        // Accounts hidden from the dashboard are still valid for operations.
+        const filteredAccounts = accounts.filter(a => !a.isArchived);
         const idOrNameValue = normalizeLookupValue(idOrName);
         const nameValue = normalizeLookupValue(name);
         const idMatch = idOrNameValue

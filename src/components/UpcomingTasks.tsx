@@ -525,6 +525,28 @@ export default function UpcomingTasks({
     });
   };
 
+  const toggleManualCompletion = async (item: PlannedPaymentOccurrence) => {
+    if (item.transactionId) return;
+    quietOverdueOccurrence(item);
+    if (onManualToggleTask) {
+      await onManualToggleTask(item);
+      return;
+    }
+    const completed = !item.manuallyCompleted;
+    const previousPayments = sourcePayments;
+    const nextPayments = setManualCompletion(previousPayments, item, completed);
+    if (payments !== undefined) setLocalPayments(nextPayments);
+    else setLoadedPayments(nextPayments);
+    try {
+      await calendarApi.setOccurrenceCompleted(item.payment.id, item.date, completed);
+      cacheCalendarSnapshot(nextPayments);
+    } catch {
+      if (payments !== undefined) setLocalPayments(previousPayments);
+      else setLoadedPayments(previousPayments);
+      setError('Не удалось отметить задачу. Попробуйте ещё раз.');
+    }
+  };
+
   const executeOccurrence = (item: PlannedPaymentOccurrence) => {
     quietOverdueOccurrence(item);
     handleCarouselCheckbox(item);
@@ -540,7 +562,6 @@ export default function UpcomingTasks({
         layout={layout}
         overdue={overdue}
         pulsing={overdue && !quietOverdue.has(item.key)}
-        onSelect={() => occurrence && quietOverdueOccurrence(occurrence)}
         onView={() => {
           if (item.kind === 'note') openNoteDialog(item.note);
           else {
@@ -549,6 +570,7 @@ export default function UpcomingTasks({
           }
         }}
         onExecute={occurrence ? () => executeOccurrence(occurrence) : undefined}
+        onManualToggle={occurrence ? () => void toggleManualCompletion(occurrence) : undefined}
         onDelete={() => item.kind === 'note' ? requestNoteDelete(item.note) : requestDelete(item.occurrence)}
       />
     );
@@ -921,18 +943,19 @@ function PlanCard({
   layout,
   overdue,
   pulsing,
-  onSelect,
   onView,
   onExecute,
+  onManualToggle,
   onDelete,
 }: {
   item: CalendarDashboardItem;
   layout: 'strip' | 'stack';
   overdue: boolean;
   pulsing: boolean;
-  onSelect: () => void;
+  /** Tapping the card itself opens the plan (or the note) for viewing. */
   onView: () => void;
   onExecute?: () => void;
+  onManualToggle?: () => void;
   onDelete: () => void;
 }) {
   const kind = planKind(item);
@@ -941,6 +964,7 @@ function PlanCard({
   const title = item.kind === 'note' ? item.note.text : item.occurrence.payment.title;
   const completed = Boolean(occurrence && isCompletedOccurrence(occurrence));
   const executed = Boolean(occurrence?.transactionId);
+  const manuallyCompleted = Boolean(occurrence?.manuallyCompleted);
   const dateLine = item.kind === 'note'
     ? formatTaskDate(item.note.date)
     : [
@@ -963,7 +987,17 @@ function PlanCard({
       data-upcoming-item={item.key}
       data-upcoming-date={item.date}
       data-plan-kind={kind}
-      onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      aria-label={item.kind === 'note' ? 'Посмотреть записку' : `Посмотреть план: ${title}`}
+      onClick={onView}
+      onKeyDown={event => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onView();
+        }
+      }}
     >
       <div
         className={`flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-center ${PLAN_KIND_TILE[kind]}`}
@@ -1002,19 +1036,6 @@ function PlanCard({
             : ''}
         </span>
         <div className="mt-auto flex items-center gap-1 pt-2" onPointerDown={stopPointer}>
-          <button
-            type="button"
-            aria-label={item.kind === 'note' ? 'Посмотреть записку' : `Посмотреть план: ${title}`}
-            title="Посмотреть"
-            data-testid={`button-upcoming-card-view-${item.key}`}
-            onClick={event => {
-              event.stopPropagation();
-              onView();
-            }}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-theme-surface text-theme-muted hover:text-theme-primary active:scale-95"
-          >
-            <Eye size={15} />
-          </button>
           {occurrence && onExecute && (
             <button
               type="button"
@@ -1026,10 +1047,29 @@ function PlanCard({
                 event.stopPropagation();
                 onExecute();
               }}
-              className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-theme-surface px-3 text-xs font-bold text-theme-main hover:text-theme-primary active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-8 min-w-[104px] shrink-0 items-center justify-center gap-1 rounded-full bg-theme-primary px-4 text-xs font-bold text-white shadow-sm hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:bg-theme-surface disabled:text-theme-main disabled:opacity-60 disabled:shadow-none"
             >
               {executed && <Check size={13} strokeWidth={3} aria-hidden="true" />}
               {executed ? 'Исполнено' : 'Исполнить'}
+            </button>
+          )}
+          {occurrence && onManualToggle && (
+            <button
+              type="button"
+              aria-label={manuallyCompleted ? `Снять ручную отметку: ${title}` : `Исполнено вручную: ${title}`}
+              aria-pressed={manuallyCompleted}
+              title={executed ? 'Операция уже создана' : manuallyCompleted ? 'Снять отметку «исполнено вручную»' : 'Исполнено вручную'}
+              disabled={executed}
+              data-testid={`button-upcoming-card-manual-${item.key}`}
+              onClick={event => {
+                event.stopPropagation();
+                onManualToggle();
+              }}
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${manuallyCompleted
+                ? 'bg-theme-primary text-white'
+                : 'bg-theme-surface text-theme-muted hover:text-theme-primary'}`}
+            >
+              <Hand size={15} />
             </button>
           )}
           <button
@@ -1541,6 +1581,26 @@ function formatTileAmount(amount: number) {
     return `${new Intl.NumberFormat('ru-RU', { notation: 'compact', maximumFractionDigits: 1 }).format(amount)} ₽`;
   }
   return formatMoney(amount);
+}
+
+/** Local copy of a manual "done" mark, mirroring what the server stores. */
+function setManualCompletion(payments: PlannedPayment[], item: PlannedPaymentOccurrence, completed: boolean) {
+  return payments.map(payment => {
+    if (payment.id !== item.payment.id) return payment;
+    const paidDates = new Set(payment.paidDates || []);
+    if (completed) paidDates.add(item.date);
+    else paidDates.delete(item.date);
+    const occurrences = [...(payment.occurrences || [])];
+    const index = occurrences.findIndex(occurrence => occurrence.date === item.date);
+    if (index >= 0) occurrences[index] = { ...occurrences[index], manuallyCompleted: completed };
+    else occurrences.push({ id: `local-${item.date}`, date: item.date, transactionId: null, manuallyCompleted: completed });
+    return {
+      ...payment,
+      paidDates: Array.from(paidDates),
+      occurrences,
+      status: item.date === payment.date ? (completed ? 'paid' as const : 'pending' as const) : payment.status,
+    };
+  });
 }
 
 function updatePaymentStatus(payments: PlannedPayment[], item: PlannedPaymentOccurrence) {

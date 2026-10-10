@@ -42,7 +42,9 @@ import {
   Loader2,
   WifiOff,
   Calculator as CalcIcon,
-  ChevronDown
+  ChevronDown,
+  ImagePlus,
+  Table as TableIcon
 } from 'lucide-react';
 import { GenericContextMenu } from './ui/GenericContextMenu';
 import InteractiveMarkdown from './ui/InteractiveMarkdown';
@@ -50,7 +52,8 @@ import { cn } from '../lib/utils';
 import CashbackTab from './CashbackTab';
 import Calculator from './Calculator';
 import CreditTab from './CreditTab';
-import { normalizePlanNotes } from '../lib/planNotes';
+import { normalizePlanNotes, pruneNoteImages } from '../lib/planNotes';
+import { compressImageFile, TABLE_TEMPLATE } from '../lib/markdownImages';
 import { getTodayKey } from '../lib/plannedPaymentOccurrences';
 import { applyCalendarPlanEdit, CalendarPlanEditOptions, createCalendarPlanId, isRecurringPlan } from '../lib/calendarPlanEditing';
 import { cacheCalendarSnapshot, calendarApi } from '../lib/calendarApi';
@@ -170,6 +173,40 @@ export default function PlanPage({
   const isEditingCommentRef = useRef(false);
   const [editingNoteTitle, setEditingNoteTitle] = useState('');
   const [noteToDelete, setNoteToDelete] = useState<PlanNote | null>(null);
+  const [noteImageError, setNoteImageError] = useState<string | null>(null);
+  const noteImageInputRef = useRef<HTMLInputElement>(null);
+
+  /** Puts a block (picture, table) on its own lines at the editor's cursor. */
+  const insertNoteBlock = (block: string, text = localComment) => {
+    const textarea = document.getElementById('comment-editor') as HTMLTextAreaElement | null;
+    const start = textarea ? textarea.selectionStart : text.length;
+    const end = textarea ? textarea.selectionEnd : text.length;
+    const before = text.substring(0, start);
+    const after = text.substring(end);
+    const lead = before && !before.endsWith('\n') ? '\n' : '';
+    const tail = after.startsWith('\n') ? '' : '\n';
+    return before + lead + block + tail + after;
+  };
+
+  const addNoteImage = async (file: File) => {
+    setNoteImageError(null);
+    if (!file.type.startsWith('image/')) {
+      setNoteImageError('Можно добавить только картинку');
+      return;
+    }
+    try {
+      const dataUrl = await compressImageFile(file);
+      const imageId = `i${Date.now().toString(36)}`;
+      const content = insertNoteBlock(`![](img:${imageId})`);
+      const next = notesRef.current.map(note => note.id === activeNoteIdRef.current
+        ? { ...note, content, images: { ...(note.images || {}), [imageId]: dataUrl } }
+        : note);
+      const payload = setNotesSnapshot(next, activeNoteIdRef.current);
+      if (planData) savePlanData({ ...planData, comment: payload }, 'comment');
+    } catch (error) {
+      setNoteImageError(error instanceof Error ? error.message : 'Не удалось добавить картинку');
+    }
+  };
 
   const setNotesSnapshot = (nextNotes: PlanNote[], nextActiveId: string): PlanNotesPayload => {
     const safeNotes = nextNotes.length ? nextNotes : [{ id: 'note-1', title: 'Моя заметка', content: '' }];
@@ -1060,7 +1097,7 @@ export default function PlanPage({
           </div>
         ) : (
           <div className="flex-1 flex flex-col min-h-0">
-            <div className="flex items-center justify-between p-1 pb-2 shrink-0">
+            <div className="flex flex-wrap items-center justify-between gap-y-1 p-1 pb-2 shrink-0">
               <div className="flex w-full min-w-0 items-center gap-1">
                 <div className="relative flex min-w-0 flex-1 items-center">
                   {isEditingComment ? (
@@ -1137,7 +1174,7 @@ export default function PlanPage({
                   onClick={() => {
                     if (isEditingComment && planData) {
                       const next = notesRef.current.map(note => note.id === activeNoteIdRef.current
-                        ? { ...note, title: editingNoteTitle.trim() || 'Без названия', content: localComment }
+                        ? pruneNoteImages({ ...note, title: editingNoteTitle.trim() || 'Без названия', content: localComment })
                         : note);
                       const payload = setNotesSnapshot(next, activeNoteIdRef.current);
                       savePlanData({ ...planData, comment: payload }, 'comment');
@@ -1158,7 +1195,7 @@ export default function PlanPage({
               </div>
               
               {isEditingComment && (
-                 <div className="flex items-center gap-1 bg-theme-main p-1 rounded-xl">
+                 <div className="flex flex-wrap items-center gap-1 bg-theme-main p-1 rounded-xl">
                   <button 
                     onClick={() => {
                       const textarea = document.getElementById('comment-editor') as HTMLTextAreaElement;
@@ -1288,10 +1325,43 @@ export default function PlanPage({
                   >
                     <Type size={14} />
                   </button>
+                  <button
+                    type="button"
+                    data-testid="button-note-insert-image"
+                    onClick={() => noteImageInputRef.current?.click()}
+                     className="p-1 hover:bg-theme-surface hover:shadow-sm rounded-lg transition-all"
+                    title="Картинка (текст обтекает слева; в кавычках после адреса можно указать &quot;right&quot;, &quot;center&quot; или ширину &quot;30%&quot;)"
+                  >
+                    <ImagePlus size={14} />
+                  </button>
+                  <input
+                    ref={noteImageInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    data-testid="input-note-image"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = '';
+                      if (file) void addNoteImage(file);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    data-testid="button-note-insert-table"
+                    onClick={() => setLocalComment(insertNoteBlock(TABLE_TEMPLATE))}
+                     className="p-1 hover:bg-theme-surface hover:shadow-sm rounded-lg transition-all"
+                    title="Таблица"
+                  >
+                    <TableIcon size={14} />
+                  </button>
                 </div>
               )}
             </div>
 
+            {noteImageError && (
+              <p role="alert" className="px-2 text-xs text-rose-600">{noteImageError}</p>
+            )}
             <div className="flex-1 p-1 pt-2 overflow-hidden">
               {isEditingComment ? (
                 <textarea 
@@ -1307,6 +1377,7 @@ export default function PlanPage({
                  <div className="w-full h-full p-8 bg-theme-surface border border-theme-base rounded-[32px] overflow-auto markdown-body shadow-sm no-scrollbar">
                   <InteractiveMarkdown 
                     content={localComment}
+                    images={notes.find(note => note.id === activeNoteId)?.images}
                     onUpdate={(newContent) => {
                       const next = notesRef.current.map(note => note.id === activeNoteIdRef.current
                         ? { ...note, content: newContent } : note);

@@ -1,15 +1,51 @@
 import React from 'react';
 import { cn } from '../../lib/utils';
+export { referencedImageIds } from '../../lib/markdownImages';
 
 interface InteractiveMarkdownProps {
   content: string;
   onUpdate: (newContent: string) => void;
   className?: string;
+  /** Pictures stored next to the text, referenced as `![подпись](img:<id>)`. */
+  images?: Record<string, string>;
 }
 
 interface SimpleMarkdownProps {
   content: string;
   className?: string;
+  images?: Record<string, string>;
+}
+
+export interface MarkdownRenderOptions {
+  images?: Record<string, string>;
+}
+
+const IMAGE_PATTERN = /(!\[[^\]\n]*\]\([^)\s]+(?:\s+"[^"\n]*")?\))/g;
+const IMAGE_MATCH = /^!\[([^\]\n]*)\]\(([^)\s]+)(?:\s+"([^"\n]*)")?\)$/;
+const TABLE_SEPARATOR = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
+
+function resolveImageSource(src: string, images?: Record<string, string>) {
+  if (src.startsWith('img:')) return images?.[src.slice(4)];
+  if (/^(https?:|data:image\/)/i.test(src)) return src;
+  return undefined;
+}
+
+/**
+ * Picture placement from the optional title: `"right"`, `"center"` (no text
+ * wrap), `"left"` (the default) and a width such as `"40%"`.
+ */
+function imageLayout(title?: string) {
+  const words = (title || '').toLowerCase().split(/\s+/).filter(Boolean);
+  const width = words.find(word => /^\d{1,3}%$/.test(word));
+  const align = words.includes('right') ? 'right' : words.includes('center') ? 'center' : 'left';
+  return { align, width };
+}
+
+function splitTableRow(line: string): string[] {
+  let row = line.trim();
+  if (row.startsWith('|')) row = row.slice(1);
+  if (row.endsWith('|') && !row.endsWith('\\|')) row = row.slice(0, -1);
+  return row.split(/(?<!\\)\|/).map(cell => cell.trim().replace(/\\\|/g, '|'));
 }
 
 /**
@@ -31,7 +67,11 @@ function toggleCheckboxInMarkdown(text: string, indexToToggle: number): string {
   });
 }
 
-export function parseMarkdown(text: string, onToggleCheckbox?: (index: number) => void): React.ReactNode {
+export function parseMarkdown(
+  text: string,
+  onToggleCheckbox?: (index: number) => void,
+  options: MarkdownRenderOptions = {},
+): React.ReactNode {
   if (!text) return null;
   
   // Split the text into lines
@@ -58,7 +98,7 @@ export function parseMarkdown(text: string, onToggleCheckbox?: (index: number) =
   };
 
   const parseInlineElements = (inlineText: string, lineKey: string): React.ReactNode => {
-    let parts: { type: 'text' | 'bold' | 'italic' | 'code' | 'link'; text: string; url?: string }[] = [{ type: 'text', text: inlineText }];
+    let parts: { type: 'text' | 'bold' | 'italic' | 'strike' | 'code' | 'link' | 'image'; text: string; url?: string; title?: string }[] = [{ type: 'text', text: inlineText }];
     
     // Process code blocks first: `code`
     let nextParts: typeof parts = [];
@@ -68,6 +108,24 @@ export function parseMarkdown(text: string, onToggleCheckbox?: (index: number) =
         for (const sub of subparts) {
           if (sub.startsWith('`') && sub.endsWith('`')) {
             nextParts.push({ type: 'code', text: sub.slice(1, -1) });
+          } else if (sub) {
+            nextParts.push({ type: 'text', text: sub });
+          }
+        }
+      } else {
+        nextParts.push(part);
+      }
+    }
+    parts = nextParts;
+
+    // Pictures before links, since ![alt](src) contains link syntax
+    nextParts = [];
+    for (const part of parts) {
+      if (part.type === 'text') {
+        for (const sub of part.text.split(IMAGE_PATTERN)) {
+          const match = sub.match(IMAGE_MATCH);
+          if (match) {
+            nextParts.push({ type: 'image', text: match[1], url: match[2], title: match[3] });
           } else if (sub) {
             nextParts.push({ type: 'text', text: sub });
           }
@@ -115,6 +173,23 @@ export function parseMarkdown(text: string, onToggleCheckbox?: (index: number) =
     }
     parts = nextParts;
 
+    // Strikethrough: ~~text~~
+    nextParts = [];
+    for (const part of parts) {
+      if (part.type === 'text') {
+        for (const sub of part.text.split(/(~~[^~\n]+~~)/g)) {
+          if (sub.startsWith('~~') && sub.endsWith('~~') && sub.length > 4) {
+            nextParts.push({ type: 'strike', text: sub.slice(2, -2) });
+          } else if (sub) {
+            nextParts.push({ type: 'text', text: sub });
+          }
+        }
+      } else {
+        nextParts.push(part);
+      }
+    }
+    parts = nextParts;
+
     // Process Italic next: *text*
     nextParts = [];
     for (const part of parts) {
@@ -142,6 +217,34 @@ export function parseMarkdown(text: string, onToggleCheckbox?: (index: number) =
           }
           if (p.type === 'italic') {
             return <em key={key} className="italic text-theme-main">{p.text}</em>;
+          }
+          if (p.type === 'strike') {
+            return <s key={key}>{p.text}</s>;
+          }
+          if (p.type === 'image') {
+            const src = resolveImageSource(p.url || '', options.images);
+            if (!src) {
+              return <span key={key} className="text-theme-muted italic">[картинка не найдена]</span>;
+            }
+            const { align, width } = imageLayout(p.title);
+            return (
+              <img
+                key={key}
+                src={src}
+                alt={p.text}
+                title={p.text || undefined}
+                loading="lazy"
+                data-testid="markdown-image"
+                data-align={align}
+                style={width ? { width } : undefined}
+                className={cn(
+                  'rounded-xl object-contain',
+                  align === 'left' && 'float-left mr-3 mb-2 max-w-[45%]',
+                  align === 'right' && 'float-right ml-3 mb-2 max-w-[45%]',
+                  align === 'center' && 'mx-auto my-2 block max-w-full',
+                )}
+              />
+            );
           }
           if (p.type === 'code') {
             return <code key={key} className="bg-theme-main font-mono text-[11px] px-1 py-0.5 rounded text-theme-main">{p.text}</code>;
@@ -223,6 +326,51 @@ export function parseMarkdown(text: string, onToggleCheckbox?: (index: number) =
       continue;
     }
 
+    // GFM tables: a header row, a |---|---| separator, then body rows
+    if (rawLine.trim().startsWith('|') && i + 1 < lines.length && TABLE_SEPARATOR.test(lines[i + 1]) && lines[i + 1].includes('-')) {
+      flushList();
+      const header = splitTableRow(rawLine);
+      const aligns = splitTableRow(lines[i + 1]).map(cell => (
+        cell.startsWith(':') && cell.endsWith(':') ? 'center' : cell.endsWith(':') ? 'right' : 'left'
+      ));
+      const body: string[][] = [];
+      let next = i + 2;
+      while (next < lines.length && lines[next].trim().startsWith('|')) {
+        body.push(splitTableRow(lines[next]));
+        next += 1;
+      }
+      const columns = header.length;
+      const cellClass = (column: number) => cn(
+        'border border-theme-base px-2 py-1 align-top',
+        aligns[column] === 'center' && 'text-center',
+        aligns[column] === 'right' && 'text-right',
+      );
+      elements.push(
+        <div key={key} className="my-2 max-w-full overflow-x-auto" data-testid="markdown-table">
+          <table className="border-collapse text-xs sm:text-sm text-theme-main">
+            <thead>
+              <tr className="bg-theme-main">
+                {header.map((cell, column) => (
+                  <th key={column} className={cn(cellClass(column), 'font-bold')}>{parseInlineElements(cell, `${key}-h${column}`)}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {body.map((row, rowIndex) => (
+                <tr key={rowIndex}>
+                  {Array.from({ length: columns }, (_, column) => (
+                    <td key={column} className={cellClass(column)}>{parseInlineElements(row[column] || '', `${key}-${rowIndex}-${column}`)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+      i = next - 1;
+      continue;
+    }
+
     // GFM Task Lists Checkboxes: "- [ ]", "- [x]", "* [ ]", "* [x]"
     const checkboxMatch = rawLine.match(/^(\s*)([-*+])\s+\[([ xX])\]\s*(.*)$/);
     if (checkboxMatch) {
@@ -232,7 +380,7 @@ export function parseMarkdown(text: string, onToggleCheckbox?: (index: number) =
       const index = checkboxIndex++;
       
       elements.push(
-        <div key={key} className="flex items-start gap-2 my-1 select-none">
+        <div key={key} className="flex items-start gap-2 my-1">
           <input
             type="checkbox"
             checked={checked}
@@ -241,7 +389,7 @@ export function parseMarkdown(text: string, onToggleCheckbox?: (index: number) =
                 onToggleCheckbox(index);
               }
             }}
-            className="mt-0.5 cursor-pointer h-3.5 w-3.5 rounded border-theme-base text-theme-primary focus:ring-theme-primary"
+            className="mt-0.5 shrink-0 select-none cursor-pointer h-3.5 w-3.5 rounded border-theme-base text-theme-primary focus:ring-theme-primary"
           />
           <span className={cn("text-xs sm:text-sm leading-relaxed", checked ? "line-through text-theme-muted" : "text-theme-main")}>
             {parseInlineElements(textContent, key)}
@@ -304,23 +452,23 @@ export function parseMarkdown(text: string, onToggleCheckbox?: (index: number) =
   return <>{elements}</>;
 }
 
-export default function InteractiveMarkdown({ content, onUpdate, className }: InteractiveMarkdownProps) {
+export default function InteractiveMarkdown({ content, onUpdate, className, images }: InteractiveMarkdownProps) {
   const handleToggle = (index: number) => {
     const updated = toggleCheckboxInMarkdown(content, index);
     onUpdate(updated);
   };
 
   return (
-    <div className={cn("markdown-body", className)}>
-      {parseMarkdown(content, handleToggle)}
+    <div className={cn("markdown-body flow-root", className)}>
+      {parseMarkdown(content, handleToggle, { images })}
     </div>
   );
 }
 
-export function SimpleMarkdown({ content, className }: SimpleMarkdownProps) {
+export function SimpleMarkdown({ content, className, images }: SimpleMarkdownProps) {
   return (
-    <div className={cn("markdown-body", className)}>
-      {parseMarkdown(content)}
+    <div className={cn("markdown-body flow-root", className)}>
+      {parseMarkdown(content, undefined, { images })}
     </div>
   );
 }

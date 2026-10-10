@@ -1,4 +1,5 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Search, X } from 'lucide-react';
 import { Category, TransactionType } from '../types';
 import { cn } from '../lib/utils';
@@ -16,6 +17,9 @@ export default function CategorySelect({ categories, selectedCategoryId, onChang
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [placement, setPlacement] = useState<DropdownPlacement | null>(null);
   const selectedOptionRef = useRef<HTMLButtonElement>(null);
 
   const selectedCategory = categories.find(c => c.id === selectedCategoryId);
@@ -56,13 +60,36 @@ export default function CategorySelect({ categories, selectedCategoryId, onChang
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (containerRef.current && !containerRef.current.contains(target) && !dropdownRef.current?.contains(target)) {
         setIsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // The list is drawn in a portal with fixed position, so a scrolling form or
+  // a modal can't clip it, and it opens upwards when the field sits low on
+  // the screen.
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setPlacement(null);
+      return;
+    }
+    const update = () => {
+      if (triggerRef.current) setPlacement(computePlacement(triggerRef.current.getBoundingClientRect()));
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    window.visualViewport?.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+      window.visualViewport?.removeEventListener('resize', update);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen || !selectedCategoryId) return;
@@ -84,6 +111,7 @@ export default function CategorySelect({ categories, selectedCategoryId, onChang
       {label && <label className="text-[10px] font-bold text-theme-muted uppercase tracking-widest ml-1 mb-1 block">{label}</label>}
       
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setIsOpen(open => !open)}
         className="w-full bg-theme-surface border border-theme-base rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 ring-theme-primary/20 transition-all text-left font-semibold flex items-center justify-between text-theme-main shadow-sm"
@@ -104,14 +132,24 @@ export default function CategorySelect({ categories, selectedCategoryId, onChang
         <ChevronDown className={cn("w-4 h-4 text-theme-muted transition-transform shrink-0 ml-2", isOpen && "rotate-180")} />
       </button>
 
+      {createPortal(
       <AnimatePresence>
-        {isOpen && (
+        {isOpen && placement && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+            ref={dropdownRef}
+            data-testid="category-select-dropdown"
+            data-placement={placement.up ? 'up' : 'down'}
+            initial={{ opacity: 0, scale: 0.95, y: placement.up ? 10 : -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+            exit={{ opacity: 0, scale: 0.95, y: placement.up ? 10 : -10 }}
             transition={{ duration: 0.1 }}
-            className="absolute z-[200] top-full mt-2 left-0 right-0 bg-theme-surface border border-theme-base rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[400px]"
+            style={{
+              left: placement.left,
+              width: placement.width,
+              maxHeight: placement.maxHeight,
+              ...(placement.up ? { bottom: placement.bottom } : { top: placement.top }),
+            }}
+            className="fixed z-[400] bg-theme-surface border border-theme-base rounded-2xl shadow-2xl overflow-hidden flex flex-col"
           >
             {/* Search Input */}
             <div className="p-2 border-b border-theme-base sticky top-0 bg-theme-surface/80 backdrop-blur-sm z-10">
@@ -191,7 +229,33 @@ export default function CategorySelect({ categories, selectedCategoryId, onChang
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body,
+      )}
     </div>
   );
+}
+
+interface DropdownPlacement {
+  up: boolean;
+  left: number;
+  width: number;
+  top?: number;
+  bottom?: number;
+  maxHeight: number;
+}
+
+const DROPDOWN_GAP = 8;
+const DROPDOWN_MAX_HEIGHT = 400;
+const DROPDOWN_COMFORT_HEIGHT = 280;
+
+/** Opens below when there is room, otherwise on the side with more space. */
+export function computePlacement(rect: Pick<DOMRect, 'top' | 'bottom' | 'left' | 'width'>, viewportHeight = window.innerHeight): DropdownPlacement {
+  const spaceBelow = viewportHeight - rect.bottom - DROPDOWN_GAP * 2;
+  const spaceAbove = rect.top - DROPDOWN_GAP * 2;
+  const up = spaceBelow < DROPDOWN_COMFORT_HEIGHT && spaceAbove > spaceBelow;
+  const maxHeight = Math.max(160, Math.min(DROPDOWN_MAX_HEIGHT, up ? spaceAbove : spaceBelow));
+  return up
+    ? { up, left: rect.left, width: rect.width, bottom: viewportHeight - rect.top + DROPDOWN_GAP, maxHeight }
+    : { up, left: rect.left, width: rect.width, top: rect.bottom + DROPDOWN_GAP, maxHeight };
 }

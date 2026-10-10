@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizePlanNotes } from './planNotes';
+import { normalizePlanNotes, pruneNoteImages } from './planNotes';
 
 describe('normalizePlanNotes', () => {
   it('opens a legacy string as one automatically named note', () => {
@@ -43,5 +43,29 @@ describe('normalizePlanNotes', () => {
       title: 'Моя заметка',
       content: '',
     }]);
+  });
+});
+describe('note pictures', () => {
+  it('keeps pictures of a note and drops values that are not pictures', () => {
+    const payload = normalizePlanNotes({
+      version: 1,
+      activeNoteId: 'n',
+      notes: [{ id: 'n', title: 'С картинкой', content: '![](img:a)', images: { a: 'data:image/jpeg;base64,AA', b: 'javascript:alert(1)', c: 5 } }],
+    });
+    expect(payload.notes[0].images).toEqual({ a: 'data:image/jpeg;base64,AA' });
+  });
+
+  it('leaves old notes without the images field', () => {
+    const payload = normalizePlanNotes({ version: 1, activeNoteId: 'n', notes: [{ id: 'n', title: 'Старая', content: 'Текст' }] });
+    expect(payload.notes[0]).toEqual({ id: 'n', title: 'Старая', content: 'Текст' });
+  });
+
+  it('prunes pictures that the text no longer references', () => {
+    expect(pruneNoteImages({
+      id: 'n', title: 't', content: 'текст ![x](img:keep "right")',
+      images: { keep: 'data:image/png;base64,A', gone: 'data:image/png;base64,B' },
+    }).images).toEqual({ keep: 'data:image/png;base64,A' });
+    expect(pruneNoteImages({ id: 'n', title: 't', content: 'без картинок', images: { gone: 'data:image/png;base64,B' } }))
+      .toEqual({ id: 'n', title: 't', content: 'без картинок' });
   });
 });

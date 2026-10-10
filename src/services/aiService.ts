@@ -113,7 +113,9 @@ export const processUserMessage = async (
   imageData?: string[],
   recentTransactions?: Transaction[]
 ): Promise<AIResponse> => {
-  const mainAccounts = accounts.filter(a => a.showOnDashboard && !a.isArchived);
+  // Every active account can take part in an operation; "show on dashboard"
+  // only controls the dashboard tiles.
+  const mainAccounts = accounts.filter(a => !a.isArchived);
   
   const now = new Date();
   const localDate = [

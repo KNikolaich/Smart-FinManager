@@ -265,7 +265,8 @@ describe('UpcomingTasks', () => {
     expect(firstNoteCard.textContent).not.toContain('Исполнить');
 
     const noteKey = firstNoteCard.dataset.upcomingItem;
-    fireEvent.click(screen.getByTestId(`button-upcoming-card-view-${noteKey}`));
+    expect(noteKey).toBeTruthy();
+    fireEvent.click(firstNoteCard);
     expect(screen.getByTestId('dialog-calendar-note').textContent).toContain('Первая записка');
 
     fireEvent.click(screen.getByTestId('button-edit-calendar-note'));
@@ -388,6 +389,39 @@ describe('UpcomingTasks', () => {
     expect(dialog.textContent).not.toContain('Записка на потом');
   });
 
+  it('shows execute, then the manual-done hand, then delete on the right of a dashboard card', async () => {
+    const postSpy = vi.spyOn(api, 'post').mockResolvedValue({});
+    const onRequestTransaction = vi.fn();
+    const payment = { ...makePayment(0), id: 'card-order', date: '2026-09-19' };
+    render(
+      <UpcomingTasks
+        payments={[payment]}
+        variant="carousel"
+        startDate="2026-09-19"
+        onRequestTransaction={onRequestTransaction}
+      />,
+    );
+
+    const card = screen.getByTestId('upcoming-banner-card-order-2026-09-19');
+    expect(card.querySelector('[data-testid^="button-upcoming-card-view-"]')).toBeNull();
+    const execute = screen.getByTestId('button-toggle-payment-card-order-2026-09-19');
+    const hand = screen.getByTestId('button-upcoming-card-manual-card-order-2026-09-19');
+    const remove = screen.getByTestId('button-upcoming-card-delete-card-order-2026-09-19');
+    expect(execute.compareDocumentPosition(hand) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(hand.compareDocumentPosition(remove) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(remove.className).toContain('ml-auto');
+
+    fireEvent.click(hand);
+    expect(screen.queryByTestId('dialog-plan-view')).toBeNull();
+    await waitFor(() => expect(postSpy).toHaveBeenCalledWith(
+      expect.stringContaining('/calendar/plans/card-order/occurrences/2026-09-19'),
+      { completed: true },
+    ));
+    // A plan marked done by hand leaves the upcoming strip, like an executed one.
+    await waitFor(() => expect(screen.queryByTestId('upcoming-banner-card-order-2026-09-19')).toBeNull());
+    expect(onRequestTransaction).not.toHaveBeenCalled();
+  });
+
   it('opens the plan viewer from the card and edits from it', () => {
     const onEditTask = vi.fn();
     const payment = { ...makePayment(0), id: 'editable-task', note: 'Оплатить после получения счёта' };
@@ -400,7 +434,7 @@ describe('UpcomingTasks', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('button-upcoming-card-view-editable-task-2026-09-18'));
+    fireEvent.click(screen.getByTestId('upcoming-banner-editable-task-2026-09-18'));
     expect(screen.getByTestId('dialog-plan-view').textContent).toContain('Оплатить после получения счёта');
     fireEvent.click(screen.getByTestId('button-plan-view-edit'));
     expect(onEditTask).toHaveBeenCalledWith(expect.objectContaining({
@@ -421,7 +455,7 @@ describe('UpcomingTasks', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('button-upcoming-card-view-view-execute-2026-09-19'));
+    fireEvent.click(screen.getByTestId('upcoming-banner-view-execute-2026-09-19'));
     const dialog = screen.getByTestId('dialog-plan-view');
     const execute = screen.getByTestId('button-plan-view-execute');
     const edit = screen.getByTestId('button-plan-view-edit');

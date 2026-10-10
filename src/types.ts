@@ -260,6 +260,12 @@ export interface PlanNote {
   id: string;
   title: string;
   content: string;
+  /**
+   * Pictures of the note as data URLs, keyed by the id used in the text as
+   * `![подпись](img:<id>)`. Optional, so notes saved before pictures existed
+   * (and clients that predate them) keep working unchanged.
+   */
+  images?: Record<string, string>;
 }
 
 export interface PlanNotesPayload {
