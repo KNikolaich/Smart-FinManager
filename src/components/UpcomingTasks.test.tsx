@@ -329,7 +329,8 @@ describe('UpcomingTasks', () => {
 
     expect(cards[0].querySelector('strong')?.className).toContain('line-clamp-2');
     expect(cards[2].textContent).toContain('Карта → Накопительный');
-    expect(cards[2].textContent).toContain('Исполнить');
+    expect(cards[2].querySelector('[aria-label^="Исполнить план"]')).not.toBeNull();
+    expect(cards[2].textContent).not.toContain('Исполнить');
   });
 
   it('keeps the calendar title button and drops the old reset button', () => {
@@ -410,6 +411,8 @@ describe('UpcomingTasks', () => {
     expect(execute.compareDocumentPosition(hand) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(hand.compareDocumentPosition(remove) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(remove.className).toContain('ml-auto');
+    expect(execute.className).toContain('w-8');
+    expect(execute.textContent).toBe('');
 
     fireEvent.click(hand);
     expect(screen.queryByTestId('dialog-plan-view')).toBeNull();
@@ -459,6 +462,8 @@ describe('UpcomingTasks', () => {
     const dialog = screen.getByTestId('dialog-plan-view');
     const execute = screen.getByTestId('button-plan-view-execute');
     const edit = screen.getByTestId('button-plan-view-edit');
+    expect(execute.textContent?.trim()).toBe('Выполнить');
+    expect(edit.textContent?.trim()).toBe('Изменить');
     expect(execute.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByTestId('button-plan-view-delete').textContent).toBe('');
     expect(dialog.textContent).not.toContain('Закрыть');

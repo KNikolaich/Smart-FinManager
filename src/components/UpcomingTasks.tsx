@@ -1047,10 +1047,11 @@ function PlanCard({
                 event.stopPropagation();
                 onExecute();
               }}
-              className="inline-flex h-8 min-w-[104px] shrink-0 items-center justify-center gap-1 rounded-full bg-theme-primary px-4 text-xs font-bold text-white shadow-sm hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:bg-theme-surface disabled:text-theme-main disabled:opacity-60 disabled:shadow-none"
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-theme-primary active:scale-95 disabled:cursor-not-allowed ${executed
+                ? 'bg-theme-primary text-white opacity-60'
+                : 'bg-theme-surface text-theme-primary hover:bg-theme-primary hover:text-white'}`}
             >
-              {executed && <Check size={13} strokeWidth={3} aria-hidden="true" />}
-              {executed ? 'Исполнено' : 'Исполнить'}
+              <Check size={16} strokeWidth={3} aria-hidden="true" />
             </button>
           )}
           {occurrence && onManualToggle && (
@@ -1239,13 +1240,13 @@ function PlanViewDialog({
                 <span className={`flex h-4 w-4 items-center justify-center rounded border ${executed ? 'border-theme-primary bg-theme-primary text-white' : 'border-theme-base bg-theme-surface'}`}>
                   {executed && <Check size={11} strokeWidth={3} aria-hidden="true" />}
                 </span>
-                {executed ? 'Исполнено' : 'Исполнить'}
+                {executed ? 'Выполнено' : 'Выполнить'}
               </button>
             )}
             {onEdit && (
               <button type="button" data-testid="button-plan-view-edit" onClick={onEdit} className="inline-flex items-center gap-1 rounded-xl bg-theme-primary px-3 py-2 text-xs font-bold text-white">
                 <Pencil size={13} />
-                Редактировать
+                Изменить
               </button>
             )}
           </div>
