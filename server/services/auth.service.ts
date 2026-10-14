@@ -6,6 +6,7 @@ import { JWT_SECRET_VALUE } from "../config";
 import { transporter } from "../mailer";
 import { isAccountLockedOut, recordAccountLoginFailure, resetAccountLoginFailures, ACCOUNT_WARNING_THRESHOLD } from "../rateLimitStore";
 import { mergeUserSettings } from "./userSettings";
+import { fetchAvatarAsDataUrl, gravatarUrl } from "./remoteAvatar";
 
 async function maybeSendAttackWarningEmail(email: string, attempts: number) {
   if (attempts !== ACCOUNT_WARNING_THRESHOLD) return; // fire once per lockout window
@@ -31,7 +32,11 @@ async function maybeSendAttackWarningEmail(email: string, attempts: number) {
 
 export async function registerUser(email: string, password: string) {
   const normalizedEmail = email.toLowerCase().trim();
-  const hashedPassword = await bcrypt.hash(password, 10);
+  // The default avatar is the person's Gravatar picture, when they have one.
+  const [hashedPassword, photoURL] = await Promise.all([
+    bcrypt.hash(password, 10),
+    fetchAvatarAsDataUrl(gravatarUrl(normalizedEmail)),
+  ]);
   const encryptedPass = encrypt(password);
 
   // Make the first user an admin
@@ -43,11 +48,12 @@ export async function registerUser(email: string, password: string) {
       email: normalizedEmail,
       password: hashedPassword,
       encryptedPassword: encryptedPass,
+      photoURL,
       role
     },
   });
   const token = jwt.sign({ userId: user.id, email: user.email, role: user.role }, JWT_SECRET_VALUE);
-  return { token, user: { id: user.id, email: user.email, role: user.role } };
+  return { token, user: { id: user.id, email: user.email, role: user.role, photoURL: user.photoURL } };
 }
 
 export async function loginUser(email: string, password: string) {

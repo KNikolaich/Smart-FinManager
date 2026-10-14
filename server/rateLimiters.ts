@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { prisma } from "./prisma";
 import { PrismaRateLimitStore } from "./rateLimitStore";
 
@@ -31,5 +31,17 @@ export const registerLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: authLimiterMessage,
+  store: new PrismaRateLimitStore(prisma),
+});
+
+// Sign-in through Google / Mail.ru / VK: 30 starts per 15 minutes. Counted under
+// its own key so these sign-ins don't use up the login limit for the same address.
+export const oauthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: authLimiterMessage,
+  keyGenerator: (req) => `oauth:${ipKeyGenerator(req.ip || "")}`,
   store: new PrismaRateLimitStore(prisma),
 });
