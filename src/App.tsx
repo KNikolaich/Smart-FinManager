@@ -564,6 +564,7 @@ export default function App() {
         showUserPage={showUserPage}
         onOpenUserPage={() => setShowUserPage(true)}
         isHidden={isHeaderHidden}
+        photoURL={user?.photoURL}
       />
 
       {/* Main Content */}
@@ -606,6 +607,7 @@ export default function App() {
         showUserPage={showUserPage}
         onOpenUserPage={() => setShowUserPage(true)}
         isOnline={isOnline}
+        photoURL={user?.photoURL}
       />
 
       <AppModals

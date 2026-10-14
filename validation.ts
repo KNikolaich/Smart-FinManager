@@ -185,9 +185,22 @@ const userSettingsSchema = z.object({
   themeByDevice: themeByDeviceSchema.optional(),
 }).strict();
 
+/** Longest uploaded avatar the server keeps (the client sends ~10–40 KB for a 256 px square). */
+export const MAX_AVATAR_DATA_URL_LENGTH = 400_000;
+
+// An avatar is an emoji / short text, a web link, or a picture uploaded from the device
+// as a base64 data URL. Only raster image types are allowed (no SVG with scripts).
+const AVATAR_DATA_URL = /^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/;
+const photoUrlSchema = z.string().trim()
+  .max(MAX_AVATAR_DATA_URL_LENGTH, "Аватар слишком большой, выберите картинку поменьше")
+  .refine(
+    value => /^data:/i.test(value) ? AVATAR_DATA_URL.test(value) : value.length <= 2048,
+    "Аватар должен быть картинкой PNG, JPEG, WebP или GIF",
+  );
+
 export const updateProfileSchema = z.object({
   displayName: z.string().trim().max(120).optional().nullable(),
-  photoURL: z.string().trim().max(2048).optional().nullable(),
+  photoURL: photoUrlSchema.optional().nullable(),
   settings: userSettingsSchema.optional(),
 }).strict();
 
@@ -449,7 +462,7 @@ const importPlanGridSchema = z.object({
 const importProfileSchema = z.object({
   settings: z.record(z.string(), z.any()).optional(),
   displayName: z.string().trim().max(120).optional().nullable(),
-  photoURL: z.string().trim().max(2048).optional().nullable(),
+  photoURL: photoUrlSchema.optional().nullable(),
 }).passthrough();
 
 export const importBatchSchema = z.object({

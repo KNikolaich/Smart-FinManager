@@ -1,9 +1,11 @@
-import { LogOut, Sparkles, CalendarDays, Eraser, FileDown, FileUp, Edit2, Check, Trash2, AlertTriangle, X, Save } from 'lucide-react';
-import { useState } from 'react';
+import { LogOut, Sparkles, CalendarDays, Eraser, FileDown, FileUp, Edit2, Check, Trash2, AlertTriangle, X, Save, ImagePlus, Loader2 } from 'lucide-react';
+import { useRef, useState, type ChangeEvent } from 'react';
 import { UserProfile } from '../types';
 import { cn } from '../lib/utils';
 import { api } from '../lib/api';
 import { useDataManagement } from '../hooks/useDataManagement';
+import { prepareAvatarFile } from '../lib/avatar';
+import { UserAvatar } from './ui/UserAvatar';
 
 interface UserPageProps {
   user: UserProfile;
@@ -21,6 +23,8 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
   const [isSelectingIcon, setIsSelectingIcon] = useState(false);
   const [photoURL, setPhotoURL] = useState(user.photoURL || '');
   const [error, setError] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const {
     seeding, seedProgress, success, showSeedConfirm, setShowSeedConfirm, password, setPassword,
@@ -34,16 +38,39 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  const handleSave = async () => {
+  // The new avatar is passed in directly: state set just before the call is not visible yet.
+  const handleSave = async (nextPhotoURL: string = photoURL) => {
     setError(null);
     try {
-      const updatedUser = await api.put<UserProfile>('/auth/me', { displayName, photoURL });
+      const updatedUser = await api.put<UserProfile>('/auth/me', { displayName, photoURL: nextPhotoURL || null });
+      setPhotoURL(updatedUser.photoURL || '');
       onUpdateUser(updatedUser);
       setIsEditingName(false);
       setIsSelectingIcon(false);
     } catch (error) {
       console.error('Error updating profile:', error);
+      setPhotoURL(user.photoURL || '');
       setError(error instanceof Error ? error.message : 'Неизвестная ошибка при обновлении профиля');
+    }
+  };
+
+  const chooseAvatar = (value: string) => {
+    setPhotoURL(value);
+    void handleSave(value);
+  };
+
+  const handleAvatarFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setError(null);
+    setUploadingAvatar(true);
+    try {
+      chooseAvatar(await prepareAvatarFile(file));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Не удалось загрузить картинку');
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -68,26 +95,58 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
         )}
         {/* Profile Card */}
         <div className="pt-0 pl-6 pb-0 flex items-center gap-4">
-          <button 
+          <button
             onClick={() => setIsSelectingIcon(!isSelectingIcon)}
-            className="w-16 h-16 bg-theme-primary-light rounded-2xl flex items-center justify-center overflow-hidden text-3xl hover:opacity-80 transition-opacity"
+            aria-label="Сменить аватар"
+            className="relative w-16 h-16 rounded-2xl overflow-hidden hover:opacity-80 transition-opacity"
           >
-            {photoURL ? (
-              <span className="text-4xl">{photoURL}</span>
-            ) : (
-              <div className="w-full h-full bg-theme-primary flex items-center justify-center text-theme-on-primary font-bold text-xl">
-                {displayName?.charAt(0) || user.email.charAt(0).toUpperCase()}
-              </div>
+            <UserAvatar
+              photoURL={photoURL}
+              name={displayName || user.email}
+              className={cn('w-full h-full', photoURL ? 'bg-theme-primary-light' : 'bg-theme-primary text-theme-on-primary')}
+              contentClassName={photoURL ? 'text-4xl' : 'text-xl'}
+            />
+            {uploadingAvatar && (
+              <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
+                <Loader2 className="w-6 h-6 animate-spin" />
+              </span>
             )}
           </button>
-          
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarFile}
+            data-testid="avatar-file-input"
+          />
+
           {isSelectingIcon && (
-            <div className="absolute top-24 left-6 bg-theme-surface p-4 rounded-2xl shadow-xl border border-theme-base grid grid-cols-4 gap-2 z-10">
-              {AVATARS.map(avatar => (
-                <button key={avatar} onClick={() => { setPhotoURL(avatar); handleSave(); }} className="text-2xl p-2 hover:bg-theme-main rounded-lg">
-                  {avatar}
+            <div className="absolute top-24 left-6 bg-theme-surface p-4 rounded-2xl shadow-xl border border-theme-base z-10 w-64 space-y-3">
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-theme-primary-light text-theme-primary-dark font-semibold text-sm hover:opacity-80 disabled:opacity-50"
+              >
+                <ImagePlus size={18} />
+                Загрузить своё фото
+              </button>
+              <div className="grid grid-cols-4 gap-2">
+                {AVATARS.map(avatar => (
+                  <button key={avatar} onClick={() => chooseAvatar(avatar)} className="text-2xl p-2 hover:bg-theme-main rounded-lg">
+                    {avatar}
+                  </button>
+                ))}
+              </div>
+              {photoURL && (
+                <button
+                  onClick={() => chooseAvatar('')}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-theme-muted text-sm hover:bg-theme-main"
+                >
+                  <Trash2 size={16} />
+                  Убрать аватар
                 </button>
-              ))}
+              )}
             </div>
           )}
 
@@ -99,7 +158,7 @@ export default function UserPage({ user, onLogout, onClose, onUpdateUser, onRefr
                   onChange={(e) => setDisplayName(e.target.value)}
                   className="font-bold text-lg border-b-2 border-theme-primary outline-none w-full bg-transparent text-theme-main"
                 />
-                <button onClick={handleSave} className="p-1 text-theme-primary" title="Сохранить"><Save size={20} /></button>
+                <button onClick={() => handleSave()} className="p-1 text-theme-primary" title="Сохранить"><Save size={20} /></button>
               </div>
             ) : (
               <div className="flex items-center gap-2">

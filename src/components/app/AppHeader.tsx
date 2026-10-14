@@ -1,7 +1,8 @@
 import { motion } from 'motion/react';
-import { User as UserIcon, Wallet } from 'lucide-react';
+import { Wallet } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { OfflineChip } from '../ui/OfflineChip';
+import { UserAvatar } from '../ui/UserAvatar';
 
 interface AppHeaderProps {
   activeTab: string;
@@ -10,9 +11,10 @@ interface AppHeaderProps {
   showUserPage: boolean;
   onOpenUserPage: () => void;
   isHidden: boolean;
+  photoURL?: string | null;
 }
 
-export function AppHeader({ activeTab, onLogoClick, isOnline, showUserPage, onOpenUserPage, isHidden }: AppHeaderProps) {
+export function AppHeader({ activeTab, onLogoClick, isOnline, showUserPage, onOpenUserPage, isHidden, photoURL }: AppHeaderProps) {
   return (
     <header className={cn(
       "relative px-6 flex items-center justify-between bg-theme-surface/80 backdrop-blur-md border-b border-theme-base shrink-0 z-50 sticky top-0 transition-[height,opacity] duration-300 ease-out max-md:landscape:hidden",
@@ -53,7 +55,11 @@ export function AppHeader({ activeTab, onLogoClick, isOnline, showUserPage, onOp
             showUserPage ? "bg-theme-primary text-theme-on-primary shadow-lg shadow-theme-primary-light" : "bg-theme-primary-light text-theme-primary-dark"
           )}
         >
-          <UserIcon className="w-6 h-6" />
+          <UserAvatar
+            photoURL={photoURL}
+            className="w-full h-full"
+            contentClassName="text-2xl"
+          />
         </motion.button>
       </div>
     </header>

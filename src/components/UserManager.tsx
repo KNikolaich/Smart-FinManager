@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api';
 import { UserProfile } from '../types';
-import { Trash2, X, AlertTriangle, User, Mail, Calendar, LockOpen, Lock, Upload } from 'lucide-react';
+import { Trash2, X, AlertTriangle, Mail, Calendar, LockOpen, Lock, Upload } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { UserAvatar } from './ui/UserAvatar';
 
 type PendingBackupRestore = {
   target: UserProfile;
@@ -185,13 +186,11 @@ export const UserManager: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             {users.map((u) => (
               <div key={u.id} className="bg-theme-surface border border-theme-base rounded-xl p-4 flex flex-col justify-between hover:shadow-md transition-shadow group relative">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-theme-primary-light flex items-center justify-center text-theme-primary shrink-0 overflow-hidden">
-                    {u.photoURL ? (
-                      <img src={u.photoURL} alt={u.displayName || u.email} className="w-full h-full object-cover" />
-                    ) : (
-                      <User size={24} />
-                    )}
-                  </div>
+                  <UserAvatar
+                    photoURL={u.photoURL}
+                    className="w-12 h-12 rounded-full bg-theme-primary-light text-theme-primary"
+                    contentClassName="text-2xl"
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                        <h4 className="font-black text-theme-main truncate">{u.displayName || 'Без имени'}</h4>

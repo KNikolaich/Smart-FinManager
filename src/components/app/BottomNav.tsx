@@ -9,6 +9,7 @@ import {
 import { RobotIcon } from '../icons/RobotIcon';
 import { cn } from '../../lib/utils';
 import { OfflineChip } from '../ui/OfflineChip';
+import { UserAvatar } from '../ui/UserAvatar';
 
 type Tab = 'dashboard' | 'plan' | 'analytics' | 'settings' | 'ai';
 
@@ -19,9 +20,10 @@ interface BottomNavProps {
   showUserPage: boolean;
   onOpenUserPage: () => void;
   isOnline: boolean;
+  photoURL?: string | null;
 }
 
-export function BottomNav({ activeTab, onChangeTab, onDashboardClick, showUserPage, onOpenUserPage, isOnline }: BottomNavProps) {
+export function BottomNav({ activeTab, onChangeTab, onDashboardClick, showUserPage, onOpenUserPage, isOnline, photoURL }: BottomNavProps) {
   return (
     <nav aria-label="Основная навигация" className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 pb-0 h-[54px] shrink-0 z-40 flex items-center justify-center md:relative md:bottom-0 md:left-auto md:translate-x-0 md:max-w-none md:bg-theme-surface md:border-t border-theme-base md:rounded-none max-md:landscape:relative max-md:landscape:bottom-0 max-md:landscape:left-auto max-md:landscape:translate-x-0 max-md:landscape:w-20 max-md:landscape:h-full max-md:landscape:px-0 max-md:landscape:bg-theme-surface max-md:landscape:border-r max-md:landscape:border-t-0">
       <div className="w-full bg-theme-surface/90 backdrop-blur-xl border border-theme-base shadow-elegant rounded-[18px] flex items-center justify-around h-full px-2 md:bg-transparent md:backdrop-blur-none md:border-none md:shadow-none md:rounded-none max-md:landscape:flex-col max-md:landscape:py-4 max-md:landscape:bg-transparent max-md:landscape:backdrop-blur-none">
@@ -104,7 +106,15 @@ export function BottomNav({ activeTab, onChangeTab, onDashboardClick, showUserPa
             showUserPage ? "text-theme-primary bg-theme-primary-light/50" : "text-theme-muted hover:text-theme-primary"
           )}
         >
-          <UserIcon size={20} strokeWidth={showUserPage ? 2.5 : 2} />
+          {photoURL ? (
+            <UserAvatar
+              photoURL={photoURL}
+              className={cn('w-8 h-8 rounded-xl bg-theme-primary-light', showUserPage && 'ring-2 ring-theme-primary')}
+              contentClassName="text-xl"
+            />
+          ) : (
+            <UserIcon size={20} strokeWidth={showUserPage ? 2.5 : 2} />
+          )}
         </button>
       </div>
     </nav>
