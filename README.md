@@ -57,6 +57,27 @@ docker compose up -d --build
 2. Измените `DOMAIN` в `.env`.
 3. Перезапустите Caddy: `docker compose up -d caddy` — новый сертификат будет получен автоматически.
 
+### Вход через Google, Mail.ru и VK
+
+Кнопки входа появляются на экране входа только для тех сервисов, у которых заданы ключи в `.env`.
+У нового пользователя имя и аватарка берутся из профиля сервиса; при регистрации по почте аватаркой становится картинка из Gravatar, если она есть.
+Если сервис подтвердил почту, совпадающую с уже существующим аккаунтом, вход привязывается к этому аккаунту.
+
+```env
+PUBLIC_URL=https://<DOMAIN>
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+MAILRU_CLIENT_ID=...
+MAILRU_CLIENT_SECRET=...
+VK_CLIENT_ID=...
+```
+
+| Сервис | Где завести приложение | Redirect URI |
+|---|---|---|
+| Google | [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials), OAuth client ID типа «Web application» | `https://<DOMAIN>/api/auth/oauth/google/callback` |
+| Mail.ru | [o2.mail.ru/app](https://o2.mail.ru/app/) | `https://<DOMAIN>/api/auth/oauth/mailru/callback` |
+| VK ID | [id.vk.com/about/business/go](https://id.vk.com/about/business/go), приложение типа «Web», доступ к почте | `https://<DOMAIN>/api/auth/oauth/vk/callback` |
+
 ## Основные команды Docker
 
 - **Остановить контейнеры:**

@@ -1,7 +1,14 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { api, safeStorage } from '../lib/api';
 import { LogIn, UserPlus, Mail, Lock, AlertCircle } from 'lucide-react';
 import { UserProfile } from '../types';
+import { OAuthProviderInfo, oauthStartUrl, takeOAuthError } from '../lib/oauthRedirect';
+
+const PROVIDER_BADGES: Record<OAuthProviderInfo['id'], { letter: string; className: string }> = {
+  google: { letter: 'G', className: 'bg-white text-[#4285F4] border border-theme-base' },
+  mailru: { letter: '@', className: 'bg-[#005FF9] text-white' },
+  vk: { letter: 'VK', className: 'bg-[#0077FF] text-white text-[10px]' },
+};
 
 interface AuthProps {
   onAuth: (user: UserProfile) => void;
@@ -11,10 +18,19 @@ export default function Auth({ onAuth }: AuthProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => takeOAuthError() || '');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const passwordRef = useRef<HTMLInputElement>(null);
+  const [providers, setProviders] = useState<OAuthProviderInfo[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.get<{ providers: OAuthProviderInfo[] }>('/auth/oauth/providers')
+      .then(data => { if (!cancelled) setProviders(data.providers || []); })
+      .catch(() => { /* no outside sign-in offline or when nothing is configured */ });
+    return () => { cancelled = true; };
+  }, []);
 
   const handleForgotPassword = async () => {
     if (!email) {
@@ -161,6 +177,36 @@ export default function Auth({ onAuth }: AuthProps) {
             {loading ? 'Загрузка...' : isLogin ? 'Войти' : 'Зарегистрироваться'}
           </button>
         </form>
+
+        {providers.length > 0 && (
+          <div className="mt-6">
+            <div className="flex items-center gap-3 text-xs text-theme-muted uppercase tracking-wider">
+              <span className="flex-1 h-px bg-theme-base" />
+              или через
+              <span className="flex-1 h-px bg-theme-base" />
+            </div>
+            <div className="mt-4 grid gap-2" style={{ gridTemplateColumns: `repeat(${providers.length}, minmax(0, 1fr))` }}>
+              {providers.map(provider => {
+                const badge = PROVIDER_BADGES[provider.id];
+                return (
+                  <a
+                    key={provider.id}
+                    href={oauthStartUrl(provider.id)}
+                    aria-label={`Войти через ${provider.title}`}
+                    className="flex items-center justify-center gap-2 bg-theme-main border border-theme-base rounded-2xl py-3 text-sm font-semibold text-theme-main hover:border-theme-primary transition-colors active:scale-[0.98]"
+                  >
+                    {badge && (
+                      <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${badge.className}`}>
+                        {badge.letter}
+                      </span>
+                    )}
+                    {provider.title}
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="mt-8 text-center space-y-3">
           <button
