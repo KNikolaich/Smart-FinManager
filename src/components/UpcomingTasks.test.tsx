@@ -425,6 +425,43 @@ describe('UpcomingTasks', () => {
     expect(onRequestTransaction).not.toHaveBeenCalled();
   });
 
+  it('folds the full-width dashboard widget into one bar when nothing is due today', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 19, 9));
+    const payments: PlannedPayment[] = [
+      { ...makePayment(1), id: 'future-a', title: 'Будущая задача', date: '2026-09-21' },
+      { ...makePayment(2), id: 'future-b', date: '2026-09-25' },
+    ];
+    render(<UpcomingTasks payments={payments} variant="carousel" startDate="2026-09-19" collapsible />);
+
+    expect(screen.queryByTestId('upcoming-tasks-carousel')).toBeNull();
+    expect(screen.getByTestId('upcoming-folded-count').textContent).toBe('2');
+
+    fireEvent.click(screen.getByTestId('button-upcoming-unfold'));
+    expect(screen.getByText('Будущая задача')).toBeTruthy();
+    expect(screen.getByTestId('button-upcoming-today')).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId('button-upcoming-fold'));
+    expect(screen.queryByTestId('upcoming-tasks-carousel')).toBeNull();
+  });
+
+  it('keeps the widget open when something is due today or overdue, or when it is not full width', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 19, 9));
+    const dueToday = { ...makePayment(1), id: 'due-today', date: '2026-09-19' };
+    const { unmount } = render(
+      <UpcomingTasks payments={[dueToday]} variant="carousel" startDate="2026-09-19" collapsible />,
+    );
+    expect(screen.getByTestId('upcoming-tasks-carousel')).toBeTruthy();
+    expect(screen.queryByTestId('button-upcoming-fold')).toBeNull();
+    unmount();
+
+    const future = { ...makePayment(2), id: 'future', date: '2026-09-25' };
+    render(<UpcomingTasks payments={[future]} variant="carousel" startDate="2026-09-19" />);
+    expect(screen.getByTestId('upcoming-tasks-carousel')).toBeTruthy();
+    expect(screen.queryByTestId('button-upcoming-unfold')).toBeNull();
+  });
+
   it('opens the plan viewer from the card and edits from it', () => {
     const onEditTask = vi.fn();
     const payment = { ...makePayment(0), id: 'editable-task', note: 'Оплатить после получения счёта' };

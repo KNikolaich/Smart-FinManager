@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeftRight, CalendarClock, CalendarDays, Check, CircleDashed, Copy, Eraser, Eye, Hand, Pencil, Plus, ScrollText, StickyNote, Trash2, X } from 'lucide-react';
+import { motion } from 'motion/react';
+import { ArrowLeftRight, CalendarClock, CalendarDays, Check, ChevronDown, ChevronUp, CircleDashed, Copy, Eraser, Eye, Hand, Pencil, Plus, ScrollText, StickyNote, Trash2, X } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { api } from '../lib/api';
 import { cacheCalendarSnapshot, calendarApi } from '../lib/calendarApi';
@@ -52,6 +53,11 @@ interface UpcomingTasksProps {
   onDeleteNote?: (note: CalendarNote) => void | Promise<void>;
   onNoteClick?: (note: CalendarNote) => void;
   className?: string;
+  /**
+   * Dashboard only: when nothing is due today and nothing is overdue the
+   * widget folds into a one-line bar; tapping it slides the plans out.
+   */
+  collapsible?: boolean;
 }
 
 export default function UpcomingTasks({
@@ -78,6 +84,7 @@ export default function UpcomingTasks({
   onDeleteNote,
   onNoteClick,
   className,
+  collapsible = false,
 }: UpcomingTasksProps) {
   const [loadedPayments, setLoadedPayments] = useState<PlannedPayment[]>([]);
   const [loadedNotes, setLoadedNotes] = useState<CalendarNote[]>([]);
@@ -105,6 +112,7 @@ export default function UpcomingTasks({
   const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [quietOverdue, setQuietOverdue] = useState<Set<string>>(new Set());
   const [todayPreviewOpen, setTodayPreviewOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
   const previousStartDate = useRef(startDate);
   const listRef = useRef<HTMLDivElement | null>(null);
   const previousListHeight = useRef<number | null>(null);
@@ -576,8 +584,42 @@ export default function UpcomingTasks({
     );
   };
 
+  // Folding only makes sense while nothing needs attention today; as soon as
+  // a plan is due or overdue the full widget comes back on its own.
+  const canFold = variant === 'carousel' && collapsible && !loading && !error && todayItems.length === 0;
+  const folded = canFold && !panelOpen;
+
+  if (folded) {
+    return (
+      <section className={`w-full ${className || ''}`} data-testid="upcoming-tasks">
+        <button
+          type="button"
+          aria-expanded={false}
+          aria-label="Показать предстоящие планы"
+          data-testid="button-upcoming-unfold"
+          onClick={() => setPanelOpen(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-theme-base bg-theme-surface px-4 py-3 text-theme-muted hover:text-theme-primary active:scale-[0.99] transition-all"
+        >
+          <CalendarDays size={18} className="shrink-0" aria-hidden="true" />
+          <span className="text-[15px] font-semibold">Предстоящие планы</span>
+          {carouselItems.length > 0 && (
+            <span className="rounded-full bg-theme-main px-2 text-[11px] font-bold tabular-nums" data-testid="upcoming-folded-count">
+              {carouselItems.length >= carouselLimit ? `${carouselItems.length}+` : carouselItems.length}
+            </span>
+          )}
+          <ChevronDown size={16} className="shrink-0" aria-hidden="true" />
+        </button>
+      </section>
+    );
+  }
+
   return (
     <section className={`h-full w-full rounded-2xl border border-theme-base bg-theme-surface p-4 ${className || ''}`} data-testid="upcoming-tasks">
+      <motion.div
+        initial={canFold ? { opacity: 0, y: -12 } : false}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+      >
       <header className="flex items-center justify-between gap-2">
         {variant === 'carousel' && (
           onOpenCalendar ? (
@@ -599,6 +641,19 @@ export default function UpcomingTasks({
           )
         )}
         <div className="ml-auto flex items-center gap-1">
+          {canFold && (
+            <button
+              type="button"
+              aria-expanded
+              aria-label="Свернуть предстоящие планы"
+              title="Свернуть"
+              data-testid="button-upcoming-fold"
+              onClick={() => setPanelOpen(false)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-theme-muted hover:bg-theme-main hover:text-theme-primary active:scale-95 transition-all"
+            >
+              <ChevronUp size={16} />
+            </button>
+          )}
           {variant === 'carousel' && (
             <button
               type="button"
@@ -843,6 +898,7 @@ export default function UpcomingTasks({
           )}
         </div>
       )}
+      </motion.div>
       {todayPreviewOpen && (
         <TodayPlansDialog
           todayKey={todayKey}
