@@ -435,7 +435,7 @@ describe('UpcomingTasks', () => {
     render(<UpcomingTasks payments={payments} variant="carousel" startDate="2026-09-19" collapsible />);
 
     expect(screen.queryByTestId('upcoming-tasks-carousel')).toBeNull();
-    expect(screen.getByTestId('upcoming-folded-count').textContent).toBe('2');
+    expect(screen.getByTestId('upcoming-folded-next').textContent).toBe('21 сент');
 
     fireEvent.click(screen.getByTestId('button-upcoming-unfold'));
     expect(screen.getByText('Будущая задача')).toBeTruthy();

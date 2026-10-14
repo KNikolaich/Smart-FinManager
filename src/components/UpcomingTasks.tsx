@@ -603,8 +603,15 @@ export default function UpcomingTasks({
           <CalendarDays size={18} className="shrink-0" aria-hidden="true" />
           <span className="text-[15px] font-semibold">Предстоящие планы</span>
           {carouselItems.length > 0 && (
-            <span className="rounded-full bg-theme-main px-2 text-[11px] font-bold tabular-nums" data-testid="upcoming-folded-count">
-              {carouselItems.length >= carouselLimit ? `${carouselItems.length}+` : carouselItems.length}
+            <span
+              className="rounded-full bg-theme-main px-2 text-[11px] font-bold tabular-nums"
+              title="Ближайший план"
+              data-testid="upcoming-folded-next"
+            >
+              {formatTaskDate(carouselItems[0].date)}
+              {carouselItems[0].kind === 'payment' && carouselItems[0].occurrence.payment.time
+                ? `, ${carouselItems[0].occurrence.payment.time}`
+                : ''}
             </span>
           )}
           <ChevronDown size={16} className="shrink-0" aria-hidden="true" />
