@@ -71,7 +71,7 @@ export default function Dashboard({
     balanceTrend
   } = useDashboardMetrics(accounts, transactions, currencies, balanceHistory);
 
-  const renderWidget = (widgetId: DashboardWidgetId, options: { stretch?: boolean } = {}) => {
+  const renderWidget = (widgetId: DashboardWidgetId, options: { stretch?: boolean; fullWidth?: boolean } = {}) => {
     const stretchClass = options.stretch ? 'h-full' : undefined;
     switch (widgetId) {
       case 'balance':
@@ -117,6 +117,7 @@ export default function Dashboard({
             userId={userId}
             variant="carousel"
             className={stretchClass}
+            collapsible={options.fullWidth}
             onOpenCalendar={onOpenCalendar}
             onEditTask={onEditUpcomingTask}
             onRequestTransaction={(item, onCompleted) => onOpenAddTransaction?.({
@@ -149,7 +150,7 @@ export default function Dashboard({
         className="min-w-0 h-full"
         style={{ gridColumn: `span ${span} / span ${span}` }}
       >
-        {renderWidget(widgetId, { stretch: true })}
+        {renderWidget(widgetId, { stretch: true, fullWidth: span === 12 })}
       </div>
     );
   }
