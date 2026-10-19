@@ -116,6 +116,7 @@ export default function UpcomingTasks({
   const previousStartDate = useRef(startDate);
   const listRef = useRef<HTMLDivElement | null>(null);
   const previousListHeight = useRef<number | null>(null);
+  const scrolledToKey = useRef<string | null>(null);
 
   useEffect(() => {
     if (payments !== undefined) {
@@ -276,6 +277,7 @@ export default function UpcomingTasks({
       pageSize,
     ));
     previousListHeight.current = null;
+    scrolledToKey.current = null;
     listRef.current?.scrollTo?.({ top: 0 });
   }, [filter, startDate, variant, sourcePayments.length]);
 
@@ -288,10 +290,14 @@ export default function UpcomingTasks({
 
   useLayoutEffect(() => {
     if (variant !== 'list' || !focusedKey || !listRef.current) return;
+    // Centre each focused plan once. Growing the window while the user scrolls
+    // further ahead must not snap the list back to the selected date.
+    if (scrolledToKey.current === focusedKey) return;
     const element = listRef.current;
     const target = Array.from(element.querySelectorAll<HTMLElement>('[data-upcoming-task]'))
       .find(item => item.dataset.upcomingTask === focusedKey);
     if (!target) return;
+    scrolledToKey.current = focusedKey;
 
     const targetTop = target.offsetTop - element.offsetTop;
     const targetCenter = targetTop + target.offsetHeight / 2;
