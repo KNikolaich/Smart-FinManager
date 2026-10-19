@@ -226,6 +226,13 @@ export default function Auth({ onAuth }: AuthProps) {
             </button>
           )}
         </div>
+
+        <p className="mt-6 text-center text-[11px] leading-relaxed text-theme-muted">
+          Продолжая, вы принимаете{' '}
+          <a href="/terms.html" target="_blank" rel="noopener" className="underline hover:text-theme-primary">пользовательское соглашение</a>
+          {' '}и{' '}
+          <a href="/privacy.html" target="_blank" rel="noopener" className="underline hover:text-theme-primary">политику конфиденциальности</a>
+        </p>
       </div>
     </div>
   );
