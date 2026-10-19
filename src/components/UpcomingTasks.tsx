@@ -265,6 +265,17 @@ export default function UpcomingTasks({
     }
   }, [occurrences, startDate, variant, focusedKey]);
 
+  // A day picked in the calendar moves the focus to that day's first plan even
+  // when the list already starts there (e.g. after a plan of another day was opened).
+  useEffect(() => {
+    if (variant !== 'list' || !focusedDate) return;
+    const current = occurrences.find(item => occurrenceKey(item) === focusedKey);
+    if (current?.date === focusedDate) return;
+    const next = occurrences.find(item => item.date === focusedDate);
+    if (next) setFocusedKey(occurrenceKey(next));
+    // Only a new calendar date re-targets the focus; window changes must not.
+  }, [focusedDate, variant]);
+
   useEffect(() => {
     if (variant !== 'list') return;
     const initialFocus = loadedOccurrences.length > 0
