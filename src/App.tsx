@@ -26,6 +26,7 @@ import { getTodayKey } from './lib/plannedPaymentOccurrences';
 import { useThemeDeviceClass } from './hooks/useThemeDeviceClass';
 import { usePrefersDarkColorScheme } from './hooks/usePrefersDarkColorScheme';
 import { useSmartHeader } from './hooks/useSmartHeader';
+import { OfflineChip } from './components/ui/OfflineChip';
 import {
   applyTheme,
   isCompleteThemePreferences,
@@ -574,14 +575,14 @@ export default function App() {
   return (
     <div className="h-[100dvh] bg-theme-main flex flex-col max-md:landscape:flex-row-reverse overflow-hidden">
       <AppHeader
-        activeTab={activeTab}
         onLogoClick={handleLogoClick}
         isOnline={isOnline}
-        showUserPage={showUserPage}
-        onOpenUserPage={() => setShowUserPage(true)}
         isHidden={isHeaderHidden}
-        photoURL={user?.photoURL}
       />
+      {/* Phones have no header, so the offline chip floats in its place */}
+      <div className="md:hidden max-md:landscape:hidden fixed top-2 right-2 z-50">
+        <OfflineChip isOnline={isOnline} variant="header" />
+      </div>
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
