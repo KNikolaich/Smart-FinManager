@@ -996,6 +996,49 @@ describe('UpcomingTasks', () => {
     }
   });
 
+  it('keeps the scroll position while loading plans further ahead', () => {
+    const scrollTo = vi.fn();
+    const prototype = HTMLElement.prototype;
+    const originals = ['scrollTo', 'offsetTop', 'offsetHeight', 'clientHeight']
+      .map(name => [name, Object.getOwnPropertyDescriptor(prototype, name)] as const);
+    Object.defineProperty(prototype, 'scrollTo', { configurable: true, value: scrollTo });
+    // Every row sits below the fold, so centring the focused one always scrolls.
+    Object.defineProperty(prototype, 'offsetTop', { configurable: true, get() { return this.dataset?.upcomingTask ? 200 : 0; } });
+    Object.defineProperty(prototype, 'offsetHeight', { configurable: true, get: () => 40 });
+    Object.defineProperty(prototype, 'clientHeight', { configurable: true, get: () => 100 });
+
+    try {
+      // One plan a day: the first page of 50 covers less than two months.
+      const payments = Array.from({ length: 120 }, (_, index) => {
+        const date = new Date(2026, 9, 1 + index);
+        const key = [date.getFullYear(), date.getMonth() + 1, date.getDate()]
+          .map(part => String(part).padStart(2, '0')).join('-');
+        return { ...makePayment(index), id: `ahead-${index}`, date: key };
+      });
+      render(
+        <UpcomingTasks
+          payments={payments}
+          startDate="2026-10-01"
+          focusedDate="2026-10-01"
+        />,
+      );
+      expect(screen.queryByTestId('payment-row-ahead-100-2027-01-09')).toBeNull();
+      expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }));
+      scrollTo.mockClear();
+
+      fireEvent.click(screen.getByTestId('button-upcoming-load-more'));
+      fireEvent.click(screen.getByTestId('button-upcoming-load-more'));
+
+      expect(screen.getByTestId('payment-row-ahead-100-2027-01-09')).toBeTruthy();
+      expect(scrollTo).not.toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }));
+    } finally {
+      for (const [name, descriptor] of originals) {
+        if (descriptor) Object.defineProperty(prototype, name, descriptor);
+        else delete (prototype as any)[name];
+      }
+    }
+  });
+
   it('marks transaction-backed tasks and prevents creating a second transaction', () => {
     const onToggleTask = vi.fn();
     const payment = {

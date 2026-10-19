@@ -680,6 +680,22 @@ describe('PaymentCalendarTab', () => {
       expect(screen.getByTestId('calendar-day-2026-10-06').className).toContain('ring-theme-primary');
     });
 
+    it('puts a day-view triangle on every day that has a plan or note', () => {
+      renderOctober(plansOn(1), [{ id: 'note-a', date: '2026-10-09', text: 'Записка' }]);
+
+      expect(screen.getByTestId('calendar-day-open-2026-10-06')).toBeTruthy();
+      expect(screen.getByTestId('calendar-day-open-2026-10-09')).toBeTruthy();
+      expect(screen.queryByTestId('calendar-day-open-2026-10-07')).toBeNull();
+
+      const open = screen.getByTestId('calendar-day-open-2026-10-06');
+      fireEvent.click(open);
+      expect(open.getAttribute('aria-expanded')).toBe('true');
+      expect(within(screen.getByTestId('calendar-day-list-2026-10-06')).getByText('План 1')).toBeTruthy();
+
+      fireEvent.click(open);
+      expect(screen.queryByTestId('calendar-day-list-2026-10-06')).toBeNull();
+    });
+
     it('keeps the date of every cell in the top-left corner', () => {
       renderOctober(plansOn(1));
       for (const key of ['2026-10-05', '2026-10-06']) {

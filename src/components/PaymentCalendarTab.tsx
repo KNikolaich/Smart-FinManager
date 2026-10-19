@@ -528,6 +528,11 @@ export default function PaymentCalendarTab({
                 const hiddenCount = entries.length - visibleEntries.length;
                 const overflowOpen = openDayList?.dateKey === cell.key;
                 const selectDay = () => { setSelectedDate(cell.key); setListStartDate(cell.key); };
+                const toggleDayList = (event: React.MouseEvent<HTMLButtonElement>) => {
+                  event.stopPropagation();
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  setOpenDayList(current => current?.dateKey === cell.key ? null : { dateKey: cell.key, anchor: rect });
+                };
                 return (
                   <div
                     key={cell.key}
@@ -544,7 +549,24 @@ export default function PaymentCalendarTab({
                     }}
                     className={`min-w-0 min-h-[60px] sm:min-h-[106px] p-1 sm:p-2 flex flex-col items-stretch justify-start text-left cursor-pointer border-b border-r border-theme-base outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-theme-primary ${!cell.currentMonth ? 'bg-theme-main text-theme-muted' : 'bg-theme-surface'} ${selectedDate === cell.key ? 'ring-2 ring-inset ring-theme-primary bg-theme-primary-light' : 'hover:bg-theme-main'}`}
                   >
-                    <span className={`self-start inline-flex min-w-6 h-6 items-center justify-center rounded-lg text-xs font-mono ${cell.key === getTodayKey() ? 'bg-theme-primary text-theme-on-primary' : 'text-theme-muted'}`}>{cell.day}</span>
+                    <span className="flex min-w-0 items-start justify-between gap-0.5">
+                      <span className={`inline-flex min-w-6 h-6 items-center justify-center rounded-lg text-xs font-mono ${cell.key === getTodayKey() ? 'bg-theme-primary text-theme-on-primary' : 'text-theme-muted'}`}>{cell.day}</span>
+                      {entries.length > 0 && (
+                        <button
+                          type="button"
+                          data-testid={`calendar-day-open-${cell.key}`}
+                          data-day-list-toggle={cell.key}
+                          aria-haspopup="dialog"
+                          aria-expanded={overflowOpen}
+                          aria-label="Просмотр дня"
+                          title="Просмотр дня"
+                          onClick={toggleDayList}
+                          className="inline-flex w-5 h-5 sm:w-6 sm:h-6 shrink-0 items-center justify-center rounded text-theme-muted hover:bg-theme-primary-light hover:text-theme-primary"
+                        >
+                          <ChevronDown size={13} className={`transition-transform ${overflowOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                        </button>
+                      )}
+                    </span>
                     {entries.length > 0 && (
                       <span className="hidden sm:flex min-w-0 flex-col gap-1 mt-1">
                         {visibleEntries.map(entry => entry.kind === 'plan' ? (
@@ -564,18 +586,14 @@ export default function PaymentCalendarTab({
                           <button
                             type="button"
                             data-testid={`calendar-day-more-${cell.key}`}
+                            data-day-list-toggle={cell.key}
                             aria-haspopup="dialog"
                             aria-expanded={overflowOpen}
                             title="Показать все планы дня"
-                            onClick={event => {
-                              event.stopPropagation();
-                              const rect = event.currentTarget.getBoundingClientRect();
-                              setOpenDayList(current => current?.dateKey === cell.key ? null : { dateKey: cell.key, anchor: rect });
-                            }}
+                            onClick={toggleDayList}
                             className="self-start inline-flex items-center gap-1 rounded px-1 py-0.5 text-[9px] text-theme-muted hover:bg-theme-primary-light hover:text-theme-primary"
                           >
                             + ещё {hiddenCount}
-                            <ChevronDown size={11} className={`transition-transform ${overflowOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                           </button>
                         )}
                       </span>
@@ -890,7 +908,7 @@ function PaymentDialog({ mode, payment, accounts, transactions, categories, onCh
 
 const DAY_LIST_WIDTH = 272;
 
-/** Short list of every plan and note of one day, opened from "+ ещё N ▾". */
+/** Short list of every plan and note of one day, opened from the day's ▾ or "+ ещё N". */
 function CalendarDayListPopover({
   dateKey,
   anchor,
@@ -925,7 +943,7 @@ function CalendarDayListPopover({
     const closeOnOutside = (event: MouseEvent) => {
       const target = event.target as Node | null;
       if (target && ref.current?.contains(target)) return;
-      if (target instanceof Element && target.closest(`[data-testid="calendar-day-more-${dateKey}"]`)) return;
+      if (target instanceof Element && target.closest(`[data-day-list-toggle="${dateKey}"]`)) return;
       onClose();
     };
     const closeOnEscape = (event: KeyboardEvent) => {
