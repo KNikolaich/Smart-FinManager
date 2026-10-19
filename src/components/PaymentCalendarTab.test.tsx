@@ -696,6 +696,34 @@ describe('PaymentCalendarTab', () => {
       expect(screen.queryByTestId('calendar-day-list-2026-10-06')).toBeNull();
     });
 
+    it('focuses the tapped day again after a plan of another day was opened', () => {
+      renderOctober([...plansOn(1, '2026-10-02'), { ...plansOn(1, '2026-10-20')[0], id: 'later' }]);
+      fireEvent.click(screen.getByTestId('calendar-day-2026-10-02'));
+      fireEvent.click(screen.getByTestId('upcoming-task-link-later-2026-10-20'));
+      fireEvent.keyDown(document, { key: 'Escape' });
+
+      fireEvent.click(screen.getByTestId('calendar-day-2026-10-02'));
+
+      expect(screen.getByTestId('payment-row-day-plan-1-2026-10-02').className).toContain('border-solid');
+      expect(screen.getByTestId('payment-row-later-2026-10-20').className).not.toContain('border-solid');
+    });
+
+    it('switches the plan list to the day when its triangle is tapped', () => {
+      renderOctober([...plansOn(1, '2026-10-02'), ...plansOn(1, '2026-10-20').map(item => ({ ...item, id: 'later' }))]);
+
+      fireEvent.click(screen.getByTestId('calendar-day-open-2026-10-20'));
+
+      expect(screen.getByTestId('calendar-day-2026-10-20').className).toContain('ring-theme-primary');
+      expect(screen.getByTestId('payment-row-later-2026-10-20').getAttribute('data-selected-day')).toBe('true');
+      expect(screen.getByTestId('calendar-day-list-2026-10-20')).toBeTruthy();
+
+      // The list scrolling to the day keeps the day view open; a page scroll closes it.
+      fireEvent.scroll(screen.getByTestId('upcoming-tasks-list'));
+      expect(screen.getByTestId('calendar-day-list-2026-10-20')).toBeTruthy();
+      fireEvent.scroll(document);
+      expect(screen.queryByTestId('calendar-day-list-2026-10-20')).toBeNull();
+    });
+
     it('keeps the date of every cell in the top-left corner', () => {
       renderOctober(plansOn(1));
       for (const key of ['2026-10-05', '2026-10-06']) {

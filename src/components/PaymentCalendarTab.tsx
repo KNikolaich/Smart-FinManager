@@ -560,7 +560,11 @@ export default function PaymentCalendarTab({
                           aria-expanded={overflowOpen}
                           aria-label="Просмотр дня"
                           title="Просмотр дня"
-                          onClick={toggleDayList}
+                          onClick={event => {
+                            // The triangle sits inside the day: tapping it still switches the list to the day.
+                            selectDay();
+                            toggleDayList(event);
+                          }}
                           className="inline-flex w-5 h-5 sm:w-6 sm:h-6 shrink-0 items-center justify-center rounded text-theme-muted hover:bg-theme-primary-light hover:text-theme-primary"
                         >
                           <ChevronDown size={13} className={`transition-transform ${overflowOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
@@ -951,6 +955,10 @@ function CalendarDayListPopover({
     };
     const closeOnScroll = (event: Event) => {
       if (event.target instanceof Node && ref.current?.contains(event.target)) return;
+      // Only a scroll that moves the day itself detaches the popover; the plan
+      // list scrolling to the selected day must not close it.
+      const toggle = document.querySelector(`[data-day-list-toggle="${dateKey}"]`);
+      if (toggle && event.target instanceof Node && !event.target.contains(toggle)) return;
       onClose();
     };
     document.addEventListener('mousedown', closeOnOutside);
