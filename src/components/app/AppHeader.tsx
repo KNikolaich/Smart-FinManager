@@ -21,7 +21,7 @@ export function AppHeader({ activeTab, onLogoClick, isOnline, showUserPage, onOp
       isHidden
         ? "h-0 overflow-hidden border-b-0 opacity-0 pointer-events-none"
         : "h-16 md:h-20 opacity-100",
-      activeTab === 'plan' && "max-md:landscape:hidden"
+      (activeTab === 'plan' || activeTab === 'calendar') && "max-md:landscape:hidden"
     )} aria-hidden={isHidden} inert={isHidden} data-testid="app-header">
       <button
         type="button"

@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import {
   LayoutDashboard,
   CalendarRange,
+  Telescope,
   BarChart2,
   Settings as SettingsIcon,
   User as UserIcon,
@@ -11,7 +12,7 @@ import { cn } from '../../lib/utils';
 import { OfflineChip } from '../ui/OfflineChip';
 import { UserAvatar } from '../ui/UserAvatar';
 
-type Tab = 'dashboard' | 'plan' | 'analytics' | 'settings' | 'ai';
+type Tab = 'dashboard' | 'calendar' | 'plan' | 'analytics' | 'settings' | 'ai';
 
 interface BottomNavProps {
   activeTab: Tab;
@@ -44,15 +45,26 @@ export function BottomNav({ activeTab, onChangeTab, onDashboardClick, showUserPa
           <LayoutDashboard size={20} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
         </button>
         <button
+          onClick={() => onChangeTab('calendar')}
+          aria-label="Календарь"
+          aria-current={activeTab === 'calendar' ? 'page' : undefined}
+          className={cn(
+            "flex flex-col items-center justify-center w-12 h-10 rounded-[18px] transition-all active:scale-95",
+            activeTab === 'calendar' ? "text-theme-primary bg-theme-primary-light/50" : "text-theme-muted hover:text-theme-primary"
+          )}
+        >
+          <CalendarRange size={20} strokeWidth={activeTab === 'calendar' ? 2.5 : 2} />
+        </button>
+        <button
           onClick={() => onChangeTab('plan')}
-          aria-label="План"
+          aria-label="Прогнозы"
           aria-current={activeTab === 'plan' ? 'page' : undefined}
           className={cn(
             "flex flex-col items-center justify-center w-12 h-10 rounded-[18px] transition-all active:scale-95",
             activeTab === 'plan' ? "text-theme-primary bg-theme-primary-light/50" : "text-theme-muted hover:text-theme-primary"
           )}
         >
-          <CalendarRange size={20} strokeWidth={activeTab === 'plan' ? 2.5 : 2} />
+          <Telescope size={20} strokeWidth={activeTab === 'plan' ? 2.5 : 2} />
         </button>
 
         {/* AI Assistant Button */}
