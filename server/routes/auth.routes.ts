@@ -10,7 +10,7 @@ const router = Router();
 router.post("/api/auth/register", registerLimiter, validateBody(registerSchema), authController.register);
 router.post("/api/auth/login", strictAuthLimiter, validateBody(loginSchema), authController.login);
 
-// --- SIGN-IN THROUGH GOOGLE / MAIL.RU / VK ---
+// --- SIGN-IN THROUGH GOOGLE / YANDEX / MAIL.RU / VK ---
 router.get("/api/auth/oauth/providers", oauthController.listProviders);
 router.get("/api/auth/oauth/:provider/start", oauthLimiter, oauthController.start);
 router.get("/api/auth/oauth/:provider/callback", oauthController.callback);

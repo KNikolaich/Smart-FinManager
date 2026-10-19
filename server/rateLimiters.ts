@@ -34,7 +34,7 @@ export const registerLimiter = rateLimit({
   store: new PrismaRateLimitStore(prisma),
 });
 
-// Sign-in through Google / Mail.ru / VK: 30 starts per 15 minutes. Counted under
+// Sign-in through Google / Yandex / Mail.ru / VK: 30 starts per 15 minutes. Counted under
 // its own key so these sign-ins don't use up the login limit for the same address.
 export const oauthLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

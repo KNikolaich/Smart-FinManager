@@ -1,7 +1,7 @@
 import { safeStorage } from './api';
 
 export interface OAuthProviderInfo {
-  id: 'google' | 'mailru' | 'vk';
+  id: 'google' | 'yandex' | 'mailru' | 'vk';
   title: string;
 }
 
@@ -15,7 +15,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 let pendingError: string | null = null;
 
 /**
- * After signing in through Google / Mail.ru / VK the server sends the browser
+ * After signing in through Google / Yandex / Mail.ru / VK the server sends the browser
  * back to `/#oauth_token=…` (or `/#oauth_error=…`). Called once before the app
  * renders: keeps the token like a normal login and removes it from the address bar.
  */

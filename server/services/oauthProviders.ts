@@ -1,9 +1,9 @@
 /**
- * Sign-in through outside services: Google, Mail.ru and VK ID.
+ * Sign-in through outside services: Google, Yandex ID, Mail.ru and VK ID.
  * Each provider is on only when its keys are set in the environment.
  */
 
-export type OAuthProviderId = "google" | "mailru" | "vk";
+export type OAuthProviderId = "google" | "yandex" | "mailru" | "vk";
 
 export interface OAuthProfile {
   provider: OAuthProviderId;
@@ -189,7 +189,50 @@ const vk: OAuthProvider = {
   },
 };
 
-const PROVIDERS: Record<OAuthProviderId, OAuthProvider> = { google, mailru, vk };
+const yandex: OAuthProvider = {
+  id: "yandex",
+  title: "Яндекс",
+  isConfigured: () => Boolean(env("YANDEX_CLIENT_ID") && env("YANDEX_CLIENT_SECRET")),
+  authorizeUrl({ redirectUri, state, codeChallenge }) {
+    const query = new URLSearchParams({
+      response_type: "code",
+      client_id: env("YANDEX_CLIENT_ID"),
+      redirect_uri: redirectUri,
+      state,
+      code_challenge: codeChallenge,
+      code_challenge_method: "S256",
+      force_confirm: "yes",
+    });
+    return `https://oauth.yandex.ru/authorize?${query}`;
+  },
+  async fetchProfile({ code, codeVerifier }) {
+    const tokens = await readJson(await postForm("https://oauth.yandex.ru/token", {
+      grant_type: "authorization_code",
+      code,
+      client_id: env("YANDEX_CLIENT_ID"),
+      client_secret: env("YANDEX_CLIENT_SECRET"),
+      code_verifier: codeVerifier,
+    }), "Yandex token exchange");
+    const info = await readJson(await fetch("https://login.yandex.ru/info?format=json", {
+      headers: { Authorization: `OAuth ${tokens.access_token}` },
+      signal: AbortSignal.timeout(10000),
+    }), "Yandex profile");
+    const avatarUrl = info.default_avatar_id && !info.is_avatar_empty
+      ? `https://avatars.yandex.net/get-yapic/${encodeURIComponent(info.default_avatar_id)}/islands-200`
+      : null;
+    return {
+      provider: "yandex",
+      providerUserId: String(info.id),
+      email: info.default_email || null,
+      // Yandex ID returns only addresses the person confirmed.
+      emailVerified: Boolean(info.default_email),
+      displayName: info.real_name || info.display_name || fullName(info.first_name, info.last_name),
+      avatarUrl,
+    };
+  },
+};
+
+const PROVIDERS: Record<OAuthProviderId, OAuthProvider> = { google, yandex, mailru, vk };
 
 export function getProvider(id: string): OAuthProvider | null {
   const provider = (PROVIDERS as Record<string, OAuthProvider | undefined>)[id];

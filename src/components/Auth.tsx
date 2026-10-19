@@ -6,6 +6,7 @@ import { OAuthProviderInfo, oauthStartUrl, takeOAuthError } from '../lib/oauthRe
 
 const PROVIDER_BADGES: Record<OAuthProviderInfo['id'], { letter: string; className: string }> = {
   google: { letter: 'G', className: 'bg-white text-[#4285F4] border border-theme-base' },
+  yandex: { letter: 'Я', className: 'bg-[#FC3F1D] text-white' },
   mailru: { letter: '@', className: 'bg-[#005FF9] text-white' },
   vk: { letter: 'VK', className: 'bg-[#0077FF] text-white text-[10px]' },
 };
@@ -185,7 +186,7 @@ export default function Auth({ onAuth }: AuthProps) {
               или через
               <span className="flex-1 h-px bg-theme-base" />
             </div>
-            <div className="mt-4 grid gap-2" style={{ gridTemplateColumns: `repeat(${providers.length}, minmax(0, 1fr))` }}>
+            <div className="mt-4 grid gap-2" style={{ gridTemplateColumns: `repeat(${providers.length > 3 ? 2 : providers.length}, minmax(0, 1fr))` }}>
               {providers.map(provider => {
                 const badge = PROVIDER_BADGES[provider.id];
                 return (
