@@ -42,7 +42,8 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
       # Optional: sign-in through Google / Mail.ru / VK (see .env.example)
-      PUBLIC_URL: ${PUBLIC_URL:-}
+      # Defaults to https://DOMAIN; set it only when the app is reached by another address
+      PUBLIC_URL: ${PUBLIC_URL:-https://${DOMAIN:-localhost}}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       MAILRU_CLIENT_ID: ${MAILRU_CLIENT_ID:-}
