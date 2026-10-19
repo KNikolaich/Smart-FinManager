@@ -32,8 +32,25 @@ model User {
   chatMessages   ChatMessage[]
   aiLogs         AiLog[]
   balanceHistory BalanceHistory[]
+  authIdentities AuthIdentity[]
 
   @@map("users")
+}
+
+// A sign-in through an outside service (Google, Mail.ru, VK) tied to a user.
+model AuthIdentity {
+  id             String   @id @default(uuid())
+  userId         String
+  provider       String
+  providerUserId String
+  email          String?
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@map("auth_identities")
 }
 
 model Account {
