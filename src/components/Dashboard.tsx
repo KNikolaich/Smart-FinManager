@@ -7,7 +7,7 @@ import { TransactionsSection } from './dashboard/TransactionsSection';
 import { GoalsSection } from './dashboard/GoalsSection';
 import UpcomingTasks from './UpcomingTasks';
 import { plannedTransactionDraft } from '../lib/plannedTransactionDraft';
-import { DEFAULT_DASHBOARD_WIDGET_ORDER } from '../lib/dashboardLayout';
+import { DASHBOARD_MAX_ROW_SPAN, DEFAULT_DASHBOARD_WIDGET_ORDER } from '../lib/dashboardLayout';
 
 export type { DashboardWidgetId };
 export { DEFAULT_DASHBOARD_WIDGET_ORDER };
@@ -37,6 +37,7 @@ interface DashboardProps {
   widgetOrder?: DashboardWidgetId[];
   widgetVisibility?: Partial<Record<DashboardWidgetId, boolean>>;
   widgetSpans?: Partial<Record<DashboardWidgetId, number>>;
+  widgetRows?: Partial<Record<DashboardWidgetId, number>>;
 }
 
 export default function Dashboard({
@@ -60,6 +61,7 @@ export default function Dashboard({
   widgetOrder = DEFAULT_DASHBOARD_WIDGET_ORDER,
   widgetVisibility = {},
   widgetSpans = {},
+  widgetRows = {},
 }: DashboardProps) {
   const {
     totalBalance,
@@ -144,11 +146,15 @@ export default function Dashboard({
   const renderedWidgets = [];
   for (const widgetId of visibleWidgetOrder) {
     const span = Math.max(1, Math.min(12, Math.round(widgetSpans[widgetId] ?? 12)));
+    const rows = Math.max(1, Math.min(DASHBOARD_MAX_ROW_SPAN, Math.round(widgetRows[widgetId] ?? 1)));
     renderedWidgets.push(
       <div
         key={widgetId}
         className="min-w-0 h-full"
-        style={{ gridColumn: `span ${span} / span ${span}` }}
+        style={{
+          gridColumn: `span ${span} / span ${span}`,
+          gridRow: rows > 1 ? `span ${rows} / span ${rows}` : undefined,
+        }}
       >
         {renderWidget(widgetId, { stretch: true, fullWidth: span === 12 })}
       </div>

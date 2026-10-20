@@ -464,6 +464,7 @@ export default function App() {
             widgetOrder={dashboardLayout.order}
             widgetVisibility={dashboardLayout.visibility}
             widgetSpans={dashboardLayout.spans}
+            widgetRows={dashboardLayout.rows}
           />
         );
       case 'calendar':

@@ -2,6 +2,7 @@ import {
   DashboardDevice,
   DashboardDeviceLayout,
   DashboardColumnSpan,
+  DashboardRowSpan,
   DashboardLayoutSettings,
   DashboardWidgetId,
   UserSettings,
@@ -59,6 +60,20 @@ const DEFAULT_WIDGET_SPANS: Record<DashboardDevice, Record<DashboardWidgetId, Da
   },
 };
 
+export const DASHBOARD_MAX_ROW_SPAN = 4;
+
+const DEFAULT_WIDGET_ROWS: Record<DashboardWidgetId, DashboardRowSpan> = {
+  upcomingTasks: 1,
+  accounts: 1,
+  transactions: 1,
+  balance: 1,
+  goals: 1,
+};
+
+function isDashboardRowSpan(value: unknown): value is DashboardRowSpan {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= DASHBOARD_MAX_ROW_SPAN;
+}
+
 function isDashboardColumnSpan(value: unknown): value is DashboardColumnSpan {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 12;
 }
@@ -98,7 +113,18 @@ function normalizeDeviceLayout(value: unknown, device: DashboardDevice): Dashboa
     }
   }
 
-  return { order, visibility, spans };
+  const rawRows = candidate.rows && typeof candidate.rows === 'object'
+    ? candidate.rows as Partial<Record<DashboardWidgetId, unknown>>
+    : {};
+  const rows = { ...DEFAULT_WIDGET_ROWS };
+
+  for (const widget of DASHBOARD_WIDGETS) {
+    if (isDashboardRowSpan(rawRows[widget.id])) {
+      rows[widget.id] = rawRows[widget.id] as DashboardRowSpan;
+    }
+  }
+
+  return { order, visibility, spans, rows };
 }
 
 export function getDefaultDashboardLayoutSettings(): DashboardLayoutSettings {
