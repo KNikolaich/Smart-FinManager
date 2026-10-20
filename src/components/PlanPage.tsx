@@ -77,7 +77,11 @@ interface PlanPageProps {
   onCalendarPaymentCreateHandled?: () => void;
   calendarNoteToCreate?: CalendarNoteDraft | null;
   onCalendarNoteCreateHandled?: () => void;
+  /** 'calendar' shows only the payment calendar; 'forecasts' shows the plan tabs without it. */
+  section?: PlanSection;
 }
+
+export type PlanSection = 'calendar' | 'forecasts';
 
 type TabType = 'now' | 'past' | 'config' | 'comment' | 'cashback' | 'credit' | 'calendar';
 
@@ -152,8 +156,9 @@ export default function PlanPage({
   onCalendarPaymentCreateHandled,
   calendarNoteToCreate,
   onCalendarNoteCreateHandled,
+  section = 'forecasts',
 }: PlanPageProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('calendar');
+  const [activeTab, setActiveTab] = useState<TabType>(section === 'calendar' ? 'calendar' : 'now');
   const [planData, setPlanData] = useState<PlanData | null>(null);
   const [loadedTabs, setLoadedTabs] = useState<Set<TabType>>(new Set());
   const [editingCell, setEditingCell] = useState<{ rowId: string, subjectId: string } | null>(null);
@@ -297,8 +302,9 @@ export default function PlanPage({
   const [calendarError, setCalendarError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (section !== 'calendar') return;
     if (calendarFocusDate || calendarPaymentToEdit || calendarPaymentToCreate || calendarNoteToCreate) setActiveTab('calendar');
-  }, [calendarFocusDate, calendarPaymentToEdit, calendarPaymentToCreate, calendarNoteToCreate]);
+  }, [section, calendarFocusDate, calendarPaymentToEdit, calendarPaymentToCreate, calendarNoteToCreate]);
 
   // When network is restored, flip 'queued' → 'saved' (sync already fired in App.tsx)
   useEffect(() => {
@@ -834,30 +840,8 @@ export default function PlanPage({
   return (
     <div className="p-0 sm:p-0 space-y-0 max-w-[100vw] overflow-hidden h-full flex flex-col">
       {/* Custom Minimalist Tabs */}
+      {section === 'forecasts' && (
       <div className="flex items-end space-x-1 border-b border-theme-base px-1 pt-1 shrink-0">
-        <button
-          onClick={() => setActiveTab('calendar')}
-          className={cn(
-            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
-            activeTab === 'calendar'
-              ? "bg-orange-500 text-white border-orange-500 translate-y-[1px]"
-              : "bg-theme-surface text-theme-muted border-theme-base hover:bg-theme-main"
-          )}
-        >
-          <span>Календарь</span>
-        </button>
-        
-        <button
-          onClick={() => setActiveTab('cashback')}
-          className={cn(
-            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
-            activeTab === 'cashback' 
-              ? "bg-purple-500 text-white border-purple-500 translate-y-[1px]" 
-              : "bg-theme-surface text-theme-muted border-theme-base hover:bg-theme-main"
-          )}
-        >
-         <span>Кэшбек</span>
-        </button>
         <button
           onClick={() => setActiveTab('now')}
           className={cn(
@@ -867,7 +851,7 @@ export default function PlanPage({
               : "bg-theme-surface text-theme-muted border-theme-base hover:bg-theme-main"
           )}
         >
-          <span>Сейчас</span>
+          <span>Обзор</span>
         </button>
         <button
           onClick={() => setActiveTab('comment')}
@@ -879,6 +863,17 @@ export default function PlanPage({
           )}
         >
           <span>Заметки</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('cashback')}
+          className={cn(
+            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            activeTab === 'cashback' 
+              ? "bg-purple-500 text-white border-purple-500 translate-y-[1px]" 
+              : "bg-theme-surface text-theme-muted border-theme-base hover:bg-theme-main"
+          )}
+        >
+         <span>Кэшбек</span>
         </button>
         <button
           onClick={() => setActiveTab('credit')}
@@ -900,9 +895,10 @@ export default function PlanPage({
               : "bg-theme-surface text-theme-muted border-theme-base hover:bg-theme-main"
           )}
         >
-          <span>Прошлое</span>
+          <span>Архив</span>
         </button>
       </div>
+      )}
 
       <div className="bg-theme-surface p-0 border-none shadow-none overflow-hidden flex-1 flex flex-col">
         {activeTab === 'calendar' ? (
@@ -1789,7 +1785,7 @@ export default function PlanPage({
                 <div className="space-y-2">
                   <h3 className="text-xl font-bold">Архивировать графу?</h3>
                   <p className="text-sm text-theme-muted">
-                    Графа будет скрыта из вкладки «Сейчас», но останется видна в «Прошлом» со всеми данными.
+                    Графа будет скрыта из вкладки «Обзор», но останется видна в «Архиве» со всеми данными.
                   </p>
                 </div>
                 <div className="flex gap-3 pt-4">

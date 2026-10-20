@@ -26,6 +26,7 @@ import { getTodayKey } from './lib/plannedPaymentOccurrences';
 import { useThemeDeviceClass } from './hooks/useThemeDeviceClass';
 import { usePrefersDarkColorScheme } from './hooks/usePrefersDarkColorScheme';
 import { useSmartHeader } from './hooks/useSmartHeader';
+import { OfflineChip } from './components/ui/OfflineChip';
 import {
   applyTheme,
   isCompleteThemePreferences,
@@ -33,7 +34,7 @@ import {
   resolveThemePreferences,
 } from './lib/themePreferences';
 
-type Tab = 'dashboard' | 'plan' | 'analytics' | 'settings' | 'ai';
+type Tab = 'dashboard' | 'calendar' | 'plan' | 'analytics' | 'settings' | 'ai';
 
 const LazyPlanPage = lazy(() => import('./components/PlanPage'));
 const LazyAnalytics = lazy(() => import('./components/Analytics'));
@@ -317,7 +318,7 @@ export default function App() {
 
   const handleNavigateToCalendar = useCallback((date: string) => {
     setCalendarFocusDate(date);
-    setActiveTab('plan');
+    setActiveTab('calendar');
   }, []);
 
   const handleOpenCalendar = useCallback(() => {
@@ -327,7 +328,7 @@ export default function App() {
   const handleEditDashboardPlan = useCallback((item: PlannedPaymentOccurrence) => {
     setCalendarPaymentToEdit({ ...item.payment, date: item.date });
     setCalendarFocusDate(item.date);
-    setActiveTab('plan');
+    setActiveTab('calendar');
   }, []);
 
   const handleCalendarPaymentEditHandled = useCallback(() => {
@@ -343,7 +344,7 @@ export default function App() {
     setCalendarNoteToCreate(null);
     setCalendarFocusDate(undefined);
     setCalendarPaymentToCreate(draft);
-    setActiveTab('plan');
+    setActiveTab('calendar');
   }, []);
 
   const handleCalendarNoteCreateHandled = useCallback(() => {
@@ -355,7 +356,7 @@ export default function App() {
     setCalendarPaymentToCreate(null);
     setCalendarFocusDate(undefined);
     setCalendarNoteToCreate(draft);
-    setActiveTab('plan');
+    setActiveTab('calendar');
   }, []);
 
   const handleCalendarFocusHandled = useCallback(() => {
@@ -465,9 +466,10 @@ export default function App() {
             widgetSpans={dashboardLayout.spans}
           />
         );
-      case 'plan':
+      case 'calendar':
         return (
           <LazyPlanPage
+            section="calendar"
             accounts={accounts}
             transactions={transactions}
             categories={categories}
@@ -485,6 +487,21 @@ export default function App() {
             onCalendarPaymentCreateHandled={handleCalendarPaymentCreateHandled}
             calendarNoteToCreate={calendarNoteToCreate}
             onCalendarNoteCreateHandled={handleCalendarNoteCreateHandled}
+          />
+        );
+      case 'plan':
+        return (
+          <LazyPlanPage
+            section="forecasts"
+            accounts={accounts}
+            transactions={transactions}
+            categories={categories}
+            user={user}
+            onRefresh={refreshData}
+            onOpenAddTransaction={(data) => {
+              setInitialTransactionData(data);
+              setShowAddTransaction(true);
+            }}
           />
         );
       case 'analytics':
@@ -558,14 +575,14 @@ export default function App() {
   return (
     <div className="h-[100dvh] bg-theme-main flex flex-col max-md:landscape:flex-row-reverse overflow-hidden">
       <AppHeader
-        activeTab={activeTab}
         onLogoClick={handleLogoClick}
         isOnline={isOnline}
-        showUserPage={showUserPage}
-        onOpenUserPage={() => setShowUserPage(true)}
         isHidden={isHeaderHidden}
-        photoURL={user?.photoURL}
       />
+      {/* Phones have no header, so the offline chip floats in its place */}
+      <div className="md:hidden max-md:landscape:hidden fixed top-2 right-2 z-50">
+        <OfflineChip isOnline={isOnline} variant="header" />
+      </div>
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
@@ -574,7 +591,7 @@ export default function App() {
           data-app-scroll-container
           className={cn(
           "absolute inset-0 overflow-y-auto no-scrollbar px-[2px] pt-0",
-          activeTab === 'plan'
+          activeTab === 'plan' || activeTab === 'calendar'
             ? "max-md:portrait:pb-24 max-md:landscape:pb-0"
             : "pb-24 md:pb-0 max-md:landscape:pb-0"
           )}
