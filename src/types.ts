@@ -21,11 +21,14 @@ export type ThemeId =
 export type ThemePreferenceValue = ThemeId | 'theme-system';
 export type ThemePreferences = Record<ThemeDeviceClass, ThemePreferenceValue>;
 export type DashboardColumnSpan = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+export type DashboardRowSpan = 1 | 2 | 3 | 4;
 
 export interface DashboardDeviceLayout {
   order: DashboardWidgetId[];
   visibility: Record<DashboardWidgetId, boolean>;
   spans: Record<DashboardWidgetId, DashboardColumnSpan>;
+  /** Height in grid rows; a taller widget lets shorter ones stack beside it. */
+  rows: Record<DashboardWidgetId, DashboardRowSpan>;
 }
 
 export interface DashboardLayoutSettings {

@@ -144,6 +144,13 @@ const dashboardSpansSchema = z.object({
   balance: z.number().int().min(1).max(12),
   goals: z.number().int().min(1).max(12),
 }).strict();
+const dashboardRowsSchema = z.object({
+  upcomingTasks: z.number().int().min(1).max(4),
+  accounts: z.number().int().min(1).max(4),
+  transactions: z.number().int().min(1).max(4),
+  balance: z.number().int().min(1).max(4),
+  goals: z.number().int().min(1).max(4),
+}).strict();
 const dashboardDeviceLayoutSchema = z.object({
   order: z.array(dashboardWidgetIdSchema).length(5).refine(
     (order) => new Set(order).size === 5,
@@ -151,6 +158,8 @@ const dashboardDeviceLayoutSchema = z.object({
   ),
   visibility: dashboardVisibilitySchema,
   spans: dashboardSpansSchema,
+  // Optional so layouts saved before row heights existed stay valid.
+  rows: dashboardRowsSchema.optional(),
 }).strict();
 const dashboardLayoutSettingsSchema = z.object({
   desktop: dashboardDeviceLayoutSchema,

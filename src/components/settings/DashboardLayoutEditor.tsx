@@ -1,17 +1,37 @@
 import { useMemo, useState } from 'react';
 import {
+  closestCenter,
+  DndContext,
+  DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  rectSortingStrategy,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   ArrowDown,
   ArrowUp,
   Check,
+  EyeOff,
   GripVertical,
   LayoutDashboard,
   Monitor,
+  Plus,
   RotateCcw,
   Smartphone,
   Tablet,
   X,
 } from 'lucide-react';
 import {
+  DASHBOARD_MAX_ROW_SPAN,
   DASHBOARD_WIDGETS,
   getDefaultDashboardLayoutSettings,
   normalizeDashboardLayoutSettings,
@@ -19,7 +39,9 @@ import {
 import {
   DashboardDevice,
   DashboardColumnSpan,
+  DashboardDeviceLayout,
   DashboardLayoutSettings,
+  DashboardRowSpan,
   DashboardWidgetId,
 } from '../../types';
 import { cn } from '../../lib/utils';
@@ -40,13 +62,73 @@ const DEVICES: Array<{
   { id: 'mobile', label: 'Смартфон', icon: Smartphone },
 ];
 
+function widgetLabel(widgetId: DashboardWidgetId) {
+  return DASHBOARD_WIDGETS.find(widget => widget.id === widgetId)?.label ?? widgetId;
+}
+
+interface LayoutTileProps {
+  widgetId: DashboardWidgetId;
+  span: DashboardColumnSpan;
+  rows: DashboardRowSpan;
+  selected: boolean;
+  onSelect: () => void;
+}
+
+function LayoutTile({ widgetId, span, rows, selected, onSelect }: LayoutTileProps) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: widgetId });
+  const label = widgetLabel(widgetId);
+
+  return (
+    <div
+      ref={setNodeRef}
+      onClick={onSelect}
+      style={{
+        gridColumn: `span ${span} / span ${span}`,
+        gridRow: `span ${rows} / span ${rows}`,
+        transform: CSS.Translate.toString(transform),
+        transition,
+      }}
+      className={cn(
+        'relative flex min-w-0 cursor-pointer flex-col justify-between overflow-hidden rounded-xl border bg-theme-main p-1.5 text-left transition-colors',
+        selected ? 'border-theme-primary ring-2 ring-theme-primary/30' : 'border-theme-base hover:border-theme-primary/50',
+        isDragging && 'z-10 opacity-80 shadow-lg',
+      )}
+    >
+      <div className="flex min-w-0 items-start gap-1">
+        <button
+          ref={setActivatorNodeRef}
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label={`Перетащить «${label}»`}
+          className="shrink-0 cursor-grab touch-none rounded-md p-0.5 text-theme-muted hover:text-theme-primary active:cursor-grabbing"
+        >
+          <GripVertical size={14} />
+        </button>
+        <span className="min-w-0 truncate text-[11px] font-bold leading-5 text-theme-main">{label}</span>
+      </div>
+      <span className="self-end text-[9px] font-bold tabular-nums text-theme-muted">
+        {span}/12{rows > 1 ? ` × ${rows}` : ''}
+      </span>
+    </div>
+  );
+}
+
 export function DashboardLayoutEditor({ value, onClose, onSave }: DashboardLayoutEditorProps) {
   const [draft, setDraft] = useState(() => normalizeDashboardLayoutSettings(value));
   const [activeDevice, setActiveDevice] = useState<DashboardDevice>('desktop');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  const [selectedWidget, setSelectedWidget] = useState<DashboardWidgetId | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
   const activeLayout = draft[activeDevice];
+  const visibleOrder = activeLayout.order.filter(widgetId => activeLayout.visibility[widgetId]);
+  const hiddenOrder = activeLayout.order.filter(widgetId => !activeLayout.visibility[widgetId]);
   const activeDeviceMeta = useMemo(
     () => DEVICES.find(device => device.id === activeDevice) ?? DEVICES[0],
     [activeDevice],
@@ -65,14 +147,10 @@ export function DashboardLayoutEditor({ value, onClose, onSave }: DashboardLayou
     }));
   };
 
-  const moveWidget = (widgetId: DashboardWidgetId, direction: -1 | 1) => {
+  const updateOrder = (getOrder: (layout: DashboardDeviceLayout) => DashboardWidgetId[] | null) => {
     setDraft(current => {
-      const order = [...current[activeDevice].order];
-      const currentIndex = order.indexOf(widgetId);
-      const nextIndex = currentIndex + direction;
-      if (currentIndex < 0 || nextIndex < 0 || nextIndex >= order.length) return current;
-
-      [order[currentIndex], order[nextIndex]] = [order[nextIndex], order[currentIndex]];
+      const order = getOrder(current[activeDevice]);
+      if (!order) return current;
       return {
         ...current,
         [activeDevice]: {
@@ -81,6 +159,39 @@ export function DashboardLayoutEditor({ value, onClose, onSave }: DashboardLayou
         },
       };
     });
+  };
+
+  // Hidden widgets keep their slot in the order but are skipped here, so a
+  // step always swaps with the neighbour that is actually on screen.
+  const moveWidget = (widgetId: DashboardWidgetId, direction: -1 | 1) => {
+    updateOrder(layout => {
+      const visible = layout.order.filter(id => layout.visibility[id]);
+      const neighbour = visible[visible.indexOf(widgetId) + direction];
+      if (!neighbour) return null;
+      return arrayMove(layout.order, layout.order.indexOf(widgetId), layout.order.indexOf(neighbour));
+    });
+  };
+
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    updateOrder(layout => arrayMove(
+      layout.order,
+      layout.order.indexOf(active.id as DashboardWidgetId),
+      layout.order.indexOf(over.id as DashboardWidgetId),
+    ));
+  };
+
+  const updateRows = (widgetId: DashboardWidgetId, rows: DashboardRowSpan) => {
+    setDraft(current => ({
+      ...current,
+      [activeDevice]: {
+        ...current[activeDevice],
+        rows: {
+          ...current[activeDevice].rows,
+          [widgetId]: rows,
+        },
+      },
+    }));
   };
 
   const updateSpan = (widgetId: DashboardWidgetId, span: DashboardColumnSpan) => {
@@ -119,7 +230,7 @@ export function DashboardLayoutEditor({ value, onClose, onSave }: DashboardLayou
             </div>
             <div>
               <h3 className="text-base font-black text-theme-main">Настройка дашборда</h3>
-              <p className="text-xs text-theme-muted">Состав и порядок блоков для каждого устройства</p>
+              <p className="text-xs text-theme-muted">Состав и расположение блоков для каждого устройства</p>
             </div>
           </div>
           <button
@@ -173,8 +284,8 @@ export function DashboardLayoutEditor({ value, onClose, onSave }: DashboardLayou
 
           <section className="mt-6">
             <div className="mb-3">
-              <h4 className="text-xs font-black uppercase tracking-widest text-theme-primary">Порядок компонентов</h4>
-              <p className="mt-1 text-xs text-theme-muted">Порядок и ширина настраиваются отдельно для каждого устройства.</p>
+              <h4 className="text-xs font-black uppercase tracking-widest text-theme-primary">Расположение компонентов</h4>
+              <p className="mt-1 text-xs text-theme-muted">Порядок, ширина и высота блоков настраиваются отдельно для каждого устройства.</p>
             </div>
 
             <div className="mb-3 flex gap-2 overflow-x-auto rounded-2xl bg-theme-surface p-1">
@@ -199,62 +310,134 @@ export function DashboardLayoutEditor({ value, onClose, onSave }: DashboardLayou
               })}
             </div>
 
-            <div className="space-y-2">
-              {activeLayout.order.map((widgetId, index) => {
-                const widget = DASHBOARD_WIDGETS.find(item => item.id === widgetId);
-                if (!widget) return null;
-                const isVisible = activeLayout.visibility[widgetId];
-                return (
-                  <div
+            <p className="mb-2 text-[11px] text-theme-muted">
+              Перетащите блок за ручку, чтобы поменять местами. Нажмите на блок, чтобы задать ширину и высоту:
+              высокий блок оставляет рядом место, и соседние блоки встают друг под другом.
+            </p>
+
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={event => setSelectedWidget(event.active.id as DashboardWidgetId)}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={visibleOrder} strategy={rectSortingStrategy}>
+                <div
+                  data-testid="dashboard-layout-preview"
+                  className="grid grid-cols-12 gap-1.5 rounded-2xl border border-theme-base bg-theme-surface p-2"
+                  style={{ gridAutoRows: '56px' }}
+                >
+                  {visibleOrder.map(widgetId => (
+                    <LayoutTile
+                      key={widgetId}
+                      widgetId={widgetId}
+                      span={activeLayout.spans[widgetId]}
+                      rows={activeLayout.rows[widgetId]}
+                      selected={selectedWidget === widgetId}
+                      onSelect={() => setSelectedWidget(widgetId)}
+                    />
+                  ))}
+                  {visibleOrder.length === 0 && (
+                    <p className="col-span-12 self-center text-center text-xs text-theme-muted">
+                      На этом устройстве все блоки скрыты
+                    </p>
+                  )}
+                </div>
+              </SortableContext>
+            </DndContext>
+
+            {hiddenOrder.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-theme-muted">Скрыты:</span>
+                {hiddenOrder.map(widgetId => (
+                  <button
                     key={widgetId}
-                    className={cn(
-                      'flex items-center gap-2 rounded-2xl border px-3 py-2.5 transition-colors',
-                      isVisible
-                        ? 'border-theme-base bg-theme-surface'
-                        : 'border-dashed border-theme-base bg-theme-main opacity-60',
-                    )}
+                    type="button"
+                    onClick={() => updateVisibility(activeDevice, widgetId, true)}
+                    aria-label={`Показать «${widgetLabel(widgetId)}» на устройстве «${activeDeviceMeta.label}»`}
+                    className="inline-flex items-center gap-1 rounded-lg border border-dashed border-theme-base px-2 py-1 text-[11px] font-bold text-theme-muted transition-colors hover:border-theme-primary hover:text-theme-primary"
                   >
-                    <GripVertical size={17} className="shrink-0 text-theme-muted" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-theme-main">{widget.label}</p>
-                      {!isVisible && <p className="text-[10px] font-bold text-theme-muted">Скрыт на этом устройстве</p>}
-                    </div>
+                    <Plus size={12} />
+                    {widgetLabel(widgetId)}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {selectedWidget && activeLayout.visibility[selectedWidget] && (
+              <div className="mt-3 rounded-2xl border border-theme-base bg-theme-surface p-3">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <p className="truncate text-sm font-black text-theme-main">{widgetLabel(selectedWidget)}</p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => moveWidget(selectedWidget, -1)}
+                      disabled={visibleOrder.indexOf(selectedWidget) === 0}
+                      aria-label={`Переместить «${widgetLabel(selectedWidget)}» раньше`}
+                      className="rounded-lg border border-theme-base p-1.5 text-theme-muted transition-colors hover:text-theme-primary disabled:opacity-30"
+                    >
+                      <ArrowUp size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveWidget(selectedWidget, 1)}
+                      disabled={visibleOrder.indexOf(selectedWidget) === visibleOrder.length - 1}
+                      aria-label={`Переместить «${widgetLabel(selectedWidget)}» позже`}
+                      className="rounded-lg border border-theme-base p-1.5 text-theme-muted transition-colors hover:text-theme-primary disabled:opacity-30"
+                    >
+                      <ArrowDown size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateVisibility(activeDevice, selectedWidget, false)}
+                      aria-label={`Скрыть «${widgetLabel(selectedWidget)}» на устройстве «${activeDeviceMeta.label}»`}
+                      className="rounded-lg border border-theme-base p-1.5 text-theme-muted transition-colors hover:text-rose-500"
+                    >
+                      <EyeOff size={15} />
+                    </button>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-theme-muted">Ширина</span>
                     <select
-                      value={activeLayout.spans[widgetId]}
-                      onChange={event => updateSpan(widgetId, Number(event.target.value) as DashboardColumnSpan)}
-                      aria-label={`Ширина «${widget.label}» на устройстве «${activeDeviceMeta.label}»`}
-                      className="shrink-0 rounded-lg border border-theme-base bg-theme-main px-2 py-1.5 text-[10px] font-bold text-theme-main outline-none focus:ring-1 ring-theme-primary/30"
+                      value={activeLayout.spans[selectedWidget]}
+                      onChange={event => updateSpan(selectedWidget, Number(event.target.value) as DashboardColumnSpan)}
+                      aria-label={`Ширина «${widgetLabel(selectedWidget)}» на устройстве «${activeDeviceMeta.label}»`}
+                      className="w-full rounded-lg border border-theme-base bg-theme-main px-2 py-2 text-xs font-bold text-theme-main outline-none focus:ring-1 ring-theme-primary/30"
                     >
                       {Array.from({ length: 12 }, (_, index) => index + 1).map(span => (
                         <option key={span} value={span}>
-                          {span === 12 ? '1 — весь ряд' : `${span}/12`}
+                          {span === 12 ? 'Весь ряд (12/12)' : `${span}/12`}
                         </option>
                       ))}
                     </select>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => moveWidget(widgetId, -1)}
-                        disabled={index === 0}
-                        aria-label={`Переместить «${widget.label}» выше`}
-                        className="rounded-lg border border-theme-base p-1.5 text-theme-muted transition-colors hover:text-theme-primary disabled:opacity-30"
-                      >
-                        <ArrowUp size={15} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => moveWidget(widgetId, 1)}
-                        disabled={index === activeLayout.order.length - 1}
-                        aria-label={`Переместить «${widget.label}» ниже`}
-                        className="rounded-lg border border-theme-base p-1.5 text-theme-muted transition-colors hover:text-theme-primary disabled:opacity-30"
-                      >
-                        <ArrowDown size={15} />
-                      </button>
+                  </label>
+                  <div>
+                    <span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-theme-muted">Высота, рядов</span>
+                    <div role="radiogroup" aria-label={`Высота «${widgetLabel(selectedWidget)}»`} className="flex gap-1">
+                      {Array.from({ length: DASHBOARD_MAX_ROW_SPAN }, (_, index) => (index + 1) as DashboardRowSpan).map(rows => (
+                        <button
+                          key={rows}
+                          type="button"
+                          role="radio"
+                          aria-checked={activeLayout.rows[selectedWidget] === rows}
+                          onClick={() => updateRows(selectedWidget, rows)}
+                          className={cn(
+                            'flex-1 rounded-lg border px-2 py-2 text-xs font-bold transition-colors',
+                            activeLayout.rows[selectedWidget] === rows
+                              ? 'border-theme-primary bg-theme-primary-light text-theme-primary'
+                              : 'border-theme-base bg-theme-main text-theme-muted hover:text-theme-main',
+                          )}
+                        >
+                          {rows}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              </div>
+            )}
           </section>
 
           {saveError && (

@@ -4,6 +4,7 @@ import {
   getDashboardLayout,
   normalizeDashboardLayoutSettings,
 } from './dashboardLayout';
+import { updateProfileSchema } from '../../validation';
 
 describe('dashboard layout settings', () => {
   it('provides the current default order and shows every widget', () => {
@@ -73,5 +74,33 @@ describe('dashboard layout settings', () => {
 
     expect(getDashboardLayout(layout, 'tablet').order[0]).toBe('accounts');
     expect(getDashboardLayout(layout, 'tablet').visibility.accounts).toBe(false);
+  });
+
+  it('defaults every widget to one row and keeps saved heights', () => {
+    const defaults = normalizeDashboardLayoutSettings();
+    expect(Object.values(defaults.desktop.rows).every(rows => rows === 1)).toBe(true);
+
+    const layout = normalizeDashboardLayoutSettings({
+      desktop: {
+        rows: { transactions: 2, accounts: 9, goals: 0.5 } as never,
+      },
+    });
+
+    expect(layout.desktop.rows.transactions).toBe(2);
+    expect(layout.desktop.rows.accounts).toBe(1);
+    expect(layout.desktop.rows.goals).toBe(1);
+    expect(layout.tablet.rows.transactions).toBe(1);
+  });
+
+  it('accepts saved layouts with and without row heights', () => {
+    const withRows = normalizeDashboardLayoutSettings({ desktop: { rows: { transactions: 2 } as never } });
+    expect(updateProfileSchema.safeParse({ settings: { dashboard: withRows } }).success).toBe(true);
+
+    const { rows: _rows, ...legacyDesktop } = withRows.desktop;
+    const legacy = { ...withRows, desktop: legacyDesktop };
+    expect(updateProfileSchema.safeParse({ settings: { dashboard: legacy } }).success).toBe(true);
+
+    const tooTall = { ...withRows, desktop: { ...withRows.desktop, rows: { ...withRows.desktop.rows, goals: 5 } } };
+    expect(updateProfileSchema.safeParse({ settings: { dashboard: tooTall } }).success).toBe(false);
   });
 });
