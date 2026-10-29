@@ -73,6 +73,7 @@ interface TransactionHistoryProps {
   onClose: () => void;
   onEditTransaction: (transaction: Transaction) => void;
   onOpenAddTransaction: (initialData?: any) => void;
+  onMakeTransactionRecurring?: (transaction: Transaction) => void;
   onRefresh?: () => void | Promise<void>;
   initialAccountId?: string;
   initialCategoryId?: string;
@@ -93,6 +94,7 @@ export default function TransactionHistory({
   onClose, 
   onEditTransaction, 
   onOpenAddTransaction,
+  onMakeTransactionRecurring,
   onRefresh,
   initialAccountId, 
   initialCategoryId,
@@ -1086,6 +1088,7 @@ export default function TransactionHistory({
               transaction={contextMenu.transaction}
               onClose={() => setContextMenu(null)}
               onSimilar={data => onOpenAddTransaction?.(data)}
+              onMakeRecurring={onMakeTransactionRecurring}
               onDelete={() => setDeleteConfirmation(contextMenu.transaction)}
             />
           )}

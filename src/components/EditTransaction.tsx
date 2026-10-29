@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import { Transaction, Account, Category, Currency, TransactionType } from '../types';
 import { accountCurrencySymbol, defaultTransferRate, isCrossCurrency, isRubleAccount, formatAmount, formatAmountInputDisplay, rubleRateFromTransferAmounts, sourceAmountFromTarget, targetAmountFromSource } from '../lib/currencyUtils';
-import { X, Trash2, Check, Calculator as CalcIcon, Calendar, ChevronDown, Eye, Edit2 } from 'lucide-react';
+import { X, Trash2, Check, Calculator as CalcIcon, Calendar, ChevronDown, Eye, Edit2, Repeat } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import AccountSelect from './AccountSelect';
@@ -18,9 +18,11 @@ interface EditTransactionProps {
   currencies: Currency[];
   onClose: () => void;
   onUpdate: () => void;
+  /** Opens the new-plan form prefilled from the saved operation. */
+  onMakeRecurring?: (transaction: Transaction) => void;
 }
 
-export default function EditTransaction({ transaction, accounts, transactions, categories, currencies, onClose, onUpdate }: EditTransactionProps) {
+export default function EditTransaction({ transaction, accounts, transactions, categories, currencies, onClose, onUpdate, onMakeRecurring }: EditTransactionProps) {
   const [amount, setAmount] = useState(transaction.amount.toString());
   const [description, setDescription] = useState(transaction.description);
   const [selectedAccountId, setSelectedAccountId] = useState(transaction.accountId);
@@ -370,6 +372,19 @@ export default function EditTransaction({ transaction, accounts, transactions, c
           >
             <Trash2 className="w-6 h-6" />
           </button>
+          {onMakeRecurring && (
+            <button
+              type="button"
+              onClick={() => onMakeRecurring(transaction)}
+              disabled={loading}
+              data-testid="button-make-transaction-recurring"
+              className="w-14 h-14 flex items-center justify-center bg-theme-main text-theme-primary rounded-xl hover:bg-theme-primary-light transition-all shrink-0 border border-theme-base shadow-md active:scale-95"
+              title="Сделать регулярной"
+              aria-label="Сделать регулярной"
+            >
+              <Repeat className="w-6 h-6" />
+            </button>
+          )}
           <button
             onClick={handleUpdate}
             disabled={loading || !amount || (transaction.type !== 'transfer' && !selectedCategoryId)}

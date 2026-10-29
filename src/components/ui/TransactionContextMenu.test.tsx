@@ -87,4 +87,24 @@ describe('TransactionContextMenu', () => {
 
     expect(onDelete).toHaveBeenCalledOnce();
   });
+
+  it('offers "make recurring" when the caller handles it and passes the operation', () => {
+    const onMakeRecurring = vi.fn();
+
+    render(
+      <TransactionContextMenu
+        x={100}
+        y={100}
+        transaction={transaction}
+        onClose={vi.fn()}
+        onSimilar={vi.fn()}
+        onMakeRecurring={onMakeRecurring}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Сделать регулярной' }));
+
+    expect(onMakeRecurring).toHaveBeenCalledWith(transaction);
+  });
 });
