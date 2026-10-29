@@ -46,6 +46,8 @@ interface AppModalsProps {
   // Set an editing transaction (used by TransactionHistory row clicks)
   onEditTransaction: (t: Transaction) => void;
   onOpenAddTransactionWithData: (data?: any) => void;
+  // Opens the new-plan form prefilled from an operation ("Сделать регулярной")
+  onMakeTransactionRecurring: (t: Transaction) => void;
 
   // User page
   showUserPage: boolean;
@@ -86,6 +88,7 @@ export function AppModals({
   onUpdateTransaction,
   onEditTransaction,
   onOpenAddTransactionWithData,
+  onMakeTransactionRecurring,
   showUserPage,
   user,
   onCloseUserPage,
@@ -109,6 +112,7 @@ export function AppModals({
             onClose={onCloseTransactionHistory}
             onEditTransaction={onEditTransaction}
             onOpenAddTransaction={onOpenAddTransactionWithData}
+            onMakeTransactionRecurring={onMakeTransactionRecurring}
             onRefresh={onUpdateTransaction}
             initialAccountId={transactionHistoryFilter.accountId}
             initialCategoryId={transactionHistoryFilter.categoryId}
@@ -148,6 +152,7 @@ export function AppModals({
             currencies={currencies}
             onClose={onCloseEditTransaction}
             onUpdate={onUpdateTransaction}
+            onMakeRecurring={onMakeTransactionRecurring}
           />
         )}
 

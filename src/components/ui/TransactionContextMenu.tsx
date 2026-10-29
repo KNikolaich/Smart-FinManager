@@ -1,4 +1,4 @@
-import { Copy, Trash2 } from 'lucide-react';
+import { Copy, Repeat, Trash2 } from 'lucide-react';
 import { Transaction } from '../../types';
 import { getSimilarTransactionData, SimilarTransactionData } from '../../lib/transactionActions';
 import { GenericContextMenu } from './GenericContextMenu';
@@ -9,6 +9,8 @@ interface TransactionContextMenuProps {
   transaction: Transaction;
   onClose: () => void;
   onSimilar: (data: SimilarTransactionData) => void;
+  /** Opens the new-plan form prefilled from this operation; hidden when absent. */
+  onMakeRecurring?: (transaction: Transaction) => void;
   onDelete: () => void;
 }
 
@@ -18,6 +20,7 @@ export function TransactionContextMenu({
   transaction,
   onClose,
   onSimilar,
+  onMakeRecurring,
   onDelete,
 }: TransactionContextMenuProps) {
   return (
@@ -31,6 +34,11 @@ export function TransactionContextMenu({
           icon: Copy,
           onClick: () => onSimilar(getSimilarTransactionData(transaction)),
         },
+        ...(onMakeRecurring ? [{
+          label: 'Сделать регулярной',
+          icon: Repeat,
+          onClick: () => onMakeRecurring(transaction),
+        }] : []),
         {
           label: 'Удалить',
           icon: Trash2,

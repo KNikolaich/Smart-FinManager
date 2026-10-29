@@ -31,6 +31,7 @@ interface DashboardProps {
   onOpenTransactionHistory?: (filterProps?: any) => void;
   onOpenAddTransaction?: (initialData?: any) => void;
   onEditTransaction?: (t: Transaction) => void;
+  onMakeTransactionRecurring?: (transaction: Transaction) => void;
   onNavigateToCalendar?: (date: string) => void;
   onOpenCalendar?: () => void;
   onEditUpcomingTask?: (item: PlannedPaymentOccurrence) => void;
@@ -55,6 +56,7 @@ export default function Dashboard({
   onOpenTransactionHistory,
   onOpenAddTransaction,
   onEditTransaction,
+  onMakeTransactionRecurring,
   onNavigateToCalendar,
   onOpenCalendar,
   onEditUpcomingTask,
@@ -109,6 +111,7 @@ export default function Dashboard({
             onOpenTransactionHistory={onOpenTransactionHistory}
             onOpenAddTransaction={onOpenAddTransaction}
             onEditTransaction={onEditTransaction}
+            onMakeTransactionRecurring={onMakeTransactionRecurring}
             onRefresh={onRefresh}
             className={stretchClass}
           />

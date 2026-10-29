@@ -23,6 +23,7 @@ import { AppModals } from './components/app/AppModals';
 import { cn } from './lib/utils';
 import { ToastContainer, ToastType } from './components/ui/Toast';
 import { getTodayKey } from './lib/plannedPaymentOccurrences';
+import { recurringPlanDraft } from './lib/recurringPlanDraft';
 import { useThemeDeviceClass } from './hooks/useThemeDeviceClass';
 import { usePrefersDarkColorScheme } from './hooks/usePrefersDarkColorScheme';
 import { useSmartHeader } from './hooks/useSmartHeader';
@@ -347,6 +348,15 @@ export default function App() {
     setActiveTab('calendar');
   }, []);
 
+  // "Сделать регулярной": close the operation views and open the new-plan form
+  // in the calendar, prefilled from the operation.
+  const handleMakeTransactionRecurring = useCallback((transaction: Transaction) => {
+    setEditingTransaction(null);
+    setShowTransactionHistory(false);
+    setTransactionHistoryFilter({});
+    handleOpenCalendarPlanDraft(recurringPlanDraft(transaction, categories));
+  }, [categories, handleOpenCalendarPlanDraft]);
+
   const handleCalendarNoteCreateHandled = useCallback(() => {
     setCalendarNoteToCreate(null);
   }, []);
@@ -458,6 +468,7 @@ export default function App() {
               setShowAddTransaction(true);
             }}
             onEditTransaction={setEditingTransaction}
+            onMakeTransactionRecurring={handleMakeTransactionRecurring}
             onNavigateToCalendar={handleNavigateToCalendar}
             onOpenCalendar={handleOpenCalendar}
             onEditUpcomingTask={handleEditDashboardPlan}
@@ -652,6 +663,7 @@ export default function App() {
         onCloseEditTransaction={() => setEditingTransaction(null)}
         onUpdateTransaction={refreshData}
         onEditTransaction={(t) => setEditingTransaction(t)}
+        onMakeTransactionRecurring={handleMakeTransactionRecurring}
         onOpenAddTransactionWithData={(data) => {
           setInitialTransactionData(data);
           setShowAddTransaction(true);

@@ -16,6 +16,7 @@ interface TransactionsSectionProps {
   onOpenTransactionHistory?: (filterProps?: any) => void;
   onOpenAddTransaction?: (initialData?: any) => void;
   onEditTransaction?: (t: Transaction) => void;
+  onMakeTransactionRecurring?: (transaction: Transaction) => void;
   onRefresh?: () => void | Promise<void>;
   className?: string;
 }
@@ -28,6 +29,7 @@ export function TransactionsSection({
   onOpenTransactionHistory,
   onOpenAddTransaction,
   onEditTransaction,
+  onMakeTransactionRecurring,
   onRefresh,
   className,
 }: TransactionsSectionProps) {
@@ -187,6 +189,7 @@ export function TransactionsSection({
           transaction={contextMenu.transaction}
           onClose={() => setContextMenu(null)}
           onSimilar={data => onOpenAddTransaction?.(data)}
+          onMakeRecurring={onMakeTransactionRecurring}
           onDelete={() => setDeleteConfirmation(contextMenu.transaction)}
         />
       )}
