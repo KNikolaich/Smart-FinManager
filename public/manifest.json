@@ -1,7 +1,7 @@
 {
-  "name": "Finance Assistant",
+  "name": "Финансовый ассистент",
   "short_name": "Finance",
-  "description": "Personal Finance Assistant",
+  "description": "Финансовый ассистент для личного учёта",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
