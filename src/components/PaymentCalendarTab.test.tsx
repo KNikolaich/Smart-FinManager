@@ -779,3 +779,29 @@ describe('PaymentCalendarTab', () => {
     });
   });
 });
+
+describe('PaymentCalendarTab plan totals', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('shows the sum of shown plans for each day and for the month', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 10, 3, 12));
+    const plans: PlannedPayment[] = [
+      { id: 'salary', title: 'Зарплата', amount: 60000, date: '2026-11-06', recurrence: 'none', status: 'pending', transactionType: 'income' },
+      { id: 'road', title: 'Дорожные', amount: 300, date: '2026-11-06', recurrence: 'none', status: 'pending', transactionType: 'expense' },
+      { id: 'tutor', title: 'Репетитор', amount: 2500, date: '2026-11-05', recurrence: 'none', status: 'paid', paidDates: ['2026-11-05'], transactionType: 'expense' },
+      { id: 'move', title: 'Перевод', amount: 5000, date: '2026-11-07', recurrence: 'none', status: 'pending', transactionType: 'transfer' },
+    ];
+    render(<PaymentCalendarTab payments={plans} accounts={[]} />);
+
+    expect(screen.getByTestId('calendar-day-total-2026-11-06').textContent).toBe('+60к');
+    expect(screen.getByTestId('calendar-day-total-2026-11-05').textContent).toBe('−2,5к');
+    expect(screen.queryByTestId('calendar-day-total-2026-11-07')).toBeNull();
+    expect(screen.getByTestId('calendar-period-total').textContent?.replace(/\s/g, ' ')).toContain('+57 200 ₽');
+
+    fireEvent.change(screen.getByTestId('select-payment-filter'), { target: { value: 'pending' } });
+
+    expect(screen.queryByTestId('calendar-day-total-2026-11-05')).toBeNull();
+    expect(screen.getByTestId('calendar-period-total').textContent?.replace(/\s/g, ' ')).toContain('+59 700 ₽');
+  });
+});

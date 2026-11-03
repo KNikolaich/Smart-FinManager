@@ -50,6 +50,7 @@ import {
   PlannedPaymentOccurrence,
   toDateKey,
 } from '../lib/plannedPaymentOccurrences';
+import { formatCompactAmount, formatSignedAmount, planTotalsTone, sumPlanOccurrences } from '../lib/planTotals';
 
 interface PaymentCalendarTabProps {
   payments: PlannedPayment[];
@@ -231,6 +232,9 @@ export default function PaymentCalendarTab({
   });
   const byDate = new Map<string, PlannedPaymentOccurrence[]>();
   visibleOccurrences.forEach(item => byDate.set(item.date, [...(byDate.get(item.date) || []), item]));
+  // The period is the shown month; days of the neighbour months only fill the grid.
+  const monthKeyPrefix = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-`;
+  const periodTotals = sumPlanOccurrences(visibleOccurrences.filter(item => item.date.startsWith(monthKeyPrefix)));
   const openCreate = useCallback((date = selectedDate, initialData: PlannedPaymentDraft = {}) => {
     const transactionType = initialData.transactionType === 'income' || initialData.transactionType === 'transfer'
       ? initialData.transactionType
@@ -497,7 +501,24 @@ export default function PaymentCalendarTab({
           <strong className="min-w-[88px] text-center text-xs sm:text-sm capitalize text-theme-main truncate">{MONTHS[cursor.getMonth()]} <span className="text-theme-muted font-normal">{cursor.getFullYear()}</span></strong>
           <button type="button" aria-label="Следующий месяц" data-testid="button-next-month" onClick={() => moveMonth(1, cursor, setCursor, setSelectedDate, setListStartDate)} className="w-8 h-8 rounded-lg border border-theme-base bg-theme-surface text-theme-muted flex items-center justify-center shrink-0"><ArrowRight size={15} /></button>
         </div>
-        <div className="flex-1 min-w-3" aria-hidden="true" />
+        <div className="flex flex-1 min-w-3 items-center justify-center overflow-hidden">
+          {periodTotals.count > 0 && (
+            <span
+              data-testid="calendar-period-total"
+              title={`Итог плана за месяц по показанным записям: доходы ${formatSignedAmount(periodTotals.income)}, расходы ${formatSignedAmount(-periodTotals.expense)}`}
+              className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap rounded-lg bg-theme-main px-2 py-1 text-[10px] sm:text-xs"
+            >
+              <span className="hidden md:inline text-theme-muted">Итог за месяц</span>
+              <strong className={`tabular-nums ${planTotalsTone(periodTotals.net)}`}>{formatSignedAmount(periodTotals.net)}</strong>
+              {periodTotals.income > 0 && periodTotals.expense > 0 && (
+                <span className="hidden lg:inline tabular-nums text-theme-muted">
+                  (<span className="text-emerald-700">{formatSignedAmount(periodTotals.income)}</span>{' '}
+                  <span className="text-red-700">{formatSignedAmount(-periodTotals.expense)}</span>)
+                </span>
+              )}
+            </span>
+          )}
+        </div>
         <button type="button" aria-label="Сегодня" title="Сегодня" data-testid="button-today" onClick={() => { setCursor(new Date(now.getFullYear(), now.getMonth(), 1)); setSelectedDate(getTodayKey()); setListStartDate(getTodayKey()); }} className="w-8 h-8 rounded-lg border border-theme-base text-theme-muted flex items-center justify-center shrink-0"><CalendarCheck size={15} /></button>
         <label className="shrink-0 text-xs text-theme-muted">
           <span className="sr-only">Фильтр записей</span>
@@ -527,6 +548,10 @@ export default function PaymentCalendarTab({
                 const visibleEntries = entries.length > MAX_DAY_ROWS ? entries.slice(0, MAX_DAY_ROWS - 1) : entries;
                 const hiddenCount = entries.length - visibleEntries.length;
                 const overflowOpen = openDayList?.dateKey === cell.key;
+                const dayTotals = sumPlanOccurrences(dayItems);
+                const dayTotalTitle = dayTotals.net !== 0
+                  ? `Итог дня: ${formatSignedAmount(dayTotals.net)}`
+                  : undefined;
                 const selectDay = () => { setSelectedDate(cell.key); setListStartDate(cell.key); };
                 const toggleDayList = (event: React.MouseEvent<HTMLButtonElement>) => {
                   event.stopPropagation();
@@ -550,7 +575,16 @@ export default function PaymentCalendarTab({
                     className={`min-w-0 min-h-[60px] sm:min-h-[106px] p-1 sm:p-2 flex flex-col items-stretch justify-start text-left cursor-pointer border-b border-r border-theme-base outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-theme-primary ${!cell.currentMonth ? 'bg-theme-main text-theme-muted' : 'bg-theme-surface'} ${selectedDate === cell.key ? 'ring-2 ring-inset ring-theme-primary bg-theme-primary-light' : 'hover:bg-theme-main'}`}
                   >
                     <span className="flex min-w-0 items-start justify-between gap-0.5">
-                      <span className={`inline-flex min-w-6 h-6 items-center justify-center rounded-lg text-xs font-mono ${cell.key === getTodayKey() ? 'bg-theme-primary text-theme-on-primary' : 'text-theme-muted'}`}>{cell.day}</span>
+                      <span className={`inline-flex min-w-6 h-6 shrink-0 items-center justify-center rounded-lg text-xs font-mono ${cell.key === getTodayKey() ? 'bg-theme-primary text-theme-on-primary' : 'text-theme-muted'}`}>{cell.day}</span>
+                      {dayTotals.net !== 0 && (
+                        <span
+                          data-testid={`calendar-day-total-${cell.key}`}
+                          title={dayTotalTitle}
+                          className={`hidden sm:block min-w-0 flex-1 self-center truncate text-right text-[10px] font-semibold tabular-nums ${planTotalsTone(dayTotals.net)}`}
+                        >
+                          {formatCompactAmount(dayTotals.net)}
+                        </span>
+                      )}
                       {entries.length > 0 && (
                         <button
                           type="button"
@@ -607,6 +641,15 @@ export default function PaymentCalendarTab({
                         {dayItems.slice(0, 3).map(item => <span key={`${item.payment.id}-${item.date}-dot`} className={`w-1.5 h-1.5 rounded-full ${occurrenceDotTone(item, now)}`} />)}
                         {dayNotes.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" aria-label="Есть записка" />}
                         {entries.length > MAX_DAY_ROWS && <span className="text-[8px] leading-none text-theme-muted">+{entries.length - MAX_DAY_ROWS}</span>}
+                      </span>
+                    )}
+                    {dayTotals.net !== 0 && (
+                      <span
+                        data-testid={`calendar-day-total-phone-${cell.key}`}
+                        title={dayTotalTitle}
+                        className={`sm:hidden mt-0.5 block min-w-0 truncate text-[8px] leading-none font-semibold tabular-nums ${planTotalsTone(dayTotals.net)}`}
+                      >
+                        {formatCompactAmount(dayTotals.net)}
                       </span>
                     )}
                   </div>
