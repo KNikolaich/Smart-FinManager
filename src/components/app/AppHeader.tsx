@@ -33,8 +33,8 @@ export function AppHeader({ onLogoClick, isOnline, isHidden }: AppHeaderProps) {
         </motion.div>
         <div className="flex items-center gap-3">
           <div className="flex flex-col">
-            <h2 className="font-bold text-sm leading-none group-hover:text-theme-primary transition-colors text-theme-main">Finance</h2>
-            <p className="text-[10px] text-theme-muted font-bold uppercase tracking-widest mt-0.5">Manager</p>
+            <h2 className="font-bold text-sm leading-none group-hover:text-theme-primary transition-colors text-theme-main">Финансовый</h2>
+            <p className="text-[10px] text-theme-muted font-bold uppercase tracking-widest mt-0.5">ассистент</p>
           </div>
         </div>
       </button>

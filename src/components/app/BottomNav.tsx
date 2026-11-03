@@ -2,12 +2,12 @@ import { motion } from 'motion/react';
 import {
   LayoutDashboard,
   CalendarRange,
-  Telescope,
   BarChart2,
   Settings as SettingsIcon,
   User as UserIcon,
 } from 'lucide-react';
 import { RobotIcon } from '../icons/RobotIcon';
+import { PlasmaBallIcon } from '../icons/PlasmaBallIcon';
 import { cn } from '../../lib/utils';
 import { OfflineChip } from '../ui/OfflineChip';
 import { UserAvatar } from '../ui/UserAvatar';
@@ -49,30 +49,30 @@ export function BottomNav({ activeTab, onChangeTab, onDashboardClick, showUserPa
         </div>
         <button
           onClick={onDashboardClick}
-          aria-label="Дашборд"
+          aria-label="Главная"
           aria-current={activeTab === 'dashboard' ? 'page' : undefined}
           className={navButtonClass(activeTab === 'dashboard')}
         >
           <LayoutDashboard size={20} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
-          <NavLabel>Дашборд</NavLabel>
+          <NavLabel>Главная</NavLabel>
         </button>
         <button
           onClick={() => onChangeTab('calendar')}
-          aria-label="Календарь"
+          aria-label="План"
           aria-current={activeTab === 'calendar' ? 'page' : undefined}
           className={navButtonClass(activeTab === 'calendar')}
         >
           <CalendarRange size={20} strokeWidth={activeTab === 'calendar' ? 2.5 : 2} />
-          <NavLabel>Календарь</NavLabel>
+          <NavLabel>План</NavLabel>
         </button>
         <button
           onClick={() => onChangeTab('plan')}
-          aria-label="Прогнозы"
+          aria-label="Прогноз"
           aria-current={activeTab === 'plan' ? 'page' : undefined}
           className={navButtonClass(activeTab === 'plan')}
         >
-          <Telescope size={20} strokeWidth={activeTab === 'plan' ? 2.5 : 2} />
-          <NavLabel>Прогнозы</NavLabel>
+          <PlasmaBallIcon size={20} strokeWidth={activeTab === 'plan' ? 2.5 : 2} />
+          <NavLabel>Прогноз</NavLabel>
         </button>
 
         {/* AI Assistant Button */}
@@ -84,7 +84,7 @@ export function BottomNav({ activeTab, onChangeTab, onDashboardClick, showUserPa
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => onChangeTab('ai')}
-            aria-label="AI-помощник"
+            aria-label="Ai"
             aria-current={activeTab === 'ai' ? 'page' : undefined}
             className={cn(
               "w-14 h-14 md:w-6 md:h-5 rounded-full flex items-center justify-center shadow-lg transition-all z-50 md:shadow-none md:border-0 md:bg-transparent",
@@ -99,18 +99,18 @@ export function BottomNav({ activeTab, onChangeTab, onDashboardClick, showUserPa
             "hidden md:block max-md:landscape:hidden text-[11px] font-semibold leading-none whitespace-nowrap",
             activeTab === 'ai' ? "text-theme-primary" : "text-theme-muted"
           )}>
-            Помощник
+            Ai
           </span>
         </div>
 
         <button
           onClick={() => onChangeTab('analytics')}
-          aria-label="Аналитика"
+          aria-label="Анализ"
           aria-current={activeTab === 'analytics' ? 'page' : undefined}
           className={navButtonClass(activeTab === 'analytics')}
         >
           <BarChart2 size={20} strokeWidth={activeTab === 'analytics' ? 2.5 : 2} />
-          <NavLabel>Аналитика</NavLabel>
+          <NavLabel>Анализ</NavLabel>
         </button>
         <button
           onClick={() => onChangeTab('settings')}
