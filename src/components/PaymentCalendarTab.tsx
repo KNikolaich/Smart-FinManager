@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from 'react-dom';
 import {
   ArrowLeft,
+  ArrowLeftRight,
   ArrowRight,
   CalendarCheck,
   CalendarDays,
@@ -34,6 +35,7 @@ import { useMinuteClock } from '../hooks/useMinuteClock';
 import AccountSelect from './AccountSelect';
 import { cn } from '../lib/utils';
 import { isCompletedOccurrence } from '../lib/calendarPlanCleanup';
+import { getPlanCategoryIcon, getPlanColor, PLAN_COLORS } from '../lib/planColor';
 import {
   CalendarPlanEditError,
   CalendarPlanEditOptions,
@@ -270,7 +272,7 @@ export default function PaymentCalendarTab({
       paidDates: [],
       disableFrom: null,
       occurrences: [],
-      color: initialData.color ?? 'plum',
+      color: initialData.color,
     });
     setEditingOccurrenceDate(null);
     setSaveError(null);
@@ -609,7 +611,7 @@ export default function PaymentCalendarTab({
                       <span className="hidden sm:flex min-w-0 flex-col gap-1 mt-1">
                         {visibleEntries.map(entry => entry.kind === 'plan' ? (
                           <span key={`${entry.item.payment.id}-${entry.item.date}`} className={`flex min-w-0 items-center gap-1 rounded px-1 py-1 text-[10px] ${occurrenceTone(entry.item, now)}`}>
-                            <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+                            <PlanMarker occurrence={entry.item} categories={categories} />
                             <span className="min-w-0 flex-1 truncate">{entry.item.payment.title}</span>
                             {entry.item.payment.note?.trim() && <StickyNote size={10} className="shrink-0 text-amber-700" aria-label="У плана есть записка" />}
                             {entry.item.payment.time && <time className="shrink-0 tabular-nums">{entry.item.payment.time}</time>}
@@ -638,7 +640,7 @@ export default function PaymentCalendarTab({
                     )}
                     {entries.length > 0 && (
                       <span className="sm:hidden mt-1 flex items-center gap-0.5">
-                        {dayItems.slice(0, 3).map(item => <span key={`${item.payment.id}-${item.date}-dot`} className={`w-1.5 h-1.5 rounded-full ${occurrenceDotTone(item, now)}`} />)}
+                        {dayItems.slice(0, 3).map(item => <PlanMarker key={`${item.payment.id}-${item.date}-dot`} occurrence={item} categories={categories} size="xs" fallbackClassName={occurrenceDotTone(item, now)} />)}
                         {dayNotes.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" aria-label="Есть записка" />}
                         {entries.length > MAX_DAY_ROWS && <span className="text-[8px] leading-none text-theme-muted">+{entries.length - MAX_DAY_ROWS}</span>}
                       </span>
@@ -740,6 +742,7 @@ export default function PaymentCalendarTab({
             ...(notesByDate.get(openDayList.dateKey) || []).map(note => ({ kind: 'note' as const, note })),
           ]}
           now={now}
+          categories={categories}
           onClose={() => setOpenDayList(null)}
           onSelectDay={() => {
             setSelectedDate(openDayList.dateKey);
@@ -803,6 +806,51 @@ function occurrenceDotTone(item: PlannedPaymentOccurrence, now = new Date()) {
   if (isOccurrenceOverdue(item, now)) return 'bg-red-500';
   if (item.payment.transactionType === 'transfer') return 'bg-blue-400';
   return item.payment.transactionType === 'income' ? 'bg-lime-500' : 'bg-pink-300';
+}
+
+const PLAN_MARKER_SIZES = {
+  xs: { box: 'w-3 h-3', emoji: 'text-[7px]', icon: 7 },
+  sm: { box: 'w-4 h-4', emoji: 'text-[10px]', icon: 9 },
+  md: { box: 'w-5 h-5', emoji: 'text-xs', icon: 11 },
+} as const;
+
+/**
+ * Marker in front of a plan in the calendar. A plan with its own colour shows
+ * its category's icon on a circle of that colour; otherwise it keeps the
+ * default dot of its operation type.
+ */
+function PlanMarker({
+  occurrence,
+  categories,
+  size = 'sm',
+  fallbackClassName = 'bg-current',
+}: {
+  occurrence: PlannedPaymentOccurrence;
+  categories: Category[];
+  size?: keyof typeof PLAN_MARKER_SIZES;
+  fallbackClassName?: string;
+}) {
+  const color = getPlanColor(occurrence.payment);
+  if (!color) return <span data-testid="plan-marker-dot" className={`w-1.5 h-1.5 rounded-full shrink-0 ${fallbackClassName}`} />;
+
+  const dims = PLAN_MARKER_SIZES[size];
+  const icon = getPlanCategoryIcon(occurrence.payment, categories);
+  const muted = isCompletedOccurrence(occurrence);
+  return (
+    <span
+      data-testid="plan-marker-icon"
+      data-plan-color={color}
+      aria-hidden="true"
+      style={{ backgroundColor: color }}
+      className={`inline-flex ${dims.box} shrink-0 items-center justify-center rounded-full leading-none text-white ring-1 ring-white/70 ${muted ? 'opacity-50 grayscale' : ''}`}
+    >
+      {icon
+        ? <span className={dims.emoji}>{icon}</span>
+        : occurrence.payment.transactionType === 'transfer'
+          ? <ArrowLeftRight size={dims.icon} strokeWidth={3} />
+          : null}
+    </span>
+  );
 }
 
 function PaymentDialog({ mode, payment, accounts, transactions, categories, onChange, onClose, onSave, saveError, saving = false, recurringEventDate = null }: { mode: 'create' | 'edit'; payment: PlannedPayment; accounts: Account[]; transactions: Transaction[]; categories: Category[]; onChange: (payment: PlannedPayment) => void; onClose: () => void; onSave: () => void; saveError?: string | null; saving?: boolean; recurringEventDate?: string | null }) {
@@ -945,10 +993,74 @@ function PaymentDialog({ mode, payment, accounts, transactions, categories, onCh
             />
             )}
           </div>
+          <PlanColorPicker value={getPlanColor(payment)} onChange={color => set('color', color ?? undefined)} />
         </div>
         {saveError && <p className="px-4 pb-3 text-xs text-rose-600">{saveError}</p>}
         <footer className="flex justify-end gap-2 p-4 border-t border-theme-base"><button type="button" data-testid="button-cancel-payment" onClick={onClose} className="px-3 py-2 rounded-xl bg-theme-main text-theme-muted text-xs font-bold">Отмена</button><button type="button" data-testid="button-save-payment" disabled={saving || !payment.title.trim() || payment.amount <= 0 || transferAccountsInvalid} onClick={onSave} className="px-3 py-2 rounded-xl bg-theme-primary text-theme-on-primary text-xs font-bold disabled:opacity-40">{mode === 'create' ? <Plus size={14} className="inline mr-1" /> : <Check size={14} className="inline mr-1" />}{mode === 'create' ? 'Запланировать' : 'Сохранить'}</button></footer>
       </section>
+    </div>
+  );
+}
+
+/** Choice of the plan's calendar colour; "По умолчанию" keeps the type's dot. */
+function PlanColorPicker({ value, onChange }: { value: string | null; onChange: (color: string | null) => void }) {
+  const isCustom = value !== null && !PLAN_COLORS.some(option => option.value === value);
+  return (
+    <div className="space-y-1.5" data-testid="payment-color-picker">
+      <span className="block text-xs font-bold text-theme-muted">Цвет на календаре</span>
+      <div className="flex flex-wrap items-center gap-2" role="radiogroup" aria-label="Цвет на календаре">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={value === null}
+          data-testid="payment-color-default"
+          onClick={() => onChange(null)}
+          className={cn(
+            'rounded-full border px-2.5 py-1 text-[11px] font-bold',
+            value === null ? 'border-theme-primary bg-theme-primary-light text-theme-primary' : 'border-theme-base text-theme-muted hover:bg-theme-main',
+          )}
+        >
+          По умолчанию
+        </button>
+        {PLAN_COLORS.map(option => (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={value === option.value}
+            aria-label={option.label}
+            title={option.label}
+            data-testid={`payment-color-${option.value.slice(1)}`}
+            onClick={() => onChange(option.value)}
+            style={{ backgroundColor: option.value }}
+            className={cn(
+              'flex h-7 w-7 items-center justify-center rounded-full text-white transition-transform',
+              value === option.value ? 'ring-2 ring-offset-2 ring-theme-primary scale-110' : 'hover:scale-110',
+            )}
+          >
+            {value === option.value && <Check size={14} strokeWidth={3} />}
+          </button>
+        ))}
+        <label
+          title="Свой цвет"
+          className={cn(
+            'relative flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-dashed border-theme-base text-theme-muted hover:bg-theme-main',
+            isCustom && 'ring-2 ring-offset-2 ring-theme-primary border-solid',
+          )}
+          style={isCustom ? { backgroundColor: value! } : undefined}
+        >
+          <Plus size={14} aria-hidden="true" className={isCustom ? 'text-white' : ''} />
+          <input
+            type="color"
+            data-testid="payment-color-custom"
+            aria-label="Свой цвет"
+            value={value ?? '#7c3aed'}
+            onChange={event => onChange(event.target.value)}
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          />
+        </label>
+      </div>
+      <span className="block text-[10px] font-normal text-theme-muted">На календаре вместо точки появится иконка категории на круге этого цвета.</span>
     </div>
   );
 }
@@ -961,6 +1073,7 @@ function CalendarDayListPopover({
   anchor,
   entries,
   now,
+  categories = [],
   onClose,
   onSelectDay,
 }: {
@@ -968,6 +1081,7 @@ function CalendarDayListPopover({
   anchor: DOMRect;
   entries: CalendarDayEntry[];
   now: Date;
+  categories?: Category[];
   onClose: () => void;
   onSelectDay: () => void;
 }) {
@@ -1039,7 +1153,7 @@ function CalendarDayListPopover({
               onClick={onSelectDay}
               className={`flex w-full min-w-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-[11px] ${occurrenceTone(entry.item, now)}`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+              <PlanMarker occurrence={entry.item} categories={categories} size="md" />
               {entry.item.payment.time && <time className="shrink-0 tabular-nums">{entry.item.payment.time}</time>}
               <span className="min-w-0 flex-1 truncate">{entry.item.payment.title}</span>
               <span className="shrink-0 tabular-nums">{formatPlanAmount(entry.item.payment)}</span>
