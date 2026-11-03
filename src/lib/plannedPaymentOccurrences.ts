@@ -9,7 +9,31 @@ export interface PlannedPaymentOccurrence {
   manuallyCompleted?: boolean;
 }
 
-export type PlannedPaymentFilter = 'all' | 'pending' | 'overdue' | 'paid';
+export type PlannedPaymentStatusFilter = 'all' | 'pending' | 'overdue' | 'paid';
+export type PlannedPaymentTypeFilter = 'income' | 'expense' | 'transfer' | 'notes';
+export type PlannedPaymentFilter = PlannedPaymentStatusFilter | PlannedPaymentTypeFilter;
+
+/** Filters by operation type: they show plans of one type only, and no notes. */
+const PLAN_TYPE_FILTERS: ReadonlySet<PlannedPaymentFilter> = new Set(['income', 'expense', 'transfer']);
+
+/** Whether calendar notes are shown under this filter (hidden by the operation-type filters). */
+export function filterShowsNotes(filter: PlannedPaymentFilter) {
+  return !PLAN_TYPE_FILTERS.has(filter);
+}
+
+/** Whether a planned event is shown under this filter. The "notes" filter shows notes only. */
+export function matchesPlannedPaymentFilter(
+  item: PlannedPaymentOccurrence,
+  filter: PlannedPaymentFilter,
+  now = new Date(),
+) {
+  if (filter === 'all') return true;
+  if (filter === 'notes') return false;
+  if (PLAN_TYPE_FILTERS.has(filter)) return (item.payment.transactionType || 'expense') === filter;
+  if (filter === 'overdue') return item.status === 'pending' && isOccurrenceOverdue(item, now);
+  if (filter === 'pending') return item.status === 'pending' && !isOccurrenceOverdue(item, now);
+  return item.status === 'paid';
+}
 
 export function toDateKey(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -173,7 +197,9 @@ export function getPaymentOccurrencesForFilter(
   const start = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
   const end = new Date(anchor.getFullYear() + 5, anchor.getMonth(), anchor.getDate());
 
-  if (filter === 'all' || filter === 'paid') {
+  if (filter === 'notes') return [];
+
+  if (filter === 'all' || filter === 'paid' || PLAN_TYPE_FILTERS.has(filter)) {
     start.setFullYear(start.getFullYear() - 5);
   } else if (filter === 'pending') {
     // Today is included: a plan later today is still pending, not overdue.
@@ -187,12 +213,7 @@ export function getPaymentOccurrencesForFilter(
 
   return payments
     .flatMap(payment => getPaymentOccurrencesInRange(payment, toDateKey(start), toDateKey(end)))
-    .filter(item => {
-      if (filter === 'all') return true;
-      if (filter === 'overdue') return item.status === 'pending' && isOccurrenceOverdue(item, now);
-      if (filter === 'pending') return item.status === 'pending' && !isOccurrenceOverdue(item, now);
-      return item.status === 'paid';
-    })
+    .filter(item => matchesPlannedPaymentFilter(item, filter, now))
     .sort((a, b) => a.date.localeCompare(b.date) || a.payment.title.localeCompare(b.payment.title))
     .slice(offset, offset + limit);
 }

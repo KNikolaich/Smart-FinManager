@@ -11,6 +11,7 @@ import { CalendarDashboardItem, mergeCalendarDashboardItems, mergeCalendarPlanIt
 import {
   getTodayKey,
   getOutstandingPaymentOccurrences,
+  filterShowsNotes,
   getPaymentOccurrencesForFilter,
   isOccurrenceOverdue,
   isPlanOccurrenceOverdue,
@@ -210,8 +211,10 @@ export default function UpcomingTasks({
     ? loadedOccurrences.slice(listWindow.start, listWindow.end)
     : loadedOccurrences;
   const calendarListItems = useMemo(
-    () => variant === 'list' ? mergeCalendarPlanItems(occurrences, sortedCalendarNotes) : [],
-    [occurrences, sortedCalendarNotes, variant],
+    () => variant === 'list'
+      ? mergeCalendarPlanItems(occurrences, filterShowsNotes(filter) ? sortedCalendarNotes : [])
+      : [],
+    [occurrences, sortedCalendarNotes, variant, filter],
   );
   // Today's preview: everything still open for today plus the overdue tail.
   const todayItems = useMemo(
@@ -795,7 +798,7 @@ export default function UpcomingTasks({
         <div className="py-10 text-center text-xs text-rose-600">{error}</div>
       ) : (variant === 'carousel'
         ? carouselItems.length === 0
-        : occurrences.length === 0 && sortedCalendarNotes.length === 0) ? (
+        : calendarListItems.length === 0) ? (
         <div className="py-10 text-center text-xs text-theme-muted">
           <CircleDashed size={20} className="mx-auto mb-2" />
           Предстоящих задач нет

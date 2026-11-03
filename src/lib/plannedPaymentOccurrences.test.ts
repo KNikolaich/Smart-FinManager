@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { PlannedPayment } from '../types';
 import {
+  filterShowsNotes,
   getPaymentOccurrencesForFilter,
   getPaymentOccurrencesInRange,
   isPlanOccurrenceOverdue,
@@ -143,5 +144,43 @@ describe('pending and overdue filters with a time', () => {
     vi.setSystemTime(new Date(2026, 9, 5, 13, 0));
     expect(ids('pending')).toEqual(['tomorrow']);
     expect(ids('overdue').sort()).toEqual(['all-day', 'later']);
+  });
+});
+
+describe('planned payment type filters', () => {
+  afterEach(() => vi.useRealTimers());
+
+  const plan = (id: string, transactionType?: PlannedPayment['transactionType']): PlannedPayment => ({
+    id,
+    title: id,
+    amount: 100,
+    date: '2026-10-10',
+    recurrence: 'none',
+    status: 'pending',
+    paidDates: [],
+    accountName: 'Карта',
+    transactionType,
+  });
+
+  it('keeps only plans of the chosen operation type and none for the notes filter', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 5, 12, 0));
+    const plans = [plan('salary', 'income'), plan('rent', 'expense'), plan('legacy'), plan('savings', 'transfer')];
+    const ids = (filter: Parameters<typeof getPaymentOccurrencesForFilter>[2]) =>
+      getPaymentOccurrencesForFilter(plans, '2026-10-05', filter).map(item => item.payment.id).sort();
+
+    expect(ids('income')).toEqual(['salary']);
+    expect(ids('expense')).toEqual(['legacy', 'rent']);
+    expect(ids('transfer')).toEqual(['savings']);
+    expect(ids('notes')).toEqual([]);
+  });
+
+  it('hides notes only under the operation-type filters', () => {
+    expect(filterShowsNotes('income')).toBe(false);
+    expect(filterShowsNotes('expense')).toBe(false);
+    expect(filterShowsNotes('transfer')).toBe(false);
+    expect(filterShowsNotes('notes')).toBe(true);
+    expect(filterShowsNotes('all')).toBe(true);
+    expect(filterShowsNotes('pending')).toBe(true);
   });
 });

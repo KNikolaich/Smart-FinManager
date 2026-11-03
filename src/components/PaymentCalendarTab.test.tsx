@@ -778,6 +778,59 @@ describe('PaymentCalendarTab', () => {
       expect(within(day).getByText('Без времени')).toBeTruthy();
     });
   });
+
+  describe('type filters', () => {
+    const typedPlans: PlannedPayment[] = [
+      { ...payment, id: 'salary', title: 'Зарплата', recurrence: 'none', date: '2026-10-07', transactionType: 'income' },
+      { ...payment, id: 'rent', title: 'Квартплата', recurrence: 'none', date: '2026-10-07', transactionType: 'expense' },
+      { ...payment, id: 'savings', title: 'В копилку', recurrence: 'none', date: '2026-10-07', transactionType: 'transfer' },
+    ];
+    const typedNotes: CalendarNote[] = [{ id: 'memo', date: '2026-10-07', text: 'Позвонить в банк' }];
+
+    it('lists the new filters first', () => {
+      render(<PaymentCalendarTab payments={typedPlans} notes={typedNotes} accounts={[]} />);
+      const options = Array.from((screen.getByTestId('select-payment-filter') as HTMLSelectElement).options);
+      expect(options.map(option => option.textContent)).toEqual([
+        'Доходы', 'Расходы', 'Переводы', 'Заметки', 'Все записи', 'Ожидают', 'Просрочены', 'Выполнены',
+      ]);
+      expect((screen.getByTestId('select-payment-filter') as HTMLSelectElement).value).toBe('all');
+    });
+
+    it('filters the calendar and the plan list by operation type and notes', () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 9, 5, 12, 0, 0));
+      render(<PaymentCalendarTab payments={typedPlans} notes={typedNotes} accounts={[]} />);
+      const day = () => screen.getByTestId('calendar-day-2026-10-07');
+      const select = screen.getByTestId('select-payment-filter');
+
+      fireEvent.change(select, { target: { value: 'income' } });
+      expect(within(day()).getByText('Зарплата')).toBeTruthy();
+      expect(within(day()).queryByText('Квартплата')).toBeNull();
+      expect(within(day()).queryByText('Позвонить в банк')).toBeNull();
+      expect(screen.getByTestId('payment-row-salary-2026-10-07')).toBeTruthy();
+      expect(screen.queryByTestId('payment-row-rent-2026-10-07')).toBeNull();
+      expect(screen.queryByTestId('calendar-note-row-memo')).toBeNull();
+
+      fireEvent.change(select, { target: { value: 'transfer' } });
+      expect(within(day()).getByText('В копилку')).toBeTruthy();
+      expect(within(day()).queryByText('Зарплата')).toBeNull();
+
+      fireEvent.change(select, { target: { value: 'notes' } });
+      expect(within(day()).getByText('Позвонить в банк')).toBeTruthy();
+      expect(within(day()).queryByText('Зарплата')).toBeNull();
+      expect(screen.getByTestId('calendar-note-row-memo')).toBeTruthy();
+      expect(screen.queryByTestId('payment-row-salary-2026-10-07')).toBeNull();
+    });
+
+    it('resets the filter when the tab is left and opened again', () => {
+      const view = render(<PaymentCalendarTab payments={typedPlans} notes={typedNotes} accounts={[]} />);
+      fireEvent.change(screen.getByTestId('select-payment-filter'), { target: { value: 'expense' } });
+      view.unmount();
+
+      render(<PaymentCalendarTab payments={typedPlans} notes={typedNotes} accounts={[]} />);
+      expect((screen.getByTestId('select-payment-filter') as HTMLSelectElement).value).toBe('all');
+    });
+  });
 });
 
 describe('PaymentCalendarTab plan totals', () => {

@@ -46,7 +46,9 @@ import {
 import {
   getPaymentOccurrencesInRange,
   getTodayKey,
+  filterShowsNotes,
   isOccurrenceOverdue,
+  matchesPlannedPaymentFilter,
   parseDateKey,
   PlannedPaymentFilter,
   PlannedPaymentOccurrence,
@@ -81,6 +83,7 @@ interface PaymentCalendarTabProps {
 }
 
 type Filter = PlannedPaymentFilter;
+const EMPTY_NOTES_BY_DATE = new Map<string, CalendarNote[]>();
 type DialogMode = 'create' | 'edit' | null;
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -230,8 +233,11 @@ export default function PaymentCalendarTab({
   const visibleOccurrences = occurrences.filter(item => {
     if (filter === 'all') return true;
     if (filter === 'overdue') return item.status !== 'paid' && isOccurrenceOverdue(item, now);
-    return item.status === filter;
+    if (filter === 'pending' || filter === 'paid') return item.status === filter;
+    return matchesPlannedPaymentFilter(item, filter, now);
   });
+  // The operation-type filters (income, expense, transfer) hide calendar notes.
+  const visibleNotesByDate = filterShowsNotes(filter) ? notesByDate : EMPTY_NOTES_BY_DATE;
   const byDate = new Map<string, PlannedPaymentOccurrence[]>();
   visibleOccurrences.forEach(item => byDate.set(item.date, [...(byDate.get(item.date) || []), item]));
   // The period is the shown month; days of the neighbour months only fill the grid.
@@ -525,6 +531,10 @@ export default function PaymentCalendarTab({
         <label className="shrink-0 text-xs text-theme-muted">
           <span className="sr-only">Фильтр записей</span>
           <select data-testid="select-payment-filter" value={filter} onChange={event => setFilter(event.target.value as Filter)} className="w-[90px] rounded-lg border border-theme-base bg-theme-surface px-1.5 py-1.5 text-[10px] sm:w-auto sm:px-2 sm:text-xs text-theme-main">
+            <option value="income">Доходы</option>
+            <option value="expense">Расходы</option>
+            <option value="transfer">Переводы</option>
+            <option value="notes">Заметки</option>
             <option value="all">Все записи</option>
             <option value="pending">Ожидают</option>
             <option value="overdue">Просрочены</option>
@@ -541,7 +551,7 @@ export default function PaymentCalendarTab({
             <div className="grid min-w-0 grid-cols-7">
               {monthCells.map(cell => {
                 const dayItems = byDate.get(cell.key) || [];
-                const dayNotes = notesByDate.get(cell.key) || [];
+                const dayNotes = visibleNotesByDate.get(cell.key) || [];
                 const entries: CalendarDayEntry[] = [
                   ...dayItems.map(item => ({ kind: 'plan' as const, item })),
                   ...dayNotes.map(note => ({ kind: 'note' as const, note })),
@@ -739,7 +749,7 @@ export default function PaymentCalendarTab({
           anchor={openDayList.anchor}
           entries={[
             ...(byDate.get(openDayList.dateKey) || []).map(item => ({ kind: 'plan' as const, item })),
-            ...(notesByDate.get(openDayList.dateKey) || []).map(note => ({ kind: 'note' as const, note })),
+            ...(visibleNotesByDate.get(openDayList.dateKey) || []).map(note => ({ kind: 'note' as const, note })),
           ]}
           now={now}
           categories={categories}
