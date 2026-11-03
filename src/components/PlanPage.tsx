@@ -841,13 +841,13 @@ export default function PlanPage({
     <div className="p-0 sm:p-0 space-y-0 max-w-[100vw] overflow-hidden h-full flex flex-col">
       {/* Custom Minimalist Tabs */}
       {section === 'forecasts' && (
-      <div className="flex items-end space-x-1 border-b border-theme-base px-1 pt-1 shrink-0">
+      <div className="flex items-center gap-1.5 px-2 py-2 shrink-0 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab('now')}
           className={cn(
-            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            "px-2.5 py-1 rounded-xl text-xs font-bold transition-all border shadow-sm",
             activeTab === 'now' 
-              ? "bg-emerald-500 text-white border-emerald-500 translate-y-[1px]" 
+              ? "bg-emerald-500 text-white border-emerald-500 shadow-md" 
               : "bg-theme-surface text-theme-muted border-theme-base hover:bg-theme-main"
           )}
         >
@@ -856,9 +856,9 @@ export default function PlanPage({
         <button
           onClick={() => setActiveTab('comment')}
           className={cn(
-            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            "px-2.5 py-1 rounded-xl text-xs font-bold transition-all border shadow-sm",
             activeTab === 'comment' 
-              ? "bg-blue-500 text-white border-purple-500 translate-y-[1px]" 
+              ? "bg-blue-500 text-white border-purple-500 shadow-md" 
               : "bg-theme-surface text-theme-muted border-theme-base hover:bg-theme-main"
           )}
         >
@@ -867,9 +867,9 @@ export default function PlanPage({
         <button
           onClick={() => setActiveTab('cashback')}
           className={cn(
-            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            "px-2.5 py-1 rounded-xl text-xs font-bold transition-all border shadow-sm",
             activeTab === 'cashback' 
-              ? "bg-purple-500 text-white border-purple-500 translate-y-[1px]" 
+              ? "bg-purple-500 text-white border-purple-500 shadow-md" 
               : "bg-theme-surface text-theme-muted border-theme-base hover:bg-theme-main"
           )}
         >
@@ -878,9 +878,9 @@ export default function PlanPage({
         <button
           onClick={() => setActiveTab('credit')}
           className={cn(
-            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            "px-2.5 py-1 rounded-xl text-xs font-bold transition-all border shadow-sm",
             activeTab === 'credit' 
-              ? "bg-sky-500 text-white border-sky-500 translate-y-[1px]" 
+              ? "bg-sky-500 text-white border-sky-500 shadow-md" 
               : "bg-theme-surface text-theme-muted border-theme-base hover:bg-theme-main"
           )}
         >
@@ -889,9 +889,9 @@ export default function PlanPage({
         <button
           onClick={() => setActiveTab('past')}
           className={cn(
-            "px-2 py-0.5 rounded-t-xl text-xs font-bold transition-all border-t border-l border-r",
+            "px-2.5 py-1 rounded-xl text-xs font-bold transition-all border shadow-sm",
             activeTab === 'past' 
-              ? "bg-amber-500 text-white border-amber-500 translate-y-[1px]" 
+              ? "bg-amber-500 text-white border-amber-500 shadow-md" 
               : "bg-theme-surface text-theme-muted border-theme-base hover:bg-theme-main"
           )}
         >
@@ -900,7 +900,7 @@ export default function PlanPage({
       </div>
       )}
 
-      <div className="bg-theme-surface p-0 border-none shadow-none overflow-hidden flex-1 flex flex-col">
+      <div className={cn("bg-theme-surface p-0 overflow-hidden flex-1 flex flex-col", section === 'forecasts' ? "mx-2 mb-2 rounded-2xl border border-theme-base shadow-sm" : "border-none shadow-none")}>
         {activeTab === 'calendar' ? (
           <PaymentCalendarTab
             payments={calendarPayments}

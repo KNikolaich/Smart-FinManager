@@ -26,16 +26,16 @@ export function TotalBalanceCard({
   return (
     <motion.div
       initial={{ opacity: 0.3 }}
-      animate={{ opacity: 0.7 }}
+      animate={{ opacity: 1 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className={cn("h-full overflow-hidden", className)}
+      className={cn("h-full", className)}
     >
           <div
             onClick={() => onNavigateToAnalytics?.({
               filterType: 'period',
               periodRange: { start: subMonths(new Date(), 1), end: new Date() }
             })}
-            className="h-full bg-theme-surface rounded-3xl p-4 text-theme-main border border-theme-base shadow-soft cursor-pointer group relative overflow-hidden"
+            className="h-full bg-theme-surface rounded-3xl p-4 text-theme-main border border-theme-base shadow-sm cursor-pointer group relative overflow-hidden"
           >
             <div className="relative z-10 flex flex-col sm:flex-row items-center gap-6">
               {/* Left Side: Stats (Max Width 400px) */}
