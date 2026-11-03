@@ -242,7 +242,8 @@ export interface PlannedPayment {
     transactionId?: string | null;
     manuallyCompleted: boolean;
   }>;
-  color?: 'plum' | 'blue' | 'orange';
+  /** Calendar marker colour (#rrggbb). Old named values such as 'plum' mean "default look". */
+  color?: string;
 }
 
 export type PlannedPaymentDraft = Partial<Pick<
