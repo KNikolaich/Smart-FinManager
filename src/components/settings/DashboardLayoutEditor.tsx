@@ -250,7 +250,7 @@ export function DashboardLayoutEditor({ value, onClose, onSave }: DashboardLayou
               <p className="mt-1 text-xs text-theme-muted">Выберите, какие блоки показывать на каждом типе устройства.</p>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-theme-base bg-theme-surface">
+            <div className="overflow-hidden rounded-2xl border border-theme-base bg-theme-surface shadow-sm">
               <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,76px)] items-center border-b border-theme-base px-3 py-3 text-[9px] font-black uppercase tracking-wider text-theme-muted sm:px-4">
                 <span>Компонент</span>
                 {DEVICES.map(device => (
@@ -365,7 +365,7 @@ export function DashboardLayoutEditor({ value, onClose, onSave }: DashboardLayou
             )}
 
             {selectedWidget && activeLayout.visibility[selectedWidget] && (
-              <div className="mt-3 rounded-2xl border border-theme-base bg-theme-surface p-3">
+              <div className="mt-3 rounded-2xl border border-theme-base bg-theme-surface p-3 shadow-sm">
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <p className="truncate text-sm font-black text-theme-main">{widgetLabel(selectedWidget)}</p>
                   <div className="flex items-center gap-1">

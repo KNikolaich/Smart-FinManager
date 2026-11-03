@@ -544,7 +544,7 @@ export default function PaymentCalendarTab({
       </div>
 
        <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_300px] gap-3">
-          <div className="min-w-0 rounded-2xl border border-theme-base bg-theme-surface overflow-hidden">
+          <div className="min-w-0 rounded-2xl border border-theme-base bg-theme-surface shadow-sm overflow-hidden">
             <div className="grid min-w-0 grid-cols-7 border-b border-theme-base">
               {WEEKDAYS.map((day, index) => <div key={day} className={`min-w-0 p-1 sm:p-2 text-center text-[9px] sm:text-[10px] font-bold uppercase truncate ${index > 4 ? 'text-theme-primary' : 'text-theme-muted'}`}>{day}</div>)}
             </div>

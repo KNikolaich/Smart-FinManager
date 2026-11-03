@@ -4,8 +4,21 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   
-  --shadow-soft: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-elegant: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+  /* Every Tailwind shadow utility resolves to one of three shared elevation
+   * levels (defined per light/dark theme below), so depth looks the same on
+   * every card, panel and dialog:
+   *   1  cards and dashboard sections (shadow, shadow-sm, shadow-soft)
+   *   2  raised: buttons, tiles, tooltips, hover (shadow-md, shadow-lg, shadow-elegant)
+   *   3  overlays: popovers, modals, sheets (shadow-xl, shadow-2xl) */
+  --shadow-xs: var(--elevation-1);
+  --shadow: var(--elevation-1);
+  --shadow-sm: var(--elevation-1);
+  --shadow-soft: var(--elevation-1);
+  --shadow-md: var(--elevation-2);
+  --shadow-lg: var(--elevation-2);
+  --shadow-elegant: var(--elevation-2);
+  --shadow-xl: var(--elevation-3);
+  --shadow-2xl: var(--elevation-3);
 }
 
 /* Nordic is the default and the semantic roles below are shared by every theme. */
@@ -29,6 +42,19 @@
   --space-6: 24px; --space-8: 32px; --space-10: 40px;
   --radius-control: 12px; --radius-card: 16px; --radius-group: 24px;
   --radius-nav: 18px; --radius-pill: 999px;
+
+  /* Elevation, light themes: a tight contact shadow plus a soft ambient one. */
+  --elevation-1:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 4px 12px -2px rgba(15, 23, 42, 0.08),
+    0 14px 32px -14px rgba(15, 23, 42, 0.16);
+  --elevation-2:
+    0 2px 4px rgba(15, 23, 42, 0.07),
+    0 10px 24px -6px rgba(15, 23, 42, 0.16),
+    0 22px 44px -18px rgba(15, 23, 42, 0.20);
+  --elevation-3:
+    0 6px 14px -4px rgba(15, 23, 42, 0.12),
+    0 28px 60px -12px rgba(15, 23, 42, 0.32);
 
   --color-action: var(--primary);
   --color-action-soft: var(--primary-light);
@@ -168,7 +194,6 @@
   /* Softer, pastel version of the theme accent for large surfaces (dashboard plan cards). */
   .bg-theme-primary-pastel { background-color: color-mix(in srgb, var(--color-action-soft) 45%, var(--surface-card)); }
   .hover\:bg-theme-primary-dark:hover { background-color: var(--color-action-strong); }
-  .shadow-theme-primary-light { --tw-shadow-color: var(--color-action-soft); --tw-shadow: var(--tw-shadow-colored); }
   .ring-theme-primary-light { --tw-ring-color: var(--color-action-soft); }
   .text-finance-income { color: var(--color-income); }
   .text-finance-expense { color: var(--color-expense); }
@@ -276,6 +301,25 @@ body {
   outline-offset: 2px;
 }
 
+/* Elevation, dark themes: a black drop shadow is barely visible on a dark
+ * page, so each level also gets a faint light top edge that lifts the card. */
+.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber {
+  --elevation-1:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.50),
+    0 6px 16px -4px rgba(0, 0, 0, 0.55),
+    0 16px 36px -14px rgba(0, 0, 0, 0.70);
+  --elevation-2:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 2px 4px rgba(0, 0, 0, 0.55),
+    0 12px 28px -6px rgba(0, 0, 0, 0.65),
+    0 24px 48px -18px rgba(0, 0, 0, 0.75);
+  --elevation-3:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 8px 18px -4px rgba(0, 0, 0, 0.60),
+    0 32px 64px -12px rgba(0, 0, 0, 0.85);
+}
+
 /* Common element adjustments */
 .bg-white { background-color: var(--bg-surface); }
 .bg-neutral-50, .bg-gray-50 { background-color: var(--input-bg); }
@@ -286,13 +330,6 @@ body {
 .text-neutral-700 { color: var(--text-main); opacity: 0.8; }
 .text-neutral-600, .text-neutral-500, .text-neutral-400, .text-gray-600, .text-gray-500, .text-gray-400 { color: var(--text-muted); }
 .border-neutral-100, .border-neutral-50, .border-neutral-200, .border-gray-100, .border-gray-200, .border-gray-300 { border-color: var(--border-color); }
-.shadow-sm, .shadow-md, .shadow-lg, .shadow-xl { --tw-shadow-color: rgba(15, 23, 42, 0.12) !important; }
-:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .shadow-sm,
-:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .shadow-md,
-:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .shadow-lg,
-:is(.theme-midnight, .theme-carbon, .theme-oled, .theme-forest-dark, .theme-nocturnal, .theme-cyber) .shadow-xl {
-  --tw-shadow-color: rgba(0, 0, 0, 0.45) !important;
-}
 
 /* Pastel palette utilities are useful accents in light themes, but become
  * harsh light panels in dark themes. Keep their hue while anchoring them to

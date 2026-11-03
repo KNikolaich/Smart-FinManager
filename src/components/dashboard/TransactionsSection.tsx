@@ -55,7 +55,7 @@ export function TransactionsSection({
   };
 
   return (
-    <section className={cn("h-full rounded-2xl border border-theme-base bg-theme-surface p-4", className)} data-testid="dashboard-transactions">
+    <section className={cn("h-full rounded-2xl border border-theme-base bg-theme-surface p-4 shadow-sm", className)} data-testid="dashboard-transactions">
       <header className="flex items-center justify-between gap-2 border-b border-theme-base pb-2">
         <button
           type="button"

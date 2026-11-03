@@ -618,7 +618,7 @@ export default function UpcomingTasks({
           aria-label="Показать предстоящие планы"
           data-testid="button-upcoming-unfold"
           onClick={() => setPanelOpen(true)}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-theme-base bg-theme-surface px-4 py-3 text-theme-muted hover:text-theme-primary active:scale-[0.99] transition-all"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-theme-base bg-theme-surface px-4 py-3 shadow-sm text-theme-muted hover:text-theme-primary active:scale-[0.99] transition-all"
         >
           <CalendarDays size={18} className="shrink-0" aria-hidden="true" />
           <span className="text-[15px] font-semibold">Предстоящие планы</span>
@@ -641,7 +641,7 @@ export default function UpcomingTasks({
   }
 
   return (
-    <section className={`h-full w-full rounded-2xl border border-theme-base bg-theme-surface p-4 ${className || ''}`} data-testid="upcoming-tasks">
+    <section className={`h-full w-full rounded-2xl border border-theme-base bg-theme-surface p-4 shadow-sm ${className || ''}`} data-testid="upcoming-tasks">
       <motion.div
         initial={canFold ? { opacity: 0, y: -12 } : false}
         animate={{ opacity: 1, y: 0 }}
@@ -804,9 +804,9 @@ export default function UpcomingTasks({
           Предстоящих задач нет
         </div>
       ) : variant === 'carousel' ? (
-        <div className="mt-3 -mx-2 overflow-hidden">
+        <div className="mt-2 -mx-2 -mb-3 overflow-hidden">
           <div
-            className="flex items-stretch gap-3 overflow-x-auto px-2 pb-1 no-scrollbar snap-x snap-mandatory overscroll-x-contain"
+            className="flex items-stretch gap-3 overflow-x-auto px-2 pt-1 pb-4 no-scrollbar snap-x snap-mandatory overscroll-x-contain"
             data-testid="upcoming-tasks-carousel"
             onScroll={handleCarouselScroll}
           >
@@ -1059,7 +1059,7 @@ function PlanCard({
 
   return (
     <article
-      className={`flex gap-3 rounded-2xl border p-2.5 pr-3 transition-colors ${layout === 'strip'
+      className={`flex gap-3 rounded-2xl border p-2.5 pr-3 shadow-sm transition-colors ${layout === 'strip'
         ? 'w-max min-w-[220px] max-w-[min(85%,360px)] shrink-0 snap-start'
         : 'w-full'} ${overdue
         ? `border-red-300 bg-theme-primary-pastel${pulsing ? ' animate-overdue-pulse' : ''}`
