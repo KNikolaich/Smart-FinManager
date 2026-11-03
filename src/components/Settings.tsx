@@ -664,7 +664,7 @@ export default function Settings({
                     className={cn(previewThemeId, 'rounded-2xl border border-theme-base p-3')}
                   >
                     <div className="bg-theme-main rounded-xl p-3">
-                      <div className="bg-theme-surface border border-theme-base rounded-xl p-3">
+                      <div className="bg-theme-surface border border-theme-base rounded-xl p-3 shadow-sm">
                         <p className="text-[10px] uppercase tracking-wider font-bold text-theme-muted">Обзор месяца</p>
                         <div className="mt-1 flex items-end justify-between gap-2">
                           <div>

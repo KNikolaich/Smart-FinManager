@@ -631,7 +631,7 @@ export default function TransactionHistory({
 
           <AnimatePresence>
             {isFunnelOpen && (
-              <div className="bg-theme-surface border border-theme-base rounded-2xl p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="bg-theme-surface border border-theme-base rounded-2xl p-4 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
                 {/* Search Filter */}
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest text-theme-muted block mb-2">Поиск</label>

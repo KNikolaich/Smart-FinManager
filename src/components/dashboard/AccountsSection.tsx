@@ -82,7 +82,7 @@ export function AccountsSection({ accounts, allAccounts, currencies, onOpenTrans
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 }}
-      className={cn("rounded-2xl border border-theme-base bg-theme-surface p-4", className)}
+      className={cn("rounded-2xl border border-theme-base bg-theme-surface p-4 shadow-sm", className)}
       data-testid="dashboard-accounts"
     >
       <header className="flex items-center justify-between gap-2">
@@ -129,8 +129,8 @@ export function AccountsSection({ accounts, allAccounts, currencies, onOpenTrans
           </button>
         </div>
       </header>
-      <div className="mt-3 -mx-2 overflow-hidden">
-        <div className="flex gap-3 overflow-x-auto pb-1 px-2 no-scrollbar snap-x snap-mandatory">
+      <div className="mt-2 -mx-2 -mb-3 overflow-hidden">
+        <div className="flex gap-3 overflow-x-auto pt-1 pb-4 px-2 no-scrollbar snap-x snap-mandatory">
           <AnimatePresence>
             {accounts.map((account, index) => {
               const isNegative = account.balance < 0;
@@ -152,7 +152,7 @@ export function AccountsSection({ accounts, allAccounts, currencies, onOpenTrans
                     setAccountContextMenu({ x: e.clientX, y: e.clientY, account });
                   }}
                   className={cn(
-                    "min-w-[100px] flex-shrink-0 bg-theme-surface p-3 rounded-2xl border transition-all duration-300 snap-start relative cursor-pointer group shadow-sm",
+                    "min-w-[100px] flex-shrink-0 bg-theme-surface p-3 rounded-2xl border transition-all duration-300 snap-start relative cursor-pointer group shadow-sm hover:shadow-md",
                     isNegative
                       ? "border-rose-500/30 hover:shadow-rose-500/10 hover:bg-rose-500/5"
                       : "border-theme-base hover:shadow-theme-primary/10 hover:bg-theme-primary/5"

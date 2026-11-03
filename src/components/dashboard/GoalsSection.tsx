@@ -131,7 +131,7 @@ export function GoalsSection({ goals, userId, initialGoalData, onCloseGoalManage
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className={cn("h-full rounded-2xl border border-theme-base bg-theme-surface p-4", className)}
+        className={cn("h-full rounded-2xl border border-theme-base bg-theme-surface p-4 shadow-sm", className)}
         data-testid="dashboard-goals"
       >
             <header className="flex items-center justify-between gap-2 border-b border-theme-base pb-2">
