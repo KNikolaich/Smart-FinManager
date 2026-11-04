@@ -7,6 +7,7 @@ import { parseDateKey } from '../lib/plannedPaymentOccurrences';
 import { formatSignedAmount } from '../lib/planTotals';
 import { format, startOfMonth, endOfMonth, isWithinInterval, subMonths, startOfYear, endOfYear, eachMonthOfInterval, isBefore, isAfter } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { groupSmallCategories } from '../lib/categoryGrouping';
 import { Calendar, X, ChevronLeft, ChevronRight, Filter, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface AnalyticsProps {
@@ -139,7 +140,7 @@ export default function Analytics({
         data[name].value += t.amount;
       });
       
-    return Object.values(data).sort((a, b) => b.value - a.value);
+    return groupSmallCategories(Object.values(data));
   }, [filteredTransactions, categories, activeType]);
 
   const monthlyBalanceTrend = useMemo(() => {
@@ -364,7 +365,7 @@ export default function Analytics({
                     animationBegin={0}
                     animationDuration={800}
                     onClick={(data) => {
-                      if (data && data.name) {
+                      if (data && data.name && !data.payload?.isOther) {
                         handleCategoryClick(data.name);
                       }
                     }}
@@ -374,7 +375,7 @@ export default function Analytics({
                         key={`cell-${index}`} 
                         fill={entry.color} 
                         stroke="none" 
-                        className="cursor-pointer hover:opacity-80 transition-opacity focus:outline-none outline-none"
+                        className={cn("hover:opacity-80 transition-opacity focus:outline-none outline-none", !entry.isOther && "cursor-pointer")}
                         style={{ outline: 'none' }}
                       />
                     ))}
@@ -385,7 +386,9 @@ export default function Analytics({
                     labelStyle={{ color: 'var(--text-muted)' }}
                     formatter={(value: number, name: string, props: any) => [
                       `${value.toLocaleString()} ₽`, 
-                      props.payload.name
+                      props.payload.isOther
+                        ? `${props.payload.name}: ${props.payload.members.join(', ')}`
+                        : props.payload.name
                     ]}
                   />
                 </PieChart>
@@ -401,8 +404,12 @@ export default function Analytics({
               {chartData.map((item, i) => (
                 <div 
                   key={i} 
-                  onClick={() => handleCategoryClick(item.name)}
-                  className="flex items-center gap-3 group cursor-pointer hover:bg-theme-primary/5 p-2 rounded-xl transition-colors"
+                  onClick={item.isOther ? undefined : () => handleCategoryClick(item.name)}
+                  title={item.isOther ? item.members?.join(', ') : undefined}
+                  className={cn(
+                    "flex items-center gap-3 group p-2 rounded-xl transition-colors",
+                    !item.isOther && "cursor-pointer hover:bg-theme-primary/5"
+                  )}
                 >
                   <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
                   <span className="text-sm text-theme-main truncate flex-1">{item.name}</span>
