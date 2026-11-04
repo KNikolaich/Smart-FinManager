@@ -18,7 +18,7 @@ const socket = vi.hoisted(() => {
 vi.mock('socket.io-client', () => ({ io: vi.fn(() => socket) }));
 
 import UpcomingTasks from './UpcomingTasks';
-import type { CalendarNote, PlannedPayment } from '../types';
+import type { CalendarNote, Category, PlannedPayment } from '../types';
 import { api } from '../lib/api';
 
 const makePayment = (index: number): PlannedPayment => ({
@@ -331,6 +331,42 @@ describe('UpcomingTasks', () => {
     expect(cards[2].textContent).toContain('Карта → Накопительный');
     expect(cards[2].querySelector('[aria-label^="Исполнить план"]')).not.toBeNull();
     expect(cards[2].textContent).not.toContain('Исполнить');
+  });
+
+  it('shows the plan category icon in the plan colour in list rows and dashboard cards', () => {
+    const categories: Category[] = [
+      { id: 'food', userId: 'u', name: 'Продукты', type: 'expense', icon: '🛒', color: '#000' },
+      { id: 'shop', userId: 'u', name: 'В магазине', type: 'expense', icon: '', color: '#000', parentId: 'food' },
+    ];
+    const plans: PlannedPayment[] = [
+      { ...makePayment(1), id: 'colored', categoryId: 'shop', color: '#EAB308' },
+      { ...makePayment(2), id: 'plain', categoryId: 'food' },
+      { ...makePayment(3), id: 'bare' },
+    ];
+
+    const { unmount } = render(
+      <UpcomingTasks payments={plans} categories={categories} startDate="2026-09-18" onToggleTask={vi.fn()} />,
+    );
+    const coloredRow = screen.getByTestId('payment-row-colored-2026-09-19');
+    expect(coloredRow.className).toContain('items-start');
+    const side = screen.getByTestId('payment-row-side-colored-2026-09-19');
+    expect(side.firstElementChild?.getAttribute('data-testid')).toBe('button-toggle-payment-colored-2026-09-19');
+    const coloredIcon = side.querySelector<HTMLElement>('[data-testid="plan-category-icon"]')!;
+    expect(coloredIcon.textContent).toBe('🛒');
+    expect(coloredIcon.dataset.planColor).toBe('#eab308');
+    const plainIcon = screen.getByTestId('payment-row-plain-2026-09-20').querySelector<HTMLElement>('[data-testid="plan-category-icon"]')!;
+    expect(plainIcon.textContent).toBe('🛒');
+    expect(plainIcon.dataset.planColor).toBeUndefined();
+    expect(screen.getByTestId('payment-row-bare-2026-09-21').querySelector('[data-testid="plan-category-icon"]')).toBeNull();
+    unmount();
+
+    render(<UpcomingTasks payments={plans} categories={categories} variant="carousel" startDate="2026-09-18" />);
+    const tile = screen.getByTestId('upcoming-banner-colored-2026-09-19').querySelector<HTMLElement>('[data-testid="upcoming-card-tile"]')!;
+    expect(tile.className).toContain('justify-start');
+    expect(tile.querySelector('[data-testid="plan-category-icon"]')?.textContent).toBe('🛒');
+    const bareTile = screen.getByTestId('upcoming-banner-bare-2026-09-21').querySelector<HTMLElement>('[data-testid="upcoming-card-tile"]')!;
+    expect(bareTile.className).toContain('justify-center');
+    expect(bareTile.querySelector('[data-testid="plan-category-icon"]')).toBeNull();
   });
 
   it('keeps the calendar title button and drops the old reset button', () => {

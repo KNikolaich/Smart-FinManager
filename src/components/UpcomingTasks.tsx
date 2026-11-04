@@ -1,11 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeftRight, CalendarClock, CalendarDays, Check, ChevronDown, ChevronUp, CircleDashed, Copy, Eraser, Eye, Hand, Pencil, Plus, ScrollText, StickyNote, Trash2, X } from 'lucide-react';
+import { CalendarClock, CalendarDays, Check, ChevronDown, ChevronUp, CircleDashed, Copy, Eraser, Eye, Hand, Pencil, Plus, ScrollText, StickyNote, Trash2, X } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { api } from '../lib/api';
 import { cacheCalendarSnapshot, calendarApi } from '../lib/calendarApi';
 import { useMinuteClock } from '../hooks/useMinuteClock';
-import { CalendarNote, PlannedPayment, PlannedPaymentRecurrence } from '../types';
+import { CalendarNote, Category, PlannedPayment, PlannedPaymentRecurrence } from '../types';
+import PlanCategoryIcon, { hasPlanCategoryIcon } from './ui/PlanCategoryIcon';
 import CalendarNoteDialog from './CalendarNoteDialog';
 import { CalendarDashboardItem, mergeCalendarDashboardItems, mergeCalendarPlanItems } from '../lib/calendarDashboardItems';
 import {
@@ -31,6 +32,8 @@ interface UpcomingTasksProps {
   userId?: string;
   payments?: PlannedPayment[];
   notes?: CalendarNote[];
+  /** Categories, to show each plan's category icon. */
+  categories?: Category[];
   startDate?: string;
   filter?: PlannedPaymentFilter;
   focusedDate?: string;
@@ -65,6 +68,7 @@ export default function UpcomingTasks({
   userId,
   payments,
   notes,
+  categories = [],
   startDate = getTodayKey(),
   filter = 'all',
   focusedDate,
@@ -600,6 +604,7 @@ export default function UpcomingTasks({
         onExecute={occurrence ? () => executeOccurrence(occurrence) : undefined}
         onManualToggle={occurrence ? () => void toggleManualCompletion(occurrence) : undefined}
         onDelete={() => item.kind === 'note' ? requestNoteDelete(item.note) : requestDelete(item.occurrence)}
+        categories={categories}
       />
     );
   };
@@ -866,10 +871,13 @@ export default function UpcomingTasks({
               : onSelectedDay
                 ? `border-dashed ${outlineTone}`
                 : 'border-transparent';
+            const rowIcon = hasPlanCategoryIcon(item.payment, categories)
+              ? <PlanCategoryIcon payment={item.payment} categories={categories} muted={isCompletedOccurrence(item)} />
+              : null;
             return (
               <article
                 key={entry.key}
-                className={`flex items-center gap-2 rounded-xl px-2 py-2 border ${focusedBorder} ${occurrenceTone(item, now)}`}
+                className={`flex items-start gap-2 rounded-xl px-2 py-2 border ${focusedBorder} ${occurrenceTone(item, now)}`}
                 data-testid={`payment-row-${key}`}
                 data-selected-day={onSelectedDay ? 'true' : undefined}
                 data-upcoming-task={key}
@@ -877,6 +885,8 @@ export default function UpcomingTasks({
                 data-calendar-item-key={entry.key}
                 data-upcoming-date={entry.date}
               >
+                {(canToggle || rowIcon) && (
+                <div className="flex shrink-0 flex-col items-center gap-1" data-testid={`payment-row-side-${key}`}>
                 {canToggle && (
                   <button
                     type="button"
@@ -889,6 +899,9 @@ export default function UpcomingTasks({
                   >
                     {item.transactionId && <Check size={13} strokeWidth={3} aria-hidden="true" />}
                   </button>
+                )}
+                {rowIcon}
+                </div>
                 )}
                 <button
                   type="button"
@@ -1030,9 +1043,11 @@ function PlanCard({
   onExecute,
   onManualToggle,
   onDelete,
+  categories = [],
 }: {
   item: CalendarDashboardItem;
   layout: 'strip' | 'stack';
+  categories?: Category[];
   overdue: boolean;
   pulsing: boolean;
   /** Tapping the card itself opens the plan (or the note) for viewing. */
@@ -1056,6 +1071,9 @@ function PlanCard({
       item.occurrence.payment.recurrence !== 'none' ? recurrenceLabel(item.occurrence.payment) : undefined,
     ].filter(Boolean).join(' · ');
   const stopPointer = (event: React.SyntheticEvent) => event.stopPropagation();
+  // With a category icon the amount moves to the top of the tile and the icon
+  // sits under it; otherwise the amount stays centred as before.
+  const tileIcon = payment && hasPlanCategoryIcon(payment, categories);
 
   return (
     <article
@@ -1083,7 +1101,7 @@ function PlanCard({
       }}
     >
       <div
-        className={`flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-center ${PLAN_KIND_TILE[kind]}`}
+        className={`flex h-20 w-20 shrink-0 flex-col items-center ${tileIcon ? 'justify-start gap-1.5 pt-2' : 'justify-center gap-0.5'} rounded-xl px-1 text-center ${PLAN_KIND_TILE[kind]}`}
         data-testid="upcoming-card-tile"
         title={PLAN_KIND_LABEL[kind]}
       >
@@ -1091,10 +1109,10 @@ function PlanCard({
           <ScrollText size={28} aria-label="Записка" />
         ) : (
           <>
-            {kind === 'transfer' && <ArrowLeftRight size={13} aria-hidden="true" />}
             <span className={`max-w-full rounded-full bg-white/70 py-0.5 font-bold leading-tight tabular-nums whitespace-nowrap ${formatTileAmount(payment!.amount).length > 8 ? 'px-1 text-[11px]' : 'px-1.5 text-[13px]'}`}>
               {formatTileAmount(payment!.amount)}
             </span>
+            {tileIcon && <PlanCategoryIcon payment={payment!} categories={categories} size="lg" muted={completed} />}
             <span className="sr-only">{PLAN_KIND_LABEL[kind]}</span>
           </>
         )}
