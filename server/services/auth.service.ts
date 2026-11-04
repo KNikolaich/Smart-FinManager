@@ -6,6 +6,7 @@ import { JWT_SECRET_VALUE } from "../config";
 import { transporter } from "../mailer";
 import { isAccountLockedOut, recordAccountLoginFailure, resetAccountLoginFailures, ACCOUNT_WARNING_THRESHOLD } from "../rateLimitStore";
 import { mergeUserSettings } from "./userSettings";
+import { refreshMonthEndSnapshots } from "./balanceHistory.service";
 import { fetchAvatarAsDataUrl, gravatarUrl } from "./remoteAvatar";
 
 async function maybeSendAttackWarningEmail(email: string, attempts: number) {
@@ -109,6 +110,7 @@ export async function loginUser(email: string, password: string) {
 }
 
 export async function getInitialData(userId: string) {
+  await refreshMonthEndSnapshots(userId);
   const [accounts, transactions, goals, categories, currencies, balanceHistory] = await Promise.all([
     prisma.account.findMany({ where: { userId } }),
     prisma.transaction.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 100 }),
@@ -124,32 +126,6 @@ export async function getInitialData(userId: string) {
 export async function getMe(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return null;
-
-  // Check and take balance snapshot for the current month if it doesn't exist
-  try {
-    const now = new Date();
-    const monthStr = now.toISOString().substring(0, 7);
-    const existing = await prisma.balanceHistory.findUnique({
-      where: { userId_month: { userId: user.id, month: monthStr } }
-    });
-
-    if (!existing) {
-      const accounts = await prisma.account.findMany({
-        where: { userId: user.id, showInTotals: true }
-      });
-      const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
-      await prisma.balanceHistory.create({
-        data: {
-          userId: user.id,
-          month: monthStr,
-          totalBalance,
-          details: accounts.map(a => ({ id: a.id, name: a.name, balance: a.balance }))
-        }
-      });
-    }
-  } catch (snapshotError) {
-    console.error("Failed to take balance snapshot:", snapshotError);
-  }
 
   return { id: user.id, email: user.email, displayName: user.displayName, photoURL: user.photoURL, role: user.role, settings: user.settings };
 }
