@@ -121,6 +121,7 @@ export default function Dashboard({
           <UpcomingTasks
             userId={userId}
             variant="carousel"
+            categories={categories}
             className={stretchClass}
             collapsible={options.fullWidth}
             onOpenCalendar={onOpenCalendar}

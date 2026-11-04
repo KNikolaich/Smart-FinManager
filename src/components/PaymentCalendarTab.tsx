@@ -674,6 +674,7 @@ export default function PaymentCalendarTab({
           <UpcomingTasks
             payments={payments}
             notes={sortedNotes}
+            categories={categories}
             startDate={listStartDate}
             filter={filter}
             focusedDate={selectedDate}
