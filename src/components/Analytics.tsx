@@ -1,6 +1,10 @@
-import { useMemo, useState } from 'react';
-import { Transaction, Category, Account, BalanceHistory, Currency } from '../types';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, LineChart, Line } from 'recharts';
+import { useEffect, useMemo, useState } from 'react';
+import { Transaction, Category, Account, BalanceHistory, Currency, PlannedPayment } from '../types';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, LineChart, Line, AreaChart, Area, ReferenceLine } from 'recharts';
+import { api } from '../lib/api';
+import { buildPlanForecast, totalRubleBalance, PLAN_FORECAST_MONTHS, PlanForecastPoint } from '../lib/planForecast';
+import { parseDateKey } from '../lib/plannedPaymentOccurrences';
+import { formatSignedAmount } from '../lib/planTotals';
 import { format, startOfMonth, endOfMonth, isWithinInterval, subMonths, startOfYear, endOfYear, eachMonthOfInterval, isBefore, isAfter } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Calendar, X, ChevronLeft, ChevronRight, Filter, TrendingUp, TrendingDown } from 'lucide-react';
@@ -53,6 +57,27 @@ export default function Analytics({
   const [selectedMonth, setSelectedMonth] = useState(initialSelectedMonth);
   
   const [periodRange, setPeriodRange] = useState(initialPeriodRange);
+  const [plannedPayments, setPlannedPayments] = useState<PlannedPayment[] | null>(null);
+  const [plansError, setPlansError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    api.get<{ payments?: PlannedPayment[] }>('/plan-grid/calendar')
+      .then(data => {
+        if (!active) return;
+        setPlannedPayments(Array.isArray(data?.payments) ? data.payments : []);
+        setPlansError(false);
+      })
+      .catch(() => {
+        if (active) setPlansError(true);
+      });
+    return () => { active = false; };
+  }, []);
+
+  const planForecast = useMemo(
+    () => buildPlanForecast(plannedPayments || [], accounts, currencies),
+    [plannedPayments, accounts, currencies]
+  );
 
   const handleCategoryClick = (categoryName: string) => {
     if (!onNavigateToHistory) return;
@@ -118,13 +143,8 @@ export default function Analytics({
   }, [filteredTransactions, categories, activeType]);
 
   const monthlyBalanceTrend = useMemo(() => {
-    // Calculate current balance (total in Rubles)
-    const currentTotalBalance = accounts
-      .filter(a => a.showInTotals && !a.isArchived)
-      .reduce((sum, acc) => {
-        const rate = acc.currency === '₽' ? 1 : (currencies.find(c => c.symbol === acc.currency)?.rate || 1);
-        return sum + (acc.balance * rate);
-      }, 0);
+    // Current total in rubles, counted exactly like the balance card and the plan forecast.
+    const currentTotalBalance = totalRubleBalance(accounts, currencies);
 
     // 1. Get history points and sort them by month ascending
     const historyPoints = [...balanceHistory]
@@ -463,10 +483,131 @@ export default function Analytics({
           </div>
         </section>
 
+        <section className="bg-theme-surface p-2 rounded-3xl border border-theme-base shadow-sm" data-testid="plan-forecast-chart">
+          <div className="flex items-start justify-between gap-2 mb-4">
+            <div className="min-w-0">
+              <h3 className="font-bold text-lg text-theme-main">Прогноз по планам</h3>
+              <p className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">
+                На {PLAN_FORECAST_MONTHS} месяца от текущего баланса
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">
+                К {format(parseDateKey(planForecast.points.at(-1)?.date || format(new Date(), 'yyyy-MM-dd')), 'd MMM', { locale: ru })}
+              </p>
+              <p className={cn("text-lg font-bold", planForecast.endBalance < 0 ? "text-rose-500" : "text-theme-main")} data-testid="plan-forecast-end">
+                {formatRub(planForecast.endBalance)}
+              </p>
+            </div>
+          </div>
+          <div className="h-64 w-full relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={planForecast.points} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="planForecastFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--color-action)" stopOpacity={0.28} />
+                    <stop offset="100%" stopColor="var(--color-action)" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  minTickGap={24}
+                  tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 600 }}
+                  tickFormatter={(value: string) => format(parseDateKey(value), 'd MMM', { locale: ru })}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  width={40}
+                  tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
+                  tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                  domain={['auto', 'auto']}
+                />
+                {planForecast.minBalance < 0 && (
+                  <ReferenceLine y={0} stroke="var(--color-expense)" strokeDasharray="4 4" />
+                )}
+                <Tooltip
+                  cursor={{ stroke: 'var(--border-subtle)' }}
+                  content={<PlanForecastTooltip />}
+                />
+                <Area
+                  type="stepAfter"
+                  dataKey="balance"
+                  stroke="var(--color-action)"
+                  strokeWidth={3}
+                  fill="url(#planForecastFill)"
+                  dot={false}
+                  activeDot={{ r: 5 }}
+                  isAnimationActive={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+            {(plansError || (plannedPayments !== null && planForecast.income === 0 && planForecast.expense === 0)) && (
+              <div className="absolute inset-0 flex items-center justify-center text-theme-muted text-sm font-medium italic pointer-events-none">
+                {plansError ? 'Не удалось загрузить планы' : 'Нет планов на ближайшие 2 месяца'}
+              </div>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-1 mt-3 text-center">
+            <div>
+              <p className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">Доходы</p>
+              <p className="text-sm font-bold text-emerald-500">{formatSignedAmount(planForecast.income)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">Расходы</p>
+              <p className="text-sm font-bold text-rose-500">{formatSignedAmount(-planForecast.expense)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-theme-muted uppercase tracking-widest">Минимум</p>
+              <p className={cn("text-sm font-bold", planForecast.minBalance < 0 ? "text-rose-500" : "text-theme-main")} data-testid="plan-forecast-min">
+                {formatRub(planForecast.minBalance)}
+              </p>
+              <p className="text-[10px] text-theme-muted">{format(parseDateKey(planForecast.minDate), 'd MMM', { locale: ru })}</p>
+            </div>
+          </div>
+        </section>
+
         {/* Bottom Bar Spacer */}
         <div className="h-10 lg:hidden shrink-0" />
 
       </div>
+    </div>
+  );
+}
+
+const rubFormatter = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
+
+function formatRub(value: number) {
+  const rounded = Math.round(value);
+  return `${rounded < 0 ? '−' : ''}${rubFormatter.format(Math.abs(rounded))} ₽`;
+}
+
+function PlanForecastTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: PlanForecastPoint }> }) {
+  if (!active || !payload?.length) return null;
+  const point = payload[0].payload;
+  const shown = point.operations.slice(0, 5);
+  return (
+    <div
+      className="max-w-[240px]"
+      style={{ borderRadius: 'var(--radius-card)', border: '1px solid var(--border-subtle)', backgroundColor: 'var(--surface-card)', boxShadow: 'var(--shadow-elegant)', padding: '8px 10px' }}
+    >
+      <p className="text-[11px] text-theme-muted">
+        {point.isStart ? 'Сейчас' : format(parseDateKey(point.date), 'd MMMM, EEEEEE', { locale: ru })}
+      </p>
+      <p className="text-sm font-bold text-theme-main">{formatRub(point.balance)}</p>
+      {shown.map((operation, index) => (
+        <div key={index} className="flex justify-between gap-2 text-[11px] mt-0.5">
+          <span className="truncate text-theme-main">{operation.title}</span>
+          <span className={cn("font-bold shrink-0", operation.delta > 0 ? "text-emerald-500" : operation.delta < 0 ? "text-rose-500" : "text-theme-muted")}>
+            {formatSignedAmount(operation.delta)}
+          </span>
+        </div>
+      ))}
+      {point.operations.length > shown.length && (
+        <p className="text-[10px] text-theme-muted mt-0.5">и ещё {point.operations.length - shown.length}</p>
+      )}
     </div>
   );
 }

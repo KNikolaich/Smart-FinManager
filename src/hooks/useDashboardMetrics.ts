@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { Account, Transaction, Currency, BalanceHistory, AccountType } from '../types';
 import { format, subMonths } from 'date-fns';
+import { totalRubleBalance } from '../lib/planForecast';
+import { accountCurrencyRate } from '../lib/currencyUtils';
 import { ru } from 'date-fns/locale';
 
 export function useDashboardMetrics(
@@ -9,19 +11,7 @@ export function useDashboardMetrics(
   currencies: Currency[],
   balanceHistory: BalanceHistory[]
 ) {
-  const totalBalance = useMemo(() => {
-    return accounts
-      .filter(a => a.showInTotals && !a.isArchived)
-      .reduce((sum, acc) => {
-        if (acc.currency === '₽') {
-          return sum + acc.balance;
-        }
-
-        const currency = currencies.find(c => c.symbol === acc.currency);
-        const rate = currency ? currency.rate : 1;
-        return sum + (acc.balance * rate);
-      }, 0);
-  }, [accounts, currencies]);
+  const totalBalance = useMemo(() => totalRubleBalance(accounts, currencies), [accounts, currencies]);
 
   const dashboardAccounts = useMemo(() => {
     const order: Record<AccountType, number> = { card: 0, credit: 1, cash: 2, bank: 3 };
@@ -66,13 +56,7 @@ export function useDashboardMetrics(
         const acc = accounts.find(a => a.id === t.accountId);
         if (!acc) return sum;
 
-        if (acc.currency === '₽') {
-          return sum + amount;
-        }
-
-        const currency = currencies.find(c => c.symbol === acc.currency);
-        const rate = currency ? currency.rate : 1;
-        return sum + (amount * rate);
+        return sum + amount * accountCurrencyRate(acc, currencies);
       }, 0);
   }, [transactions, accounts, currencies]);
 
