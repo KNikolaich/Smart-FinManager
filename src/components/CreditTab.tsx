@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { PlanData } from '../types';
 import { BarChart, Bar, ResponsiveContainer, Tooltip } from 'recharts';
-import { Save, Info, Sparkles, Check, HelpCircle } from 'lucide-react';
+import { Save, Info, Check, HelpCircle } from 'lucide-react';
+import { CalculatorIcon } from './icons/CalculatorIcon';
 import { cn } from '../lib/utils';
 
 interface CreditTabProps {
@@ -163,7 +164,7 @@ export default function CreditTab({ planData, onSave }: CreditTabProps) {
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <h2 className="text-base sm:text-lg font-bold text-theme-main flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-sky-500 shrink-0" />
+              <CalculatorIcon className="w-5 h-5 text-sky-500 shrink-0" />
               <span className="truncate">Кредитный калькулятор</span>
             </h2>
             <p className="text-xs text-theme-muted mt-0.5 max-w-[280px] sm:max-w-none truncate sm:normal-case">
